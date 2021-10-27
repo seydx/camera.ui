@@ -1,0 +1,142 @@
+:root {
+  /* pink */
+  --primary-color: rgb(209, 32, 73);
+  --secondary-color: rgb(125, 19, 44);
+  --third-color: rgb(63, 10, 22);
+  --fourth-color: rgb(237, 166, 182);
+  --fifth-color: rgb(255, 104, 104);
+  --six-color: rgb(34, 3, 10);
+  --primary-trans-color-1: rgba(209, 32, 73, 0.75);
+  --primary-trans-color-2: rgba(209, 32, 73, 0.5);
+  --primary-trans-color-3: rgba(209, 32, 73, 0.25);
+  --primary-trans-color-4: rgba(209, 32, 73, 0.1);
+  /* LIGHT */
+  --primary-font-color: rgb(0, 0, 0);
+  --secondary-font-color: rgb(200, 200, 200);
+  --third-font-color: rgb(244, 244, 244);
+  --fourth-font-color: rgb(255, 255, 255);
+  --primary-bg-color: rgb(244, 244, 244);
+  --secondary-bg-color: rgb(255, 255, 255);
+  --secondary-bg-hover-color: rgb(248, 248, 248);
+  --third-bg-color: rgb(219, 219, 219);
+  --third-bg-color-hover: rgb(184, 184, 184);
+  --fourth-bg-color: rgb(162, 162, 162);
+  --trans-bg-color: rgba(255, 255, 255, 0.8);
+  --trans-bg-color-5: rgba(255, 255, 255, 0.5);
+  --trans-bg-color-3: rgba(255, 255, 255, 0.3);
+  --trans-bg-color-1: rgba(255, 255, 255, 0.1);
+  --trans-font-color: rgba(0, 0, 0, 0.5);
+  --trans-border-color: rgba(0, 0, 0, 0.15);
+  --trans-border-color-1: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --primary-font-color: rgb(255, 255, 255);
+  --secondary-font-color: rgb(108, 108, 108);
+  --third-font-color: rgb(135, 135, 135);
+  --fourth-font-color: rgb(189, 189, 189);
+  --primary-bg-color: rgb(0, 0, 0);
+  --secondary-bg-color: rgb(42, 42, 42);
+  --secondary-bg-hover-color: rgb(50, 50, 50);
+  --third-bg-color: rgb(64, 64, 64);
+  --third-bg-color-hover: rgb(92, 92, 92);
+  --fourth-bg-color: rgb(103, 103, 103);
+  --trans-bg-color: rgba(29, 29, 29, 0.8);
+  --trans-bg-color-5: rgba(29, 29, 29, 0.5);
+  --trans-bg-color-3: rgba(29, 29, 29, 0.3);
+  --trans-bg-color-1: rgba(29, 29, 29, 0.1);
+  --trans-font-color: rgba(255, 255, 255, 0.5);
+  --trans-border-color: rgba(128, 128, 128, 0.05);
+  --trans-border-color-1: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme-color='blgray'] {
+  --primary-color: rgb(96, 125, 139);
+  --secondary-color: rgb(64, 85, 95);
+  --third-color: rgb(51, 68, 77);
+  --fourth-color: rgb(157, 194, 212);
+  --fifth-color: rgb(137, 206, 240);
+  --six-color: rgb(29, 38, 43);
+  --primary-trans-color-1: rgba(96, 125, 139, 0.75);
+  --primary-trans-color-2: rgba(96, 125, 139, 0.5);
+  --primary-trans-color-3: rgba(96, 125, 139, 0.25);
+  --primary-trans-color-4: rgba(96, 125, 139, 0.1);
+}
+
+[data-theme-color='blue'] {
+  --primary-color: rgb(10, 132, 255);
+  --secondary-color: rgb(6, 79, 153);
+  --third-color: rgb(3, 40, 77);
+  --fourth-color: rgb(157, 206, 255);
+  --fifth-color: rgb(11, 218, 251);
+  --six-color: rgb(0, 20, 41);
+  --primary-trans-color-1: rgba(10, 132, 255, 0.75);
+  --primary-trans-color-2: rgba(10, 132, 255, 0.5);
+  --primary-trans-color-3: rgba(10, 132, 255, 0.25);
+  --primary-trans-color-4: rgba(10, 132, 255, 0.1);
+}
+
+[data-theme-color='brown'] {
+  --primary-color: rgb(121, 85, 72);
+  --secondary-color: rgb(82, 56, 46);
+  --third-color: rgb(63, 41, 32);
+  --fourth-color: rgb(223, 171, 153);
+  --fifth-color: rgb(248, 156, 123);
+  --six-color: rgb(44, 29, 24);
+  --primary-trans-color-1: rgba(121, 85, 72, 0.75);
+  --primary-trans-color-2: rgba(121, 85, 72, 0.5);
+  --primary-trans-color-3: rgba(121, 85, 72, 0.25);
+  --primary-trans-color-4: rgba(121, 85, 72, 0.1);
+}
+
+[data-theme-color='gray'] {
+  --primary-color: rgb(98, 99, 101);
+  --secondary-color: rgb(59, 59, 61);
+  --third-color: rgb(29, 30, 30);
+  --fourth-color: rgb(192, 193, 193);
+  --fifth-color: rgb(150, 150, 150);
+  --six-color: rgb(10, 10, 10);
+  --primary-trans-color-1: rgba(98, 99, 101, 0.75);
+  --primary-trans-color-2: rgba(98, 99, 101, 0.5);
+  --primary-trans-color-3: rgba(98, 99, 101, 0.25);
+  --primary-trans-color-4: rgba(98, 99, 101, 0.1);
+}
+
+[data-theme-color='green'] {
+  --primary-color: rgb(102, 206, 102);
+  --secondary-color: rgb(61, 124, 61);
+  --third-color: rgb(31, 62, 31);
+  --fourth-color: rgb(194, 235, 194);
+  --fifth-color: rgb(183, 255, 103);
+  --six-color: rgb(14, 27, 14);
+  --primary-trans-color-1: rgba(102, 206, 102, 0.75);
+  --primary-trans-color-2: rgba(102, 206, 102, 0.5);
+  --primary-trans-color-3: rgba(102, 206, 102, 0.25);
+  --primary-trans-color-4: rgba(102, 206, 102, 0.1);
+}
+
+[data-theme-color='orange'] {
+  --primary-color: rgb(255, 149, 0);
+  --secondary-color: rgb(189, 110, 0);
+  --third-color: rgb(126, 73, 0);
+  --fourth-color: rgb(255, 226, 185);
+  --fifth-color: rgb(255, 208, 0);
+  --six-color: rgb(58, 34, 0);
+  --primary-trans-color-1: rgba(255, 149, 0, 0.75);
+  --primary-trans-color-2: rgba(255, 149, 0, 0.5);
+  --primary-trans-color-3: rgba(255, 149, 0, 0.25);
+  --primary-trans-color-4: rgba(255, 149, 0, 0.1);
+}
+
+[data-theme-color='purple'] {
+  --primary-color: rgb(124, 72, 194);
+  --secondary-color: rgb(96, 55, 185);
+  --third-color: rgb(61, 30, 126);
+  --fourth-color: rgb(201, 169, 243);
+  --fifth-color: rgb(168, 101, 255);
+  --six-color: rgb(47, 22, 102);
+  --primary-trans-color-1: rgba(124, 72, 194, 0.75);
+  --primary-trans-color-2: rgba(124, 72, 194, 0.5);
+  --primary-trans-color-3: rgba(124, 72, 194, 0.25);
+  --primary-trans-color-4: rgba(124, 72, 194, 0.1);
+}
