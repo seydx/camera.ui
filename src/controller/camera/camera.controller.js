@@ -11,18 +11,18 @@ class CameraController {
 
   static cameras = new Map([]);
 
-  constructor() {
+  constructor(socket) {
     for (const camera of this.#cameras) {
-      this.#createController(camera);
+      this.#createController(camera, socket);
     }
 
     return CameraController.cameras;
   }
 
-  #createController(camera) {
+  #createController(camera, socket) {
     const prebufferService = camera.prebuffering ? new PrebufferService(camera) : null;
     const sessionService = new SessionService(camera);
-    const streamService = new StreamService(camera, sessionService);
+    const streamService = new StreamService(camera, sessionService, socket);
 
     const controller = {
       prebuffer: prebufferService,

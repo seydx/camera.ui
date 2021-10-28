@@ -18,7 +18,7 @@ div
             :showFullsizeIndicator="true",
             :showRefreshIndicator="true",
             :showSpinner="true",
-            @refreshStream="refreshStreamSocket"
+            @refreshStream="refreshStreamProcess"
           )
   ActionSheet(
     v-if="allCameras.length && checkLevel(['cameras:access', 'settings:cameras:access', 'settings:camview:access'])"
@@ -393,12 +393,19 @@ export default {
         this.grid.addWidget(node.el, nodePosition);
       }
     },
+    refreshStreamProcess(event) {
+      if (this.$refs[event.camera] && this.$refs[event.camera][0]) {
+        this.$refs[event.camera][0].pauseStream(true);
+      }
+
+      this.$socket.client.emit('refresh_stream', { feed: event.camera });
+    },
     refreshStreamSocket(event) {
       if (this.$refs[event.camera] && this.$refs[event.camera][0]) {
         this.$refs[event.camera][0].pauseStream(true);
       }
 
-      this.$socket.client.emit('join_stream', { feed: event.camera, destroy: true });
+      this.$socket.client.emit('rejoin_stream', { feed: event.camera });
     },
     resizeHandler() {
       if (this.grid) {

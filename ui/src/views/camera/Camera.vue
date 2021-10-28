@@ -17,7 +17,7 @@ div
           :showRefreshIndicator="true",
           :showSpinner="true",
           :onlyStream="true",
-          @refreshStream="refreshStreamSocket"
+          @refreshStream="refreshStreamProcess"
         )
       b-card-title.mb-0.ml-1.mt-3 {{ $route.params.name }}
       b-card-text.text-muted-2.ml-1 {{ camera.settings.room }}
@@ -83,6 +83,15 @@ export default {
       return this.$store.state.auth.user;
     },
   },
+  sockets: {
+    connect() {
+      if (this.connected) {
+        if (this.camera.live) {
+          this.refreshStreamSocket({ camera: this.camera.name });
+        }
+      }
+    },
+  },
   async mounted() {
     try {
       if (this.checkLevel('cameras:access')) {
@@ -110,6 +119,7 @@ export default {
 
         this.camera = camera.data;
         this.loading = false;
+        this.connected = true;
       } else {
         this.$toast.error(this.$t('no_access'));
       }
@@ -118,12 +128,19 @@ export default {
     }
   },
   methods: {
+    refreshStreamProcess(event) {
+      if (this.$refs[event.camera]) {
+        this.$refs[event.camera].pauseStream(true);
+      }
+
+      this.$socket.client.emit('refresh_stream', { feed: event.camera });
+    },
     refreshStreamSocket(event) {
       if (this.$refs[event.camera]) {
         this.$refs[event.camera].pauseStream(true);
       }
 
-      this.$socket.client.emit('join_stream', { feed: event.camera, destroy: true });
+      this.$socket.client.emit('rejoin_stream', { feed: event.camera });
     },
   },
 };

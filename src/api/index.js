@@ -34,7 +34,7 @@ class Server {
         )
       : http.createServer(app);
 
-    Socket.create(server);
+    const socket = Socket.create(server);
 
     server.on('listening', async () => {
       let addr = server.address();
@@ -72,7 +72,11 @@ class Server {
       log.debug('User interface closed');
     });
 
-    return server;
+    //return server;
+    return {
+      server: server,
+      socket: socket,
+    };
   }
 }
 

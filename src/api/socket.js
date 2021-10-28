@@ -4,12 +4,11 @@ const { LoggerService } = require('../services/logger/logger.service');
 
 const { Database } = require('./database');
 
+const { CameraController } = require('../controller/camera/camera.controller');
+
 const { log } = LoggerService;
 
-const setAsyncTimeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 class Socket {
-  #rooms = [];
   #streamTimeouts = new Map();
 
   static io;
@@ -31,74 +30,104 @@ class Socket {
 
       socket.on('join_stream', (data) => {
         if (data.feed) {
-          log.debug(`New WebSocket connection from ${socket.conn.remoteAddress} to room: stream/${data.feed}`);
-
           socket.join(`stream/${data.feed}`);
-
-          this.#handleConntection(data.feed, data.destroy);
+          log.debug(`${socket.conn.remoteAddress} joined room: stream/${data.feed}`);
         }
       });
 
       socket.on('leave_stream', (data) => {
         if (data.feed) {
-          log.debug(`${socket.conn.remoteAddress} disconnected or closed from room: stream/${data.feed}`);
           socket.leave(`stream/${data.feed}`);
+          log.debug(`${socket.conn.remoteAddress} left room: stream/${data.feed}`);
+        }
+      });
 
-          this.#handleConntection(data.feed);
+      socket.on('rejoin_stream', (data) => {
+        if (data.feed) {
+          socket.leave(`stream/${data.feed}`);
+          socket.join(`stream/${data.feed}`);
+
+          log.debug(`${socket.conn.remoteAddress} re-joined room: stream/${data.feed}`);
+        }
+      });
+
+      socket.on('refresh_stream', (data) => {
+        if (data.feed) {
+          log.debug(`${socket.conn.remoteAddress} requested to restart ${data.feed} stream`);
+          this.#handleStream(data.feed, 'restart');
         }
       });
 
       socket.on('disconnect', () => {
         log.debug(`${socket.conn.remoteAddress} disconnected from server`);
-
-        for (const cameraName of this.#rooms) {
-          this.#handleConntection(cameraName);
-        }
       });
     });
-  }
 
-  async #handleConntection(cameraName, destroy) {
-    if (destroy) {
-      this.#handleStream(cameraName, 'stop');
-      await setAsyncTimeout(1000);
-    }
+    Socket.io.of('/').adapter.on('join-room', (room) => {
+      if (room.startsWith('stream/')) {
+        const cameraName = room.split('/')[1];
+        const clients = Socket.io.sockets.adapter.rooms.get(`stream/${cameraName}`)?.size || 0;
 
-    const clients = Socket.io.sockets.adapter.rooms.get(`stream/${cameraName}`)
-      ? Socket.io.sockets.adapter.rooms.get(`stream/${cameraName}`).size
-      : 0;
+        log.debug(`Active sockets in room (stream/${cameraName}): ${clients}`);
 
-    log.debug(`Active sockets in room (stream/${cameraName}): ${clients}`);
+        let streamTimeout = this.#streamTimeouts.get(cameraName);
 
-    let streamTimeout = this.#streamTimeouts.get(cameraName);
-
-    if (streamTimeout) {
-      clearTimeout(streamTimeout);
-      this.#streamTimeouts.delete(cameraName);
-    }
-
-    if (clients) {
-      if (!this.#rooms.includes(cameraName)) {
-        this.#rooms.push(cameraName);
+        if (streamTimeout) {
+          clearTimeout(streamTimeout);
+          this.#streamTimeouts.delete(cameraName);
+        } else if (clients < 2) {
+          this.#handleStream(cameraName, 'start');
+        }
       }
+    });
 
-      this.#handleStream(cameraName, 'start');
-    } else {
-      log.debug('If no clients connects to the Websocket, the stream will be closed in 15s');
+    Socket.io.of('/').adapter.on('leave-room', (room) => {
+      if (room.startsWith('stream/')) {
+        const cameraName = room.split('/')[1];
+        const clients = Socket.io.sockets.adapter.rooms.get(`stream/${cameraName}`)?.size || 0;
 
-      this.#rooms = this.#rooms.filter((room) => room !== cameraName);
+        log.debug(`Active sockets in room (stream/${cameraName}): ${clients}`);
 
-      streamTimeout = setTimeout(() => {
-        this.#handleStream(cameraName, 'stop');
-      }, 15000);
+        if (!clients) {
+          let streamTimeout = this.#streamTimeouts.get(cameraName);
 
-      this.#streamTimeouts.set(cameraName, streamTimeout);
-    }
+          if (!streamTimeout) {
+            log.debug('If no clients connects to the Websocket, the stream will be closed in 15s');
+
+            streamTimeout = setTimeout(() => {
+              this.#handleStream(cameraName, 'stop');
+              this.#streamTimeouts.delete(cameraName);
+            }, 15000);
+
+            this.#streamTimeouts.set(cameraName, streamTimeout);
+          }
+        }
+      }
+    });
+
+    Socket.io.of('/').adapter.on('delete-room', (room) => {
+      if (room.startsWith('stream/')) {
+        const cameraName = room.split('/')[1];
+        let streamTimeout = this.#streamTimeouts.get(cameraName);
+
+        if (!streamTimeout) {
+          log.debug('If no clients connects to the Websocket, the stream will be closed in 15s');
+
+          streamTimeout = setTimeout(() => {
+            this.#handleStream(cameraName, 'stop');
+            this.#streamTimeouts.delete(cameraName);
+          }, 15000);
+
+          this.#streamTimeouts.set(cameraName, streamTimeout);
+        }
+      }
+    });
+
+    return Socket.io;
   }
 
   async #handleStream(cameraName, target) {
-    const { cameras } = require('../controller/camera/camera.controller').CameraController;
-    const controller = cameras.get(cameraName);
+    const controller = CameraController.cameras.get(cameraName);
 
     if (controller) {
       switch (target) {
@@ -107,6 +136,9 @@ class Socket {
           break;
         case 'stop':
           controller.stream.stop();
+          break;
+        case 'restart':
+          controller.stream.restart();
           break;
       }
     }

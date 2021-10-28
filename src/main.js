@@ -23,6 +23,7 @@ class Interface {
     this.config = config;
 
     this.server = null;
+    this.socket = null;
     this.database = null;
 
     this.cameraController = null;
@@ -43,8 +44,11 @@ class Interface {
       );
     }
 
-    // configure server
-    this.server = new Server();
+    // configure server and socket
+    const { server, socket } = new Server();
+
+    this.server = server;
+    this.socket = socket;
 
     // configure database
     this.database = new Database();
@@ -53,14 +57,14 @@ class Interface {
     Cleartimer.start();
 
     // configure camera controller
-    this.cameraController = new CameraController();
+    this.cameraController = new CameraController(socket);
     for (const controller of this.cameraController.values()) {
       await controller.prebuffer?.start();
       await controller.stream.configureStreamOptions();
     }
 
     // configure motion controller
-    this.motionController = new MotionController(this.eventController);
+    this.motionController = new MotionController();
 
     // start
     this.server.listen(this.config.port);

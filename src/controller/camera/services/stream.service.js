@@ -6,24 +6,25 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { LoggerService } = require('../../../services/logger/logger.service');
 
 const { Database } = require('../../../api/database');
-const { Socket } = require('../../../api/socket');
 
 const { log } = LoggerService;
 
 class StreamService {
   #camera;
   #sessionService;
+  #socket;
 
   #videoProcessor = ConfigService.ui.options.videoProcessor;
   #interfaceDB = Database.interfaceDB;
 
   streamSession = null;
 
-  constructor(camera, sessionService) {
+  constructor(camera, sessionService, socket) {
     log.debug('Initializing camera stream', camera.name);
 
     this.#camera = camera;
     this.#sessionService = sessionService;
+    this.#socket = socket;
 
     const audio = camera.videoConfig.audio;
     const width = camera.videoConfig.maxWidth;
@@ -84,7 +85,7 @@ class StreamService {
   }
 
   start() {
-    if (!this.stream) {
+    if (!this.streamSession) {
       const allowStream = this.#sessionService.requestSession();
 
       if (allowStream) {
@@ -121,7 +122,8 @@ class StreamService {
         });
 
         this.streamSession.stdout.on('data', (data) => {
-          Socket.io.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
+          //Socket.io.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
+          this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
 
           if (this.debug) {
             log.debug(data.toString(), this.cameraName);
@@ -152,6 +154,15 @@ class StreamService {
     if (this.streamSession) {
       log.debug('Stopping stream..', this.cameraName);
       this.streamSession.kill();
+    }
+  }
+
+  restart() {
+    if (this.streamSession) {
+      this.stop();
+      setTimeout(() => this.start(), 1500);
+    } else {
+      this.start();
     }
   }
 
