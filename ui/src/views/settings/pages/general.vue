@@ -171,27 +171,6 @@ export default {
       return this.$store.state.config.ui;
     },
   },
-  watch: {
-    general: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.generalTimer) {
-            clearTimeout(this.generalTimer);
-            this.generalTimer = null;
-          }
-
-          this.generalTimer = setTimeout(async () => {
-            try {
-              await changeSetting('general', newValue);
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
-  },
   async mounted() {
     try {
       if (this.checkLevel('settings:general:access')) {
@@ -204,9 +183,11 @@ export default {
         this.cameras = cameras.data;
       }
 
+      this.$watch('general', this.generalWatcher, { deep: true });
+
       this.supportMatchMedia = window.matchMedia;
       this.loading = false;
-      await timeout(300);
+      await timeout(100);
 
       const togglePinkSwitch = document.querySelector('.switch-pink');
       const togglePurpleSwitch = document.querySelector('.switch-purple');
@@ -257,6 +238,20 @@ export default {
       } else {
         this.$toast.error(this.$t('room_already_exists'));
       }
+    },
+    async generalWatcher(newValue) {
+      if (this.generalTimer) {
+        clearTimeout(this.generalTimer);
+        this.generalTimer = null;
+      }
+
+      this.generalTimer = setTimeout(async () => {
+        try {
+          await changeSetting('general', newValue);
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
     },
     matchMediaListener(event) {
       const autoDarkmode = localStorage.getItem('darkmode') === 'auto';

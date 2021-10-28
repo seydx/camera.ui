@@ -293,6 +293,7 @@ export default {
       alexaPing: false,
       alexaOptions: ['Enabled', 'Disabled'],
       cameras: [],
+      camerasTimer: null,
       form: {
         snapshotTimer: 10,
       },
@@ -309,50 +310,6 @@ export default {
       settingsLayout: {},
       telegramTypes: ['Text', 'Snapshot', 'Video', 'Disabled'],
     };
-  },
-  watch: {
-    cameras: {
-      async handler(newValue) {
-        if (!this.loading) {
-          try {
-            await changeSetting('cameras', newValue, '?stopStream=true');
-          } catch (error) {
-            this.$toast.error(error.message);
-          }
-        }
-      },
-      deep: true,
-    },
-    notifications: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.notificationsTimer) {
-            clearTimeout(this.notificationsTimer);
-            this.notificationsTimer = null;
-          }
-
-          const startTime = this.notifications.alexa.startTime || '00:00:00';
-          const endTime = this.notifications.alexa.endTime || '23:59:00';
-
-          if (startTime.split(':').length > 2) {
-            this.notifications.alexa.startTime = startTime.split(':').slice(0, -1).join(':');
-          }
-
-          if (endTime.split(':').length > 2) {
-            this.notifications.alexa.endTime = endTime.split(':').slice(0, -1).join(':');
-          }
-
-          this.notificationsTimer = setTimeout(async () => {
-            try {
-              await changeSetting('notifications', newValue);
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
   },
   async mounted() {
     try {
@@ -388,6 +345,9 @@ export default {
         this.recordings = recordings.data;
       }
 
+      this.$watch('cameras', this.camerasWatcher, { deep: true });
+      this.$watch('notifications', this.notificationsWatcher, { deep: true });
+
       this.loading = false;
     } catch (err) {
       this.$toast.error(err.message);
@@ -420,6 +380,45 @@ export default {
         this.loadingAlexa = false;
         this.$toast.error(err.message);
       }
+    },
+    async camerasWatcher(newValue) {
+      if (this.camerasTimer) {
+        clearTimeout(this.camerasTimer);
+        this.camerasTimer = null;
+      }
+
+      this.camerasTimer = setTimeout(async () => {
+        try {
+          await changeSetting('cameras', newValue, '?stopStream=true');
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
+    async notificationsWatcher(newValue) {
+      if (this.notificationsTimer) {
+        clearTimeout(this.notificationsTimer);
+        this.notificationsTimer = null;
+      }
+
+      const startTime = this.notifications.alexa.startTime || '00:00:00';
+      const endTime = this.notifications.alexa.endTime || '23:59:00';
+
+      if (startTime.split(':').length > 2) {
+        this.notifications.alexa.startTime = startTime.split(':').slice(0, -1).join(':');
+      }
+
+      if (endTime.split(':').length > 2) {
+        this.notifications.alexa.endTime = endTime.split(':').slice(0, -1).join(':');
+      }
+
+      this.notificationsTimer = setTimeout(async () => {
+        try {
+          await changeSetting('notifications', newValue);
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
     },
   },
 };

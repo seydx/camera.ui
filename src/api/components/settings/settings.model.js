@@ -11,6 +11,8 @@ exports.getByTarget = async (target) => {
 };
 
 exports.patchByTarget = async (target, settingsData) => {
+  await Database.interfaceDB.read();
+
   const settings = await Database.interfaceDB.get('settings').get(target).value();
 
   if (target === 'aws') {

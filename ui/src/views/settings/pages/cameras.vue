@@ -200,46 +200,6 @@ export default {
       settingsLayout: {},
     };
   },
-  watch: {
-    aws: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.awsTimer) {
-            clearTimeout(this.awsTimer);
-            this.awsTimer = null;
-          }
-
-          this.awsTimer = setTimeout(async () => {
-            try {
-              await changeSetting('aws', newValue);
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
-    cameras: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.camerasTimer) {
-            clearTimeout(this.camerasTimer);
-            this.timer = null;
-          }
-
-          this.camerasTimer = setTimeout(async () => {
-            try {
-              await changeSetting('cameras', newValue, '?stopStream=true');
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
-  },
   async created() {
     try {
       if (this.checkLevel('settings:general:access')) {
@@ -258,10 +218,43 @@ export default {
         this.aws = aws.data;
       }
 
+      this.$watch('aws', this.awsWatcher, { deep: true });
+      this.$watch('cameras', this.camerasWatcher, { deep: true });
+
       this.loading = false;
     } catch (err) {
       this.$toast.error(err.message);
     }
+  },
+  methods: {
+    async awsWatcher(newValue) {
+      if (this.awsTimer) {
+        clearTimeout(this.awsTimer);
+        this.awsTimer = null;
+      }
+
+      this.awsTimer = setTimeout(async () => {
+        try {
+          await changeSetting('aws', newValue);
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
+    async camerasWatcher(newValue) {
+      if (this.camerasTimer) {
+        clearTimeout(this.camerasTimer);
+        this.camerasTimer = null;
+      }
+
+      this.camerasTimer = setTimeout(async () => {
+        try {
+          await changeSetting('cameras', newValue, '?stopStream=true');
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
   },
 };
 </script>

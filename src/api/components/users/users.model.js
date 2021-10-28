@@ -14,6 +14,8 @@ exports.findByName = async (username) => {
 };
 
 exports.createUser = async (userData) => {
+  await Database.interfaceDB.read();
+
   const user = {
     id: await nanoid(),
     username: userData.username,
@@ -27,6 +29,8 @@ exports.createUser = async (userData) => {
 };
 
 exports.patchUser = async (username, userData) => {
+  await Database.interfaceDB.read();
+
   const user = Database.interfaceDB.get('users').find({ username: username }).value();
 
   for (const [key, value] of Object.entries(userData)) {
@@ -39,6 +43,8 @@ exports.patchUser = async (username, userData) => {
 };
 
 exports.removeByName = async (username) => {
+  await Database.interfaceDB.read();
+
   return await Database.interfaceDB
     .get('users')
     .remove((usr) => usr.username === username)

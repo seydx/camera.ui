@@ -9,6 +9,8 @@ images
 nodemon.json
 .eslintrc.js
 jsconfig.json
+test.js
+diverses
 
 # Logs
 logs
@@ -67,5 +69,3 @@ yarn.lock
 
 # dotenv environment variables file
 .envtest/
-test.js
-diverses

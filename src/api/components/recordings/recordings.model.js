@@ -22,13 +22,13 @@ exports.refresh = async () => {
   return await Database.refreshRecordingsDatabase();
 };
 
-exports.list = async (query) => {
+exports.list = (query) => {
   let recordings = Database.recordingsDB.get('recordings').value();
 
-  Database.recordingsDB.sort((x, y) => y.timestamp - x.timestamp);
+  recordings.sort((x, y) => y.timestamp - x.timestamp);
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
-    recordings = Database.recordingsDB.filter((recording) => {
+    recordings = recordings.filter((recording) => {
       let date = recording.time.split(',')[0].split('.');
 
       let year = date[2];
@@ -47,38 +47,38 @@ exports.list = async (query) => {
 
   if (query.cameras) {
     const cameras = query.cameras.split(',');
-    recordings = Database.recordingsDB.filter((recording) => cameras.includes(recording.camera));
+    recordings = recordings.filter((recording) => cameras.includes(recording.camera));
   }
 
   if (query.labels) {
     const labels = query.labels.split(',');
-    recordings = Database.recordingsDB.filter((recording) => labels.includes(recording.label));
+    recordings = recordings.filter((recording) => labels.includes(recording.label));
   }
 
   if (query.rooms) {
     const rooms = query.rooms.split(',');
-    recordings = Database.recordingsDB.filter((recording) => rooms.includes(recording.room));
+    recordings = recordings.filter((recording) => rooms.includes(recording.room));
   }
 
   if (query.types) {
     const types = query.types.split(',');
-    recordings = Database.recordingsDB.filter((recording) => types.includes(recording.recordType));
+    recordings = recordings.filter((recording) => types.includes(recording.recordType));
   }
 
   return recordings;
 };
 
-exports.listByCameraName = async (name) => {
-  let recordings = await Database.recordingsDB.get('recordings').reverse().value();
+exports.listByCameraName = (name) => {
+  let recordings = Database.recordingsDB.get('recordings').reverse().value();
 
   if (recordings) {
-    recordings = Database.recordingsDB.filter((rec) => rec.camera === name);
+    recordings = recordings.filter((rec) => rec.camera === name);
   }
 
   return recordings;
 };
 
-exports.findById = async (id) => {
+exports.findById = (id) => {
   return Database.recordingsDB.get('recordings').find({ id: id }).value();
 };
 

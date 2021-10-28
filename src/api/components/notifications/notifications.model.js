@@ -71,6 +71,8 @@ exports.findById = async (id) => {
 };
 
 exports.createNotification = async (data) => {
+  await Database.interfaceDB.read();
+
   const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
   const cameraSettings = await Database.interfaceDB.get('settings').get('cameras').value();
 
@@ -133,6 +135,8 @@ exports.createNotification = async (data) => {
 };
 
 exports.removeById = async (id) => {
+  await Database.interfaceDB.read();
+
   Cleartimer.removeNotificationTimer(id);
 
   return await Database.interfaceDB
@@ -142,6 +146,8 @@ exports.removeById = async (id) => {
 };
 
 exports.removeAll = async () => {
+  await Database.interfaceDB.read();
+
   Cleartimer.stopNotifications();
 
   return await Database.interfaceDB

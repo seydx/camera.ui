@@ -28,6 +28,8 @@ exports.createCamera = async (cameraData) => {
   const camExist = ConfigService.ui.cameras.find((cam) => cam.name === cameraData.name);
 
   if (!camExist) {
+    await Database.interfaceDB.read();
+
     ConfigService.ui.cameras.push(cameraData);
     ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 
@@ -45,6 +47,8 @@ exports.patchCamera = async (name, cameraData) => {
   ) {
     throw new Error('Camera already exists in config.json');
   }
+
+  await Database.interfaceDB.read();
 
   let cameraConfig = _.find(ConfigService.ui.cameras, { name: name });
   _.assign(cameraConfig, cameraData);
@@ -64,6 +68,8 @@ exports.requestSnapshot = async (cameraName, videoConfig) => {
 };
 
 exports.removeByName = async (name) => {
+  await Database.interfaceDB.read();
+
   _.remove(ConfigService.ui.cameras, (cam) => cam.name === name);
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 
@@ -74,6 +80,8 @@ exports.removeByName = async (name) => {
 };
 
 exports.removeAll = async () => {
+  await Database.interfaceDB.read();
+
   ConfigService.ui.cameras = [];
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 

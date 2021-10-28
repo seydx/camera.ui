@@ -30,13 +30,10 @@ class Interface {
 
     if (process.env.CUI_SERVICE_MODE === '1') {
       this.log.debug('Initializing camera.ui in cli-mode');
-      //this.#cliMode();
-      this.start();
+      this.#cliMode();
     } else {
       this.log.debug('Initializing camera.ui');
     }
-
-    this.#cliMode();
   }
 
   async start() {
@@ -131,7 +128,7 @@ class Interface {
     process.on('SIGTERM', signalHandler.bind(undefined, 'SIGTERM', 15));
     process.on('uncaughtException', errorHandler);
 
-    //this.start();
+    this.start();
   }
 }
 

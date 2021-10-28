@@ -51,11 +51,10 @@ exports.list = async (req, res, next) => {
   try {
     let result = await UserModel.list();
 
-    //TODO: Causes an error in the database when saving
-    /*for (const user of result) {
+    for (const user of result) {
       delete user.password;
       //delete user.permissionLevel;
-    }*/
+    }
 
     res.locals.items = result;
 

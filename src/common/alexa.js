@@ -54,6 +54,7 @@ class Alexa {
             };
 
             try {
+              await Database.interfaceDB.read();
               await Database.interfaceDB.get('settings').get('notifications').get('alexa').set('auth', auth).write();
             } catch (e) {
               Alexa.remote = false;

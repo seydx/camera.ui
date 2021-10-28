@@ -74,45 +74,13 @@ export default {
   data() {
     return {
       cameras: [],
+      camerasTimer: null,
       dashboard: {},
       dashboardTimer: null,
       loading: true,
       refreshTimer: [10, 20, 30, 40, 50, 60],
       settingsLayout: {},
     };
-  },
-  watch: {
-    cameras: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.dashboardTimer) {
-            clearTimeout(this.dashboardTimer);
-            this.dashboardTimer = null;
-          }
-
-          this.dashboardTimer = setTimeout(async () => {
-            try {
-              await changeSetting('cameras', newValue, '?stopStream=true');
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
-    dashboard: {
-      async handler(newValue) {
-        if (!this.loading) {
-          try {
-            await changeSetting('dashboard', newValue);
-          } catch (error) {
-            this.$toast.error(error.message);
-          }
-        }
-      },
-      deep: true,
-    },
   },
   async created() {
     try {
@@ -126,10 +94,43 @@ export default {
         this.cameras = cameras.data;
       }
 
+      this.$watch('cameras', this.camerasWatcher, { deep: true });
+      this.$watch('dashboard', this.dashboardWatcher, { deep: true });
+
       this.loading = false;
     } catch (err) {
       this.$toast.error(err.message);
     }
+  },
+  methods: {
+    async camerasWatcher(newValue) {
+      if (this.camerasTimer) {
+        clearTimeout(this.camerasTimer);
+        this.camerasTimer = null;
+      }
+
+      this.camerasTimer = setTimeout(async () => {
+        try {
+          await changeSetting('cameras', newValue, '?stopStream=true');
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
+    async dashboardWatcher(newValue) {
+      if (this.dashboardTimer) {
+        clearTimeout(this.dashboardTimer);
+        this.dashboardTimer = null;
+      }
+
+      this.dashboardTimer = setTimeout(async () => {
+        try {
+          await changeSetting('dashboard', newValue);
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
   },
 };
 </script>

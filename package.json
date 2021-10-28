@@ -20,7 +20,7 @@
     "alexa-remote2": "^4.0.3",
     "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
-    "commander": "^6.2.1",
+    "commander": "6.2.1",
     "compare-versions": "^3.6.0",
     "connect-history-api-fallback": "^1.6.0",
     "cors": "^2.8.5",

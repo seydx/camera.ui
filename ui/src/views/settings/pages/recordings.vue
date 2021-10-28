@@ -97,27 +97,6 @@ export default {
       settingsLayout: {},
     };
   },
-  watch: {
-    recordings: {
-      async handler(newValue) {
-        if (!this.loading) {
-          if (this.recordingsTimer) {
-            clearTimeout(this.recordingsTimer);
-            this.recordingsTimer = null;
-          }
-
-          this.recordingsTimer = setTimeout(async () => {
-            try {
-              await changeSetting('recordings', newValue);
-            } catch (error) {
-              this.$toast.error(error.message);
-            }
-          }, 1500);
-        }
-      },
-      deep: true,
-    },
-  },
   async created() {
     try {
       if (this.checkLevel('settings:recordings:access')) {
@@ -125,11 +104,29 @@ export default {
         this.recordings = recordings.data;
       }
 
+      this.$watch('recordings', this.recordingsWatcher, { deep: true });
+
       this.loading = false;
     } catch (err) {
       console.log(err.data);
       this.$toast.error(err.message);
     }
+  },
+  methods: {
+    async recordingsWatcher(newValue) {
+      if (this.recordingsTimer) {
+        clearTimeout(this.recordingsTimer);
+        this.recordingsTimer = null;
+      }
+
+      this.recordingsTimer = setTimeout(async () => {
+        try {
+          await changeSetting('recordings', newValue);
+        } catch (error) {
+          this.$toast.error(error.message);
+        }
+      }, 2000);
+    },
   },
 };
 </script>
