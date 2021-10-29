@@ -3,10 +3,12 @@
 const { Database } = require('../../database');
 
 exports.show = async () => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('settings').value();
 };
 
 exports.getByTarget = async (target) => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('settings').get(target).value();
 };
 

@@ -81,6 +81,8 @@ import BreadcrumbFilter from '@/components/breadcrumb-filter.vue';
 import Footer from '@/components/footer.vue';
 import Navbar from '@/components/navbar.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
@@ -97,6 +99,7 @@ export default {
     SwipeList,
     SwipeOut,
   },
+  mixins: [SocketMixin],
   data() {
     return {
       infiniteId: Date.now(),
@@ -123,11 +126,6 @@ export default {
           });
         }
       }
-    },
-  },
-  computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
     },
   },
   async mounted() {

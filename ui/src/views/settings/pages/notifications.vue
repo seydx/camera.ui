@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")
@@ -60,6 +61,7 @@
                       :sync="true",
                       :aria-expanded="notifications.alexa.active ? 'true' : 'false'"
                       aria-controls="alexa"
+                      @change="alexaActive"
                     )
                 b-collapse(
                   v-model="notifications.alexa.active",
@@ -316,23 +318,6 @@ export default {
       if (this.checkLevel('settings:notifications:access')) {
         const notifications = await getSetting('notifications');
         this.notifications = notifications.data;
-
-        const alexa = this.notifications.alexa;
-
-        const alexaConfigured =
-          alexa.active &&
-          alexa.domain &&
-          alexa.auth.cookie &&
-          alexa.auth.macDms.device_private_key &&
-          alexa.auth.macDms.device_private_key &&
-          alexa.proxy.port;
-
-        if (!alexaConfigured) {
-          this.alexaPing = false;
-        } else {
-          const status = await getSetting('notifications', '?pingAlexa=true');
-          this.alexaPing = status.data.status === 'success';
-        }
       }
 
       if (this.checkLevel('settings:cameras:access')) {
@@ -348,12 +333,43 @@ export default {
       this.$watch('cameras', this.camerasWatcher, { deep: true });
       this.$watch('notifications', this.notificationsWatcher, { deep: true });
 
+      this.alexaActive();
+
       this.loading = false;
     } catch (err) {
       this.$toast.error(err.message);
     }
   },
   methods: {
+    async alexaActive() {
+      try {
+        if (this.notifications.alexa.active) {
+          this.loadingAlexa = true;
+
+          const alexa = { ...this.notifications.alexa };
+
+          const alexaConfigured =
+            alexa.active &&
+            alexa.domain &&
+            alexa.auth.cookie &&
+            alexa.auth.macDms.device_private_key &&
+            alexa.auth.macDms.device_private_key &&
+            alexa.proxy.port;
+
+          if (!alexaConfigured) {
+            this.alexaPing = false;
+          } else {
+            const status = await getSetting('notifications', '?pingAlexa=true');
+            this.alexaPing = status.data.status === 'success';
+          }
+
+          this.loadingAlexa = false;
+        }
+      } catch (err) {
+        this.loadingAlexa = false;
+        this.$toast.error(err.message);
+      }
+    },
     async alexaReconnect() {
       try {
         this.loadingAlexa = true;
@@ -382,6 +398,8 @@ export default {
       }
     },
     async camerasWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.camerasTimer) {
         clearTimeout(this.camerasTimer);
         this.camerasTimer = null;
@@ -390,12 +408,16 @@ export default {
       this.camerasTimer = setTimeout(async () => {
         try {
           await changeSetting('cameras', newValue, '?stopStream=true');
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },
     async notificationsWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.notificationsTimer) {
         clearTimeout(this.notificationsTimer);
         this.notificationsTimer = null;
@@ -415,8 +437,10 @@ export default {
       this.notificationsTimer = setTimeout(async () => {
         try {
           await changeSetting('notifications', newValue);
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },

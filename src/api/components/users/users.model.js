@@ -6,10 +6,12 @@ const nanoid = customAlphabet('1234567890abcdef', 10);
 const { Database } = require('../../database');
 
 exports.list = async () => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('users').value();
 };
 
 exports.findByName = async (username) => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('users').find({ username: username }).value();
 };
 
@@ -31,7 +33,7 @@ exports.createUser = async (userData) => {
 exports.patchUser = async (username, userData) => {
   await Database.interfaceDB.read();
 
-  const user = Database.interfaceDB.get('users').find({ username: username }).value();
+  const user = await Database.interfaceDB.get('users').find({ username: username }).value();
 
   for (const [key, value] of Object.entries(userData)) {
     if (user[key] !== undefined) {

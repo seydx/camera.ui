@@ -123,8 +123,7 @@ class ConfigService {
   }
 
   parseConfig(uiConfig) {
-    this.#configUI(uiConfig);
-
+    this.#config(uiConfig);
     this.#configInterface();
 
     if (Array.isArray(uiConfig.cameras)) {
@@ -159,7 +158,7 @@ class ConfigService {
   }
 
   //TODO: CHECK if valid
-  #configUI(uiConfig) {
+  #config(uiConfig) {
     if (uiConfig.port) {
       ConfigService.ui.port = uiConfig.port;
     }

@@ -419,11 +419,20 @@ class EventController {
 
         if (alexaSettings.startTime && alexaSettings.endTime) {
           const format = 'HH:mm';
-          const now = moment();
+          const currentTime = moment();
+
           const startTime = moment(alexaSettings.startTime, format);
           const endTime = moment(alexaSettings.endTime, format);
 
-          if (!now.isBetween(startTime, endTime)) {
+          if ((startTime.hour() >= 12 && endTime.hour() <= 12) || endTime.isBefore(startTime)) {
+            endTime.add(1, 'days');
+
+            if (currentTime.hour() <= 12) {
+              currentTime.add(1, 'days');
+            }
+          }
+
+          if (!currentTime.isBetween(startTime, endTime)) {
             log.debug(
               `Start/end time has been entered (${alexaSettings.startTime} - ${alexaSettings.endTime}). Current time is not in between, skip alexa notification`,
               cameraName

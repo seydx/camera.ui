@@ -10,14 +10,18 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { Database } = require('../../database');
 
 exports.list = async () => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('cameras').value();
 };
 
 exports.findByName = async (name) => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('cameras').find({ name: name }).value();
 };
 
 exports.getSettingsByName = async (name) => {
+  await Database.interfaceDB.read();
+
   const settings = await Database.interfaceDB.get('settings').get('cameras').value();
   const cameraSetting = settings.find((cameraSetting) => cameraSetting && cameraSetting.name === name);
 

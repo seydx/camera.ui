@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")
@@ -95,10 +96,10 @@
           id="expandCameras"
         )
           div.mt-2.mb-4(v-for="camera in cameras" :key="camera.name" data-aos="fade-up" data-aos-duration="1000")
-            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='camera.expand ? "180" : "-90"', @click="camera.expand = !camera.expand")
-            .settings-box-header(@click="camera.expand = !camera.expand") {{ camera.name }}
+            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.cameras.camerasExpands[camera.name] ? "180" : "-90"', @click="settingsLayout.cameras.cameras.camerasExpands[camera.name] = !settingsLayout.cameras.cameras.camerasExpands[camera.name]")
+            .settings-box-header(@click="settingsLayout.cameras.cameras.camerasExpands[camera.name] = !settingsLayout.cameras.cameras.camerasExpands[camera.name]") {{ camera.name }}
             b-collapse(
-              v-model="camera.expand"
+              v-model="settingsLayout.cameras.cameras.camerasExpands[camera.name]"
             )
               .settings-box.container.no-radius-top
                 .row
@@ -228,6 +229,8 @@ export default {
   },
   methods: {
     async awsWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.awsTimer) {
         clearTimeout(this.awsTimer);
         this.awsTimer = null;
@@ -236,12 +239,16 @@ export default {
       this.awsTimer = setTimeout(async () => {
         try {
           await changeSetting('aws', newValue);
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },
     async camerasWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.camerasTimer) {
         clearTimeout(this.camerasTimer);
         this.camerasTimer = null;
@@ -250,8 +257,10 @@ export default {
       this.camerasTimer = setTimeout(async () => {
         try {
           await changeSetting('cameras', newValue, '?stopStream=true');
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },

@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")
@@ -240,6 +241,8 @@ export default {
       }
     },
     async generalWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.generalTimer) {
         clearTimeout(this.generalTimer);
         this.generalTimer = null;
@@ -248,8 +251,10 @@ export default {
       this.generalTimer = setTimeout(async () => {
         try {
           await changeSetting('general', newValue);
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },

@@ -27,6 +27,8 @@ import packageFile from '../../../../package.json';
 import loginForm from '@/components/login-form';
 import theme from '@/mixins/theme.mixin';
 
+import { getConfig } from '@/api/config.api';
+
 export default {
   name: 'Login',
   components: {
@@ -45,7 +47,15 @@ export default {
       if (user.username && user.password) {
         try {
           await this.$store.dispatch('auth/login', user);
-          this.$router.push('/dashboard');
+
+          const response = await getConfig();
+          const firstStart = response.data.firstStart;
+
+          if (firstStart) {
+            this.$router.push('/start');
+          } else {
+            this.$router.push('/dashboard');
+          }
         } catch (error) {
           this.loading = false;
           console.log(error);
@@ -78,7 +88,7 @@ export default {
 #left-side {
   border-top-left-radius: 20px;
   border-bottom-left-radius: 20px;
-  border-right: 2px solid var(--secondary-color);
+  /*border-right: 2px solid var(--secondary-color);*/
   -webkit-box-shadow: 2px 0px 0px 0px var(--primary-bg-color);
   box-shadow: 2px 0px 0px 0px var(--primary-bg-color);
   position: relative;

@@ -25,6 +25,8 @@ import BackToTop from '@/components/back-to-top.vue';
 import Footer from '@/components/footer.vue';
 import Navbar from '@/components/navbar.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 const DEFAULT_TRANSITION = 'fade';
 
 Math.easeInOutQuad = (t, b, c, d) => {
@@ -43,6 +45,7 @@ export default {
     Footer,
     Navbar,
   },
+  mixins: [SocketMixin],
   data() {
     return {
       prevHeight: 0,
@@ -50,11 +53,6 @@ export default {
       routeOrder: ['profile', 'general', 'dashboard', 'cameras', 'recordings', 'notifications', 'camview'],
       transitionName: DEFAULT_TRANSITION,
     };
-  },
-  computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
-    },
   },
   created() {
     this.$router.beforeEach((to, from, next) => {

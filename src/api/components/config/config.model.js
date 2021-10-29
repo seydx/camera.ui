@@ -4,12 +4,17 @@ const os = require('os');
 
 const { ConfigService } = require('../../../services/config/config.service');
 
-exports.show = (user, target = 'all') => {
+const { Database } = require('../../database');
+
+exports.show = async (user, target = 'all') => {
+  await Database.interfaceDB.read();
+
   let info = {
     timestamp: new Date().toISOString(),
     platform: os.platform(),
     node: process.version,
-    cameraUi: ConfigService.ui.version,
+    version: ConfigService.ui.version,
+    firstStart: await Database.interfaceDB.get('firstStart').value(),
   };
 
   switch (target) {

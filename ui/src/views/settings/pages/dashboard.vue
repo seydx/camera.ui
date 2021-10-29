@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")
@@ -29,10 +30,10 @@
           id="expandFavourites"
         )
           div.mt-2.mb-4(v-for="camera in cameras" :key="camera.name" data-aos="fade-up" data-aos-duration="1000")
-            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='camera.dashboard.expand ? "180" : "-90"', @click="camera.dashboard.expand = !camera.dashboard.expand")
-            .settings-box-header(@click="camera.dashboard.expand = !camera.dashboard.expand") {{ camera.name }}
+            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.dashboard.favourites.camerasExpands[camera.name] ? "180" : "-90"', @click="settingsLayout.dashboard.favourites.camerasExpands[camera.name] = !settingsLayout.dashboard.favourites.camerasExpands[camera.name]")
+            .settings-box-header(@click="settingsLayout.dashboard.favourites.camerasExpands[camera.name] = !settingsLayout.dashboard.favourites.camerasExpands[camera.name]") {{ camera.name }}
             b-collapse(
-              v-model="camera.dashboard.expand"
+              v-model="settingsLayout.dashboard.favourites.camerasExpands[camera.name]"
             )
               .settings-box.container.no-radius-top
                 .row
@@ -104,6 +105,8 @@ export default {
   },
   methods: {
     async camerasWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.camerasTimer) {
         clearTimeout(this.camerasTimer);
         this.camerasTimer = null;
@@ -112,12 +115,16 @@ export default {
       this.camerasTimer = setTimeout(async () => {
         try {
           await changeSetting('cameras', newValue, '?stopStream=true');
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },
     async dashboardWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.dashboardTimer) {
         clearTimeout(this.dashboardTimer);
         this.dashboardTimer = null;
@@ -126,8 +133,10 @@ export default {
       this.dashboardTimer = setTimeout(async () => {
         try {
           await changeSetting('dashboard', newValue);
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },

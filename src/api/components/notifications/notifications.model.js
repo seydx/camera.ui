@@ -12,7 +12,11 @@ const { Database } = require('../../database');
 
 const { log } = LoggerService;
 
+const notificationsLimit = 100;
+
 exports.list = async (query) => {
+  await Database.interfaceDB.read();
+
   let notifications = await Database.interfaceDB.get('notifications').reverse().value();
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
@@ -57,6 +61,8 @@ exports.list = async (query) => {
 };
 
 exports.listByCameraName = async (name) => {
+  await Database.interfaceDB.read();
+
   let notifications = await Database.interfaceDB.get('notifications').reverse().value();
 
   if (notifications) {
@@ -67,6 +73,7 @@ exports.listByCameraName = async (name) => {
 };
 
 exports.findById = async (id) => {
+  await Database.interfaceDB.read();
   return await Database.interfaceDB.get('notifications').find({ id: id }).value();
 };
 
@@ -78,6 +85,14 @@ exports.createNotification = async (data) => {
 
   if (!camera) {
     throw new Error('Can not assign notification to camera!');
+  }
+
+  //Check notification size, if we exceed more than {100} notifications, remove the latest
+  const notificationList = await Database.interfaceDB.get('notifications').value();
+
+  if (notificationList.length > notificationsLimit) {
+    const diff = notificationList.length - notificationsLimit;
+    await Database.interfaceDB.get('notifications').dropRight(notificationList, diff).write();
   }
 
   camera.settings = cameraSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);

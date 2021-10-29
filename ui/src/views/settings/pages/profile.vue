@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")

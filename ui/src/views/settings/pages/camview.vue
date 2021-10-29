@@ -1,5 +1,6 @@
 <template lang="pug">
 .w-100.h-100
+  vue-progress-bar
   .d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
     b-spinner.text-color-primary
   transition-group(name="fade", mode="out-in", v-if="loading")
@@ -29,10 +30,10 @@
           id="expandFavourites"
         )
           div.mt-2.mb-4(v-for="camera in cameras" :key="camera.name" data-aos="fade-up" data-aos-duration="1000")
-            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='camera.camview.expand ? "180" : "-90"', @click="camera.camview.expand = !camera.camview.expand")
-            .settings-box-header(@click="camera.camview.expand = !camera.camview.expand") {{ camera.name }}
+            b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.favourites.camerasExpands[camera.name] ? "180" : "-90"', @click="settingsLayout.camview.favourites.camerasExpands[camera.name] = !settingsLayout.camview.favourites.camerasExpands[camera.name]")
+            .settings-box-header(@click="settingsLayout.camview.favourites.camerasExpands[camera.name] = !settingsLayout.camview.favourites.camerasExpands[camera.name]") {{ camera.name }}
             b-collapse(
-              v-model="camera.camview.expand"
+              v-model="settingsLayout.camview.favourites.camerasExpands[camera.name]"
             )
               .settings-box.container.no-radius-top
                 .row
@@ -104,6 +105,8 @@ export default {
   },
   methods: {
     async camerasWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.camerasTimer) {
         clearTimeout(this.camerasTimer);
         this.camerasTimer = null;
@@ -112,12 +115,16 @@ export default {
       this.camerasTimer = setTimeout(async () => {
         try {
           await changeSetting('cameras', newValue, '?stopStream=true');
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },
     async camviewWatcher(newValue) {
+      this.$Progress.start();
+
       if (this.camviewTimer) {
         clearTimeout(this.camviewTimer);
         this.camviewTimer = null;
@@ -126,8 +133,10 @@ export default {
       this.camviewTimer = setTimeout(async () => {
         try {
           await changeSetting('camview', newValue, '?stopStream=true');
+          this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
+          this.$Progress.fail();
         }
       }, 2000);
     },

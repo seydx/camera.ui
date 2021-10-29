@@ -62,6 +62,8 @@ class StreamService {
   }
 
   async configureStreamOptions() {
+    await this.#interfaceDB.read();
+
     const cameraSettings = await this.#interfaceDB.get('cameras').value();
     const cameraSetting = cameraSettings.find((camera) => camera && camera.name === this.cameraName);
 
@@ -122,7 +124,6 @@ class StreamService {
         });
 
         this.streamSession.stdout.on('data', (data) => {
-          //Socket.io.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
           this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
 
           if (this.debug) {

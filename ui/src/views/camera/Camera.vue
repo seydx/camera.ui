@@ -59,6 +59,8 @@ import Footer from '@/components/footer.vue';
 import Navbar from '@/components/navbar.vue';
 import VideoCard from '@/components/video-card.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 export default {
   name: 'Camera',
   components: {
@@ -70,6 +72,7 @@ export default {
     Navbar,
     VideoCard,
   },
+  mixins: [SocketMixin],
   data() {
     return {
       camera: {},
@@ -77,11 +80,6 @@ export default {
       index: null,
       loading: true,
     };
-  },
-  computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
-    },
   },
   sockets: {
     connect() {
@@ -119,7 +117,6 @@ export default {
 
         this.camera = camera.data;
         this.loading = false;
-        this.connected = true;
       } else {
         this.$toast.error(this.$t('no_access'));
       }

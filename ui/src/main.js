@@ -38,6 +38,8 @@ import Toast from 'vue-toastification';
 import ToastOptions from '@/common/toast.defaults.js';
 import 'vue-toastification/dist/index.css';
 
+import VueProgressBar from 'vue-progressbar';
+
 import VueSocketIOExt from 'vue-socket.io-extended';
 import socket from '@/common/socket-instance';
 
@@ -61,6 +63,20 @@ Vue.use(PopoverPlugin);
 Vue.use(SpinnerPlugin);
 Vue.use(Toast, ToastOptions);
 Vue.use(VueSocketIOExt, socket, { store });
+
+Vue.use(VueProgressBar, {
+  color: 'var(--primary-color)',
+  failedColor: '#FF0000',
+  thickness: '5px',
+  transition: {
+    speed: '0.1s',
+    opacity: '0.6s',
+    termination: 300,
+  },
+  autoRevert: true,
+  location: 'top',
+  inverse: false,
+});
 
 Vue.config.productionTip = false;
 

@@ -10,15 +10,14 @@ const { LoggerService } = require('../services/logger/logger.service');
 const { App } = require('./app');
 const { Socket } = require('./socket');
 
-const config = ConfigService;
 const { log } = LoggerService;
 
 class Server {
-  #port = config.ui.port;
-  #ssl = config.ui.ssl;
-  #version = config.ui.version;
+  #port = ConfigService.ui.port;
+  #ssl = ConfigService.ui.ssl;
+  #version = ConfigService.ui.version;
 
-  constructor() {
+  constructor(controller) {
     const app = App({
       debug: process.env.CUI_LOG_DEBUG === '1',
       version: this.#version,
@@ -41,6 +40,8 @@ class Server {
       let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
 
       log.info(`camera.ui v${this.#version} is listening on ${bind} (${this.#ssl ? 'https' : 'http'})`);
+
+      controller.emit('finishLaunching');
     });
 
     server.on('error', (error) => {
@@ -70,6 +71,7 @@ class Server {
 
     server.on('close', () => {
       log.debug('User interface closed');
+      controller.emit('shutdown');
     });
 
     //return server;

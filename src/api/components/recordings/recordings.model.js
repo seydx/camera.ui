@@ -83,6 +83,8 @@ exports.findById = (id) => {
 };
 
 exports.createRecording = async (data, buffer) => {
+  await Database.interfaceDB.read();
+
   const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
 
   if (!camera) {

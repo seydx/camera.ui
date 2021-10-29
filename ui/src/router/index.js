@@ -4,8 +4,6 @@ import VueRouter from 'vue-router';
 import app from '@/main';
 import store from '@/store';
 
-import socket from '@/common/socket-instance';
-
 import { checkLogin } from '@/api/auth.api';
 
 Vue.use(VueRouter);
@@ -24,6 +22,16 @@ const routes = [
       requiredLevel: [],
     },
     component: () => import(/* webpackChunkName: "login" */ '@/views/login/Login.vue'),
+  },
+  {
+    path: '/start',
+    name: 'Start',
+    meta: {
+      name: 'start',
+      requiresAuth: true,
+      requiredLevel: ['admin'],
+    },
+    component: () => import(/* webpackChunkName: "login" */ '@/views/start/Start.vue'),
   },
   {
     path: '/dashboard',
@@ -69,7 +77,7 @@ const routes = [
     path: '/notifications',
     name: 'Notifications',
     meta: {
-      name: 'dashboard',
+      name: 'notifications',
       requiresAuth: true,
       requiredLevel: ['notifications:access'],
     },
@@ -77,9 +85,9 @@ const routes = [
   },
   {
     path: '/camview',
-    name: 'CamView',
+    name: 'Camview',
     meta: {
-      name: 'dashboard',
+      name: 'camview',
       requiresAuth: true,
       requiredLevel: [/*"cameras:access", */ 'camview:access'],
     },
@@ -88,7 +96,7 @@ const routes = [
   {
     path: '/settings',
     redirect: '/settings/profile',
-    name: 'Settings',
+    name: 'settings',
     meta: {
       name: 'dashboard',
       requiresAuth: true,
@@ -208,9 +216,9 @@ router.beforeEach(async (to, from, next) => {
       } else {
         next();
       }
+    } catch (err) {
+      console.log(err);
 
-      socket.open();
-    } catch {
       await store.dispatch('auth/logout');
       next('/');
     }

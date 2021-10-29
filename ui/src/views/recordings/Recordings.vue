@@ -64,6 +64,8 @@ import Footer from '@/components/footer.vue';
 import LightboxCard from '@/components/lightbox-card.vue';
 import Navbar from '@/components/navbar.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
@@ -77,6 +79,7 @@ export default {
     LightboxCard,
     Navbar,
   },
+  mixins: [SocketMixin],
   data() {
     return {
       index: null,

@@ -9,7 +9,7 @@ export const config = {
   actions: {
     async loadConfig({ commit }) {
       try {
-        const response = await getConfig('?target=ui');
+        const response = await getConfig();
 
         commit('saveConfig', response.data);
         commit('setTheme', response.data.theme);

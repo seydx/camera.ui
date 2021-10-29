@@ -19,6 +19,7 @@ const { log } = LoggerService;
 
 const defaultDatabase = {
   version: version,
+  firstStart: true,
   cameras: [],
   notifications: [],
   users: [],
@@ -137,8 +138,12 @@ class Database {
   }
 
   static async refreshRecordingsDatabase() {
+    await Database.interfaceDB.read();
+
     Database.recordingsPath =
       (await Database.interfaceDB.get('settings').get('recordings').get('path').value()) || Database.recordingsPath;
+
+    const cameras = await Database.interfaceDB.get('settings').get('cameras').value();
 
     await fs.ensureDir(Database.recordingsPath);
 
@@ -156,7 +161,7 @@ class Database {
         let timestamp = rec.split('-')[2].split('_')[0];
 
         let cameraName = rec.split('-')[0].replace(/_/g, ' ');
-        let cameraSetting = Database.interfaceDB.get('settings').get('cameras').find({ name: cameraName }).value();
+        let cameraSetting = cameras.find((camera) => camera?.name === cameraName);
 
         const jpeg = fs.readFileSync(filePath);
         let exifPayload;
@@ -179,7 +184,7 @@ class Database {
           recordStoring: true,
           recordType: isPlaceholder ? 'Video' : 'Snapshot',
           trigger: rec.includes('_m') ? 'motion' : rec.includes('_d') ? 'doorbell' : 'custom',
-          room: cameraSetting ? cameraSetting.room : 'Standard',
+          room: cameraSetting?.room || 'Standard',
           time: moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss'),
           timestamp: timestamp,
           label: readableExifPayload.label,
@@ -194,6 +199,8 @@ class Database {
   }
 
   static async #initializeUser() {
+    await Database.interfaceDB.read();
+
     const userEntries = await Database.interfaceDB.get('users').value();
 
     if (userEntries.length === 0) {
@@ -214,8 +221,10 @@ class Database {
   }
 
   static async #writeConfigCamerasToDB() {
-    const Cameras = Database.interfaceDB.get('cameras');
-    const CamerasSettings = Database.interfaceDB.get('settings').get('cameras');
+    await Database.interfaceDB.read();
+
+    const Cameras = await Database.interfaceDB.get('cameras');
+    const CamerasSettings = await Database.interfaceDB.get('settings').get('cameras');
 
     await Cameras.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();
     await CamerasSettings.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();

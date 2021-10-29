@@ -1,10 +1,10 @@
 <template lang="pug">
 div
-  main.w-100.h-100vh.overflow-hidden
+  main.w-100.save-height.mt-save.overflow-hidden
     #gridCont(v-if="loading")
       .grid-stack.h-100vh.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize
         b-spinner.text-color-primary
-    #gridCont.h-100vh.toggleArea(v-else)
+    #gridCont.h-100.toggleArea(v-else)
       .grid-stack.toggleArea
         .grid-stack-item.toggleArea(v-for="(camera, index) in cameras" :gs-id="index" :key="camera.name")
           VideoCard(
@@ -48,6 +48,8 @@ import { getSetting, changeSetting } from '@/api/settings.api';
 import ActionSheet from '@/components/actionsheet.vue';
 import VideoCard from '@/components/video-card.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
@@ -56,6 +58,7 @@ export default {
     ActionSheet,
     VideoCard,
   },
+  mixins: [SocketMixin],
   beforeRouteEnter(to, from, next) {
     next((vm) => {
       vm.prevRoute = from;
@@ -65,7 +68,6 @@ export default {
     return {
       allCameras: [],
       cameras: [],
-      connected: false,
       fullscreen: false,
       grid: null,
       loading: true,
@@ -74,9 +76,6 @@ export default {
     };
   },
   computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
-    },
     camviewLayout() {
       return this.$store.state.camview.layout;
     },
@@ -135,7 +134,6 @@ export default {
         this.cameras = cameras.data.result.filter((camera) => camera.favourite);
 
         this.loading = false;
-        this.connected = true;
 
         await timeout(10);
         this.updateLayout();
@@ -544,5 +542,11 @@ export default {
   height: 100% !important;
   width: 100% !important;
   max-height: 100% !important;
+}
+
+.save-height {
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  height: calc(100vh - var(--safe-area-inset-top));
 }
 </style>

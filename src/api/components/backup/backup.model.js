@@ -13,6 +13,8 @@ const { Database } = require('../../database');
 const { log } = LoggerService;
 
 exports.createBackup = async (localStorage) => {
+  await Database.interfaceDB.read();
+
   const recordingsPath = await Database.interfaceDB.get('settings').get('recordings').get('path').value();
   const backupDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'cameraui-backup-'));
   const backupFileName = 'cameraui-backup.tar.gz';
@@ -29,7 +31,8 @@ exports.createBackup = async (localStorage) => {
     timestamp: new Date().toISOString(),
     platform: os.platform(),
     node: process.version,
-    cameraUi: ConfigService.ui.version,
+    firstStart: await Database.interfaceDB.get('firstStart').value(),
+    version: ConfigService.ui.version,
     database: Database.databasePath,
     recordings: recordingsPath,
     localStorage: {
@@ -66,6 +69,8 @@ exports.createBackup = async (localStorage) => {
 };
 
 exports.restoreBackup = async (file) => {
+  await Database.interfaceDB.read();
+
   const recordingsPath = await Database.interfaceDB.get('settings').get('recordings').get('path').value();
   const backupDirectory = file.destination;
   const backupFileName = file.filename; // eslint-disable-line no-unused-vars

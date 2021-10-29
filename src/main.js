@@ -1,6 +1,7 @@
 'use-strict';
 
 const compareVersions = require('compare-versions');
+const { EventEmitter } = require('events');
 
 const { Cleartimer } = require('./common/cleartimer');
 
@@ -17,17 +18,22 @@ const { MotionController } = require('./controller/motion/motion.controller');
 const { log } = LoggerService;
 const { config } = ConfigService;
 
-class Interface {
-  constructor() {
-    this.log = log;
-    this.config = config;
+class Interface extends EventEmitter {
+  #server;
+  #socket;
 
-    this.server = null;
-    this.socket = null;
-    this.database = null;
+  constructor() {
+    super();
+
+    this.log = log;
 
     this.cameraController = null;
     this.motionController = null;
+
+    const { server, socket } = new Server(this);
+
+    this.#server = server;
+    this.#socket = socket;
 
     if (process.env.CUI_SERVICE_MODE === '1') {
       this.log.debug('Initializing camera.ui in cli-mode');
@@ -44,30 +50,24 @@ class Interface {
       );
     }
 
-    // configure server and socket
-    const { server, socket } = new Server();
-
-    this.server = server;
-    this.socket = socket;
-
     // configure database
-    this.database = new Database();
-    await this.database.prepareDatabase();
+    const database = new Database();
+    await database.prepareDatabase();
 
     Cleartimer.start();
 
     // configure camera controller
-    this.cameraController = new CameraController(socket);
+    this.cameraController = new CameraController(this.#socket);
     for (const controller of this.cameraController.values()) {
       await controller.prebuffer?.start();
       await controller.stream.configureStreamOptions();
     }
 
     // configure motion controller
-    this.motionController = new MotionController();
+    this.motionController = new MotionController(this);
 
     // start
-    this.server.listen(this.config.port);
+    this.#server.listen(config.port);
   }
 
   close() {
@@ -76,8 +76,8 @@ class Interface {
     this.closeSmtpServer();
     this.closeController();
 
-    if (this.server) {
-      this.server.close();
+    if (this.#server) {
+      this.#server.close();
     }
   }
 

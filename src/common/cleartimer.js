@@ -19,6 +19,8 @@ class Cleartimer {
     try {
       log.debug('Initializing clear timer');
 
+      await Database.interfaceDB.read();
+
       const notifications = await Database.interfaceDB.get('notifications').value();
       const recordings = Database.recordingsDB.get('recordings').value();
 
@@ -98,6 +100,8 @@ class Cleartimer {
 
   static async setNotification(id, timestamp) {
     try {
+      await Database.interfaceDB.read();
+
       const settings = await Database.interfaceDB.get('settings').get('notifications').value();
       const clearTimer = settings.removeAfter;
 
@@ -110,6 +114,8 @@ class Cleartimer {
 
   static async setRecording(id, timestamp) {
     try {
+      await Database.interfaceDB.read();
+
       const settings = await Database.interfaceDB.get('settings').get('recordings').value();
       const clearTimer = settings.removeAfter;
 
@@ -141,6 +147,8 @@ class Cleartimer {
   static async #clearNotification(id) {
     try {
       if (Cleartimer.#notificationsTimer.has(id)) {
+        await Database.interfaceDB.read();
+
         log.debug(`Clear timer for notification (${id}) reached`);
 
         await Database.interfaceDB

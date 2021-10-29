@@ -42,9 +42,7 @@ class PrebufferService {
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
       log.warn('An error occurrd during starting camera prebuffer!', this.cameraName);
-      //log.error(error, this.cameraName);
-
-      console.log(error);
+      log.error(error, this.cameraName);
 
       setTimeout(() => this.restartCamera(), 10000);
     }

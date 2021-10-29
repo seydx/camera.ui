@@ -49,6 +49,7 @@ export default {
         },
         favourites: {
           expand: true,
+          camerasExpands: {},
         },
       };
     } else if (!this.settingsLayout.dashboard.dashboard) {
@@ -58,7 +59,10 @@ export default {
     } else if (!this.settingsLayout.dashboard.favourites) {
       this.settingsLayout.dashboard.favourites = {
         expand: true,
+        camerasExpands: {},
       };
+    } else if (!this.settingsLayout.dashboard.favourites.camerasExpands) {
+      this.settingsLayout.dashboard.favourites.camerasExpands = {};
     }
 
     if (!this.settingsLayout.cameras) {
@@ -68,6 +72,7 @@ export default {
         },
         cameras: {
           expand: true,
+          camerasExpands: {},
         },
       };
     } else if (!this.settingsLayout.cameras.aws) {
@@ -77,7 +82,10 @@ export default {
     } else if (!this.settingsLayout.cameras.cameras) {
       this.settingsLayout.cameras.cameras = {
         expand: true,
+        camerasExpands: {},
       };
+    } else if (!this.settingsLayout.cameras.cameras.camerasExpands) {
+      this.settingsLayout.cameras.cameras.camerasExpands = {};
     }
 
     if (!this.settingsLayout.recordings) {
@@ -132,6 +140,7 @@ export default {
         },
         favourites: {
           expand: true,
+          camerasExpands: {},
         },
       };
     } else if (!this.settingsLayout.camview.camview) {
@@ -141,7 +150,10 @@ export default {
     } else if (!this.settingsLayout.camview.favourites) {
       this.settingsLayout.camview.favourites = {
         expand: true,
+        camerasExpands: {},
       };
+    } else if (!this.settingsLayout.camview.favourites.camerasExpands) {
+      this.settingsLayout.camview.favourites.camerasExpands = {};
     }
   },
   methods: {
@@ -167,6 +179,7 @@ export default {
               },
               favourites: {
                 expand: true,
+                camerasExpands: {},
               },
             },
             cameras: {
@@ -175,6 +188,7 @@ export default {
               },
               cameras: {
                 expand: true,
+                camerasExpands: {},
               },
             },
             recordings: {
@@ -202,6 +216,7 @@ export default {
               },
               favourites: {
                 expand: true,
+                camerasExpands: {},
               },
             },
           };

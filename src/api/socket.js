@@ -1,6 +1,9 @@
 'use-strict';
 
+const socketioJwt = require('socketio-jwt');
+
 const { LoggerService } = require('../services/logger/logger.service');
+const { ConfigService } = require('../services/config/config.service');
 
 const { Database } = require('./database');
 
@@ -22,23 +25,54 @@ class Socket {
       },
     });
 
-    Socket.io.on('connection', async (socket) => {
-      log.debug(`${socket.conn.remoteAddress} connected to server`);
+    Socket.io.use(
+      socketioJwt.authorize({
+        secret: ConfigService.interface.jwt_secret,
+        handshake: true,
+      })
+    );
 
-      const notifications = await Database.interfaceDB.get('notifications').value();
-      socket.emit('notification_size', notifications.length);
+    Socket.io.on('connection', async (socket) => {
+      //check if token is valid
+      const token = socket.encoded_token;
+      const tokenExist = Database.tokensDB.get('tokens').find({ token: token }).value();
+
+      if (!tokenExist) {
+        log.debug(
+          `${socket.decoded_token.username} (${socket.conn.remoteAddress}) disconnecting from socket, not authenticated`
+        );
+
+        socket.emit('unauthenticated');
+        setTimeout(() => socket.disconnect(true), 1000);
+
+        return;
+      }
+
+      log.debug(
+        `${socket.decoded_token.username} (${socket.conn.remoteAddress}) authenticated and connected to socket`
+      );
+
+      if (
+        socket.decoded_token.permissionLevel.includes('notifications:access') ||
+        socket.decoded_token.permissionLevel.includes('admin')
+      ) {
+        const notifications = await Database.interfaceDB.get('notifications').value();
+        socket.emit('notification_size', notifications.length);
+      } else {
+        log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) no access for notifications socket`);
+      }
 
       socket.on('join_stream', (data) => {
         if (data.feed) {
           socket.join(`stream/${data.feed}`);
-          log.debug(`${socket.conn.remoteAddress} joined room: stream/${data.feed}`);
+          log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) joined stream: ${data.feed}`);
         }
       });
 
       socket.on('leave_stream', (data) => {
         if (data.feed) {
           socket.leave(`stream/${data.feed}`);
-          log.debug(`${socket.conn.remoteAddress} left room: stream/${data.feed}`);
+          log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) left stream: ${data.feed}`);
         }
       });
 
@@ -47,19 +81,21 @@ class Socket {
           socket.leave(`stream/${data.feed}`);
           socket.join(`stream/${data.feed}`);
 
-          log.debug(`${socket.conn.remoteAddress} re-joined room: stream/${data.feed}`);
+          log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) re-joined stream: ${data.feed}`);
         }
       });
 
       socket.on('refresh_stream', (data) => {
         if (data.feed) {
-          log.debug(`${socket.conn.remoteAddress} requested to restart ${data.feed} stream`);
+          log.debug(
+            `${socket.decoded_token.username} (${socket.conn.remoteAddress}) requested to restart stream: ${data.feed}`
+          );
           this.#handleStream(data.feed, 'restart');
         }
       });
 
       socket.on('disconnect', () => {
-        log.debug(`${socket.conn.remoteAddress} disconnected from server`);
+        log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) disconnected from socket`);
       });
     });
 

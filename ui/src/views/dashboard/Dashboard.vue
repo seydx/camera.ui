@@ -44,6 +44,8 @@ import Footer from '@/components/footer.vue';
 import Navbar from '@/components/navbar.vue';
 import VideoCard from '@/components/video-card.vue';
 
+import SocketMixin from '@/mixins/socket.mixin';
+
 export default {
   name: 'Dashboard',
   components: {
@@ -54,32 +56,18 @@ export default {
     Navbar,
     VideoCard,
   },
+  mixins: [SocketMixin],
   data() {
     return {
       allCameras: [],
       cameras: [],
-      connected: false,
       snapshotTimeout: null,
       loading: true,
     };
   },
   computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
-    },
     dashboardLayout() {
       return this.$store.state.dashboard.layout;
-    },
-  },
-  sockets: {
-    connect() {
-      if (this.connected) {
-        for (const camera of this.cameras) {
-          if (camera.live) {
-            this.refreshStreamSocket({ camera: camera.name });
-          }
-        }
-      }
     },
   },
   async mounted() {
@@ -113,7 +101,6 @@ export default {
 
         await this.updateLayout();
         this.loading = false;
-        this.connected = true;
       } else {
         this.$toast.error(this.$t('no_access'));
       }

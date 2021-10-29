@@ -1,6 +1,5 @@
 const Bunyan = require('bunyan');
 const EscapeRegExp = require('lodash.escaperegexp');
-const { EventEmitter } = require('events');
 const http = require('http');
 const mqtt = require('mqtt');
 const { parse } = require('url');
@@ -14,7 +13,9 @@ const { EventController } = require('../event/event.controller');
 
 const { log } = LoggerService;
 
-class MotionController extends EventEmitter {
+class MotionController {
+  #controller;
+
   #http = ConfigService.ui.http;
   #mqtt = ConfigService.ui.mqtt;
   #smtp = ConfigService.ui.smtp;
@@ -22,8 +23,12 @@ class MotionController extends EventEmitter {
   #cameras = ConfigService.ui.cameras;
   #topics = ConfigService.ui.topics;
 
-  constructor() {
-    super();
+  constructor(controller) {
+    this.#controller = controller;
+
+    this.httpServer = null;
+    this.mqttClient = null;
+    this.smtpServer = null;
 
     if (this.#http) {
       this.#startHttpServer();
@@ -36,17 +41,17 @@ class MotionController extends EventEmitter {
     if (this.#smtp) {
       this.#startSmtpServer();
     }
-  }
 
-  triggerMotion(cameraName, state) {
-    let result = {
-      error: true,
-      message: 'Custom event could not be handled',
+    this.triggerMotion = (cameraName, state) => {
+      let result = {
+        error: true,
+        message: 'Custom event could not be handled',
+      };
+
+      result = this.#handleMotion('custom', cameraName, state, 'extern', result);
+
+      log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
     };
-
-    result = this.#handleMotion('custom', cameraName, state, 'extern', result);
-
-    log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
   }
 
   #handleMotion(triggerType, cameraName, state, event, result) {
@@ -59,7 +64,7 @@ class MotionController extends EventEmitter {
       };
 
       if (triggerType !== 'custom') {
-        this.emit('motion', cameraName, triggerType, state, event);
+        this.#controller.emit('motion', cameraName, triggerType, state, event);
       }
 
       if (camera.recordOnMovement) {
@@ -133,9 +138,7 @@ class MotionController extends EventEmitter {
           // => /doorbell
 
           let triggerType = parseurl.pathname.includes('/reset') ? 'reset' : parseurl.pathname.split('/')[1];
-
           let state = triggerType === 'dorbell' ? true : triggerType === 'reset' ? false : true;
-
           triggerType = triggerType === 'reset' ? 'motion' : triggerType;
 
           result = this.#handleMotion(triggerType, cameraName, state, 'http', result);

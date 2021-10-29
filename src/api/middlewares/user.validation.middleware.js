@@ -68,10 +68,15 @@ exports.hasValidFields = (req, res, next) => {
 exports.isPasswordAndUserMatch = async (req, res, next) => {
   const user = await UserModel.findByName(req.body.username);
 
-  if (!user || !user?.password) {
+  if (!user) {
     res.status(403).send({
       statusCode: 403,
       message: 'Forbidden',
+    });
+  } else if (!user?.password) {
+    res.status(403).send({
+      statusCode: 403,
+      message: 'Password missing',
     });
   } else {
     let passwordFields = user.password.split('$');

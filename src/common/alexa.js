@@ -71,6 +71,8 @@ class Alexa {
   static async connect(config) {
     try {
       if (!config) {
+        await Database.interfaceDB.read();
+
         config = await Database.interfaceDB.get('settings').get('notifications').get('alexa').value();
       }
 
