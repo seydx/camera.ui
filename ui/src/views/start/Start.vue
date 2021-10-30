@@ -40,7 +40,7 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
                       v-model="form.auth.reenterpw"
                       placeholder="********"
                     )
-                b-button#nextButton.d-block.mt-4.mx-auto(type="submit" variant="primary" :pressed="nextButton" :active="nextButton") {{ $t("finish") }}
+                b-button#nextButton.d-block.mt-4.mx-auto.nextButton(type="submit" variant="primary" :pressed="nextButton" :active="nextButton") {{ $t("finish") }}
 </template>
 
 <script>
@@ -81,7 +81,7 @@ export default {
     const firstStart = response.data.firstStart;
 
     if (!firstStart) {
-      this.$router.push('/dashboard');
+      return this.$router.push('/dashboard');
     }
 
     this.loading = false;
@@ -175,5 +175,11 @@ export default {
 .greyline {
   height: 5px;
   background: var(--third-bg-color);
+}
+
+.nextButton,
+.nextButton:hover,
+.nextButton:focus {
+  color: #ffffff;
 }
 </style>

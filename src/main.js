@@ -54,7 +54,7 @@ class Interface extends EventEmitter {
 
     // configure database
     const database = new Database();
-    await database.prepareDatabase();
+    this.database = await database.prepareDatabase();
 
     Cleartimer.start();
 

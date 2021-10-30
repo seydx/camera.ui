@@ -44,10 +44,6 @@ class StreamService {
 
     if (camera.videoConfig.mapvideo) {
       this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapvideo;
-    } else {
-      this.streamOptions.ffmpegOptions['-an'] = '';
-      this.streamOptions.ffmpegOptions['-sn'] = '';
-      this.streamOptions.ffmpegOptions['-dn'] = '';
     }
 
     if (camera.videoConfig.videoFilter) {
@@ -67,10 +63,6 @@ class StreamService {
 
       if (camera.videoConfig.mapaudio) {
         this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapaudio;
-      } else {
-        this.streamOptions.ffmpegOptions['-vn'] = '';
-        this.streamOptions.ffmpegOptions['-sn'] = '';
-        this.streamOptions.ffmpegOptions['-dn'] = '';
       }
     }
   }
@@ -78,7 +70,7 @@ class StreamService {
   async configureStreamOptions() {
     await this.#interfaceDB.read();
 
-    const cameraSettings = await this.#interfaceDB.get('cameras').value();
+    const cameraSettings = await this.#interfaceDB.get('settings').get('cameras').value();
     const cameraSetting = cameraSettings.find((camera) => camera && camera.name === this.cameraName);
 
     if (cameraSetting) {
@@ -96,6 +88,13 @@ class StreamService {
           '-ac': '1',
           '-b:a': '128k',
         };
+      } else {
+        delete this.streamOptions.ffmpegOptions['-codec:a'];
+        delete this.streamOptions.ffmpegOptions['-ar'];
+        delete this.streamOptions.ffmpegOptions['-ac'];
+        delete this.streamOptions.ffmpegOptions['-b:a'];
+
+        this.streamOptions.ffmpegOptions['-an'] = '';
       }
     }
   }

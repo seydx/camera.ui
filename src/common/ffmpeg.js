@@ -276,16 +276,23 @@ exports.storeVideo = function (cameraName, videoConfig, name, recPath, recTimer,
     let videoName = recPath + '/' + name + '.mp4';
 
     ffmpegArguments.push(
-      '-loglevel error',
+      '-loglevel',
+      'error',
       '-hide_banner',
-      `-t ${recTimer}`,
-      '-strict experimental',
-      '-threads 0',
-      '-c:v copy',
-      `-s ${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
-      '-movflags +faststart',
-      '-crf 23 ',
-      videoName
+      '-t',
+      recTimer.toString(),
+      '-strict',
+      'experimental',
+      '-threads',
+      '0',
+      '-c:v',
+      'copy',
+      '-s',
+      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      '-movflags',
+      '+faststart',
+      '-crf',
+      '23'
     );
 
     if (videoConfig.videoFilter) {

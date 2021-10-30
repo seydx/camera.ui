@@ -43,7 +43,7 @@ exports.App = (options) => {
         // eslint-disable-next-line quotes
         scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:'],
         // eslint-disable-next-line quotes
-        connectSrc: ['ws:', 'wss:', "'unsafe-eval'", "'unsafe-inline'", "'self'"],
+        connectSrc: ['ws:', 'wss:', 'https:', 'https://api.npms.io/*', "'unsafe-eval'", "'unsafe-inline'", "'self'"],
         // eslint-disable-next-line quotes
         'img-src': ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
         // eslint-disable-next-line quotes

@@ -1,5 +1,6 @@
 'use-strict';
 
+const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
 
@@ -26,6 +27,10 @@ class CameraUI {
     process.env.CUI_STORAGE_DATABASE_USER_PATH = path.resolve(storagePath, 'database', 'user');
     process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'database.json');
     process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
+
+    if (Object.keys(userConfig).length > 0) {
+      fs.writeJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, userConfig, { spaces: 2 });
+    }
 
     LoggerService.create(logger);
 

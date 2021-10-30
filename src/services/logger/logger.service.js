@@ -12,6 +12,7 @@ const LogLevel = {
 class LoggerService {
   static #prefix = 'camera.ui';
   static #logger = console;
+  static #customLogger = false;
   static #withPrefix = true;
   static #debugEnabled = false;
   static #timestampEnabled = false;
@@ -23,7 +24,7 @@ class LoggerService {
   constructor(logger) {
     if (logger) {
       LoggerService.#prefix = '';
-      LoggerService.#logger = logger;
+      LoggerService.#customLogger = logger;
       LoggerService.#withPrefix = false;
     }
 
@@ -76,6 +77,10 @@ class LoggerService {
   }
 
   static logging(level, message, name, subprefix) {
+    if (LoggerService.#customLogger) {
+      return this.#customLogger[level](message, name, subprefix);
+    }
+
     if (level === LogLevel.DEBUG && !this.#debugEnabled) {
       return;
     }

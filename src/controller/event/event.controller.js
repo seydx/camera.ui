@@ -58,7 +58,7 @@ class EventController {
         Camera = await CamerasModel.findByName(cameraName);
         CameraSettings = await CamerasModel.getSettingsByName(cameraName);
       } catch (error) {
-        log.warn(error.message);
+        log.warn(error.message, cameraName);
       }
 
       if (Camera && Camera.videoConfig) {
@@ -79,7 +79,7 @@ class EventController {
 
             EventController.#motionTimers.set(cameraName, eventTimeout);
           } else {
-            log.warn(`Event blocked due to motionTimeout (${timeoutConfig}s)`);
+            log.warn(`Event blocked due to motionTimeout (${timeoutConfig}s)`, cameraName);
           }
         }
 
@@ -258,15 +258,17 @@ class EventController {
                 log.debug(
                   `${recordingSettings.active ? 'Recording saved.' : 'Recording skipped.'} ${
                     notificationsSettings.active ? 'Notification send.' : 'Notification skipped.'
-                  }`
+                  }`,
+                  cameraName
                 );
               } else {
                 log.debug(
-                  `Skip handling movement. Configured label (${CameraSettings.rekognition.labels}) not detected.`
+                  `Skip handling movement. Configured label (${CameraSettings.rekognition.labels}) not detected.`,
+                  cameraName
                 );
               }
             } else {
-              log.warn('Max sessions exceeded.');
+              log.warn('Max sessions exceeded.', cameraName);
             }
           } else {
             log.warn('Can not handle movement, another movement currently in progress for this camera.', cameraName);

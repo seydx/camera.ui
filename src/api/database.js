@@ -131,6 +131,10 @@ class Database {
     await Database.#initializeUser();
     await Database.#writeConfigCamerasToDB();
     await Database.refreshRecordingsDatabase();
+
+    return {
+      interface: Database.interfaceDB,
+    };
   }
 
   static async refreshDatabase() {
