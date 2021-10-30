@@ -16,12 +16,12 @@ const { log } = LoggerService;
 class MotionController {
   #controller;
 
-  #http = ConfigService.ui.http;
-  #mqtt = ConfigService.ui.mqtt;
-  #smtp = ConfigService.ui.smtp;
-
   #cameras = ConfigService.ui.cameras;
   #topics = ConfigService.ui.topics;
+
+  static #http = ConfigService.ui.http;
+  static #mqtt = ConfigService.ui.mqtt;
+  static #smtp = ConfigService.ui.smtp;
 
   static httpServer = null;
   static mqttClient = null;
@@ -30,15 +30,15 @@ class MotionController {
   constructor(controller) {
     this.#controller = controller;
 
-    if (this.#http) {
+    if (MotionController.#http) {
       this.#startHttpServer();
     }
 
-    if (this.#mqtt) {
+    if (MotionController.#mqtt) {
       this.#startMqttClient();
     }
 
-    if (this.#smtp) {
+    if (MotionController.#smtp) {
       this.#startSmtpServer();
     }
 
@@ -85,7 +85,7 @@ class MotionController {
   #startHttpServer() {
     log.debug('Setting up HTTP server for motion detection...');
 
-    const hostname = this.#http.localhttp ? 'localhost' : undefined;
+    const hostname = MotionController.#http.localhttp ? 'localhost' : undefined;
 
     MotionController.httpServer = http.createServer();
 
@@ -103,7 +103,8 @@ class MotionController {
         log.error(error);
       }
 
-      let bind = typeof port === 'string' ? 'Pipe ' + this.#http.port : 'Port ' + this.#http.port;
+      let bind =
+        typeof port === 'string' ? 'Pipe ' + MotionController.#http.port : 'Port ' + MotionController.#http.port;
 
       switch (error.code) {
         case 'EACCES':
@@ -156,17 +157,20 @@ class MotionController {
       log.debug('HTTP Server closed');
     });
 
-    MotionController.httpServer.listen(this.#http.port, hostname);
+    MotionController.httpServer.listen(MotionController.#http.port, hostname);
   }
 
   #startMqttClient() {
     log.debug('Setting up MQTT connection for motion detection...');
 
     EventController.mqttClient = mqtt.connect(
-      (this.#mqtt.tls ? 'mqtts://' : 'mqtt://') + this.#mqtt.host + ':' + this.#mqtt.port,
+      (MotionController.#mqtt.tls ? 'mqtts://' : 'mqtt://') +
+        MotionController.#mqtt.host +
+        ':' +
+        MotionController.#mqtt.port,
       {
-        username: this.#mqtt.username,
-        password: this.#mqtt.password,
+        username: MotionController.#mqtt.username,
+        password: MotionController.#mqtt.password,
       }
     );
 
@@ -233,7 +237,7 @@ class MotionController {
   #startSmtpServer() {
     log.debug('Setting up SMTP server for motion detection...');
 
-    const regex = new RegExp(EscapeRegExp(this.#smtp.space_replace), 'g');
+    const regex = new RegExp(EscapeRegExp(MotionController.#smtp.space_replace), 'g');
 
     const bunyan = Bunyan.createLogger({
       name: 'smtp',
@@ -266,7 +270,7 @@ class MotionController {
           log.debug(`Email received (${name}).`);
 
           try {
-            http.get(`http://127.0.0.1:${EventController.#smtp.httpPort}/motion?${name}`);
+            http.get(`http://127.0.0.1:${MotionController.#smtp.httpPort}/motion?${name}`);
           } catch (error) {
             log.error(`Error making HTTP call (${name}): ${error}`);
           }
@@ -274,7 +278,7 @@ class MotionController {
       },
     });
 
-    EventController.smtpServer.listen(this.#smtp.port);
+    EventController.smtpServer.listen(MotionController.#smtp.port);
   }
 
   #getCamera(cameraName) {
