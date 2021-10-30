@@ -1,10 +1,10 @@
 <template lang="pug">
-div
-  main.w-100.save-height.mt-save.overflow-hidden
+.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh
+  main.w-100.save-height.overflow-hidden
     #gridCont(v-if="loading")
       .grid-stack.h-100vh.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize
         b-spinner.text-color-primary
-    #gridCont.h-100.toggleArea(v-else)
+    #gridCont.save-height.toggleArea(v-else)
       .grid-stack.toggleArea
         .grid-stack-item.toggleArea(v-for="(camera, index) in cameras" :gs-id="index" :key="camera.name")
           VideoCard(
@@ -479,14 +479,16 @@ export default {
       }
     },
     windowHeight() {
-      let windowHeight =
+      /*let windowHeight =
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
           ? typeof window.outerHeight != 'undefined'
             ? Math.max(window.outerHeight, document.documentElement.clientHeight)
             : document.documentElement.clientHeight
-          : document.documentElement.clientHeight;
-      return windowHeight;
+          : document.documentElement.clientHeight;*/
+
+      let mainFrameHeight = document.getElementById('gridCont').offsetHeight;
+      return mainFrameHeight;
     },
     windowWidth() {
       let windowWidth = Math.max(document.documentElement.clientWidth, window.innerWidth);
@@ -547,6 +549,6 @@ export default {
 .save-height {
   --safe-area-inset-top: env(safe-area-inset-top);
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
-  height: calc(100vh - var(--safe-area-inset-top));
+  height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
 }
 </style>
