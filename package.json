@@ -16,7 +16,7 @@
   },
   "main": "src/index.js",
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.38.0",
+    "@aws-sdk/client-rekognition": "^3.39.0",
     "alexa-remote2": "^4.0.3",
     "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
@@ -49,8 +49,8 @@
     "web-push": "^3.4.5"
   },
   "devDependencies": {
-    "@babel/core": "7.15.8",
-    "@babel/eslint-parser": "7.15.8",
+    "@babel/core": "7.16.0",
+    "@babel/eslint-parser": "7.16.0",
     "@babel/eslint-plugin": "7.14.5",
     "concurrently": "^6.3.0",
     "eslint": "^8.1.0",
