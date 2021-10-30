@@ -266,7 +266,7 @@ class MotionController {
           log.debug(`Email received (${name}).`);
 
           try {
-            http.get(`http://127.0.0.1:${this.#smtp.httpPort}/motion?${name}`);
+            http.get(`http://127.0.0.1:${EventController.#smtp.httpPort}/motion?${name}`);
           } catch (error) {
             log.error(`Error making HTTP call (${name}): ${error}`);
           }

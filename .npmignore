@@ -2,7 +2,6 @@ test
 .vscode
 .github
 misc
-ui
 images
 .DS_Store
 .prettierrc.json
