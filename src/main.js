@@ -13,6 +13,7 @@ const { Server } = require('./api/index');
 
 //Controller
 const { CameraController } = require('./controller/camera/camera.controller');
+const { EventController } = require('./controller/event/event.controller');
 const { MotionController } = require('./controller/motion/motion.controller');
 
 const { log } = LoggerService;
@@ -28,6 +29,7 @@ class Interface extends EventEmitter {
     this.log = log;
 
     this.cameraController = null;
+    this.eventController = null;
     this.motionController = null;
 
     const { server, socket } = new Server(this);
@@ -62,6 +64,9 @@ class Interface extends EventEmitter {
       await controller.prebuffer?.start();
       await controller.stream.configureStreamOptions();
     }
+
+    // configure event controller
+    this.eventController = new EventController();
 
     // configure motion controller
     this.motionController = new MotionController(this);

@@ -26,29 +26,35 @@ class StreamService {
     this.#sessionService = sessionService;
     this.#socket = socket;
 
-    const audio = camera.videoConfig.audio;
-    const width = camera.videoConfig.maxWidth;
-    const height = camera.videoConfig.maxHeight;
-    const rate = camera.videoConfig.maxFPS;
-
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
 
     this.streamOptions = {
       source: camera.videoConfig.source,
       ffmpegOptions: {
-        '-s': `${width}x${height}`,
-        '-b:v': '299k',
-        '-r': rate,
+        '-s': `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
+        '-b:v': camera.videoConfig.maxBitrate,
+        '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
-        '-an': '',
-        '-preset:v': 'ultrafast',
+        '-preset': camera.videoConfig.encoderOptions,
         '-threads': '1',
         '-loglevel': 'error',
       },
     };
 
-    if (audio) {
+    if (camera.videoConfig.mapvideo) {
+      this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapvideo;
+    } else {
+      this.streamOptions.ffmpegOptions['-an'] = '';
+      this.streamOptions.ffmpegOptions['-sn'] = '';
+      this.streamOptions.ffmpegOptions['-dn'] = '';
+    }
+
+    if (camera.videoConfig.videoFilter) {
+      this.streamOptions.ffmpegOptions['-filter:v'] = camera.videoConfig.videoFilter;
+    }
+
+    if (camera.videoConfig.audio) {
       delete this.streamOptions.ffmpegOptions['-an'];
 
       this.streamOptions.ffmpegOptions = {
@@ -58,6 +64,14 @@ class StreamService {
         '-ac': '1',
         '-b:a': '128k',
       };
+
+      if (camera.videoConfig.mapaudio) {
+        this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapaudio;
+      } else {
+        this.streamOptions.ffmpegOptions['-vn'] = '';
+        this.streamOptions.ffmpegOptions['-sn'] = '';
+        this.streamOptions.ffmpegOptions['-dn'] = '';
+      }
     }
   }
 

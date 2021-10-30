@@ -1,0 +1,15 @@
+[Unit]
+Description=camera.ui
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+User=pi
+EnvironmentFile=/etc/default/camera.ui.default
+ExecStart=/usr/local/bin/camera.ui.js $CAMERA_UI_OPTS
+Restart=always
+RestartSec=5
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

@@ -43,6 +43,14 @@ div
         :closeOnClickOutsideMobile="true"
         :useZoomBar="true"
       )
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
   Footer
 </template>
 
@@ -80,15 +88,6 @@ export default {
       index: null,
       loading: true,
     };
-  },
-  sockets: {
-    connect() {
-      if (this.connected) {
-        if (this.camera.live) {
-          this.refreshStreamSocket({ camera: this.camera.name });
-        }
-      }
-    },
   },
   async mounted() {
     try {

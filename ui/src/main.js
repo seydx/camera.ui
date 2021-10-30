@@ -17,7 +17,9 @@ import {
   ButtonPlugin,
   CardPlugin,
   CollapsePlugin,
+  FormCheckboxPlugin,
   FormFilePlugin,
+  FormGroupPlugin,
   FormInputPlugin,
   FormPlugin,
   FormSelectPlugin,
@@ -49,7 +51,9 @@ Vue.use(AOS);
 Vue.use(ButtonPlugin);
 Vue.use(CardPlugin);
 Vue.use(CollapsePlugin);
+Vue.use(FormCheckboxPlugin);
 Vue.use(FormFilePlugin);
+Vue.use(FormGroupPlugin);
 Vue.use(FormInputPlugin);
 Vue.use(FormPlugin);
 Vue.use(FormSelectPlugin);
@@ -76,6 +80,22 @@ Vue.use(VueProgressBar, {
   autoRevert: true,
   location: 'top',
   inverse: false,
+});
+
+let updateTimeout = null;
+
+Vue.directive('disable-leading-space', {
+  update(el) {
+    if (updateTimeout) {
+      clearTimeout(updateTimeout);
+      updateTimeout = null;
+    }
+
+    updateTimeout = setTimeout(() => {
+      el.value = el.value.replace(/^\s+|\s+$/g, '');
+      el.dispatchEvent(new Event('input'));
+    }, 300);
+  },
 });
 
 Vue.config.productionTip = false;

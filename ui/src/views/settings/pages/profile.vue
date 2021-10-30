@@ -72,6 +72,7 @@
             type='text',
             :value="currentUser.username"
             :placeholder="$t('username')"
+            v-disable-leading-space
           )
           .w-100.my-3
           label.fs-6 {{ $t("new_password") }}
@@ -104,8 +105,8 @@
             type='text',
             :placeholder="$t('username')"
             v-model="form.newUser.username"
-            :state="newUserNameState",
-            lazy
+            :state="newUserNameState"
+            v-disable-leading-space
           )
           .w-100.my-3
           label.fs-6 {{ $t("password") }}
@@ -113,8 +114,7 @@
             type='text',
             placeholder="********"
             v-model="form.newUser.password",
-            :state="newUserPasswordState",
-            lazy
+            :state="newUserPasswordState"
           )
           .w-100.my-3
           label.fs-6 {{ $t("permissions") }}
@@ -231,6 +231,8 @@ export default {
             'cameras:access',
             'cameras:edit',
             'camview:access',
+            //'config:access',
+            //'config:edit',
             'dashboard:access',
             'notifications:access',
             'notifications:edit',
@@ -242,6 +244,8 @@ export default {
             'settings:cameras:edit',
             'settings:camview:access',
             'settings:camview:edit',
+            //'settings:config:access',
+            //'settings:config:edit',
             'settings:dashboard:access',
             'settings:dashboard:edit',
             'settings:general:access',
@@ -253,6 +257,7 @@ export default {
             'settings:recordings:access',
             'settings:recordings:edit',
             'users:access',
+            //'users:edit',
           ],
         },
         {
@@ -267,10 +272,14 @@ export default {
           catagory: this.$t('camview'),
           permissionLevel: ['cameras:access', 'camview:access', 'settings:cameras:access'],
         },
+        /*{
+          catagory: this.$t('config'),
+          permissionLevel: ['config:access', 'config:edit', 'settings:config:access'],
+        },
         {
           catagory: this.$t('config'),
           permissionLevel: ['config:access'],
-        },
+        },*/
         {
           catagory: this.$t('dashboard'),
           permissionLevel: ['cameras:access', 'dashboard:access', 'settings:cameras:access'],

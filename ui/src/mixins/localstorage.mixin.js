@@ -155,6 +155,18 @@ export default {
     } else if (!this.settingsLayout.camview.favourites.camerasExpands) {
       this.settingsLayout.camview.favourites.camerasExpands = {};
     }
+
+    if (!this.settingsLayout.config) {
+      this.settingsLayout.config = {
+        server: {
+          expand: true,
+        },
+      };
+    } else if (!this.settingsLayout.config.server) {
+      this.settingsLayout.config.server = {
+        expand: true,
+      };
+    }
   },
   methods: {
     getLsSettings() {
@@ -217,6 +229,11 @@ export default {
               favourites: {
                 expand: true,
                 camerasExpands: {},
+              },
+            },
+            config: {
+              server: {
+                expand: true,
               },
             },
           };

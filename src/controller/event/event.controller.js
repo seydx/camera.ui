@@ -35,17 +35,18 @@ class EventController {
   static #movementHandler = {};
   static #motionTimers = new Map();
 
-  constructor() {}
+  constructor() {
+    this.triggerEvent = EventController.handle;
+  }
 
   // eslint-disable-next-line no-unused-vars
   static async handle(trigger, cameraName, active, buffer, type) {
     /*
      * Direct access possible (e.g. if the recording is sent by an external process).
-     * Direct access requires a buffer to process it.
+     * Direct access requires a buffer to process the recording it.
      *
-     * TODO: check if valid
-     * "trigger" can be motion, doorbell or custom.
-     * "type" can be Snapshot, Video
+     * "trigger" should be motion, doorbell or custom.
+     * "type" should be Snapshot or Video if passed with a buffer (Default: Video)
      */
 
     const controller = CameraController.cameras.get(cameraName);

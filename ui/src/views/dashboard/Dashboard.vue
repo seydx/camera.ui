@@ -23,6 +23,14 @@ div
               :statusIndicator="true"
               @refreshStream="refreshStreamProcess"
             )
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
   ActionSheet(
     v-if="allCameras.length && checkLevel(['cameras:access', 'settings:cameras:access', 'settings:dashboard:access'])"
     :items="allCameras"
@@ -33,6 +41,8 @@ div
 </template>
 
 <script>
+import CoolLightBox from 'vue-cool-lightbox';
+import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import draggable from 'vuedraggable';
 
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
@@ -50,6 +60,7 @@ export default {
   name: 'Dashboard',
   components: {
     ActionSheet,
+    CoolLightBox,
     BackToTop,
     draggable,
     Footer,

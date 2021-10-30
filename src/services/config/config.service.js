@@ -40,6 +40,7 @@ const permissionLevels = [
   'cameras:access',
   'cameras:edit',
   'config:access',
+  'config:edit',
   'notifications:access',
   'notifications:edit',
   'recordings:access',
@@ -55,6 +56,8 @@ const permissionLevels = [
   'settings:cameras:edit',
   'settings:camview:access',
   'settings:camview:edit',
+  'settings:config:access',
+  'settings:config:edit',
   'settings:dashboard:access',
   'settings:dashboard:edit',
   'settings:general:access',
@@ -157,17 +160,40 @@ class ConfigService {
     }
   }
 
-  //TODO: CHECK if valid
   #config(uiConfig) {
-    if (uiConfig.port) {
+    const validThemes = [
+      'auto',
+      'light-pink',
+      'light-blue',
+      'light-yellow',
+      'light-green',
+      'light-orange',
+      'light-brown',
+      'light-gray',
+      'light-blgray',
+      'light-purple',
+      'dark-pink',
+      'dark-blue',
+      'dark-yellow',
+      'dark-green',
+      'dark-orange',
+      'dark-brown',
+      'dark-gray',
+      'dark-blgray',
+      'dark-purple',
+    ];
+
+    const validLanguage = ['auto', 'de', 'en', 'nl'];
+
+    if (Number.parseInt(uiConfig.port)) {
       ConfigService.ui.port = uiConfig.port;
     }
 
-    if (uiConfig.theme) {
+    if (validThemes.includes(uiConfig.theme)) {
       ConfigService.ui.theme = uiConfig.theme;
     }
 
-    if (uiConfig.language) {
+    if (validLanguage.includes(uiConfig.language)) {
       ConfigService.ui.language = uiConfig.language;
     }
   }
@@ -257,7 +283,6 @@ class ConfigService {
     };
   }
 
-  //TODO: define more camera properties
   #configCameras(cameras = []) {
     ConfigService.ui.cameras = cameras
       // include only cameras with given name, videoConfig and source
@@ -299,6 +324,12 @@ class ConfigService {
         camera.videoConfig.maxWidth = camera.videoConfig.maxWidth || 1280;
         camera.videoConfig.maxHeight = camera.videoConfig.maxHeight || 720;
         camera.videoConfig.maxFPS = camera.videoConfig.maxFPS < 20 ? 20 : camera.videoConfig.maxFPS;
+        camera.videoConfig.maxBitrate = camera.videoConfig.maxBitrate || '299k';
+        camera.videoConfig.vcodec = camera.videoConfig.vcodec || 'libx264';
+        camera.videoConfig.mapvideo = camera.videoConfig.mapvideo || false;
+        camera.videoConfig.mapaudio = camera.videoConfig.mapaudio || false;
+        camera.videoConfig.videoFilter = camera.videoConfig.videoFilter || false;
+        camera.videoConfig.encoderOptions = camera.videoConfig.encoderOptions || 'ultrafast -tune zerolatency';
 
         return camera;
       })

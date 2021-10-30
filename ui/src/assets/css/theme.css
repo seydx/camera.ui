@@ -1,6 +1,7 @@
 :root {
   /* pink */
   --primary-color: rgb(209, 32, 73);
+  --primary-color-2: rgb(197, 25, 64);
   --secondary-color: rgb(125, 19, 44);
   --third-color: rgb(63, 10, 22);
   --fourth-color: rgb(237, 166, 182);
@@ -35,7 +36,7 @@
   --secondary-font-color: rgb(108, 108, 108);
   --third-font-color: rgb(135, 135, 135);
   --fourth-font-color: rgb(189, 189, 189);
-  --primary-bg-color: rgb(0, 0, 0);
+  --primary-bg-color: rgb(14, 14, 14);
   --secondary-bg-color: rgb(42, 42, 42);
   --secondary-bg-hover-color: rgb(50, 50, 50);
   --third-bg-color: rgb(64, 64, 64);
@@ -52,6 +53,7 @@
 
 [data-theme-color='blgray'] {
   --primary-color: rgb(96, 125, 139);
+  --primary-color-2: rgb(84, 118, 130);
   --secondary-color: rgb(64, 85, 95);
   --third-color: rgb(51, 68, 77);
   --fourth-color: rgb(157, 194, 212);
@@ -65,6 +67,7 @@
 
 [data-theme-color='blue'] {
   --primary-color: rgb(10, 132, 255);
+  --primary-color-2: rgb(0, 125, 244);
   --secondary-color: rgb(6, 79, 153);
   --third-color: rgb(3, 40, 77);
   --fourth-color: rgb(157, 206, 255);
@@ -78,6 +81,7 @@
 
 [data-theme-color='brown'] {
   --primary-color: rgb(121, 85, 72);
+  --primary-color-2: rgb(109, 78, 63);
   --secondary-color: rgb(82, 56, 46);
   --third-color: rgb(63, 41, 32);
   --fourth-color: rgb(223, 171, 153);
@@ -91,6 +95,7 @@
 
 [data-theme-color='gray'] {
   --primary-color: rgb(98, 99, 101);
+  --primary-color-2: rgb(86, 92, 92);
   --secondary-color: rgb(59, 59, 61);
   --third-color: rgb(29, 30, 30);
   --fourth-color: rgb(192, 193, 193);
@@ -104,6 +109,7 @@
 
 [data-theme-color='green'] {
   --primary-color: rgb(102, 206, 102);
+  --primary-color-2: rgb(90, 199, 93);
   --secondary-color: rgb(61, 124, 61);
   --third-color: rgb(31, 62, 31);
   --fourth-color: rgb(194, 235, 194);
@@ -117,6 +123,7 @@
 
 [data-theme-color='orange'] {
   --primary-color: rgb(255, 149, 0);
+  --primary-color-2: rgb(232, 142, 0);
   --secondary-color: rgb(189, 110, 0);
   --third-color: rgb(126, 73, 0);
   --fourth-color: rgb(255, 226, 185);
@@ -130,6 +137,7 @@
 
 [data-theme-color='purple'] {
   --primary-color: rgb(124, 72, 194);
+  --primary-color-2: rgb(112, 65, 185);
   --secondary-color: rgb(96, 55, 185);
   --third-color: rgb(61, 30, 126);
   --fourth-color: rgb(201, 169, 243);

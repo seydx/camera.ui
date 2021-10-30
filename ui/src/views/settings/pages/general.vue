@@ -106,7 +106,7 @@
                     :placeholder="$t('room_name')",
                     v-model="form.newRoom",
                     :state="roomState",
-                    lazy
+                    v-disable-leading-space
                   )
                 .col.d-flex.flex-wrap.align-content-center.justify-content-end.align-content-center.pl-0
                   b-link.text-success

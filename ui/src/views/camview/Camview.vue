@@ -35,9 +35,19 @@ div
     @rightNaviClick="logOut"
     @changeState="handleFavouriteCamera"
   )
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
 </template>
 
 <script>
+import CoolLightBox from 'vue-cool-lightbox';
+import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import 'gridstack/dist/gridstack.min.css';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/jq/gridstack-dd-jqueryui';
@@ -53,9 +63,10 @@ import SocketMixin from '@/mixins/socket.mixin';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
-  name: 'CamView',
+  name: 'Camview',
   components: {
     ActionSheet,
+    CoolLightBox,
     VideoCard,
   },
   mixins: [SocketMixin],
@@ -85,17 +96,6 @@ export default {
     const html = document.querySelector('html');
     body.classList.add('body-bg-dark');
     html.classList.add('body-bg-dark');
-  },
-  sockets: {
-    connect() {
-      if (this.connected) {
-        for (const camera of this.cameras) {
-          if (camera.live) {
-            this.refreshStreamSocket({ camera: camera.name });
-          }
-        }
-      }
-    },
   },
   async mounted() {
     try {

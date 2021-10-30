@@ -46,10 +46,8 @@ const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
 const storeFrameFromVideoBuffer = function (cameraName, outputPath, videoBuffer, videoConfig) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const width = videoConfig.maxWidth;
-    const height = videoConfig.maxHeight;
 
-    let ffmpegArguments = [
+    const ffmpegArguments = [
       '-loglevel',
       'error',
       '-hide_banner',
@@ -61,17 +59,18 @@ const storeFrameFromVideoBuffer = function (cameraName, outputPath, videoBuffer,
       '-i',
       '-',
       '-s',
-      `${width}x${height}`,
-      /*'-frames:v',
-        '1',*/
+      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
       '-f',
       'image2',
-      //'-r',
-      //'1',
       '-update',
       '1',
-      outputPath,
     ];
+
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    }
+
+    ffmpegArguments.push(outputPath);
 
     log.debug(`Snapshot command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
 
@@ -139,9 +138,9 @@ const startFFMPegFragmetedMP4Session = async function (
     });
 
     const serverPort = await cameraUtils.listenServer(cameraName, server);
-    const arguments_ = [];
+    const ffmpegArguments = [];
 
-    arguments_.push(
+    ffmpegArguments.push(
       '-loglevel',
       'error',
       '-hide_banner',
@@ -159,9 +158,9 @@ const startFFMPegFragmetedMP4Session = async function (
       'tcp://127.0.0.1:' + serverPort
     );
 
-    log.debug(`Recording command: ${videoProcessor} ${arguments_.join(' ')}`, cameraName);
+    log.debug(`Recording command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
 
-    const cp = spawn(videoProcessor, arguments_, { env: process.env });
+    const cp = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
@@ -202,29 +201,35 @@ exports.storeBuffer = async function (
 exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additional, recPath, label, store) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const source = videoConfig.source;
-    const width = videoConfig.maxWidth;
-    const height = videoConfig.maxHeight;
-    const videoFilter = videoConfig.videoFilter;
 
-    let ffmpegArguments = source.replace('-i', '-y -i');
-    let destination = store ? recPath + '/' + name + (additional ? '@2' : '') + '.jpeg' : '-';
+    const ffmpegArguments = videoConfig.source.replace('-i', '-y -i').split(' ');
+    const destination = store ? recPath + '/' + name + (additional ? '@2' : '') + '.jpeg' : '-';
 
-    ffmpegArguments +=
-      ' -loglevel error' +
-      ' -hide_banner' +
-      ' -frames:v 2' +
-      ' -r 1' +
-      ' -update 1' +
-      ' -filter:v' +
-      ` scale='min(${width},iw)':'min(${height},ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2` +
-      (videoFilter ? `,${videoFilter}` : '') +
-      ' -f image2 ' +
-      destination;
+    ffmpegArguments.push(
+      '-loglevel',
+      'error',
+      '-hide_banner',
+      '-s',
+      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      '-frames:v',
+      '2',
+      '-r',
+      '1',
+      '-update',
+      '1',
+      '-f',
+      'image2'
+    );
 
-    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments}`, cameraName);
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    }
 
-    const ffmpeg = spawn(videoProcessor, ffmpegArguments.split(/\s+/), { env: process.env });
+    ffmpegArguments.push(destination);
+
+    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
     ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
 
@@ -266,30 +271,32 @@ exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additiona
 exports.storeVideo = function (cameraName, videoConfig, name, recPath, recTimer, label) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const source = videoConfig.source;
-    const width = videoConfig.maxWidth;
-    const height = videoConfig.maxHeight;
-    const videoFilter = videoConfig.videoFilter;
 
-    let ffmpegArguments = source.replace('-i', '-nostdin -y -i');
+    let ffmpegArguments = videoConfig.source.replace('-i', '-nostdin -y -i').split(' ');
     let videoName = recPath + '/' + name + '.mp4';
 
-    ffmpegArguments +=
-      ' -loglevel error' +
-      ' -hide_banner' +
-      ` -t ${recTimer}` +
-      (videoFilter ? ' -filter:v ' + videoFilter : '') +
-      ' -strict experimental' +
-      ' -threads 0' +
-      ' -c:v copy' +
-      ` -s ${width}x${height}` +
-      ' -movflags +faststart' +
-      ' -crf 23 ' +
-      videoName;
+    ffmpegArguments.push(
+      '-loglevel error',
+      '-hide_banner',
+      `-t ${recTimer}`,
+      '-strict experimental',
+      '-threads 0',
+      '-c:v copy',
+      `-s ${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      '-movflags +faststart',
+      '-crf 23 ',
+      videoName
+    );
 
-    log.debug(`Video requested, command: ${videoProcessor} ${ffmpegArguments}`, cameraName);
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    }
 
-    const ffmpeg = spawn(videoProcessor, ffmpegArguments.split(/\s+/), { env: process.env });
+    ffmpegArguments.push(videoName);
+
+    log.debug(`Video requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
     ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
 

@@ -1,86 +1,25 @@
 <template lang="pug">
   #app
-    button.add-button(v-if="$route.meta.name !== 'login'", style="display: none;") Add to home screen
+    button.add-button(v-if="$route.meta.name !== 'login' && $route.meta.name !== 'start'", style="display: none;") {{ $t('add_to_homescreen') }}
     audio#soundFx(v-if="$route.meta.name !== 'login' && checkLevel('notifications:access')")
       source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
     transition(name='fade' mode='out-in')
       router-view
-    CoolLightBox(
-      :items="images" 
-      :index="index"
-      @close="closeHandler"
-      :closeOnClickOutsideMobile="true"
-      :useZoomBar="true",
-      :zIndex=99999
-    )
 </template>
 
 <script>
-import CoolLightBox from 'vue-cool-lightbox';
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-
-import NotificationBanner from '@/components/notification-banner.vue';
-
 import update from '@/mixins/update.mixin';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
-  components: {
-    CoolLightBox,
-  },
   mixins: [update],
-  data() {
-    return {
-      id: '',
-      idInfo: '',
-      images: [],
-      index: null,
-    };
-  },
   computed: {
     currentUser() {
       return this.$store.state.auth.user;
     },
     uiConfig() {
       return this.$store.state.config.ui;
-    },
-  },
-  sockets: {
-    notification(notification) {
-      this.id = '_' + Math.random().toString(36).substr(2, 9);
-
-      if (notification.mediaSource) {
-        this.images = [
-          {
-            title: notification.title,
-            src: notification.mediaSource,
-            thumb: notification.thumbnail || notification.mediaSource,
-          },
-        ];
-      }
-
-      const content = {
-        component: NotificationBanner,
-        props: {
-          headerTxt: this.$t('notifications'),
-          timeTxt: this.$t('now'),
-          title: notification.title,
-          message: notification.message,
-          subtxt: notification.subtxt,
-        },
-        listeners: {
-          showNotification: () => {
-            this.index = notification.recordStoring ? 0 : null;
-          },
-        },
-      };
-
-      this.$toast.info(content, {
-        id: this.id,
-        containerClassName: 'notification-container',
-        toastClassName: 'notification-toast',
-      });
     },
   },
   async mounted() {

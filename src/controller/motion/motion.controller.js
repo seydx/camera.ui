@@ -23,12 +23,12 @@ class MotionController {
   #cameras = ConfigService.ui.cameras;
   #topics = ConfigService.ui.topics;
 
+  static httpServer = null;
+  static mqttClient = null;
+  static smtpServer = null;
+
   constructor(controller) {
     this.#controller = controller;
-
-    this.httpServer = null;
-    this.mqttClient = null;
-    this.smtpServer = null;
 
     if (this.#http) {
       this.#startHttpServer();
@@ -87,16 +87,16 @@ class MotionController {
 
     const hostname = this.#http.localhttp ? 'localhost' : undefined;
 
-    this.httpServer = http.createServer();
+    MotionController.httpServer = http.createServer();
 
-    this.httpServer.on('listening', async () => {
-      let addr = this.httpServer.address();
+    MotionController.httpServer.on('listening', async () => {
+      let addr = MotionController.httpServer.address();
       let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
 
       log.debug(`HTTP server for motion detection is listening on ${bind}`);
     });
 
-    this.httpServer.on('error', (error) => {
+    MotionController.httpServer.on('error', (error) => {
       let error_;
 
       if (error.syscall !== 'listen') {
@@ -119,7 +119,7 @@ class MotionController {
       log.error(error_);
     });
 
-    this.httpServer.on('request', async (request, response) => {
+    MotionController.httpServer.on('request', async (request, response) => {
       let result = {
         error: true,
         message: `Malformed URL ${request.url}`,
@@ -152,17 +152,17 @@ class MotionController {
       response.end();
     });
 
-    this.httpServer.on('close', () => {
+    MotionController.httpServer.on('close', () => {
       log.debug('HTTP Server closed');
     });
 
-    this.httpServer.listen(this.#http.port, hostname);
+    MotionController.httpServer.listen(this.#http.port, hostname);
   }
 
   #startMqttClient() {
     log.debug('Setting up MQTT connection for motion detection...');
 
-    this.mqttClient = mqtt.connect(
+    EventController.mqttClient = mqtt.connect(
       (this.#mqtt.tls ? 'mqtts://' : 'mqtt://') + this.#mqtt.host + ':' + this.#mqtt.port,
       {
         username: this.#mqtt.username,
@@ -170,16 +170,16 @@ class MotionController {
       }
     );
 
-    this.mqttClient.on('connect', () => {
+    EventController.mqttClient.on('connect', () => {
       log.debug('MQTT connected');
 
       for (const [topic] of this.#topics) {
         log.debug(`Subscribing to MQTT topic: ${topic}`);
-        this.mqttClient.subscribe(topic + '/#');
+        EventController.mqttClient.subscribe(topic + '/#');
       }
     });
 
-    this.mqttClient.on('message', async (topic, message) => {
+    EventController.mqttClient.on('message', async (topic, message) => {
       let result = {
         error: true,
         message: `Malformed MQTT message ${message.toString()} (${topic})`,
@@ -225,7 +225,7 @@ class MotionController {
       log.debug(`Received a new MQTT message ${JSON.stringify(result)} (${cameraName})`);
     });
 
-    this.mqttClient.on('end', () => {
+    EventController.mqttClient.on('end', () => {
       log.debug('MQTT client disconnected');
     });
   }
@@ -250,7 +250,7 @@ class MotionController {
       ],
     });
 
-    this.smtpServer = new SMTPServer({
+    EventController.smtpServer = new SMTPServer({
       authOptional: true,
       disabledCommands: ['STARTTLS'],
       logger: bunyan,
@@ -274,7 +274,7 @@ class MotionController {
       },
     });
 
-    this.smtpServer.listen(this.#smtp.port);
+    EventController.smtpServer.listen(this.#smtp.port);
   }
 
   #getCamera(cameraName) {

@@ -1,6 +1,6 @@
 <template lang="pug">
 main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
-  .container
+  .container.m-3
     .start-inner.row
       #main.col.d-flex.flex-wrap.justify-content-center
         .row.w-100.justify-content-center
@@ -9,24 +9,137 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
         .row.w-100.justify-content-center.my-3
           .col-2.greyline
         .row.w-100.justify-content-center
-          p.m-0.lh-1-7.text-center To help you get started and provide good experience with camera.ui, please complete the following configuration.
+          p.m-0.lh-1-7.text-center {{ $t("help_started") }} 
           b-spinner.text-color-primary.mt-3(v-if="loading")
+
+          b-collapse(
+            id="formCollapse" 
+            class="w-100 mt-5"
+          )
+            div
+              b-form(@submit="onNext")
+                #auth
+                  h5 📝 {{ $t("account") }} 
+                  hr.hr-underline
+                  b-form-group(id="input-group-username" :label="$t('username')" label-for="input-username")
+                    b-form-input(
+                      id="input-username"
+                      v-model="form.auth.username"
+                      :placeholder="$t('username')"
+                      v-disable-leading-space
+                    )
+                  b-form-group(id="input-group-password" :label="$t('password')" label-for="input-password")
+                    b-form-input(
+                      id="input-password"
+                      v-model="form.auth.password"
+                      placeholder="********"
+                    )
+                  b-form-group(id="input-group-password2" :label="$t('password_reenter')" label-for="input-password2")
+                    b-form-input(
+                      id="input-password2"
+                      v-model="form.auth.reenterpw"
+                      placeholder="********"
+                    )
+                b-button#nextButton.d-block.mt-4.mx-auto(type="submit" variant="primary" :pressed="nextButton" :active="nextButton") {{ $t("finish") }}
 </template>
 
 <script>
+import { changeUser } from '@/api/users.api';
+import { changeTargetConfig } from '@/api/config.api';
+import { getConfig } from '@/api/config.api';
+
+import SocketMixin from '@/mixins/socket.mixin';
+
+const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default {
   name: 'Start',
   data() {
     return {
       loading: true,
+      form: {
+        auth: {
+          username: '',
+          password: '',
+          reenterpw: '',
+        },
+      },
+      nextButton: false,
+      showForm: false,
     };
   },
-  mounted() {
-    setTimeout(() => {
-      this.loading = false;
-    }, 3000);
+  mixin: [SocketMixin],
+  computed: {
+    currentUser() {
+      return this.$store.state.auth.user;
+    },
   },
-  methods: {},
+  async mounted() {
+    await timeout(1000);
+
+    const response = await getConfig();
+    const firstStart = response.data.firstStart;
+
+    if (!firstStart) {
+      this.$router.push('/dashboard');
+    }
+
+    this.loading = false;
+    this.$root.$emit('bv::toggle::collapse', 'formCollapse');
+  },
+  methods: {
+    async onNext(event) {
+      const nextButton = document.getElementById('nextButton');
+
+      nextButton.blur();
+      this.nextButton = false;
+
+      event.preventDefault();
+
+      if (!this.form.auth.username || this.form.auth.username === '') {
+        return this.$toast.error(this.$t('no_username_defined'));
+      }
+
+      if (
+        !this.form.auth.password ||
+        this.form.auth.password === '' ||
+        !this.form.auth.reenterpw ||
+        this.form.auth.reenterpw === ''
+      ) {
+        return this.$toast.error(this.$t('no_password_defined'));
+      }
+
+      if (this.form.auth.password !== this.form.auth.reenterpw) {
+        return this.$toast.error(this.$t('password_not_match'));
+      }
+
+      try {
+        this.$root.$emit('bv::toggle::collapse', 'formCollapse');
+        this.loading = true;
+
+        await timeout(1000);
+
+        await changeUser(this.currentUser.username, {
+          username: this.form.auth.username,
+          password: this.form.auth.password,
+        });
+
+        await changeTargetConfig('firstStart', {
+          firstStart: false,
+        });
+
+        this.$toast.success(this.$t('successfully_changed'));
+
+        await this.$store.dispatch('auth/logout');
+        this.$router.push('/');
+      } catch (error) {
+        this.loading = false;
+        this.$root.$emit('bv::toggle::collapse', 'formCollapse');
+
+        this.$toast.error(error.message);
+      }
+    },
+  },
 };
 </script>
 
@@ -36,7 +149,6 @@ export default {
   -webkit-box-shadow: 0px 17px 28px -21px rgba(0, 0, 0, 0.68);
   box-shadow: 0px 17px 28px -21px rgba(0, 0, 0, 0.68);
   border-radius: 20px;
-  margin: 10px;
 }
 
 .start-inner {
@@ -44,7 +156,7 @@ export default {
 }
 
 #main {
-  padding: 50px;
+  padding: 40px;
   background: var(--secondary-bg-color);
   border-radius: 20px;
 }
@@ -62,39 +174,6 @@ export default {
 
 .greyline {
   height: 5px;
-  background: #efefef;
-}
-
-@media (max-width: 740px) {
-  .start {
-    min-width: unset;
-    margin: 0 10px;
-  }
-
-  #main {
-    border-radius: 20px;
-  }
-  main .container {
-    padding-left: 0;
-    padding-right: 0;
-    width: 80%;
-    max-width: 400px;
-  }
-}
-
-@media (min-width: 768px) {
-  .start {
-    max-width: 700px;
-  }
-}
-
-@media (min-width: 992px) {
-  .start {
-    max-width: 800px;
-  }
-
-  #main {
-    padding: 50px 70px 50px 70px;
-  }
+  background: var(--third-bg-color);
 }
 </style>

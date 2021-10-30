@@ -136,7 +136,7 @@ export default {
 
 .greyline {
   height: 5px;
-  background: #efefef;
+  background: var(--third-bg-color);
 }
 
 @media (max-width: 740px) {

@@ -51,6 +51,17 @@ exports.onlySameUserOrMasterCanDoThisAction = (req, res, next) => {
   }
 };
 
+exports.onlyMasterCanDoThisAction = (req, res, next) => {
+  let user_permission_level = req.jwt.permissionLevel || [];
+
+  return user_permission_level.includes('admin')
+    ? next()
+    : res.status(403).send({
+        statusCode: 403,
+        message: 'Forbidden',
+      });
+};
+
 exports.masterCantDoThisAction = (req, res, next) => {
   let user_permission_level = req.jwt.permissionLevel || [];
 

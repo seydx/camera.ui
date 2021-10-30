@@ -49,6 +49,14 @@ div
             b-spinner.text-color-primary
           div(slot="no-more") {{ $t("no_more_data") }}
           div(slot="no-results") {{ $t("no_results") }}
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
   Footer
 </template>
 
@@ -90,16 +98,6 @@ export default {
       query: '',
       recordings: [],
     };
-  },
-  sockets: {
-    recording(recording) {
-      this.recordings.unshift(recording);
-      this.images.unshift({
-        title: `${recording.camera} - ${recording.time}`,
-        src: `/files/${recording.fileName}`,
-        thumb: recording.recordType === 'Video' ? `/files/${recording.name}@2.jpeg` : `/files/${recording.fileName}`,
-      });
-    },
   },
   mounted() {
     this.loading = false;

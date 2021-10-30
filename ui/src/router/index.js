@@ -174,6 +174,16 @@ const routes = [
           requiredLevel: ['settings:camview:access'],
         },
       },
+      {
+        path: 'config',
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/config.vue'),
+        meta: {
+          name: 'config',
+          transitionName: 'slide',
+          requiresAuth: true,
+          requiredLevel: ['admin'],
+        },
+      },
     ],
   },
 ];

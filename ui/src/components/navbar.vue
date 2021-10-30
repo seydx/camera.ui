@@ -88,7 +88,7 @@ export default {
 <style scoped>
 .navbar2 {
   background: var(--secondary-bg-color) !important;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.05) !important;
+  border-bottom: 3px solid var(--primary-color-2) !important;
   position: fixed;
   top: 0;
   right: 0;

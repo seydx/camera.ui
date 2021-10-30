@@ -12,14 +12,26 @@ div
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:recordings:access', 'settings:recordings:edit'])", to="/settings/recordings", @click.native="subnaviClick('recordings')", :class="'sub-recordings' + ($route.meta.name === 'recordings' ? ' btn-settings-active' : '')") {{ $t("recordings") }}
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:notifications:access', 'settings:notifications:edit'])", to="/settings/notifications", @click.native="subnaviClick('notifications')", :class="'sub-notifications' + ($route.meta.name === 'notifications' ? ' btn-settings-active' : '')") {{ $t("notifications") }}
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:camview:access', 'settings:camview:edit'])", to="/settings/camview", @click.native="subnaviClick('camview')", :class="'sub-camview' + ($route.meta.name === 'camview' ? ' btn-settings-active' : '')") {{ $t("camview") }}
+        router-link.btn.btn-settings.mr-1(v-if="checkLevel(['admin'])", to="/settings/config", @click.native="subnaviClick('config')", :class="'sub-config' + ($route.meta.name === 'config' ? ' btn-settings-active' : '')") {{ $t("config") }}
   main.inner-container.w-100.h-100vh-calc-settings.pt-save.footer-offset
     .container.pt-2
       transition(:name="transitionName", mode="out-in", @beforeLeave="beforeLeave", @enter="enter", @afterEnter="afterEnter")
         router-view(:key="$route.meta.name")
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
   Footer
 </template>
 
 <script>
+import CoolLightBox from 'vue-cool-lightbox';
+import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+
 import DetectSwipe from '@/common/detectswipe';
 import BackToTop from '@/components/back-to-top.vue';
 import Footer from '@/components/footer.vue';
@@ -42,6 +54,7 @@ export default {
   name: 'Settings',
   components: {
     BackToTop,
+    CoolLightBox,
     Footer,
     Navbar,
   },
@@ -50,7 +63,7 @@ export default {
     return {
       prevHeight: 0,
       activeRoute: this.$route.meta.name,
-      routeOrder: ['profile', 'general', 'dashboard', 'cameras', 'recordings', 'notifications', 'camview'],
+      routeOrder: ['profile', 'general', 'dashboard', 'cameras', 'recordings', 'notifications', 'camview', 'config'],
       transitionName: DEFAULT_TRANSITION,
     };
   },
