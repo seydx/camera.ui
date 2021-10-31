@@ -11,7 +11,7 @@ const { cameras } = CameraController;
 
 exports.show = async (req, res) => {
   try {
-    const result = await SettingsModel.show();
+    const result = await SettingsModel.show(req.query.all);
 
     res.status(200).send(result);
   } catch (error) {
@@ -29,7 +29,7 @@ exports.getTarget = async (req, res) => {
       return res.status(200).send({ status: status ? 'success' : 'error' });
     }
 
-    const result = await SettingsModel.getByTarget(req.params.target);
+    const result = await SettingsModel.getByTarget(req.query.all, req.params.target);
 
     if (!result) {
       res.status(404).send({
@@ -56,7 +56,7 @@ exports.patchTarget = async (req, res) => {
       });
     }
 
-    const result = await SettingsModel.getByTarget(req.params.target);
+    const result = await SettingsModel.getByTarget(req.query.all, req.params.target);
 
     if (!result) {
       return res.status(404).send({
@@ -70,7 +70,7 @@ exports.patchTarget = async (req, res) => {
       return res.status(200).send({ status: status ? 'success' : 'error' });
     }
 
-    await SettingsModel.patchByTarget(req.params.target, req.body);
+    await SettingsModel.patchByTarget(req.query.all, req.params.target, req.body);
 
     if (req.params.target === 'cameras') {
       if (req.query.stopStream === 'true') {

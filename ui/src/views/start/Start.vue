@@ -45,7 +45,7 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
 
 <script>
 import { changeUser } from '@/api/users.api';
-import { changeTargetConfig } from '@/api/config.api';
+import { changeSetting } from '@/api/settings.api';
 import { getConfig } from '@/api/config.api';
 
 import SocketMixin from '@/mixins/socket.mixin';
@@ -124,9 +124,13 @@ export default {
           password: this.form.auth.password,
         });
 
-        await changeTargetConfig('firstStart', {
-          firstStart: false,
-        });
+        await changeSetting(
+          'firstStart',
+          {
+            firstStart: false,
+          },
+          '?all=true'
+        );
 
         this.$toast.success(this.$t('successfully_changed'));
 

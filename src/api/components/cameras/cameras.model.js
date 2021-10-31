@@ -62,13 +62,13 @@ exports.patchCamera = async (name, cameraData) => {
   return await Database.interfaceDB.get('cameras').find({ name: name }).assign(cameraData).write();
 };
 
-exports.pingCamera = async (cameraName, videoConfig, timeout) => {
+exports.pingCamera = async (camera, timeout) => {
   timeout = (Number.parseInt(timeout) || 0) < 1 ? 1 : Number.parseInt(timeout);
-  return await Ping.status(cameraName, videoConfig, timeout);
+  return await Ping.status(camera, timeout);
 };
 
-exports.requestSnapshot = async (cameraName, videoConfig) => {
-  return await getAndStoreSnapshot(cameraName, videoConfig);
+exports.requestSnapshot = async (camera) => {
+  return await getAndStoreSnapshot(camera);
 };
 
 exports.removeByName = async (name) => {

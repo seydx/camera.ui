@@ -88,7 +88,7 @@ class PrebufferService {
       fmp4OutputServer.close();
 
       try {
-        const parser = cameraUtils.parseFragmentedMP4(this.cameraName, socket);
+        const parser = cameraUtils.parseFragmentedMP4(socket);
 
         for await (const atom of parser) {
           const now = Date.now();
@@ -123,7 +123,7 @@ class PrebufferService {
       }
     });
 
-    const fmp4Port = await cameraUtils.listenServer(this.cameraName, fmp4OutputServer);
+    const fmp4Port = await cameraUtils.listenServer(fmp4OutputServer);
     const destination = `tcp://127.0.0.1:${fmp4Port}`;
 
     const ffmpegOutput = [
@@ -228,7 +228,7 @@ class PrebufferService {
 
       setTimeout(() => server.close(), 30000);
 
-      const port = await cameraUtils.listenServer(this.cameraName, server);
+      const port = await cameraUtils.listenServer(server);
       const ffmpegInput = ['-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
 
       return ffmpegInput;

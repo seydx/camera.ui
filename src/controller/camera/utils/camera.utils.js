@@ -3,7 +3,7 @@
 const { once } = require('events');
 
 module.exports = {
-  listenServer: async function (cameraName, server) {
+  listenServer: async function (server) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const port = 10000 + Math.round(Math.random() * 30000);
@@ -55,7 +55,7 @@ module.exports = {
     });
   },
 
-  parseFragmentedMP4: async function* (cameraName, readable) {
+  parseFragmentedMP4: async function* (readable) {
     while (true) {
       const header = await this.readLength(readable, 8);
       const length = header.readInt32BE(0) - 8;

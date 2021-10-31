@@ -27,26 +27,26 @@ class Ping {
     };
   }
 
-  static async status(cameraName, videoConfig, timeout = 1) {
-    const cameraSource = videoConfig.source;
+  static async status(camera, timeout = 1) {
+    const cameraSource = camera.videoConfig.source;
 
     if (!cameraSource.split('-i ')[1]) {
       return false;
     }
 
-    log.debug(`Incoming ping request for: ${cameraSource.split('-i ')[1]} - Timeout: ${timeout}s`, cameraName);
+    log.debug(`Incoming ping request for: ${cameraSource.split('-i ')[1]} - Timeout: ${timeout}s`, camera.name);
 
     //for local cameras eg "-i /dev/video0"
     if (cameraSource.split('-i ')[1].startsWith('/')) {
       return true;
     }
 
-    const addresse = Ping.getHost(videoConfig);
+    const addresse = Ping.getHost(camera.videoConfig);
     const protocol = addresse.protocol;
     const host = addresse.host;
     const port = addresse.port;
 
-    log.debug(`Pinging ${protocol}${host}${port ? ':' + port : ''}`, cameraName);
+    log.debug(`Pinging ${protocol}${host}${port ? ':' + port : ''}`, camera.name);
 
     const response = await ping.promise.probe(host, {
       timeout: timeout || 1,
@@ -57,7 +57,7 @@ class Ping {
 
     log.debug(
       `Pinging ${protocol}${host}${port ? ':' + port : ''} - ${available ? 'successful' : 'failed'}`,
-      cameraName
+      camera.name
     );
 
     return available;

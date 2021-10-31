@@ -43,7 +43,7 @@ const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
   fs.writeFileSync(filePath, newJpeg);
 };
 
-const storeFrameFromVideoBuffer = function (cameraName, outputPath, videoBuffer, videoConfig) {
+const storeFrameFromVideoBuffer = function (camera, buffer, outputPath) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
@@ -59,53 +59,47 @@ const storeFrameFromVideoBuffer = function (cameraName, outputPath, videoBuffer,
       '-i',
       '-',
       '-s',
-      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
       '-f',
       'image2',
       '-update',
       '1',
     ];
 
-    if (videoConfig.videoFilter) {
-      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    if (camera.videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
     }
 
     ffmpegArguments.push(outputPath);
 
-    log.debug(`Snapshot command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+    log.debug(`Snapshot command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
+    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
 
     ffmpeg.on('error', (error) => reject(error));
 
     ffmpeg.on('close', () => {
-      log.debug(`Snapshot stored to: ${outputPath}`, cameraName);
+      log.debug(`Snapshot stored to: ${outputPath}`, camera.name);
       resolve();
     });
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg snapshot process exited with error! (${signal})`, cameraName);
+        log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg snapshot process exit (expected)', cameraName);
+        log.debug('FFmpeg snapshot process exit (expected)', camera.name);
       }
     });
 
-    ffmpeg.stdin.write(videoBuffer);
+    ffmpeg.stdin.write(buffer);
     ffmpeg.stdin.destroy();
   });
 };
 
-const startFFMPegFragmetedMP4Session = async function (
-  cameraName,
-  ffmpegInput,
-  audioOutputArguments,
-  videoOutputArguments,
-  debug
-) {
-  log.debug('Start recording...', cameraName);
+const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audioOutArguments, videoOutArguments) {
+  log.debug('Start recording...', camera.name);
 
   const videoProcessor = ConfigService.ui.options.videoProcessor;
 
@@ -137,7 +131,7 @@ const startFFMPegFragmetedMP4Session = async function (
       });
     });
 
-    const serverPort = await cameraUtils.listenServer(cameraName, server);
+    const serverPort = await cameraUtils.listenServer(server);
     const ffmpegArguments = [];
 
     ffmpegArguments.push(
@@ -147,8 +141,8 @@ const startFFMPegFragmetedMP4Session = async function (
       ...ffmpegInput,
       '-f',
       'mp4',
-      ...videoOutputArguments,
-      //...audioOutputArguments,
+      ...videoOutArguments,
+      //...audioOutArguments,
       '-fflags',
       '+genpts',
       '-reset_timestamps',
@@ -158,59 +152,53 @@ const startFFMPegFragmetedMP4Session = async function (
       'tcp://127.0.0.1:' + serverPort
     );
 
-    log.debug(`Recording command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+    log.debug(`Recording command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
 
     const cp = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg recording process exited with error! (${signal})`, cameraName);
+        log.error(`FFmpeg recording process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg recording process exit (expected)', cameraName);
+        log.debug('FFmpeg recording process exit (expected)', camera.name);
       }
     });
 
-    if (debug) {
-      cp.stdout.on('data', (data) => log.debug(data.toString(), cameraName));
-      //cp.stderr.on('data', (data) => log.debug(data.toString(), cameraName));
+    if (camera.videoConfig.debug) {
+      cp.stdout.on('data', (data) => log.debug(data.toString(), camera.name));
+      //cp.stderr.on('data', (data) => log.debug(data.toString(), camera.name));
     }
 
-    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
+    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
   });
 };
 
-exports.storeBuffer = async function (
-  cameraName,
-  videoConfig,
-  imageBuffer,
-  name,
-  isPlaceholder,
-  recPath,
-  label,
-  customRecording
-) {
-  let outputPath = recPath + '/' + name + (isPlaceholder ? '@2' : '') + '.jpeg';
+exports.storeBuffer = async function (camera, buffer, recordingPath, fileName, label, isPlaceholder, externRecording) {
+  let outputPath = `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg`;
 
-  await (customRecording
-    ? storeFrameFromVideoBuffer(cameraName, outputPath, imageBuffer, videoConfig)
-    : fs.outputFile(outputPath, imageBuffer, { encoding: 'base64' }));
+  // eslint-disable-next-line unicorn/prefer-ternary
+  if (externRecording) {
+    await storeFrameFromVideoBuffer(camera, buffer, outputPath);
+  } else {
+    await fs.outputFile(outputPath, buffer, { encoding: 'base64' });
+  }
 
-  replaceJpegWithExifJPEG(cameraName, outputPath, label);
+  replaceJpegWithExifJPEG(camera.name, outputPath, label);
 };
 
-exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additional, recPath, label, store) {
+exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, isPlaceholder, storeSnapshot) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegArguments = videoConfig.source.replace('-i', '-y -i').split(' ');
-    const destination = store ? recPath + '/' + name + (additional ? '@2' : '') + '.jpeg' : '-';
+    const ffmpegArguments = camera.videoConfig.source.replace('-i', '-y -i').split(' ');
+    const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
     ffmpegArguments.push(
       '-loglevel',
       'error',
       '-hide_banner',
       '-s',
-      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
       '-frames:v',
       '2',
       '-r',
@@ -221,25 +209,25 @@ exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additiona
       'image2'
     );
 
-    if (videoConfig.videoFilter) {
-      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    if (camera.videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
     }
 
     ffmpegArguments.push(destination);
 
-    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
+    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
 
     let imageBuffer = Buffer.alloc(0);
 
     ffmpeg.stdout.on('data', (data) => {
       imageBuffer = Buffer.concat([imageBuffer, data]);
 
-      if (store) {
-        log.debug(data.toString(), cameraName);
+      if (storeSnapshot) {
+        log.debug(data.toString(), camera.name);
       }
     });
 
@@ -250,8 +238,8 @@ exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additiona
         return reject(new Error('Image Buffer is empty!'));
       }
 
-      if (store) {
-        replaceJpegWithExifJPEG(cameraName, destination, label);
+      if (storeSnapshot) {
+        replaceJpegWithExifJPEG(camera.name, destination, label);
       }
 
       resolve(imageBuffer);
@@ -259,28 +247,28 @@ exports.getAndStoreSnapshot = function (cameraName, videoConfig, name, additiona
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg snapshot process exited with error! (${signal})`, cameraName);
+        log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg snapshot process exit (expected)', cameraName);
+        log.debug('FFmpeg snapshot process exit (expected)', camera.name);
       }
     });
   });
 };
 
 // eslint-disable-next-line no-unused-vars
-exports.storeVideo = function (cameraName, videoConfig, name, recPath, recTimer, label) {
+exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    let ffmpegArguments = videoConfig.source.replace('-i', '-nostdin -y -i').split(' ');
-    let videoName = recPath + '/' + name + '.mp4';
+    let ffmpegArguments = camera.videoConfig.source.replace('-i', '-nostdin -y -i').split(' ');
+    let videoName = `${recordingPath}/${fileName}.mp4`;
 
     ffmpegArguments.push(
       '-loglevel',
       'error',
       '-hide_banner',
       '-t',
-      recTimer.toString(),
+      recordingTimer.toString(),
       '-strict',
       'experimental',
       '-threads',
@@ -288,47 +276,47 @@ exports.storeVideo = function (cameraName, videoConfig, name, recPath, recTimer,
       '-c:v',
       'copy',
       '-s',
-      `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
       '-movflags',
       '+faststart',
       '-crf',
       '23'
     );
 
-    if (videoConfig.videoFilter) {
-      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    if (camera.videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
     }
 
     ffmpegArguments.push(videoName);
 
-    log.debug(`Video requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, cameraName);
+    log.debug(`Video requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), cameraName));
+    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
 
     ffmpeg.on('error', (error) => reject(error));
 
     ffmpeg.on('close', () => {
-      log.debug(`Video stored to: ${videoName}`, cameraName);
+      log.debug(`Video stored to: ${videoName}`, camera.name);
       resolve();
     });
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg video process exited with error! (${signal})`, cameraName);
+        log.error(`FFmpeg video process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg video process exit (expected)', cameraName);
+        log.debug('FFmpeg video process exit (expected)', camera.name);
       }
     });
   });
 };
 
-exports.storeVideoBuffer = function (cameraName, name, recPath, buffer) {
+exports.storeVideoBuffer = function (camera, buffer, recordingPath, fileName) {
   return new Promise((resolve, reject) => {
-    let videoName = recPath + '/' + name + '.mp4';
+    let videoName = `${recordingPath}/${fileName}.mp4`;
 
-    log.debug(`Storing video to: ${videoName}`, cameraName);
+    log.debug(`Storing video to: ${videoName}`, camera.name);
 
     const writeStream = fs.createWriteStream(videoName);
 
@@ -340,41 +328,35 @@ exports.storeVideoBuffer = function (cameraName, name, recPath, buffer) {
   });
 };
 
-exports.handleFragmentsRequests = async function* (cameraName, videoConfig, prebuffering) {
-  log.debug('Video fragments requested from interface', cameraName);
+exports.handleFragmentsRequests = async function* (camera) {
+  log.debug('Video fragments requested from interface', camera.name);
 
   const prebufferLength = 4000;
   const audioArguments = ['-codec:a', 'copy'];
   const videoArguments = ['-codec:v', 'copy'];
 
-  let ffmpegInput = [...videoConfig.source.split(' ')];
+  let ffmpegInput = [...camera.videoConfig.source.split(' ')];
 
-  if (prebuffering) {
-    const controller = CameraController.cameras.get(cameraName);
+  if (camera.prebuffering) {
+    const controller = CameraController.cameras.get(camera.name);
 
     if (controller && controller.prebuffer) {
       try {
-        log.debug('Setting prebuffer stream as input', cameraName);
+        log.debug('Setting prebuffer stream as input', camera.name);
 
         const input = await controller.prebuffer.getVideo(prebufferLength);
 
         ffmpegInput = [];
         ffmpegInput.push(...input);
       } catch (error) {
-        log.warn(`Can not access prebuffered video, skipping: ${error}`, cameraName);
+        log.warn(`Can not access prebuffered video, skipping: ${error}`, camera.name);
       }
     }
   }
 
-  const session = await startFFMPegFragmetedMP4Session(
-    cameraName,
-    ffmpegInput,
-    audioArguments,
-    videoArguments,
-    videoConfig.debug
-  );
+  const session = await startFFMPegFragmetedMP4Session(camera, ffmpegInput, audioArguments, videoArguments);
 
-  log.debug('Recording started', cameraName);
+  log.debug('Recording started', camera.name);
 
   const { socket, cp, generator } = session;
   let pending = [];
@@ -392,12 +374,12 @@ exports.handleFragmentsRequests = async function* (cameraName, videoConfig, preb
         yield buffer;
       }
 
-      if (videoConfig.debug) {
-        log.debug(`mp4 box type ${type} and lenght: ${length}`, cameraName);
+      if (camera.videoConfig.debug) {
+        log.debug(`mp4 box type ${type} and lenght: ${length}`, camera.name);
       }
     }
   } catch (error) {
-    log.debug(`Recording completed. (${error})`, cameraName);
+    log.debug(`Recording completed. (${error})`, camera.name);
   } finally {
     socket.destroy();
     cp.kill();

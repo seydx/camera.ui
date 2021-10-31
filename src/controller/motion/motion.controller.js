@@ -163,7 +163,7 @@ class MotionController {
   #startMqttClient() {
     log.debug('Setting up MQTT connection for motion detection...');
 
-    EventController.mqttClient = mqtt.connect(
+    MotionController.mqttClient = mqtt.connect(
       (MotionController.#mqtt.tls ? 'mqtts://' : 'mqtt://') +
         MotionController.#mqtt.host +
         ':' +
@@ -174,16 +174,16 @@ class MotionController {
       }
     );
 
-    EventController.mqttClient.on('connect', () => {
+    MotionController.mqttClient.on('connect', () => {
       log.debug('MQTT connected');
 
       for (const [topic] of this.#topics) {
         log.debug(`Subscribing to MQTT topic: ${topic}`);
-        EventController.mqttClient.subscribe(topic + '/#');
+        MotionController.mqttClient.subscribe(topic + '/#');
       }
     });
 
-    EventController.mqttClient.on('message', async (topic, message) => {
+    MotionController.mqttClient.on('message', async (topic, message) => {
       let result = {
         error: true,
         message: `Malformed MQTT message ${message.toString()} (${topic})`,
@@ -229,7 +229,7 @@ class MotionController {
       log.debug(`Received a new MQTT message ${JSON.stringify(result)} (${cameraName})`);
     });
 
-    EventController.mqttClient.on('end', () => {
+    MotionController.mqttClient.on('end', () => {
       log.debug('MQTT client disconnected');
     });
   }
@@ -254,7 +254,7 @@ class MotionController {
       ],
     });
 
-    EventController.smtpServer = new SMTPServer({
+    MotionController.smtpServer = new SMTPServer({
       authOptional: true,
       disabledCommands: ['STARTTLS'],
       logger: bunyan,
@@ -278,11 +278,29 @@ class MotionController {
       },
     });
 
-    EventController.smtpServer.listen(MotionController.#smtp.port);
+    MotionController.smtpServer.listen(MotionController.#smtp.port);
   }
 
   #getCamera(cameraName) {
     return this.#cameras.find((camera) => camera && camera.name === cameraName);
+  }
+
+  closeHttpServer() {
+    if (MotionController.httpServer) {
+      MotionController.httpServer.close();
+    }
+  }
+
+  closeMqttClient() {
+    if (MotionController.mqttClient) {
+      MotionController.mqttClient.end();
+    }
+  }
+
+  closeSmtpServer() {
+    if (MotionController.smtpServer) {
+      MotionController.smtpServer.close();
+    }
   }
 }
 

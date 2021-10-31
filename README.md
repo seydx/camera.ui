@@ -8,12 +8,11 @@
 [![npm](https://img.shields.io/npm/v/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/camera.ui)
 [![npm](https://img.shields.io/npm/dt/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/camera.ui)
 [![GitHub last commit](https://img.shields.io/github/last-commit/SeydX/camera.ui.svg?style=flat-square)](https://github.com/SeydX/camera.ui)
-[![Discord](https://img.shields.io/discord/432663330281226270?color=728ED5&logo=discord&label=discord)](https://discord.gg/kqNCe2D)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=flat-square&maxAge=2592000)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NP4T3KASWQLD8)
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/camviews_full_mobile_loss.gif" align="right" alt="camera.ui">
 
-**camera.ui** is a user interface to control your RTSP capable cameras. It supports almost everything you need for a camera user interface.
+**camera.ui** is a user interface to control your RTSP capable cameras with:
 
 - **Live streams** on Web
 - **Web App** with push notifications and more (requires https)

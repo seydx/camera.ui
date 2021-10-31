@@ -151,14 +151,14 @@ class EventController {
             EventController.#movementHandler[cameraName] = true;
 
             /*
-             * Order for new movement event
+             * Movement Event flow
              *
              * 1) If webhook enabled, send webhook notification
              * 2) If alexa enabled, send notification to alexa
              * 3) If telegram enabled and type = "Text" for the camera, send telegram notification
              * 4) Handle recording (Snapshot/Video)
              * 5) Send webpush (ui) notification
-             * 6) If telegram enabled and type = "Snapshot" or "Video" for the camera, send telegram notification
+             * 6) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
              */
 
             log.debug(`New ${trigger} alert`, cameraName);
@@ -169,17 +169,13 @@ class EventController {
               controller && !buffer && recordingSettings.active ? controller.session.requestSession() : true;
 
             if (buffer) {
-              // "recordOnMovement" not active because we received buffer from extern process
+              // "recordOnMovement" NOT active because we received buffer from extern process
               motionInfo.label = 'Custom';
               motionInfo.type = type || 'Video';
             }
 
             if (allowStream) {
-              motionInfo.imgBuffer = await EventController.#handleSnapshot(
-                cameraName,
-                Camera.videoConfig,
-                recordingSettings.active
-              );
+              motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
 
               if (
                 awsSettings.active &&
@@ -213,7 +209,7 @@ class EventController {
                 );
 
                 // 2)
-                await EventController.#sendAlexa(cameraName, notification, alexaSettings, notificationsSettings.active);
+                await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
 
                 // 3)
                 if (telegramSettings.type === 'Text') {
@@ -354,7 +350,7 @@ class EventController {
           log.debug(`Found labels are: ${response}`, cameraName); //for debugging
         }
 
-        await EventController.#handleAWS({
+        await SettingsModel.patchByTarget('aws', {
           contingent_left: aws.contingent_left - 1,
           last_rekognition: moment().format('YYYY-MM-DD HH:mm:ss'),
         });
@@ -367,10 +363,6 @@ class EventController {
     }
 
     return detected.length > 0 ? detected[0] : false;
-  }
-
-  static async #handleAWS(awsInfo) {
-    return await SettingsModel.patchByTarget('aws', awsInfo);
   }
 
   static async #handleNotification(motionInfo, notificationActive) {
@@ -391,15 +383,15 @@ class EventController {
     return await RecordingsModel.createRecording(motionInfo, buffer);
   }
 
-  static async #handleSnapshot(cameraName, videoConfig, recordingActive) {
+  static async #handleSnapshot(camera, recordingActive) {
     if (!recordingActive) {
       return;
     }
 
-    return await CamerasModel.requestSnapshot(cameraName, videoConfig);
+    return await CamerasModel.requestSnapshot(camera);
   }
 
-  static async #sendAlexa(cameraName, notification, alexaSettings, notificationActive) {
+  static async #sendAlexa(cameraName, alexaSettings, notificationActive) {
     try {
       if (
         alexaSettings.active &&
@@ -536,8 +528,6 @@ class EventController {
           }
           // No default
         }
-
-        //await telegram.stop();
       } else {
         log.debug('Skip Telegram notification', cameraName);
 

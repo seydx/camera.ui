@@ -97,13 +97,11 @@ exports.createRecording = async (data, buffer) => {
   camera.settings = cameraSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
-  const cameraName = camera.name;
-  const room = camera.settings.room;
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
   const fileName =
-    cameraName.replace(/\s+/g, '_') +
+    camera.name.replace(/\s+/g, '_') +
     '-' +
     id +
     '-' +
@@ -116,37 +114,42 @@ exports.createRecording = async (data, buffer) => {
 
   const recording = {
     id: id,
-    camera: cameraName,
+    camera: camera.name,
     fileName: `${fileName}.${extension}`,
     name: fileName,
     extension: extension,
     recordStoring: true,
     recordType: data.type,
     trigger: data.trigger,
-    room: room,
+    room: camera.settings.room,
     time: time,
     timestamp: timestamp,
     label: label,
   };
 
   if (buffer) {
-    await storeBuffer(cameraName, camera.videoConfig, buffer, fileName, true, data.path, label, true);
-    await storeVideoBuffer(cameraName, fileName, data.path, buffer);
+    const isPlaceholder = true;
+    const externRecording = true;
+
+    await storeBuffer(camera, buffer, data.path, fileName, label, isPlaceholder, externRecording);
+    await storeVideoBuffer(camera, buffer, data.path, fileName);
   } else {
-    await (data.imgBuffer
-      ? storeBuffer(cameraName, camera.videoConfig, data.imgBuffer, fileName, data.type === 'Video', data.path, label)
-      : getAndStoreSnapshot(cameraName, camera.videoConfig, fileName, data.type === 'Video', data.path, label, true));
+    const isPlaceholder = data.type === 'Video';
+    const externRecording = false;
+    const storeSnapshot = true;
+
+    // eslint-disable-next-line unicorn/prefer-ternary
+    if (data.imgBuffer) {
+      await storeBuffer(camera, data.imgBuffer, data.path, fileName, label, isPlaceholder, externRecording);
+    } else {
+      await getAndStoreSnapshot(camera, data.path, fileName, label, isPlaceholder, storeSnapshot);
+    }
 
     if (data.type === 'Video') {
       if (camera.prebuffering) {
         let filebuffer = Buffer.alloc(0);
 
-        let generator = handleFragmentsRequests(
-          cameraName,
-          camera.videoConfig,
-          camera.prebuffering,
-          recordingsSettings.timer
-        );
+        let generator = handleFragmentsRequests(camera);
 
         setTimeout(async () => {
           if (generator) {
@@ -160,9 +163,9 @@ exports.createRecording = async (data, buffer) => {
 
         generator = null;
 
-        await storeVideoBuffer(cameraName, fileName, data.path, filebuffer);
+        await storeVideoBuffer(camera, filebuffer, data.path, fileName);
       } else {
-        await storeVideo(cameraName, camera.videoConfig, fileName, data.path, data.timer, label);
+        await storeVideo(camera, data.path, fileName, data.timer);
       }
     }
   }

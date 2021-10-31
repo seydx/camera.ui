@@ -67,4 +67,4 @@ yarn.lock
 .yarn-integrity
 
 # dotenv environment variables file
-.envtest/
+.envtest/stream

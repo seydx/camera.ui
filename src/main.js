@@ -76,29 +76,21 @@ class Interface extends EventEmitter {
   }
 
   close() {
-    this.closeMqttServer();
-    this.closeHttpServer();
-    this.closeSmtpServer();
-    this.closeController();
+    this.closeMotionController();
+    this.closeCameraController();
 
     if (this.#server) {
       this.#server.close();
     }
   }
 
-  closeMqttServer() {
-    this.motionController.mqttClient?.end();
+  closeMotionController() {
+    this.motionController.closeMqttClient();
+    this.motionController.closeSmtpServer();
+    this.motionController.closeHttpServer();
   }
 
-  closeHttpServer() {
-    this.motionController.httpServer?.close();
-  }
-
-  closeSmtpServer() {
-    this.motionController.smtpServer?.close();
-  }
-
-  closeController() {
+  closeCameraController() {
     if (this.cameraController) {
       for (const controller of this.cameraController.values()) {
         controller.prebuffer?.stop(true);
