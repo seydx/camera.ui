@@ -293,7 +293,10 @@ export default {
     return {
       alexaHost: window.location.hostname,
       alexaPing: false,
-      alexaOptions: ['Enabled', 'Disabled'],
+      alexaOptions: [
+        { value: 'Enabled', text: this.$t('enabled') },
+        { value: 'Disabled', text: this.$t('disabled') },
+      ],
       cameras: [],
       camerasTimer: null,
       form: {
@@ -310,7 +313,12 @@ export default {
       loadingAlexa: false,
       removeAfterTimer: [1, 3, 6, 12, 24],
       settingsLayout: {},
-      telegramTypes: ['Text', 'Snapshot', 'Video', 'Disabled'],
+      telegramTypes: [
+        { value: 'Text', text: this.$t('text') },
+        { value: 'Snapshot', text: this.$t('snapshot') },
+        { value: 'Video', text: this.$t('video') },
+        { value: 'Disabled', text: this.$t('disabled') },
+      ],
     };
   },
   async mounted() {

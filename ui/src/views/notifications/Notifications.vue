@@ -328,7 +328,7 @@ export default {
   background-color: var(--secondary-bg-color);
   background-clip: border-box;
   border: 0;
-  box-shadow: 0 0 1rem 0 rgb(136 152 170 / 10%);
+  box-shadow: 0px 10px 15px -5px rgb(56 56 56 / 15%);
   margin-bottom: 20px;
   padding: 1rem;
   flex-direction: unset;
@@ -346,7 +346,7 @@ a.card:hover {
 }
 
 .card-img-right {
-  border-radius: 30px;
+  border-radius: 40px;
   border: 3px solid var(--trans-border-color);
   width: 70px;
   height: 70px;

@@ -124,7 +124,7 @@ export default {
   background-color: var(--secondary-bg-color);
   background-clip: border-box;
   border: 0;
-  box-shadow: 0 0 2rem 0 rgb(136 152 170 / 18%);
+  box-shadow: 0px 10px 15px -5px rgb(56 56 56 / 30%);
   margin-bottom: 50px;
   border-bottom: 2px solid var(--third-bg-color);
   border-bottom-left-radius: 2rem;

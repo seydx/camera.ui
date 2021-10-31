@@ -93,7 +93,10 @@ export default {
         { value: 50, text: '50' },
         { value: 60, text: '60' },
       ],
-      recordingTypes: ['Snapshot', 'Video'],
+      recordingTypes: [
+        { value: 'Snapshot', text: this.$t('snapshot') },
+        { value: 'Video', text: this.$t('video') },
+      ],
       removeAfterTimer: [1, 3, 7, 14, 30],
       settingsLayout: {},
     };

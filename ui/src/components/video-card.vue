@@ -530,7 +530,7 @@ export default {
   background-color: var(--secondary-bg-color);
   background-clip: border-box;
   border: 1px solid var(--secondary-bg-color);
-  box-shadow: 0 0 2rem 0 rgb(136 152 170 / 30%);
+  box-shadow: 0px 10px 15px -5px rgb(56 56 56 / 20%);
   margin-bottom: 30px;
   -webkit-box-shadow: rgba(0, 0, 0, 0.68) 0px 17px 28px -21px;
   box-shadow: rgba(0, 0, 0, 0.68) 0px 17px 28px -21px;
