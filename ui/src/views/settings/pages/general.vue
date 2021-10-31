@@ -24,22 +24,25 @@
                     :height="30",
                     :sync="true",
                   )
-              hr.hr-underline
-              .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
-                  multiselect(
-                    v-model="general.exclude",
-                    :options="cameras.map(camera => { return camera.name })",
-                    :searchable="false",
-                    :close-on-select="false",
-                    :show-labels="false"
-                    :placeholder="$t('select')",
-                    :multiple="true",
-                    :limit="2"
-                  )
-                    template(slot="noOptions")
-                      strong {{ $t("empty") }}
+              b-collapse(
+                v-model="general.atHome"
+              )
+                hr.hr-underline
+                .row
+                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
+                  .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
+                    multiselect(
+                      v-model="general.exclude",
+                      :options="cameras.map(camera => { return camera.name })",
+                      :searchable="false",
+                      :close-on-select="false",
+                      :show-labels="false"
+                      :placeholder="$t('select')",
+                      :multiple="true",
+                      :limit="2"
+                    )
+                      template(slot="noOptions")
+                        strong {{ $t("empty") }}
       .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000", v-if="!uiConfig || (uiConfig && uiConfig.theme === 'auto')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.themes.expand ? "180" : "-90"', @click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand") {{ $t("themes") }}

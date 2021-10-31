@@ -145,25 +145,28 @@
                         :height="30",
                         :sync="true"
                       )
-                    .col-12
-                      hr.hr-underline
-                    .col-12
-                      label.fs-6 {{ `${$t("confidence")} %` }}
-                      b-form-input(
-                        type='number',
-                        :min="0",
-                        :max="100",
-                        :placeholder="`${$t('confidence')} %`",
-                        v-model="camera.rekognition.confidence"
-                      )
-                      hr.hr-underline
-                      label.fs-6 {{ $t("labels") }}
-                      b-form-input(
-                        type='text',
-                        :placeholder="$t('labels')",
-                        v-model="camera.rekognition.labels"
-                      )
-                      hr.hr-underline
+                    b-collapse.w-100(
+                      v-model="camera.rekognition.active"
+                    )
+                      .col-12
+                        hr.hr-underline
+                      .col-12
+                        label.fs-6 {{ `${$t("confidence")} %` }}
+                        b-form-input(
+                          type='number',
+                          :min="0",
+                          :max="100",
+                          :placeholder="`${$t('confidence')} %`",
+                          v-model="camera.rekognition.confidence"
+                        )
+                        hr.hr-underline
+                        label.fs-6 {{ $t("labels") }}
+                        b-form-input(
+                          type='text',
+                          :placeholder="$t('labels')",
+                          v-model="camera.rekognition.labels"
+                        )
+                        hr.hr-underline
       .col-12.d-flex.justify-content-center(v-else)
         span.text-muted-2 {{ $t("no_cameras") }}
 </template>

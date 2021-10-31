@@ -314,7 +314,7 @@ class ConfigService {
 
           if (!stillArguments.includes('-i')) {
             log.warn(`${camera.name}: The stillImageSource for this camera is missing "-i" !`);
-            camera.videoConfig.stillImageSource = false;
+            camera.videoConfig.stillImageSource = camera.videoConfig.source || false;
           }
         } else {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
@@ -323,7 +323,8 @@ class ConfigService {
         //validate some required parameter
         camera.videoConfig.maxWidth = camera.videoConfig.maxWidth || 1280;
         camera.videoConfig.maxHeight = camera.videoConfig.maxHeight || 720;
-        camera.videoConfig.maxFPS = camera.videoConfig.maxFPS < 20 ? 20 : camera.videoConfig.maxFPS;
+        camera.videoConfig.maxFPS = camera.videoConfig.maxFPS >= 20 ? camera.videoConfig.maxFPS : 20;
+        camera.videoConfig.maxStreams = camera.videoConfig.maxStreams >= 1 ? camera.videoConfig.maxStreams : 3;
         camera.videoConfig.maxBitrate = camera.videoConfig.maxBitrate || '299k';
         camera.videoConfig.vcodec = camera.videoConfig.vcodec || 'libx264';
         camera.videoConfig.mapvideo = camera.videoConfig.mapvideo || false;

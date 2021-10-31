@@ -16,9 +16,8 @@
           div.mt-2.mb-4
             .settings-box.container
               .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("version") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
-                  a.d-block.w-100.text-center(:href="npmLink" target="_blank" :class="updateAvailable ? 'text-color-danger' : 'text-color-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
+                  a.d-block.w-100.text-center(:href="npmLink" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
                   div.w-100.text-center(style="font-size: 14px") v{{ latestVersion }}
 </template>
 
@@ -45,10 +44,9 @@ export default {
       settingsLayout: {},
       currentVersion: null,
       latestVersion: null,
-      //TODO: replace with "camera.ui"
-      npmLink: 'https://www.npmjs.com/package/homebridge-camera-ui',
-      npmPackageLink: 'https://api.npms.io/v2/search?q=homebridge-camera-ui',
-      npmPackageName: 'homebridge-camera-ui',
+      npmLink: 'https://www.npmjs.com/package/camera.ui',
+      npmPackageLink: 'https://api.npms.io/v2/search?q=camera.ui',
+      npmPackageName: 'camera.ui',
       updateAvailable: false,
     };
   },

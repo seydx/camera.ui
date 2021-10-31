@@ -146,6 +146,7 @@
     "speaker_start_time": "Speaker start time",
     "speaker_end_time": "Speaker end time",
     "standard": "Standard",
+    "start": "Start",
     "status": "State",
     "successfully_changed": "Successfully changed",
     "successfully_created": "Successfully created",

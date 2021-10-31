@@ -29,6 +29,7 @@ class CameraUI {
     process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
 
     if (Object.keys(userConfig).length > 0) {
+      fs.ensureFileSync(process.env.CUI_STORAGE_CONFIG_FILE);
       fs.writeJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, userConfig, { spaces: 2 });
     }
 

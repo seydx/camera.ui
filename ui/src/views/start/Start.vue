@@ -40,7 +40,7 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
                       v-model="form.auth.reenterpw"
                       placeholder="********"
                     )
-                b-button#nextButton.d-block.mt-4.mx-auto.nextButton(type="submit" variant="primary" :pressed="nextButton" :active="nextButton") {{ $t("finish") }}
+                b-button#nextButton.d-block.mt-4.mx-auto.nextButton(type="submit" variant="primary" :pressed="nextButton" :active="nextButton") {{ $t("start") }}
 </template>
 
 <script>
