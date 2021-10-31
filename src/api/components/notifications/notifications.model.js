@@ -141,7 +141,11 @@ exports.createNotification = async (data) => {
     title: cameraName,
     message: `${eventTxt} Event - ${time}`,
     subtxt: room,
-    mediaSource: storing ? (data.type === 'Video' ? `/files/${fileName}@2.jpeg` : `${fileName}.${extension}`) : false,
+    mediaSource: storing
+      ? data.type === 'Video'
+        ? `/files/${fileName}@2.jpeg`
+        : `/files/${fileName}.${extension}`
+      : false,
     count: true,
     isNotification: true,
   });

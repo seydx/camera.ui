@@ -83,7 +83,7 @@ class EventController {
           }
         }
 
-        const SettingsDB = await SettingsModel.show();
+        const SettingsDB = await SettingsModel.show(false);
 
         const atHome = SettingsDB.general.atHome;
         const exclude = SettingsDB.general.exclude;
@@ -350,7 +350,7 @@ class EventController {
           log.debug(`Found labels are: ${response}`, cameraName); //for debugging
         }
 
-        await SettingsModel.patchByTarget('aws', {
+        await SettingsModel.patchByTarget(false, 'aws', {
           contingent_left: aws.contingent_left - 1,
           last_rekognition: moment().format('YYYY-MM-DD HH:mm:ss'),
         });
@@ -581,7 +581,7 @@ class EventController {
         webpush.sendNotification(webpushSettings.subscription, JSON.stringify(notification)).catch(async (error) => {
           if (error.statusCode === 410) {
             log.debug('Webpush Notification Grant changed! Removing subscription..', cameraName);
-            await SettingsModel.patchByTarget('webpush', { subscription: false });
+            await SettingsModel.patchByTarget(false, 'webpush', { subscription: false });
           } else {
             log.error('An error occured during sending Wep-Push Notification!', cameraName);
             log.error(error.body, cameraName);

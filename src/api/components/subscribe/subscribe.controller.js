@@ -5,7 +5,7 @@ const SettingsModel = require('../settings/settings.model');
 
 exports.getKeys = async (req, res) => {
   try {
-    const webpush = await SettingsModel.getByTarget('webpush');
+    const webpush = await SettingsModel.getByTarget(false, 'webpush');
     res.status(200).send(webpush);
   } catch (error) {
     res.status(500).send({
@@ -25,7 +25,7 @@ exports.subscribe = async (req, res) => {
         },
       });
     } else {
-      await SettingsModel.patchByTarget('webpush', {
+      await SettingsModel.patchByTarget(false, 'webpush', {
         subscription: req.body,
       });
 

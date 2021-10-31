@@ -9,7 +9,7 @@ const SettingsModel = require('../settings/settings.model');
 
 exports.serve = async (req, res) => {
   try {
-    const recordingSettings = await SettingsModel.getByTarget('recordings');
+    const recordingSettings = await SettingsModel.getByTarget(false, 'recordings');
 
     let file = req.params.file;
     let recPath = recordingSettings.path;
