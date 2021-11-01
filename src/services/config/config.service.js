@@ -77,6 +77,7 @@ class ConfigService {
   #secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
 
   static name = 'camera.ui';
+  static configJson = {};
 
   //camera.ui env
   static storagePath = process.env.CUI_STORAGE_PATH;
@@ -120,6 +121,8 @@ class ConfigService {
 
   constructor() {
     const uiConfig = fs.readJSONSync(ConfigService.configPath, { throws: false }) || {};
+    ConfigService.configJson = uiConfig;
+
     this.parseConfig(uiConfig);
 
     return ConfigService.ui;
@@ -231,10 +234,8 @@ class ConfigService {
     if (ssl.key && ssl.cert) {
       try {
         ConfigService.ui.ssl = {
-          key: ssl.key,
-          keyBuffer: fs.readFileSync(ssl.key, 'utf8'),
-          cert: ssl.cert,
-          certBuffer: fs.readFileSync(ssl.cert, 'utf8'),
+          key: fs.readFileSync(ssl.key, 'utf8'),
+          cert: fs.readFileSync(ssl.cert, 'utf8'),
         };
       } catch (error) {
         log.warn(`WARNING: Could not read SSL Cert/Key. Error: ${error.message}`);

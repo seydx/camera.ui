@@ -113,7 +113,11 @@ class Database {
   static recordingsPath = ConfigService.recordingsPath;
   static databaseFilePath = ConfigService.databaseFilePath;
 
-  constructor() {}
+  static controller;
+
+  constructor(controller) {
+    Database.controller = controller;
+  }
 
   async prepareDatabase() {
     await fs.ensureFile(Database.databaseFilePath);
@@ -131,6 +135,9 @@ class Database {
     await Database.#initializeUser();
     await Database.#writeConfigCamerasToDB();
     await Database.refreshRecordingsDatabase();
+
+    //update version
+    await Database.interfaceDB.set('version', version).write();
 
     return {
       interface: Database.interfaceDB,

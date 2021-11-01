@@ -1,6 +1,6 @@
 'use-strict';
 
-const ConfigController = require('./config.controller');
+const SystemController = require('./system.controller');
 
 const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
 const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
@@ -8,24 +8,18 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
 /**
  * @swagger
  * tags:
- *  name: Config
+ *  name: System
  */
 
 exports.routesConfig = (app) => {
   /**
    * @swagger
-   * /api/config:
+   * /api/system:
    *   get:
-   *     tags: [Config]
+   *     tags: [System]
    *     security:
    *       - bearerAuth: []
-   *     summary: Get interface/plugin config
-   *     parameters:
-   *       - in: query
-   *         name: target
-   *         schema:
-   *           type: string
-   *         description: Target config (ui | plugin | all)
+   *     summary: Restart system
    *     responses:
    *       200:
    *         description: Successfull
@@ -35,7 +29,11 @@ exports.routesConfig = (app) => {
    *         description: Internal server error
    */
 
-  app.get('/api/config', [ValidationMiddleware.validJWTOptional, ConfigController.show]);
+  app.get('/api/system/restart', [
+    ValidationMiddleware.validJWTOptional,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.restartSystem,
+  ]);
   /**
    * @swagger
    * /api/config/{target}:
@@ -61,9 +59,9 @@ exports.routesConfig = (app) => {
    *       500:
    *         description: Internal server error
    */
-  app.patch('/api/config', [
+  app.get('/api/system/update', [
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.onlyMasterCanDoThisAction,
-    ConfigController.patchConfig,
+    SystemController.updateSystem,
   ]);
 };

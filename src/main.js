@@ -23,6 +23,8 @@ class Interface extends EventEmitter {
   #server;
   #socket;
 
+  static Controller;
+
   constructor() {
     super();
 
@@ -53,7 +55,7 @@ class Interface extends EventEmitter {
     }
 
     // configure database
-    const database = new Database();
+    const database = new Database(this);
     this.database = await database.prepareDatabase();
 
     Cleartimer.start();

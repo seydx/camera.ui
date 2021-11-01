@@ -1,5 +1,6 @@
 'use-strict';
 
+const fs = require('fs-extra');
 const os = require('os');
 
 const { ConfigService } = require('../../../services/config/config.service');
@@ -20,6 +21,14 @@ exports.show = async (user, target) => {
   };
 
   switch (target) {
+    case 'config':
+      if (user && user.permissionLevel.includes('admin')) {
+        info = {
+          ...info,
+          ...ConfigService.configJson,
+        };
+      }
+      break;
     case 'ui':
       if (user && user.permissionLevel.includes('admin')) {
         info = {
@@ -52,21 +61,10 @@ exports.show = async (user, target) => {
   return info;
 };
 
-exports.getByTarget = async (target) => {
-  await Database.interfaceDB.read();
-  return await Database.interfaceDB.get(target).value();
-};
-
-exports.patchByTarget = async (target, configData) => {
-  await Database.interfaceDB.read();
-
-  let settings = await Database.interfaceDB.value();
-
-  for (const [key, value] of Object.entries(configData)) {
-    if (settings[key] !== undefined) {
-      settings[key] = value;
-    }
+exports.patchConfig = async (configJson) => {
+  if (process.env.CUI_SERVICE_MODE === '2') {
+    Database.controller.emit('configChanged', configJson);
+  } else {
+    await fs.writeJson(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
   }
-
-  return await Database.interfaceDB.get(target).assign(settings).write();
 };

@@ -28,6 +28,7 @@ const NotificationsRouter = require('./components/notifications/notifications.ro
 const RecordingsRouter = require('./components/recordings/recordings.routes');
 const SettingsRouter = require('./components/settings/settings.routes');
 const SubscribeRouter = require('./components/subscribe/subscribe.routes');
+const SystemRouter = require('./components/system/system.routes');
 const UsersRouter = require('./components/users/users.routes');
 
 exports.App = (options) => {
@@ -74,6 +75,7 @@ exports.App = (options) => {
   RecordingsRouter.routesConfig(app);
   SettingsRouter.routesConfig(app);
   SubscribeRouter.routesConfig(app);
+  SystemRouter.routesConfig(app);
   UsersRouter.routesConfig(app);
 
   app.get('/version', (req, res) => {
