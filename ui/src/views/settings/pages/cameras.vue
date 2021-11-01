@@ -10,8 +10,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.aws.expand ? "180" : "-90"', @click="settingsLayout.cameras.aws.expand = !settingsLayout.cameras.aws.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.cameras.aws.expand = !settingsLayout.cameras.aws.expand") {{ $t("aws") }}
         b-collapse(
-          v-model="settingsLayout.cameras.aws.expand",
-          id="expandAws"
+          v-model="settingsLayout.cameras.aws.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -27,8 +26,7 @@
                     aria-controls="aws"
                   )
               b-collapse(
-                v-model="aws.active",
-                id="aws"
+                v-model="aws.active"
               )
                 hr.hr-underline
                 .row
@@ -92,8 +90,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.cameras.expand ? "180" : "-90"', @click="settingsLayout.cameras.cameras.expand = !settingsLayout.cameras.cameras.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.cameras.cameras.expand = !settingsLayout.cameras.cameras.expand") {{ $t("cameras") }}
         b-collapse(
-          v-model="settingsLayout.cameras.cameras.expand",
-          id="expandCameras"
+          v-model="settingsLayout.cameras.cameras.expand"
         )
           div.mt-2.mb-4(v-for="camera in cameras" :key="camera.name" data-aos="fade-up" data-aos-duration="1000")
             b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.cameras.camerasExpands[camera.name] ? "180" : "-90"', @click="settingsLayout.cameras.cameras.camerasExpands[camera.name] = !settingsLayout.cameras.cameras.camerasExpands[camera.name]")

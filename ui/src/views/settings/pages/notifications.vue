@@ -10,8 +10,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.notifications.expand ? "180" : "-90"', @click="settingsLayout.notifications.notifications.expand = !settingsLayout.notifications.notifications.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.notifications.expand = !settingsLayout.notifications.notifications.expand") {{ $t("notifications") }}
         b-collapse(
-          v-model="settingsLayout.notifications.notifications.expand",
-          id="expandNotifications"
+          v-model="settingsLayout.notifications.notifications.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -27,8 +26,7 @@
                     aria-controls="notifications"
                   )
               b-collapse(
-                v-model="notifications.active",
-                id="notifications"
+                v-model="notifications.active"
               )
                 hr.hr-underline(v-if="notifications.active")
                 .row(v-if="notifications.active")
@@ -39,15 +37,13 @@
                       :options="removeAfterTimer"
                     )
       b-collapse.w-100(
-        v-model="notifications.active",
-        id="notifications"
+        v-model="notifications.active"
       )
         .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000")
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.alexa.expand ? "180" : "-90"', @click="settingsLayout.notifications.alexa.expand = !settingsLayout.notifications.alexa.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.alexa.expand = !settingsLayout.notifications.alexa.expand") {{ $t("alexa") }}
           b-collapse(
-            v-model="settingsLayout.notifications.alexa.expand",
-            id="expandAlexa"
+            v-model="settingsLayout.notifications.alexa.expand"
           )
             div.mt-2.mb-4
               .settings-box.container
@@ -64,8 +60,7 @@
                       @change="alexaActive"
                     )
                 b-collapse(
-                  v-model="notifications.alexa.active",
-                  id="alexa"
+                  v-model="notifications.alexa.active"
                 )
                   hr.hr-underline(v-if="notifications.alexa.active")
                   .row(v-if="notifications.alexa.active")
@@ -176,8 +171,7 @@
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.telegram.expand ? "180" : "-90"', @click="settingsLayout.notifications.telegram.expand = !settingsLayout.notifications.telegram.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.telegram.expand = !settingsLayout.notifications.telegram.expand") {{ $t("telegram") }}
           b-collapse(
-            v-model="settingsLayout.notifications.telegram.expand",
-            id="expandTelegram"
+            v-model="settingsLayout.notifications.telegram.expand"
           )
             div.mt-2.mb-4
               .settings-box.container
@@ -193,8 +187,7 @@
                       aria-controls="telegram"
                     )
                 b-collapse(
-                  v-model="notifications.telegram.active",
-                  id="telegram"
+                  v-model="notifications.telegram.active"
                 )
                   hr.hr-underline(v-if="notifications.telegram.active")
                   .row(v-if="notifications.telegram.active")
@@ -238,8 +231,7 @@
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.webhook.expand ? "180" : "-90"', @click="settingsLayout.notifications.webhook.expand = !settingsLayout.notifications.webhook.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.webhook.expand = !settingsLayout.notifications.webhook.expand") {{ $t("webhook") }}
           b-collapse(
-            v-model="settingsLayout.notifications.webhook.expand",
-            id="expandWebhook"
+            v-model="settingsLayout.notifications.webhook.expand"
           )
             div.mt-2.mb-4
               .settings-box.container
@@ -255,8 +247,7 @@
                       aria-controls="webhook"
                     )
                 b-collapse(
-                  v-model="notifications.webhook.active",
-                  id="webhook"
+                  v-model="notifications.webhook.active"
                 )
                   hr.hr-underline
                   div

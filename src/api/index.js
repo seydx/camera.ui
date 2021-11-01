@@ -26,8 +26,8 @@ class Server {
     const server = this.#ssl
       ? https.createServer(
           {
-            key: this.#ssl.key,
-            cert: this.#ssl.cert,
+            key: this.#ssl.keyBuffer,
+            cert: this.#ssl.certBuffer,
           },
           app
         )

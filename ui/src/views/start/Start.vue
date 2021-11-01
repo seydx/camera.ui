@@ -13,7 +13,6 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
           b-spinner.text-color-primary.mt-3(v-if="loading")
 
           b-collapse(
-            id="formCollapse" 
             class="w-100 mt-5"
           )
             div

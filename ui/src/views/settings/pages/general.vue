@@ -10,8 +10,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.general.expand ? "180" : "-90"', @click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand") {{ $t("general") }}
         b-collapse(
-          v-model="settingsLayout.general.general.expand",
-          id="expandGeneral"
+          v-model="settingsLayout.general.general.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -47,8 +46,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.themes.expand ? "180" : "-90"', @click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand") {{ $t("themes") }}
         b-collapse(
-          v-model="settingsLayout.general.themes.expand",
-          id="expandThemes"
+          v-model="settingsLayout.general.themes.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -97,8 +95,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.rooms.expand ? "180" : "-90"', @click="settingsLayout.general.rooms.expand = !settingsLayout.general.rooms.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.rooms.expand = !settingsLayout.general.rooms.expand") {{ $t("rooms") }}
         b-collapse(
-          v-model="settingsLayout.general.rooms.expand",
-          id="expandRooms"
+          v-model="settingsLayout.general.rooms.expand"
         )
           div.mt-2.mb-4
             .settings-box.container

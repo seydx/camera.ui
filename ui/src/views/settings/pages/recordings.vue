@@ -10,8 +10,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.recordings.recordings.expand ? "180" : "-90"', @click="settingsLayout.recordings.recordings.expand = !settingsLayout.recordings.recordings.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.recordings.recordings.expand = !settingsLayout.recordings.recordings.expand") {{ $t("recordings") }}
         b-collapse(
-          v-model="settingsLayout.recordings.recordings.expand",
-          id="expandRecordings"
+          v-model="settingsLayout.recordings.recordings.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -27,8 +26,7 @@
                     aria-controls="recordings"
                   )
               b-collapse(
-                v-model="recordings.active",
-                id="recordings"
+                v-model="recordings.active"
               )
                 hr.hr-underline
                 .row

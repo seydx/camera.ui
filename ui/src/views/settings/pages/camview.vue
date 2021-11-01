@@ -10,8 +10,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.camview.expand ? "180" : "-90"', @click="settingsLayout.camview.camview.expand = !settingsLayout.camview.camview.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.camview.camview.expand = !settingsLayout.camview.camview.expand") {{ $t("camview") }}
         b-collapse(
-          v-model="settingsLayout.camview.camview.expand",
-          id="expandCamview"
+          v-model="settingsLayout.camview.camview.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -26,8 +25,7 @@
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.favourites.expand ? "180" : "-90"', @click="settingsLayout.camview.favourites.expand = !settingsLayout.camview.favourites.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.camview.favourites.expand = !settingsLayout.camview.favourites.expand") {{ $t("favourites") }}
         b-collapse(
-          v-model="settingsLayout.camview.favourites.expand",
-          id="expandFavourites"
+          v-model="settingsLayout.camview.favourites.expand"
         )
           div.mt-2.mb-4(v-for="camera in cameras" :key="camera.name" data-aos="fade-up" data-aos-duration="1000")
             b-icon.cursor-pointer.expandTriangleCamera(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.favourites.camerasExpands[camera.name] ? "180" : "-90"', @click="settingsLayout.camview.favourites.camerasExpands[camera.name] = !settingsLayout.camview.favourites.camerasExpands[camera.name]")

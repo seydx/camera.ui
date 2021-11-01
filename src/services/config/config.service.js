@@ -231,8 +231,10 @@ class ConfigService {
     if (ssl.key && ssl.cert) {
       try {
         ConfigService.ui.ssl = {
-          key: fs.readFileSync(ssl.key, 'utf8'),
-          cert: fs.readFileSync(ssl.cert, 'utf8'),
+          key: ssl.key,
+          keyBuffer: fs.readFileSync(ssl.key, 'utf8'),
+          cert: ssl.cert,
+          certBuffer: fs.readFileSync(ssl.cert, 'utf8'),
         };
       } catch (error) {
         log.warn(`WARNING: Could not read SSL Cert/Key. Error: ${error.message}`);

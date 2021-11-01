@@ -29,6 +29,7 @@
   --trans-font-color: rgba(0, 0, 0, 0.5);
   --trans-border-color: rgba(0, 0, 0, 0.15);
   --trans-border-color-1: rgba(0, 0, 0, 0.1);
+  --editor-main-color: rgb(58, 58, 58);
 }
 
 [data-theme='dark'] {
@@ -49,6 +50,7 @@
   --trans-font-color: rgba(255, 255, 255, 0.5);
   --trans-border-color: rgba(128, 128, 128, 0.05);
   --trans-border-color-1: rgba(255, 255, 255, 0.1);
+  --editor-main-color: rgb(145, 145, 145);
 }
 
 [data-theme-color='blgray'] {

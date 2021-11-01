@@ -158,12 +158,19 @@ export default {
 
     if (!this.settingsLayout.config) {
       this.settingsLayout.config = {
+        config: {
+          expand: true,
+        },
         server: {
           expand: true,
         },
       };
     } else if (!this.settingsLayout.config.server) {
       this.settingsLayout.config.server = {
+        expand: true,
+      };
+    } else if (!this.settingsLayout.config.config) {
+      this.settingsLayout.config.config = {
         expand: true,
       };
     }
@@ -232,6 +239,9 @@ export default {
               },
             },
             config: {
+              config: {
+                expand: true,
+              },
               server: {
                 expand: true,
               },
