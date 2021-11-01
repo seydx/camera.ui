@@ -28,7 +28,7 @@
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.config.config.expand ? "180" : "-90"', @click="settingsLayout.config.config.expand = !settingsLayout.config.config.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.config.config.expand = !settingsLayout.config.config.expand") {{ $t('config') }}
         b-collapse(
@@ -80,6 +80,7 @@ export default {
       options: {
         mode: 'code',
         modes: ['code'],
+        statusBar: false,
         mainMenuBar: false,
         colorPicker: false,
       },

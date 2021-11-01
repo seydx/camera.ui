@@ -63,7 +63,7 @@ exports.show = async (user, target) => {
 
 exports.patchConfig = async (configJson) => {
   if (process.env.CUI_SERVICE_MODE === '2') {
-    Database.controller.emit('configChanged', configJson);
+    Database.controller.emit('config', configJson);
   } else {
     await fs.writeJson(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
   }
