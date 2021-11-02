@@ -2,6 +2,7 @@
 
 const compareVersions = require('compare-versions');
 const { EventEmitter } = require('events');
+const { spawn } = require('child_process');
 
 const { Cleartimer } = require('./common/cleartimer');
 
@@ -104,15 +105,28 @@ class Interface extends EventEmitter {
   #cliMode() {
     let shuttingDown = false;
 
-    const signalHandler = (signal, signalNumber) => {
+    const signalHandler = (signal, signalNumber, restart) => {
       if (shuttingDown) {
         return;
       }
       shuttingDown = true;
 
-      log.info(`Got ${signal}, shutting down camera.ui...`);
-      // eslint-disable-next-line unicorn/no-process-exit
-      setTimeout(() => process.exit(128 + signalNumber), 5000);
+      log.info(`Got ${signal}, ${restart ? 'restarting' : 'shutting down'} camera.ui...`);
+
+      setTimeout(() => {
+        if (restart) {
+          process.on('exit', function () {
+            spawn(process.argv.shift(), process.argv, {
+              cwd: process.cwd(),
+              detached: true,
+              stdio: 'inherit',
+            });
+          });
+        }
+
+        // eslint-disable-next-line unicorn/no-process-exit
+        process.exit(128 + signalNumber);
+      }, 5000);
 
       this.close();
     };
@@ -126,6 +140,8 @@ class Interface extends EventEmitter {
         process.kill(process.pid, 'SIGTERM');
       }
     };
+
+    this.on('restart', signalHandler.bind(undefined, 'SIGTERM', 1, true));
 
     process.on('SIGINT', signalHandler.bind(undefined, 'SIGINT', 2));
     process.on('SIGTERM', signalHandler.bind(undefined, 'SIGTERM', 15));

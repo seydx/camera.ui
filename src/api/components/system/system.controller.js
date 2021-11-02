@@ -3,10 +3,8 @@
 
 const { Database } = require('../../database');
 
-//TODO
 exports.restartSystem = async (req, res) => {
   try {
-    console.log('Restart was initiated');
     Database.controller.emit('restart');
     res.status(204).send({});
   } catch (error) {
@@ -17,6 +15,7 @@ exports.restartSystem = async (req, res) => {
   }
 };
 
+//TODO
 exports.updateSystem = async (req, res) => {
   try {
     console.log('Update was initiated');

@@ -45,7 +45,7 @@
             )
             b-card(class="mt-3" :header="$t('error')" v-if="error")
               pre.m-0(style="color: var(--primary-font-color)") {{ error }}
-            b-button#saveButton.w-100.mt-3.saveButton(@click="onSave" :class="error || loadingSave ? 'btnError' : 'btnNoError'" :disabled="error || loadingSave") 
+            b-button#saveButton.w-100.mt-3.saveButton(@click="onSave" :class="error || loadingSave || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="error || loadingSave || loadingRestart") 
               span(v-if="loadingSave") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('save') }}
@@ -144,12 +144,10 @@ export default {
 
       try {
         await restartSystem();
-        await timeout(1000);
       } catch (error) {
         this.$toast.error(error.message);
+        this.loadingRestart = false;
       }
-
-      this.loadingRestart = false;
     },
     async onSave() {
       const saveButton = document.getElementById('saveButton');
