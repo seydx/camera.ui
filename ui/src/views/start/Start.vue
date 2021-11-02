@@ -14,6 +14,7 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
 
           b-collapse(
             class="w-100 mt-5"
+            id="formCollapse"
           )
             div
               b-form(@submit="onNext")

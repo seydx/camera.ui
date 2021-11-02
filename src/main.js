@@ -109,6 +109,7 @@ class Interface extends EventEmitter {
       if (shuttingDown) {
         return;
       }
+
       shuttingDown = true;
 
       log.info(`Got ${signal}, ${restart ? 'restarting' : 'shutting down'} camera.ui...`);
@@ -141,11 +142,11 @@ class Interface extends EventEmitter {
       }
     };
 
-    this.on('restart', signalHandler.bind(undefined, 'SIGTERM', 1, true));
+    this.on('restart', () => signalHandler('SIGTERM', 1, true));
 
-    process.on('SIGINT', signalHandler.bind(undefined, 'SIGINT', 2));
-    process.on('SIGTERM', signalHandler.bind(undefined, 'SIGTERM', 15));
-    process.on('uncaughtException', errorHandler);
+    process.on('SIGINT', () => signalHandler('SIGINT', 2, false));
+    process.on('SIGTERM', () => signalHandler('SIGTERM', 15, false));
+    process.on('uncaughtException', (error) => errorHandler(error));
 
     this.start();
   }
