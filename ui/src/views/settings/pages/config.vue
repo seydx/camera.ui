@@ -108,6 +108,7 @@ export default {
       delete this.config.node;
       delete this.config.version;
       delete this.config.firstStart;
+      delete this.config.mqttConfigs;
 
       const response = await fetch(this.npmPackageLink);
       const data = await response.json();
