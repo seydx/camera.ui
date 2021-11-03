@@ -43,8 +43,18 @@ exports.App = (options) => {
         defaultSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
         // eslint-disable-next-line quotes
         scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:'],
-        // eslint-disable-next-line quotes
-        connectSrc: ['ws:', 'wss:', 'https:', 'https://api.npms.io/*', "'unsafe-eval'", "'unsafe-inline'", "'self'"],
+        connectSrc: [
+          'ws:',
+          'wss:',
+          'https:',
+          'https://registry.npmjs.org/camera.ui',
+          // eslint-disable-next-line quotes
+          "'unsafe-eval'",
+          // eslint-disable-next-line quotes
+          "'unsafe-inline'",
+          // eslint-disable-next-line quotes
+          "'self'",
+        ],
         // eslint-disable-next-line quotes
         'img-src': ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
         // eslint-disable-next-line quotes
@@ -52,6 +62,7 @@ exports.App = (options) => {
       },
     })
   );
+
   app.use(morgan('dev', { skip: () => !options.debug }));
 
   const backupUpload = multer({

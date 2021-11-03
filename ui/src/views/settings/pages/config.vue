@@ -18,15 +18,13 @@
             .settings-box.container
               .row
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
-                  b-popover(custom-class="text-center" variant="light" target="popover-latestVersion" triggers="hover" placement="top" v-if="!updateAvailable" title="Latest version")
-                    template v{{ latestVersion }}
-                  a.d-block.w-100.text-center(id="popover-latestVersion" :href="npmLink" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
-                  div.w-100.text-center(style="font-size: 14px") v{{ currentVersion }}
+                  a.d-block.w-100.text-center.mb-2(:href="npmLink" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+                  b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
             b-button#updateButton.w-100.mt-3.updateButton(@click="onUpdate" :class="loadingUpdate || loadingRestart || loadingSave || !updateAvailable ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave || !updateAvailable") 
               span(v-if="loadingUpdate") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('update') }}
-            b-button#restartButton.w-100.mt-3.restartButton(@click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
+            b-button#restartButton.w-100.mt-3.restartButton(v-if="serviceMode" @click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
@@ -60,7 +58,7 @@ import { ToggleButton } from 'vue-js-toggle-button';
 import VJsoneditor from 'v-jsoneditor';
 
 import { changeConfig, getConfig } from '@/api/config.api';
-import { restartSystem, updateSystem } from '@/api/system.api';
+import { getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
 
@@ -77,6 +75,7 @@ export default {
   mixins: [localStorageMixin],
   data() {
     return {
+      availableVersions: [],
       config: {},
       error: false,
       options: {
@@ -90,11 +89,11 @@ export default {
       loadingRestart: false,
       loadingSave: false,
       loadingUpdate: false,
+      serviceMode: false,
       settingsLayout: {},
       currentVersion: null,
       latestVersion: null,
       npmLink: 'https://www.npmjs.com/package/camera.ui',
-      npmPackageLink: 'https://api.npms.io/v2/search?q=camera.ui',
       npmPackageName: 'camera.ui',
       updateAvailable: false,
     };
@@ -103,7 +102,6 @@ export default {
     try {
       const config = await getConfig('?target=config');
       this.config = { ...config.data };
-      this.currentVersion = config.data.version;
 
       delete this.config.timestamp;
       delete this.config.platform;
@@ -111,17 +109,71 @@ export default {
       delete this.config.version;
       delete this.config.firstStart;
       delete this.config.mqttConfigs;
+      delete this.config.serviceMode;
 
-      const response = await fetch(this.npmPackageLink);
-      const data = await response.json();
+      this.serviceMode = config.data.serviceMode;
+      this.currentVersion = config.data.version;
 
-      const npmPackage = data.results?.find((pkg) => pkg?.package?.name === this.npmPackageName);
-      this.latestVersion = npmPackage?.package?.version;
+      let currentDistTag = this.currentVersion.split('-')[1];
 
-      this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>=');
+      if (!currentDistTag) {
+        currentDistTag = 'latest';
+      } else {
+        currentDistTag = currentDistTag.split('.')[0];
+      }
+
+      const pkg = await getPackage();
+      const distTags = pkg.data['dist-tags'];
+      const versions = Object.keys(pkg.data.versions).reverse();
+
+      versions.forEach((version) => {
+        let versionDistTag = version.split('-')[1];
+
+        if (versionDistTag) {
+          //alpha,beta,test
+          versionDistTag = versionDistTag.split('.')[0];
+
+          const distTagExist = this.availableVersions.some((v) => {
+            let vDistTag = (v.value ? v.value : v).split('-')[1];
+
+            if (vDistTag) {
+              vDistTag = vDistTag.split('.')[0];
+
+              if (vDistTag === versionDistTag) {
+                return true;
+              }
+            }
+          });
+
+          if (!distTagExist) {
+            this.availableVersions.push(version);
+          }
+        } else {
+          //latest
+          if (version === distTags.latest) {
+            this.availableVersions.push({ value: version, text: `${version}-latest` });
+          } else {
+            this.availableVersions.push(version);
+          }
+        }
+      });
+
+      const relatedVersions = this.availableVersions.filter((version) => {
+        const v = version.value ? version.value : version;
+
+        if (currentDistTag !== 'latest' && v.includes(currentDistTag)) {
+          return version;
+        } else if (currentDistTag === 'latest' && !v.includes('-')) {
+          return version;
+        }
+      });
+
+      this.latestVersion = relatedVersions[0];
+      this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
       this.loading = false;
     } catch (err) {
+      console.log(err.message);
       this.$toast.error(err.message);
     }
   },
@@ -184,7 +236,7 @@ export default {
       this.$toast.success(this.$t('system_update_initiated'));
 
       try {
-        await updateSystem();
+        await updateSystem(`?version=${this.currentVersion}`);
         await timeout(1000);
 
         this.$toast.success(this.$t('system_successfully_updated'));
@@ -343,6 +395,12 @@ div >>> .ace-jsoneditor .ace_numeric {
 .updateButton {
   height: 40px;
   transition: 0.3s all;
+}
+
+select .versionSelect {
+  text-align: center;
+  text-align-last: center;
+  -moz-text-align-last: center;
 }
 
 .loader-bg {

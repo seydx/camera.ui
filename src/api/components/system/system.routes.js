@@ -14,6 +14,37 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
 exports.routesConfig = (app) => {
   /**
    * @swagger
+   * /api/config/{target}:
+   *   get:
+   *     tags: [Config]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get specific config setting
+   *     parameters:
+   *       - in: path
+   *         name: target
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Config target
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/npm', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.fetchNpm,
+  ]);
+
+  /**
+   * @swagger
    * /api/system:
    *   get:
    *     tags: [System]
@@ -34,6 +65,7 @@ exports.routesConfig = (app) => {
     PermissionMiddleware.onlyMasterCanDoThisAction,
     SystemController.restartSystem,
   ]);
+
   /**
    * @swagger
    * /api/config/{target}:

@@ -18,6 +18,7 @@ exports.show = async (user, target) => {
     firstStart: await Database.interfaceDB.get('firstStart').value(),
     language: ConfigService.ui.language,
     theme: ConfigService.ui.theme,
+    serviceMode: ConfigService.serviceMode,
   };
 
   switch (target) {

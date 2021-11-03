@@ -115,6 +115,7 @@ class Interface extends EventEmitter {
       log.info(`Got ${signal}, ${restart ? 'restarting' : 'shutting down'} camera.ui...`);
 
       setTimeout(() => {
+        //TODO: Not the best way to restart an app, for the future: IPC
         if (restart) {
           process.on('exit', function () {
             spawn(process.argv.shift(), process.argv, {
@@ -142,7 +143,7 @@ class Interface extends EventEmitter {
       }
     };
 
-    this.on('restart', () => signalHandler('SIGTERM', 1, true));
+    //this.on('restart', () => signalHandler('SIGTERM', 1, true));
 
     process.on('SIGINT', () => signalHandler('SIGINT', 2, false));
     process.on('SIGTERM', () => signalHandler('SIGTERM', 15, false));
