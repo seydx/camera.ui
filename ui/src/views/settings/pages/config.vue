@@ -18,9 +18,9 @@
             .settings-box.container
               .row
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
-                  a.d-block.w-100.text-center.mb-2(:href="npmLink" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+                  a.d-block.w-100.text-center.mb-2(:href="'https://www.npmjs.com/package/' + npmPackageName" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
                   b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
-            b-button#updateButton.w-100.mt-3.updateButton(@click="onUpdate" :class="loadingUpdate || loadingRestart || loadingSave || !updateAvailable ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave || !updateAvailable") 
+            b-button#updateButton.w-100.mt-3.updateButton(@click="onUpdate" :class="loadingUpdate || loadingRestart || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave") 
               span(v-if="loadingUpdate") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('update') }}
@@ -93,7 +93,6 @@ export default {
       settingsLayout: {},
       currentVersion: null,
       latestVersion: null,
-      npmLink: 'https://www.npmjs.com/package/camera.ui',
       npmPackageName: 'camera.ui',
       updateAvailable: false,
     };
@@ -103,6 +102,7 @@ export default {
       const config = await getConfig('?target=config');
       this.config = { ...config.data };
 
+      //remove not used params from config editor
       delete this.config.timestamp;
       delete this.config.platform;
       delete this.config.node;
@@ -110,6 +110,7 @@ export default {
       delete this.config.firstStart;
       delete this.config.mqttConfigs;
       delete this.config.serviceMode;
+      this.config.cameras?.forEach((camera) => delete camera.recordOnMovement);
 
       this.serviceMode = config.data.serviceMode;
       this.currentVersion = config.data.version;
@@ -152,6 +153,11 @@ export default {
           //latest
           if (version === distTags.latest) {
             this.availableVersions.push({ value: version, text: `${version}-latest` });
+            const versionExist = this.availableVersions.some((v) => (v.value || v) === this.currentVersion);
+
+            if (version !== this.currentVersion && !versionExist) {
+              this.availableVersions.push(this.currentVersion);
+            }
           } else {
             this.availableVersions.push(version);
           }
@@ -168,6 +174,7 @@ export default {
         }
       });
 
+      this.npmPackageName = pkg.data.name;
       this.latestVersion = relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 

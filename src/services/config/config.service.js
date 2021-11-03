@@ -94,6 +94,12 @@ class ConfigService {
   static minimumNodeVersion = minNodeVersion;
   static serviceMode = process.env.CUI_SERVICE_MODE === '2';
 
+  static env = {
+    moduleName: process.env.CUI_MODULE_NAME,
+    global: process.env.CUI_MODULE_GLOBAL === '1',
+    sudo: process.env.CUI_MODULE_SUDO === '1',
+  };
+
   //defaults
   static ui = {
     port: uiDefaults.port,
@@ -109,7 +115,7 @@ class ConfigService {
       videoProcessor: defaultVideoProcess,
     },
     cameras: [],
-    version: version,
+    version: process.env.CUI_MODULE_VERSION,
   };
 
   static interface = {
@@ -328,11 +334,8 @@ class ConfigService {
         camera.videoConfig.maxHeight = camera.videoConfig.maxHeight || 720;
         camera.videoConfig.maxFPS = camera.videoConfig.maxFPS >= 20 ? camera.videoConfig.maxFPS : 20;
         camera.videoConfig.maxStreams = camera.videoConfig.maxStreams >= 1 ? camera.videoConfig.maxStreams : 3;
-        camera.videoConfig.maxBitrate = camera.videoConfig.maxBitrate || '299k';
+        camera.videoConfig.maxBitrate = camera.videoConfig.maxBitrate || 299;
         camera.videoConfig.vcodec = camera.videoConfig.vcodec || 'libx264';
-        camera.videoConfig.mapvideo = camera.videoConfig.mapvideo || false;
-        camera.videoConfig.mapaudio = camera.videoConfig.mapaudio || false;
-        camera.videoConfig.videoFilter = camera.videoConfig.videoFilter || false;
         camera.videoConfig.encoderOptions = camera.videoConfig.encoderOptions || 'ultrafast -tune zerolatency';
 
         return camera;

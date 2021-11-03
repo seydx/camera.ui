@@ -3,11 +3,12 @@
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
+const { version } = require('../package.json');
 
 const { LoggerService } = require('./services/logger/logger.service');
 
 class CameraUI {
-  constructor(userConfig = {}, storagePath, logger) {
+  constructor(config = {}, storagePath, logger, environment = {}) {
     storagePath = storagePath || path.resolve(os.homedir(), '.camera.ui');
 
     process.env.CUI_SERVICE_MODE = '2';
@@ -17,7 +18,7 @@ class CameraUI {
       process.env.CUI_LOG_TIMESTAMPS = 1;
     }
 
-    if (userConfig.debug) {
+    if (config.debug) {
       process.env.CUI_LOG_DEBUG = 1;
     }
 
@@ -28,10 +29,15 @@ class CameraUI {
     process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'database.json');
     process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
 
-    if (Object.keys(userConfig).length > 0) {
+    if (Object.keys(config).length > 0) {
       fs.ensureFileSync(process.env.CUI_STORAGE_CONFIG_FILE);
-      fs.writeJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, userConfig, { spaces: 2 });
+      fs.writeJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, config, { spaces: 2 });
     }
+
+    process.env.CUI_MODULE_NAME = environment.moduleName || 'camera.ui';
+    process.env.CUI_MODULE_VERSION = environment.moduleVersion || version;
+    process.env.CUI_MODULE_GLOBAL = environment.global ? '1' : '0';
+    process.env.CUI_MODULE_SUDO = environment.sudo ? '1' : '0';
 
     LoggerService.create(logger);
 

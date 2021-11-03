@@ -33,7 +33,7 @@ class StreamService {
       source: camera.videoConfig.source,
       ffmpegOptions: {
         '-s': `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
-        '-b:v': camera.videoConfig.maxBitrate,
+        '-b:v': `${camera.videoConfig.maxBitrate}k`,
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
         '-preset': camera.videoConfig.encoderOptions,

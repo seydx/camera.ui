@@ -4,15 +4,36 @@
 const axios = require('axios');
 const { exec } = require('child_process');
 
+const { LoggerService } = require('../../../services/logger/logger.service');
+const { ConfigService } = require('../../../services/config/config.service');
+
 const { Database } = require('../../database');
 
-//TODO: We assume that the plugin is installed globally with sudo, this should possibly be changed in the future.
+const { log } = LoggerService;
+
+let updating = false;
+
 const updatePlugin = (version) => {
   return new Promise((resolve, reject) => {
+    if (updating) {
+      return;
+    }
+
+    updating = true;
+
+    const moduleName = ConfigService.env.moduleName;
+    const globalPrefix = ConfigService.env.global;
+    const sudoMode = ConfigService.env.sudo;
+
     const target = version ? version : 'latest';
 
-    exec(`sudo npm i -g -E -n camera.ui@${target}`, (error, stdout, stderr) => {
+    const cmd = `${sudoMode ? 'sudo npm i -E -n' : 'npm i'} ${globalPrefix ? '-g' : ''} ${moduleName}@${target}`;
+
+    log.info(`Updating: ${cmd}`);
+
+    exec(cmd, (error, stdout, stderr) => {
       if (error && error.code > 0) {
+        updating = false;
         return reject(`Error with CMD: ${error.cmd}`);
       }
 
@@ -20,9 +41,13 @@ const updatePlugin = (version) => {
         stderr = stderr.toString();
 
         if (!stderr.includes('npm WARN')) {
+          updating = false;
           return reject(stderr);
         }
       }
+
+      log.info('Successfully updated!');
+      updating = false;
 
       resolve(true);
     });
@@ -31,7 +56,9 @@ const updatePlugin = (version) => {
 
 exports.fetchNpm = async (req, res) => {
   try {
-    const response = await axios('https://registry.npmjs.org/camera.ui', {
+    const moduleName = ConfigService.env.moduleName;
+
+    const response = await axios(`https://registry.npmjs.org/${moduleName}`, {
       headers: {
         accept: 'application/vnd.npm.install-v1+json',
       },
@@ -60,7 +87,11 @@ exports.restartSystem = async (req, res) => {
 
 exports.updateSystem = async (req, res) => {
   try {
-    //Database.controller.emit('update');
+    const timeout = 5 * 60 * 1000; //5min
+    req.setTimeout(timeout);
+    res.setTimeout(timeout);
+
+    Database.controller.emit('update');
     await updatePlugin(req.query.version);
     res.status(204).send({});
   } catch (error) {
