@@ -336,7 +336,7 @@ class ConfigService {
         camera.videoConfig.maxStreams = camera.videoConfig.maxStreams >= 1 ? camera.videoConfig.maxStreams : 3;
         camera.videoConfig.maxBitrate = camera.videoConfig.maxBitrate || 299;
         camera.videoConfig.vcodec = camera.videoConfig.vcodec || 'libx264';
-        camera.videoConfig.encoderOptions = camera.videoConfig.encoderOptions || 'ultrafast -tune zerolatency';
+        camera.videoConfig.encoderOptions = camera.videoConfig.encoderOptions || '-preset ultrafast -tune zerolatency';
 
         return camera;
       })

@@ -9,6 +9,8 @@ const Stream = require('stream');
 const { ConfigService } = require('../../services/config/config.service');
 const { LoggerService } = require('../../services/logger/logger.service');
 
+const { Database } = require('../../api/database');
+
 const { EventController } = require('../event/event.controller');
 
 const { log } = LoggerService;
@@ -42,35 +44,46 @@ class MotionController {
       this.#startSmtpServer();
     }
 
-    this.triggerMotion = (cameraName, state) => {
+    //used for external events
+    this.triggerMotion = async (cameraName, state) => {
       let result = {
         error: true,
         message: 'Custom event could not be handled',
       };
 
-      result = this.#handleMotion('custom', cameraName, state, 'extern', result);
+      result = await this.#handleMotion('custom', cameraName, state, 'extern', result);
 
       log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
     };
   }
 
-  #handleMotion(triggerType, cameraName, state, event, result) {
+  async #handleMotion(triggerType, cameraName, state, event, result) {
     const camera = this.#getCamera(cameraName);
 
     if (camera) {
-      result = {
-        error: false,
-        message: 'Recording disabled for this camera',
-      };
+      const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
+      const atHome = generalSettings?.atHome || false;
+      const cameraExcluded = (generalSettings?.exclude || []).includes(cameraName);
 
-      if (triggerType !== 'custom') {
-        this.#controller.emit('motion', cameraName, triggerType, state, event);
-      }
+      if (atHome && !cameraExcluded) {
+        result = {
+          error: false,
+          message: `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`,
+        };
+      } else {
+        result = {
+          error: false,
+          message: 'Recording disabled for this camera',
+        };
 
-      if (camera.recordOnMovement) {
-        result.message = 'Handled through EventController';
+        if (triggerType !== 'custom') {
+          this.#controller.emit('motion', cameraName, triggerType, state, event);
+        }
 
-        EventController.handle(triggerType, cameraName, state);
+        if (camera.recordOnMovement) {
+          result.message = 'Handled through EventController';
+          EventController.handle(triggerType, cameraName, state);
+        }
       }
     } else {
       result = {
@@ -142,7 +155,7 @@ class MotionController {
           let state = triggerType === 'dorbell' ? true : triggerType === 'reset' ? false : true;
           triggerType = triggerType === 'reset' ? 'motion' : triggerType;
 
-          result = this.#handleMotion(triggerType, cameraName, state, 'http', result);
+          result = await this.#handleMotion(triggerType, cameraName, state, 'http', result);
         }
       }
 
@@ -214,7 +227,7 @@ class MotionController {
 
         result =
           state !== undefined
-            ? this.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
+            ? await this.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
             : {
                 error: true,
                 message: `The incoming MQTT message (${message}) for the topic (${topic}) was not the same as set in config.json. Skip...`,
