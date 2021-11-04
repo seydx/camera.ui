@@ -127,7 +127,7 @@ class ConfigService {
 
   constructor() {
     const uiConfig = fs.readJSONSync(ConfigService.configPath, { throws: false }) || {};
-    ConfigService.configJson = uiConfig;
+    ConfigService.configJson = JSON.parse(JSON.stringify(uiConfig));
 
     this.parseConfig(uiConfig);
 
@@ -304,20 +304,6 @@ class ConfigService {
           camera.videoConfig.source = false;
         }
 
-        if (camera.videoConfig.stimeout > 0 && !sourceArguments.includes('-stimeout')) {
-          if (sourceArguments.includes('-re')) {
-            camera.videoConfig.source = camera.videoConfig.source.replace(
-              '-re',
-              `-stimeout ${camera.videoConfig.stimeout * 10000000} -re` //-stimeout is in micro seconds
-            );
-          } else if (sourceArguments.includes('-i')) {
-            camera.videoConfig.source = camera.videoConfig.source.replace(
-              '-i',
-              `-stimeout ${camera.videoConfig.stimeout * 10000000} -i` //-stimeout is in micro seconds
-            );
-          }
-        }
-
         if (camera.videoConfig.stillImageSource) {
           const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
 
@@ -327,6 +313,38 @@ class ConfigService {
           }
         } else {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
+        }
+
+        if (camera.videoConfig.source) {
+          if (camera.videoConfig.readRate) {
+            camera.videoConfig.source = `-re ${camera.videoConfig.source}`;
+          }
+
+          if (camera.videoConfig.stimeout > 0) {
+            camera.videoConfig.source = `-stimeout ${camera.videoConfig.stimeout * 10000000} ${
+              camera.videoConfig.source
+            }`;
+          }
+
+          if (camera.videoConfig.maxDelay) {
+            camera.videoConfig.source = `-max_delay ${camera.videoConfig.maxDelay} ${camera.videoConfig.source}`;
+          }
+
+          if (camera.videoConfig.reorderQueueSize) {
+            camera.videoConfig.source = `-reorder_queue_size ${camera.videoConfig.reorderQueueSize} ${camera.videoConfig.source}`;
+          }
+
+          if (camera.videoConfig.probeSize) {
+            camera.videoConfig.source = `-probesize ${camera.videoConfig.probeSize} ${camera.videoConfig.source}`;
+          }
+
+          if (camera.videoConfig.analyzeDuration) {
+            camera.videoConfig.source = `-analyzeduration ${camera.videoConfig.analyzeduration} ${camera.videoConfig.source}`;
+          }
+
+          if (camera.videoConfig.rtspTransport) {
+            camera.videoConfig.source = `-rtsp_transport ${camera.videoConfig.rtspTransport} ${camera.videoConfig.source}`;
+          }
         }
 
         //validate some required parameter

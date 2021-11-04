@@ -36,7 +36,7 @@ class StreamService {
         '-b:v': `${camera.videoConfig.maxBitrate}k`,
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
-        '-preset': camera.videoConfig.encoderOptions,
+        '-preset': camera.videoConfig.encoderOptions.replace('-preset ', ''),
         '-threads': '1',
         '-loglevel': 'error',
       },
@@ -138,10 +138,6 @@ class StreamService {
 
         this.streamSession.stdout.on('data', (data) => {
           this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
-
-          if (this.debug) {
-            log.debug(data.toString(), this.cameraName);
-          }
         });
 
         this.streamSession.stderr.on('data', (data) =>

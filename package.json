@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-alpha.27",
+  "version": "1.0.0-alpha.29",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -22,7 +22,7 @@
     "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
     "commander": "6.2.1",
-    "compare-versions": "^3.6.0",
+    "compare-versions": "3.6.0",
     "connect-history-api-fallback": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
