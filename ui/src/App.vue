@@ -1,7 +1,7 @@
 <template lang="pug">
   #app
     button.add-button(v-if="$route.meta.name !== 'login' && $route.meta.name !== 'start'", style="display: none;") {{ $t('add_to_homescreen') }}
-    audio#soundFx(v-if="$route.meta.name !== 'login' && checkLevel('notifications:access')")
+    audio#soundFx(v-if="$route.meta.name !== 'login'")
       source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
     transition(name='fade' mode='out-in')
       router-view

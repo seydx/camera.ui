@@ -6,8 +6,8 @@ b-card(no-body)
     b-card-title {{ recording.camera }}
     small.text-muted-2 {{ recording.recordType === "Snapshot" ? $t("snapshot") : $t("video") }} - {{ recording.room }}
     .card-text.mt-2.mb-2
-      | {{ $t("recording_text").replace("@", recording.recordType === "Snapshot" ? $t("snapshot") : $t("video")).replace("%", recording.time).replace("#", $t(recording.trigger)) }}
-    small.text-muted-2 {{ `${$t("label")}: ${recording.label.includes("no label") ? $t("no_label") : recording.label}` }}
+      | {{ $t("recording_text").replace("@", recording.recordType === "Snapshot" ? $t("snapshot") : $t("video")).replace("%", recording.time).replace("#", `"${$t(recording.trigger)}"`) }}
+    small.text-muted-2 {{ `${$t("label")}: ${recording.label.includes("no label") ? $t("no_label") : recording.label.includes("Custom") ? $t("custom") : recording.label}` }}
     div.mt-2
       b-link.card-btn.btn-danger.float-left.d-flex.flex-wrap.align-content-center.justify-content-center(v-if="checkLevel('recordings:edit') && !removing", @click="removeItem")
         b-icon(icon="trash-fill", aria-hidden="true")

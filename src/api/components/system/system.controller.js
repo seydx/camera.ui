@@ -8,6 +8,7 @@ const { LoggerService } = require('../../../services/logger/logger.service');
 const { ConfigService } = require('../../../services/config/config.service');
 
 const { Database } = require('../../database');
+const { Socket } = require('../../socket');
 
 const { log } = LoggerService;
 
@@ -15,10 +16,6 @@ let updating = false;
 
 const updatePlugin = (version) => {
   return new Promise((resolve, reject) => {
-    if (updating) {
-      return;
-    }
-
     updating = true;
 
     const moduleName = ConfigService.env.moduleName;
@@ -87,12 +84,22 @@ exports.restartSystem = async (req, res) => {
 
 exports.updateSystem = async (req, res) => {
   try {
+    if (updating) {
+      return res.status(500).send({
+        statusCode: 500,
+        message: 'System update is already in progress',
+      });
+    }
+
     const timeout = 5 * 60 * 1000; //5min
     req.setTimeout(timeout);
     res.setTimeout(timeout);
 
-    Database.controller.emit('update');
     await updatePlugin(req.query.version);
+
+    Database.controller.emit('updated');
+    Socket.io.emit('updated');
+
     res.status(204).send({});
   } catch (error) {
     res.status(500).send({

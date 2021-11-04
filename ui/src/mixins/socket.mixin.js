@@ -113,6 +113,9 @@ export default {
         });
       }
     },
+    updated() {
+      this.$toast.success(this.$t('system_successfully_updated'));
+    },
   },
   created() {
     this.$socket.client.io.opts.extraHeaders = {

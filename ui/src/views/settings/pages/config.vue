@@ -246,7 +246,7 @@ export default {
         await updateSystem(`?version=${this.currentVersion}`);
         await timeout(1000);
 
-        this.$toast.success(this.$t('system_successfully_updated'));
+        //this.$toast.success(this.$t('system_successfully_updated'));
       } catch (error) {
         this.$toast.error(error.message);
       }

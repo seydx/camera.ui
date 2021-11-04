@@ -198,8 +198,26 @@ export default {
     filter: {
       handler(configuredFilter) {
         const filter = { ...configuredFilter };
+
+        if (filter.labels) {
+          const customLabel = this.$t('custom');
+          const noLabel = this.$t('no_label');
+
+          filter.labels = configuredFilter.labels.map((label) => {
+            if (label === customLabel) {
+              return 'Custom';
+            } else if (label === noLabel) {
+              return 'no label';
+            } else {
+              return label;
+            }
+          });
+        }
+
         filter.status = configuredFilter.status.map((status) => status.value);
         filter.types = configuredFilter.types.map((type) => type.value);
+
+        console.log(filter);
         this.$emit('filter', filter);
       },
       deep: true,
@@ -220,7 +238,17 @@ export default {
         const response = await getRecordings();
 
         this.labelsFilter = [
-          ...new Set(response.data.result.map((recording) => recording.label).filter((label) => label)),
+          ...new Set(
+            response.data.result
+              .map((recording) =>
+                recording.label.includes('no label')
+                  ? this.$t('no_label')
+                  : recording.label.includes('Custom')
+                  ? this.$t('custom')
+                  : recording.label
+              )
+              .filter((label) => label)
+          ),
         ];
       }
 
@@ -228,7 +256,17 @@ export default {
         const response = await getNotifications();
 
         this.labelsFilter = [
-          ...new Set(response.data.result.map((recording) => recording.label).filter((label) => label)),
+          ...new Set(
+            response.data.result
+              .map((notification) =>
+                notification.label.includes('no label')
+                  ? this.$t('no_label')
+                  : notification.label.includes('Custom')
+                  ? this.$t('custom')
+                  : notification.label
+              )
+              .filter((label) => label)
+          ),
         ];
       }
     } catch (err) {
