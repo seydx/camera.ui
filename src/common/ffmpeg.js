@@ -43,7 +43,7 @@ const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
   fs.writeFileSync(filePath, newJpeg);
 };
 
-const storeFrameFromVideoBuffer = function (camera, buffer, outputPath) {
+const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
@@ -93,7 +93,7 @@ const storeFrameFromVideoBuffer = function (camera, buffer, outputPath) {
       }
     });
 
-    ffmpeg.stdin.write(buffer);
+    ffmpeg.stdin.write(fileBuffer);
     ffmpeg.stdin.destroy();
   });
 };
@@ -173,14 +173,22 @@ const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audi
   });
 };
 
-exports.storeBuffer = async function (camera, buffer, recordingPath, fileName, label, isPlaceholder, externRecording) {
+exports.storeBuffer = async function (
+  camera,
+  fileBuffer,
+  recordingPath,
+  fileName,
+  label,
+  isPlaceholder,
+  externRecording
+) {
   let outputPath = `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg`;
 
   // eslint-disable-next-line unicorn/prefer-ternary
   if (externRecording) {
-    await storeFrameFromVideoBuffer(camera, buffer, outputPath);
+    await storeFrameFromVideoBuffer(camera, fileBuffer, outputPath);
   } else {
-    await fs.outputFile(outputPath, buffer, { encoding: 'base64' });
+    await fs.outputFile(outputPath, fileBuffer, { encoding: 'base64' });
   }
 
   replaceJpegWithExifJPEG(camera.name, outputPath, label);
@@ -190,7 +198,9 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegArguments = camera.videoConfig.source.replace('-i', '-y -i').split(' ');
+    const ffmpegInput = camera.videoConfig.source.split('-i ')[1];
+    const ffmpegArguments = ['-y', '-re', '-i', ffmpegInput];
+
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
     ffmpegArguments.push(
@@ -260,7 +270,9 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    let ffmpegArguments = camera.videoConfig.source.replace('-i', '-nostdin -y -i').split(' ');
+    const ffmpegInput = camera.videoConfig.source.split('-i ')[1];
+    const ffmpegArguments = ['-nostdin', '-y', '-re', '-i', ffmpegInput];
+
     let videoName = `${recordingPath}/${fileName}.mp4`;
 
     ffmpegArguments.push(
@@ -312,7 +324,7 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
   });
 };
 
-exports.storeVideoBuffer = function (camera, buffer, recordingPath, fileName) {
+exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName) {
   return new Promise((resolve, reject) => {
     let videoName = `${recordingPath}/${fileName}.mp4`;
 
@@ -320,7 +332,7 @@ exports.storeVideoBuffer = function (camera, buffer, recordingPath, fileName) {
 
     const writeStream = fs.createWriteStream(videoName);
 
-    writeStream.write(buffer);
+    writeStream.write(fileBuffer);
     writeStream.end();
 
     writeStream.on('finish', () => resolve());
@@ -368,10 +380,10 @@ exports.handleFragmentsRequests = async function* (camera) {
       pending.push(header, data);
 
       if (type === 'moov' || type === 'mdat') {
-        const buffer = pending;
+        const fileBuffer = pending;
         pending = [];
 
-        yield buffer;
+        yield fileBuffer;
       }
 
       if (camera.videoConfig.debug) {

@@ -326,19 +326,19 @@ class ConfigService {
             }`;
           }
 
-          if (camera.videoConfig.maxDelay) {
+          if (camera.videoConfig.maxDelay >= 0) {
             camera.videoConfig.source = `-max_delay ${camera.videoConfig.maxDelay} ${camera.videoConfig.source}`;
           }
 
-          if (camera.videoConfig.reorderQueueSize) {
+          if (camera.videoConfig.reorderQueueSize >= 0) {
             camera.videoConfig.source = `-reorder_queue_size ${camera.videoConfig.reorderQueueSize} ${camera.videoConfig.source}`;
           }
 
-          if (camera.videoConfig.probeSize) {
+          if (camera.videoConfig.probeSize >= 32) {
             camera.videoConfig.source = `-probesize ${camera.videoConfig.probeSize} ${camera.videoConfig.source}`;
           }
 
-          if (camera.videoConfig.analyzeDuration) {
+          if (camera.videoConfig.analyzeDuration >= 0) {
             camera.videoConfig.source = `-analyzeduration ${camera.videoConfig.analyzeDuration} ${camera.videoConfig.source}`;
           }
 

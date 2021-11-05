@@ -82,7 +82,7 @@ exports.findById = (id) => {
   return Database.recordingsDB.get('recordings').find({ id: id }).value();
 };
 
-exports.createRecording = async (data, buffer) => {
+exports.createRecording = async (data, fileBuffer) => {
   await Database.interfaceDB.read();
 
   const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
@@ -127,12 +127,12 @@ exports.createRecording = async (data, buffer) => {
     label: label,
   };
 
-  if (buffer) {
+  if (fileBuffer) {
     const isPlaceholder = true;
     const externRecording = true;
 
-    await storeBuffer(camera, buffer, data.path, fileName, label, isPlaceholder, externRecording);
-    await storeVideoBuffer(camera, buffer, data.path, fileName);
+    await storeBuffer(camera, fileBuffer, data.path, fileName, label, isPlaceholder, externRecording);
+    await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
   } else {
     const isPlaceholder = data.type === 'Video';
     const externRecording = false;
@@ -157,8 +157,8 @@ exports.createRecording = async (data, buffer) => {
           }
         }, recordingsSettings.timer * 1000);
 
-        for await (const buffer of generator) {
-          filebuffer = Buffer.concat([filebuffer, Buffer.concat(buffer)]);
+        for await (const fileBuffer of generator) {
+          filebuffer = Buffer.concat([filebuffer, Buffer.concat(fileBuffer)]);
         }
 
         generator = null;

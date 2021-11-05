@@ -40,13 +40,13 @@ class EventController {
   }
 
   // eslint-disable-next-line no-unused-vars
-  static async handle(trigger, cameraName, active, buffer, type) {
+  static async handle(trigger, cameraName, active, fileBuffer, type) {
     /*
      * Direct access possible (e.g. if the recording is sent by an external process).
-     * Direct access requires a buffer to process the recording it.
+     * Direct access requires a fileBuffer to process the recording it.
      *
      * "trigger" should be motion, doorbell or custom.
-     * "type" should be Snapshot or Video if passed with a buffer (Default: Video)
+     * "type" should be Snapshot or Video if passed with a fileBuffer (Default: Video)
      */
 
     const controller = CameraController.cameras.get(cameraName);
@@ -62,7 +62,7 @@ class EventController {
       }
 
       if (Camera && Camera.videoConfig) {
-        if (!buffer) {
+        if (!fileBuffer) {
           /*
            * When accessing via MotionController an eventTimeout should be set up to prevent massive motion events e.g. via MQTT.
            * For direct access it should be handled with its own logic.
@@ -143,7 +143,7 @@ class EventController {
           subscription: SettingsDB.webpush.subscription,
         };
 
-        if (!EventController.#movementHandler[cameraName] || buffer) {
+        if (!EventController.#movementHandler[cameraName] || fileBuffer) {
           EventController.#movementHandler[cameraName] = true;
 
           /*
@@ -162,23 +162,25 @@ class EventController {
           const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
 
           const allowStream =
-            controller && !buffer && recordingSettings.active ? controller.session.requestSession() : true;
+            controller && !fileBuffer && recordingSettings.active ? controller.session.requestSession() : true;
 
-          if (buffer) {
-            // "recordOnMovement" NOT active because we received buffer from extern process
+          if (fileBuffer) {
+            // "recordOnMovement" NOT active because we received fileBuffer from extern process
             motionInfo.label = 'Custom';
             motionInfo.type = type || 'Video';
           }
 
           if (allowStream) {
-            motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
+            if (!fileBuffer) {
+              motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
+            }
 
             if (
               awsSettings.active &&
               awsSettings.contingent_total > 0 &&
               awsSettings.contingent_left > 0 &&
               CameraSettings.rekognition.active &&
-              !buffer &&
+              !fileBuffer &&
               recordingSettings.active
             ) {
               motionInfo.label = await EventController.#handleImageDetection(
@@ -212,13 +214,13 @@ class EventController {
                   recordingSettings,
                   telegramSettings,
                   false,
-                  buffer,
+                  fileBuffer,
                   notificationsSettings.active
                 );
               }
 
               // 4)
-              await EventController.#handleRecording(motionInfo, buffer, recordingSettings.active);
+              await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
 
               // 5)
               await EventController.#sendWebpush(
@@ -239,7 +241,7 @@ class EventController {
                   recordingSettings,
                   telegramSettings,
                   false,
-                  buffer,
+                  fileBuffer,
                   notificationsSettings.active
                 );
               }
@@ -364,13 +366,13 @@ class EventController {
     return await NotificationsModel.createNotification(motionInfo);
   }
 
-  static async #handleRecording(motionInfo, buffer, recordingActive) {
+  static async #handleRecording(motionInfo, fileBuffer, recordingActive) {
     if (!recordingActive) {
       log.debug('Skip recording');
       return;
     }
 
-    return await RecordingsModel.createRecording(motionInfo, buffer);
+    return await RecordingsModel.createRecording(motionInfo, fileBuffer);
   }
 
   static async #handleSnapshot(camera, recordingActive) {
@@ -496,7 +498,7 @@ class EventController {
               await Telegram.send(telegramSettings.chatID, content);
             } else {
               log.debug(
-                'Can not send telegram notification (snapshot). Recording not active or malformed image buffer!',
+                'Can not send telegram notification (snapshot). Recording not active or malformed image fileBuffer!',
                 cameraName
               );
             }
