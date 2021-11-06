@@ -21,6 +21,9 @@ export default {
         general: {
           expand: true,
         },
+        automation: {
+          expand: true,
+        },
         themes: {
           expand: true,
         },
@@ -30,6 +33,10 @@ export default {
       };
     } else if (!this.settingsLayout.general.general) {
       this.settingsLayout.general.general = {
+        expand: true,
+      };
+    } else if (!this.settingsLayout.general.automation) {
+      this.settingsLayout.general.automation = {
         expand: true,
       };
     } else if (!this.settingsLayout.general.themes) {
@@ -183,6 +190,9 @@ export default {
             profile: {},
             general: {
               general: {
+                expand: true,
+              },
+              automation: {
                 expand: true,
               },
               themes: {

@@ -45,6 +45,13 @@ const defaultDatabase = {
       theme: 'default',
       exclude: [],
       rooms: ['Standard'],
+      automation: {
+        active: false,
+        atHome: false,
+        exclude: [],
+        startTime: '08:00',
+        endTime: '17:00',
+      },
     },
     notifications: {
       active: false,
@@ -115,6 +122,8 @@ class Database {
 
   static controller;
 
+  static atHomeAutomation = null;
+
   constructor(controller) {
     Database.controller = controller;
   }
@@ -132,16 +141,100 @@ class Database {
     Database.recordingsDB.defaults(defaultRecordingsDatabase).write();
     Database.tokensDB.defaults(defaultTokensDatabase).write();
 
+    await Database.#ensureDatabaseValues();
     await Database.#initializeUser();
     await Database.#writeConfigCamerasToDB();
     await Database.refreshRecordingsDatabase();
 
-    //update version
     await Database.interfaceDB.set('version', version).write();
+    await Database.startAtHomeAutomation();
 
     return {
       interface: Database.interfaceDB,
     };
+  }
+
+  static async startAtHomeAutomation() {
+    await Database.interfaceDB.read();
+
+    const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
+
+    if (
+      generalSettings.automation.active &&
+      generalSettings.automation.startTime &&
+      generalSettings.automation.endTime
+    ) {
+      log.debug('Starting atHome automation');
+
+      const format = 'HH:mm';
+
+      const oldAtHomeValue = generalSettings.atHome;
+      const oldExcludeValue = generalSettings.exclude;
+
+      const newAtHomeValue = generalSettings.automation.atHome;
+      const newExcludeValue = generalSettings.automation.exclude;
+
+      const adaptSettings = async (inTime) => {
+        await Database.interfaceDB.read();
+
+        await Database.interfaceDB
+          .get('settings')
+          .get('general')
+          .set('atHome', inTime ? newAtHomeValue : oldAtHomeValue)
+          .write();
+
+        await Database.interfaceDB
+          .get('settings')
+          .get('general')
+          .set('exclude', inTime ? newExcludeValue : oldExcludeValue)
+          .write();
+
+        if (inTime) {
+          console.log('We are between automation start/end time');
+        } else {
+          console.log('We are NOT between automation start/end time');
+        }
+
+        console.log(`Start: ${generalSettings.automation.startTime} - End: ${generalSettings.automation.endTime}`);
+        console.log(await Database.interfaceDB.get('settings').get('general').value());
+      };
+
+      const isBetween = () => {
+        const currentTime = moment();
+        const startTime = moment(generalSettings.automation.startTime, format);
+        const endTime = moment(generalSettings.automation.endTime, format);
+
+        if ((startTime.hour() >= 12 && endTime.hour() <= 12) || endTime.isBefore(startTime)) {
+          endTime.add(1, 'days');
+
+          if (currentTime.hour() <= 12) {
+            currentTime.add(1, 'days');
+          }
+        }
+
+        return currentTime.isBetween(startTime, endTime);
+      };
+
+      Database.atHomeAutomation = setInterval(() => {
+        adaptSettings(isBetween());
+      }, 60 * 1000);
+
+      adaptSettings(isBetween());
+    }
+  }
+
+  static async restartAtHomeAutomation() {
+    Database.stopAtHomeAutomation();
+    await Database.startAtHomeAutomation();
+  }
+
+  static stopAtHomeAutomation() {
+    log.debug('Stopping atHome automation');
+
+    if (Database.atHomeAutomation) {
+      clearInterval(Database.atHomeAutomation);
+      Database.atHomeAutomation = null;
+    }
   }
 
   static async refreshDatabase() {
@@ -207,6 +300,84 @@ class Database {
 
   static async resetDatabase() {
     return await Database.interfaceDB.setState(defaultDatabase).write();
+  }
+
+  static async #ensureDatabaseValues() {
+    let database = await Database.interfaceDB.value();
+
+    if (typeof database?.version !== 'string') {
+      database.version = defaultDatabase.version;
+    }
+
+    if (typeof database?.firstStart !== 'boolean') {
+      database.firstStart = defaultDatabase.firstStart;
+    }
+
+    if (!Array.isArray(database?.cameras)) {
+      database.cameras = defaultDatabase.cameras;
+    }
+
+    if (!Array.isArray(database?.notifications)) {
+      database.notifications = defaultDatabase.notifications;
+    }
+
+    if (!Array.isArray(database?.users)) {
+      database.users = defaultDatabase.users;
+    }
+
+    if (typeof database?.settings !== 'object') {
+      database.settings = defaultDatabase.settings;
+    }
+
+    if (typeof database?.settings.aws !== 'object') {
+      database.settings.aws = defaultDatabase.settings.aws;
+    }
+
+    if (!Array.isArray(database?.settings.cameras)) {
+      database.settings.cameras = defaultDatabase.settings.cameras;
+    }
+
+    if (typeof database?.settings.camview !== 'object') {
+      database.settings.camview = defaultDatabase.settings.camview;
+    }
+
+    if (typeof database?.settings.dashboard !== 'object') {
+      database.settings.dashboard = defaultDatabase.settings.dashboard;
+    }
+
+    if (typeof database?.settings.general !== 'object') {
+      database.settings.general = defaultDatabase.settings.general;
+    }
+
+    if (typeof database?.settings.general.automation !== 'object') {
+      database.settings.general.automation = defaultDatabase.settings.general.automation;
+    }
+
+    if (typeof database?.settings.notifications !== 'object') {
+      database.settings.notifications = defaultDatabase.settings.notifications;
+    }
+
+    if (typeof database?.settings.notifications.alexa !== 'object') {
+      database.settings.notifications.alexa = defaultDatabase.settings.notifications.alexa;
+    }
+
+    if (typeof database?.settings.notifications.telegram !== 'object') {
+      database.settings.notifications.telegram = defaultDatabase.settings.notifications.telegram;
+    }
+
+    if (typeof database?.settings.notifications.webhook !== 'object') {
+      database.settings.notifications.webhook = defaultDatabase.settings.notifications.webhook;
+    }
+
+    if (typeof database?.settings.recordings !== 'object') {
+      database.settings.recordings = defaultDatabase.settings.recordings;
+    }
+
+    if (typeof database?.settings.webpush !== 'object') {
+      database.settings.webpush = defaultDatabase.settings.webpush;
+    }
+
+    await Database.interfaceDB.assign(database).write();
   }
 
   static async #initializeUser() {

@@ -39,7 +39,7 @@
       b-collapse.w-100(
         v-model="notifications.active"
       )
-        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000")
+        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:cameras:edit', 'settings:notifications:edit'])")
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.alexa.expand ? "180" : "-90"', @click="settingsLayout.notifications.alexa.expand = !settingsLayout.notifications.alexa.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.alexa.expand = !settingsLayout.notifications.alexa.expand") {{ $t("alexa") }}
           b-collapse(
@@ -167,7 +167,7 @@
                         b-spinner.float-left.mt-3.mr-3.text-color-primary(type="grow" label="Loading..." small, v-if="loadingAlexa")
                         a.text-danger.alexaConnect(:href="`http://${alexaHost}:${notifications.alexa.proxy.port}`", @click.prevent="alexaReconnect" v-if="!loadingAlexa && !alexaPing") {{ $t("reconnect") }}
                         span.text-success(v-if="!loadingAlexa && alexaPing") {{ $t("connected") }}
-        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000")
+        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:cameras:edit', 'settings:notifications:edit'])")
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.telegram.expand ? "180" : "-90"', @click="settingsLayout.notifications.telegram.expand = !settingsLayout.notifications.telegram.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.telegram.expand = !settingsLayout.notifications.telegram.expand") {{ $t("telegram") }}
           b-collapse(
@@ -227,7 +227,7 @@
                             :options="telegramTypes"
                           )
                       hr.hr-underline
-        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000")
+        .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:cameras:edit', 'settings:notifications:edit'])")
           b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.webhook.expand ? "180" : "-90"', @click="settingsLayout.notifications.webhook.expand = !settingsLayout.notifications.webhook.expand")
           h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.webhook.expand = !settingsLayout.notifications.webhook.expand") {{ $t("webhook") }}
           b-collapse(

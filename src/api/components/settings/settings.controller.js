@@ -4,6 +4,7 @@
 const { Alexa } = require('../../../common/alexa');
 
 const { CameraController } = require('../../../controller/camera/camera.controller');
+const { Database } = require('../../database');
 
 const SettingsModel = require('./settings.model');
 
@@ -104,6 +105,16 @@ exports.patchTarget = async (req, res) => {
         }
 
         controller?.stream?.setStreamOptions(setting);
+      }
+    }
+
+    if (req.params.target === 'general') {
+      if (req.query.stopAutomation === 'true') {
+        Database.stopAtHomeAutomation();
+      }
+
+      if (req.query.restartAutomation === 'true') {
+        await Database.restartAtHomeAutomation();
       }
     }
 

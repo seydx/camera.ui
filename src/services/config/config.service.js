@@ -1,6 +1,7 @@
 'use-strict';
 
 const crypto = require('crypto');
+const ffmpegPath = require('ffmpeg-for-homebridge');
 const fs = require('fs-extra');
 const path = require('path');
 
@@ -70,7 +71,7 @@ const permissionLevels = [
   'settings:recordings:edit',
 ];
 
-const defaultVideoProcess = 'ffmpeg';
+const defaultVideoProcess = ffmpegPath || 'ffmpeg';
 const minNodeVersion = '16.12.0';
 
 class ConfigService {

@@ -41,241 +41,248 @@ class EventController {
 
   // eslint-disable-next-line no-unused-vars
   static async handle(trigger, cameraName, active, fileBuffer, type) {
-    /*
-     * Direct access possible (e.g. if the recording is sent by an external process).
-     * Direct access requires a fileBuffer to process the recording it.
-     *
-     * "trigger" should be motion, doorbell or custom.
-     * "type" should be Snapshot or Video if passed with a fileBuffer (Default: Video)
-     */
+    if (active) {
+      /*
+       * Direct access possible (e.g. if the recording is sent by an external process).
+       * Direct access requires a fileBuffer to process the recording it.
+       *
+       * "trigger" should be motion, doorbell or custom.
+       * "type" should be Snapshot or Video if passed with a fileBuffer (Default: Video)
+       */
 
-    const controller = CameraController.cameras.get(cameraName);
-
-    try {
-      let Camera, CameraSettings;
+      const controller = CameraController.cameras.get(cameraName);
 
       try {
-        Camera = await CamerasModel.findByName(cameraName);
-        CameraSettings = await CamerasModel.getSettingsByName(cameraName);
-      } catch (error) {
-        log.warn(error.message, cameraName);
-      }
+        let Camera, CameraSettings;
 
-      if (Camera && Camera.videoConfig) {
-        if (!fileBuffer) {
-          /*
-           * When accessing via MotionController an eventTimeout should be set up to prevent massive motion events e.g. via MQTT.
-           * For direct access it should be handled with its own logic.
-           */
-
-          const timeout = EventController.#motionTimers.get(cameraName);
-          const timeoutConfig = !Number.isNaN(Number.parseInt(Camera.motionTimeout)) ? Camera.motionTimeout : 1;
-
-          if (!timeout) {
-            const eventTimeout = setTimeout(() => {
-              log.info('Motion handler timeout.', cameraName);
-              EventController.#motionTimers.delete(cameraName);
-            }, timeoutConfig * 1000);
-
-            EventController.#motionTimers.set(cameraName, eventTimeout);
-          } else {
-            log.warn(`Event blocked due to motionTimeout (${timeoutConfig}s)`, cameraName);
-          }
+        try {
+          Camera = await CamerasModel.findByName(cameraName);
+          CameraSettings = await CamerasModel.getSettingsByName(cameraName);
+        } catch (error) {
+          log.warn(error.message, cameraName);
         }
 
-        const SettingsDB = await SettingsModel.show(false);
+        if (Camera && Camera.videoConfig) {
+          if (!fileBuffer) {
+            /*
+             * When accessing via MotionController an eventTimeout should be set up to prevent massive motion events e.g. via MQTT.
+             * For direct access it should be handled with its own logic.
+             */
 
-        const awsSettings = {
-          active: SettingsDB.aws.active,
-          accessKeyId: SettingsDB.aws.accessKeyId,
-          secretAccessKey: SettingsDB.aws.secretAccessKey,
-          region: SettingsDB.aws.region,
-          contingent_total: SettingsDB.aws.contingent_total,
-          contingent_left: SettingsDB.aws.last_rekognition
-            ? moment(SettingsDB.aws.last_rekognition).isSame(new Date(), 'month')
-              ? SettingsDB.aws.contingent_left >= 0
-                ? SettingsDB.aws.contingent_left
-                : SettingsDB.aws.contingent_total
-              : SettingsDB.aws.contingent_total
-            : SettingsDB.aws.contingent_total,
-          last_rekognition: SettingsDB.aws.last_rekognition,
-        };
+            const timeout = EventController.#motionTimers.get(cameraName);
+            const timeoutConfig = !Number.isNaN(Number.parseInt(Camera.motionTimeout)) ? Camera.motionTimeout : 1;
 
-        const notificationsSettings = {
-          active: SettingsDB.notifications.active,
-        };
+            if (!timeout) {
+              const eventTimeout = setTimeout(() => {
+                log.info('Motion handler timeout.', cameraName);
+                EventController.#motionTimers.delete(cameraName);
+              }, timeoutConfig * 1000);
 
-        const recordingSettings = {
-          active: SettingsDB.recordings.active,
-          path: SettingsDB.recordings.path,
-          timer: SettingsDB.recordings.timer,
-          type: SettingsDB.recordings.type,
-        };
-
-        const alexaSettings = {
-          active: SettingsDB.notifications.alexa.active,
-          domain: SettingsDB.notifications.alexa.domain,
-          serialNr: SettingsDB.notifications.alexa.serialNr,
-          auth: SettingsDB.notifications.alexa.auth,
-          proxy: SettingsDB.notifications.alexa.proxy,
-          message: SettingsDB.notifications.alexa.message,
-          startTime: SettingsDB.notifications.alexa.startTime,
-          endTime: SettingsDB.notifications.alexa.endTime,
-          enabled: CameraSettings.alexa,
-        };
-
-        const telegramSettings = {
-          active: SettingsDB.notifications.telegram.active,
-          token: SettingsDB.notifications.telegram.token,
-          chatID: SettingsDB.notifications.telegram.chatID,
-          message: SettingsDB.notifications.telegram.message,
-          type: CameraSettings.telegramType,
-        };
-
-        const webhookSettings = {
-          active: SettingsDB.notifications.webhook.active,
-          endpoint: CameraSettings.webhookUrl,
-        };
-
-        const webpushSettings = {
-          publicKey: SettingsDB.webpush.publicKey,
-          privateKey: SettingsDB.webpush.privateKey,
-          subscription: SettingsDB.webpush.subscription,
-        };
-
-        if (!EventController.#movementHandler[cameraName] || fileBuffer) {
-          EventController.#movementHandler[cameraName] = true;
-
-          /*
-           * Movement Event flow
-           *
-           * 1) If webhook enabled, send webhook notification
-           * 2) If alexa enabled, send notification to alexa
-           * 3) If telegram enabled and type = "Text" for the camera, send telegram notification
-           * 4) Handle recording (Snapshot/Video)
-           * 5) Send webpush (ui) notification
-           * 6) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
-           */
-
-          log.debug(`New ${trigger} alert`, cameraName);
-
-          const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
-
-          const allowStream =
-            controller && !fileBuffer && recordingSettings.active ? controller.session.requestSession() : true;
-
-          if (fileBuffer) {
-            // "recordOnMovement" NOT active because we received fileBuffer from extern process
-            motionInfo.label = 'Custom';
-            motionInfo.type = type || 'Video';
+              EventController.#motionTimers.set(cameraName, eventTimeout);
+            } else {
+              log.warn(`Event blocked due to motionTimeout (${timeoutConfig}s)`, cameraName);
+            }
           }
 
-          if (allowStream) {
-            if (!fileBuffer) {
-              motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
+          const SettingsDB = await SettingsModel.show(false);
+
+          const awsSettings = {
+            active: SettingsDB.aws.active,
+            accessKeyId: SettingsDB.aws.accessKeyId,
+            secretAccessKey: SettingsDB.aws.secretAccessKey,
+            region: SettingsDB.aws.region,
+            contingent_total: SettingsDB.aws.contingent_total,
+            contingent_left: SettingsDB.aws.last_rekognition
+              ? moment(SettingsDB.aws.last_rekognition).isSame(new Date(), 'month')
+                ? SettingsDB.aws.contingent_left >= 0
+                  ? SettingsDB.aws.contingent_left
+                  : SettingsDB.aws.contingent_total
+                : SettingsDB.aws.contingent_total
+              : SettingsDB.aws.contingent_total,
+            last_rekognition: SettingsDB.aws.last_rekognition,
+          };
+
+          const notificationsSettings = {
+            active: SettingsDB.notifications.active,
+          };
+
+          const recordingSettings = {
+            active: SettingsDB.recordings.active,
+            path: SettingsDB.recordings.path,
+            timer: SettingsDB.recordings.timer,
+            type: SettingsDB.recordings.type,
+          };
+
+          const alexaSettings = {
+            active: SettingsDB.notifications.alexa.active,
+            domain: SettingsDB.notifications.alexa.domain,
+            serialNr: SettingsDB.notifications.alexa.serialNr,
+            auth: SettingsDB.notifications.alexa.auth,
+            proxy: SettingsDB.notifications.alexa.proxy,
+            message: SettingsDB.notifications.alexa.message,
+            startTime: SettingsDB.notifications.alexa.startTime,
+            endTime: SettingsDB.notifications.alexa.endTime,
+            enabled: CameraSettings.alexa,
+          };
+
+          const telegramSettings = {
+            active: SettingsDB.notifications.telegram.active,
+            token: SettingsDB.notifications.telegram.token,
+            chatID: SettingsDB.notifications.telegram.chatID,
+            message: SettingsDB.notifications.telegram.message,
+            type: CameraSettings.telegramType,
+          };
+
+          const webhookSettings = {
+            active: SettingsDB.notifications.webhook.active,
+            endpoint: CameraSettings.webhookUrl,
+          };
+
+          const webpushSettings = {
+            publicKey: SettingsDB.webpush.publicKey,
+            privateKey: SettingsDB.webpush.privateKey,
+            subscription: SettingsDB.webpush.subscription,
+          };
+
+          if (!EventController.#movementHandler[cameraName] || fileBuffer) {
+            EventController.#movementHandler[cameraName] = true;
+
+            /*
+             * Movement Event flow
+             *
+             * 1) If webhook enabled, send webhook notification
+             * 2) If alexa enabled, send notification to alexa
+             * 3) If telegram enabled and type = "Text" for the camera, send telegram notification
+             * 4) Handle recording (Snapshot/Video)
+             * 5) Send webpush (ui) notification
+             * 6) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
+             */
+
+            log.debug(`New ${trigger} alert`, cameraName);
+
+            const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
+
+            const allowStream =
+              controller && !fileBuffer && recordingSettings.active ? controller.session.requestSession() : true;
+
+            if (fileBuffer) {
+              // "recordOnMovement" NOT active because we received fileBuffer from extern process
+              motionInfo.label = 'Custom';
+              motionInfo.type = type || 'Video';
             }
 
-            if (
-              awsSettings.active &&
-              awsSettings.contingent_total > 0 &&
-              awsSettings.contingent_left > 0 &&
-              CameraSettings.rekognition.active &&
-              !fileBuffer &&
-              recordingSettings.active
-            ) {
-              motionInfo.label = await EventController.#handleImageDetection(
-                cameraName,
-                awsSettings,
-                CameraSettings.rekognition.labels,
-                CameraSettings.rekognition.confidence,
-                motionInfo.imgBuffer
-              );
-            }
-
-            if (motionInfo.label || motionInfo.label === null) {
-              const notification = await EventController.#handleNotification(motionInfo, notificationsSettings.active);
-
-              // 1)
-              await EventController.#sendWebhook(
-                cameraName,
-                notification,
-                webhookSettings,
-                notificationsSettings.active
-              );
-
-              // 2)
-              await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
-
-              // 3)
-              if (telegramSettings.type === 'Text') {
-                await EventController.#sendTelegram(
-                  cameraName,
-                  notification,
-                  recordingSettings,
-                  telegramSettings,
-                  false,
-                  fileBuffer,
-                  notificationsSettings.active
-                );
+            if (allowStream) {
+              if (!fileBuffer) {
+                motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
               }
 
-              // 4)
-              await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
-
-              // 5)
-              await EventController.#sendWebpush(
-                cameraName,
-                notification,
-                webpushSettings,
-                notificationsSettings.active
-              );
-
-              // 6)
               if (
-                (telegramSettings.type === 'Snapshot' || telegramSettings.type === 'Video') &&
+                awsSettings.active &&
+                awsSettings.contingent_total > 0 &&
+                awsSettings.contingent_left > 0 &&
+                CameraSettings.rekognition.active &&
+                !fileBuffer &&
                 recordingSettings.active
               ) {
-                await EventController.#sendTelegram(
+                motionInfo.label = await EventController.#handleImageDetection(
                   cameraName,
-                  notification,
-                  recordingSettings,
-                  telegramSettings,
-                  false,
-                  fileBuffer,
-                  notificationsSettings.active
+                  awsSettings,
+                  CameraSettings.rekognition.labels,
+                  CameraSettings.rekognition.confidence,
+                  motionInfo.imgBuffer
                 );
               }
 
-              log.debug(
-                `${recordingSettings.active ? 'Recording saved.' : 'Recording skipped.'} ${
-                  notificationsSettings.active ? 'Notification send.' : 'Notification skipped.'
-                }`,
-                cameraName
-              );
+              if (motionInfo.label || motionInfo.label === null) {
+                const notification = await EventController.#handleNotification(
+                  motionInfo,
+                  notificationsSettings.active
+                );
+
+                // 1)
+                await EventController.#sendWebhook(
+                  cameraName,
+                  notification,
+                  webhookSettings,
+                  notificationsSettings.active
+                );
+
+                // 2)
+                await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
+
+                // 3)
+                if (telegramSettings.type === 'Text') {
+                  await EventController.#sendTelegram(
+                    cameraName,
+                    notification,
+                    recordingSettings,
+                    telegramSettings,
+                    false,
+                    fileBuffer,
+                    notificationsSettings.active
+                  );
+                }
+
+                // 4)
+                await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
+
+                // 5)
+                await EventController.#sendWebpush(
+                  cameraName,
+                  notification,
+                  webpushSettings,
+                  notificationsSettings.active
+                );
+
+                // 6)
+                if (
+                  (telegramSettings.type === 'Snapshot' || telegramSettings.type === 'Video') &&
+                  recordingSettings.active
+                ) {
+                  await EventController.#sendTelegram(
+                    cameraName,
+                    notification,
+                    recordingSettings,
+                    telegramSettings,
+                    false,
+                    fileBuffer,
+                    notificationsSettings.active
+                  );
+                }
+
+                log.debug(
+                  `${recordingSettings.active ? 'Recording saved.' : 'Recording skipped.'} ${
+                    notificationsSettings.active ? 'Notification send.' : 'Notification skipped.'
+                  }`,
+                  cameraName
+                );
+              } else {
+                log.debug(
+                  `Skip handling movement. Configured label (${CameraSettings.rekognition.labels}) not detected.`,
+                  cameraName
+                );
+              }
             } else {
-              log.debug(
-                `Skip handling movement. Configured label (${CameraSettings.rekognition.labels}) not detected.`,
-                cameraName
-              );
+              log.warn('Max sessions exceeded.', cameraName);
             }
           } else {
-            log.warn('Max sessions exceeded.', cameraName);
+            log.warn('Can not handle movement, another movement currently in progress for this camera.', cameraName);
           }
         } else {
-          log.warn('Can not handle movement, another movement currently in progress for this camera.', cameraName);
+          log.warn(`Camera "${cameraName}" not found.`, cameraName);
         }
-      } else {
-        log.warn(`Camera "${cameraName}" not found.`, cameraName);
+      } catch (error) {
+        log.error('An error occured during handling motion event', cameraName);
+        log.error(error, cameraName);
       }
-    } catch (error) {
-      log.error('An error occured during handling motion event', cameraName);
-      log.error(error, cameraName);
-    }
 
-    EventController.#movementHandler[cameraName] = false;
+      EventController.#movementHandler[cameraName] = false;
 
-    if (controller) {
-      controller.session.closeSession();
+      if (controller) {
+        controller.session.closeSession();
+      }
+    } else {
+      log.debug(`Skip event, motion state: ${active}`, cameraName);
     }
   }
 
@@ -421,7 +428,7 @@ class EventController {
 
           if (!currentTime.isBetween(startTime, endTime)) {
             log.debug(
-              `Start/end time has been entered (${alexaSettings.startTime} - ${alexaSettings.endTime}). Current time is not in between, skip alexa notification`,
+              `Current time is not between given start (${alexaSettings.startTime}) / endtime (${alexaSettings.endTime}), skip alexa notification`,
               cameraName
             );
 

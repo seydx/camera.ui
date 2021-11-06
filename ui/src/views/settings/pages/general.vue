@@ -6,32 +6,87 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12.z-index-1(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.general.expand ? "180" : "-90"', @click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand") {{ $t("general") }}
+      b-collapse.col-12.z-index-1(
+        :visible="!general.automation.active"
+      )
+        .z-index-1(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
+          b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.general.expand ? "180" : "-90"', @click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand")
+          h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand") {{ $t("general") }}
+          b-collapse(
+            v-model="settingsLayout.general.general.expand"
+          )
+            div.mt-2.mb-4
+              .settings-box.container
+                .row
+                  .col-8.d-flex.flex-wrap.align-content-center {{ $t("at_home") }}
+                  .col-4.d-flex.flex-wrap.align-content-center.justify-content-end
+                    toggle-button(
+                      v-model="general.atHome"
+                      color="var(--primary-color) !important",
+                      :height="30",
+                      :sync="true",
+                      @change="function(){restartAutomation = false; stopAutomation = true;}"
+                    )
+                b-collapse(
+                  v-model="general.atHome"
+                )
+                  hr.hr-underline
+                  .row
+                    .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
+                    .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
+                      multiselect(
+                        v-model="general.exclude",
+                        :options="cameras.map(camera => { return camera.name })",
+                        :searchable="false",
+                        :close-on-select="false",
+                        :show-labels="false"
+                        :placeholder="$t('select')",
+                        :multiple="true",
+                        :limit="2"
+                        @input="function(){restartAutomation = false; stopAutomation = true;}"
+                      )
+                        template(slot="noOptions")
+                          strong {{ $t("empty") }}
+      .col-12(data-aos="fade-up" data-aos-duration="1000", :class="general.automation.active ? 'mt-2' : ''" v-if="checkLevel('settings:general:edit')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.automation.expand ? "180" : "-90"', @click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand") {{ $t("automation") }}
         b-collapse(
-          v-model="settingsLayout.general.general.expand"
+          v-model="settingsLayout.general.automation.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
               .row
-                .col-8.d-flex.flex-wrap.align-content-center {{ $t("at_home") }}
-                .col-4.d-flex.flex-wrap.align-content-center.justify-content-end
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
                   toggle-button(
-                    v-model="general.atHome"
+                    v-model="general.automation.active"
                     color="var(--primary-color) !important",
                     :height="30",
                     :sync="true",
+                    :aria-expanded="general.automation.active ? 'true' : 'false'"
+                    aria-controls="automation"
+                    @change="function(){restartAutomation = general.automation.active ? true : false; stopAutomation = general.automation.active ? false : true;}"
                   )
               b-collapse(
-                v-model="general.atHome"
+                v-model="general.automation.active"
               )
-                hr.hr-underline
-                .row
+                hr.hr-underline(v-if="general.automation.active")
+                .row(v-if="general.automation.active")
+                  .col-8.d-flex.flex-wrap.align-content-center {{ $t("at_home") }}
+                  .col-4.d-flex.flex-wrap.align-content-center.justify-content-end
+                    toggle-button(
+                      v-model="general.automation.atHome"
+                      color="var(--primary-color) !important",
+                      :height="30",
+                      :sync="true",
+                      @change="function(){restartAutomation = true; stopAutomation = false;}"
+                    )
+                hr.hr-underline(v-if="general.automation.active")
+                .row(v-if="general.automation.active")
                   .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
                   .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
                     multiselect(
-                      v-model="general.exclude",
+                      v-model="general.automation.exclude",
                       :options="cameras.map(camera => { return camera.name })",
                       :searchable="false",
                       :close-on-select="false",
@@ -39,9 +94,54 @@
                       :placeholder="$t('select')",
                       :multiple="true",
                       :limit="2"
+                      @input="function(){restartAutomation = true; stopAutomation = false;}"
                     )
                       template(slot="noOptions")
                         strong {{ $t("empty") }}
+                hr.hr-underline(v-if="general.automation.active")
+                .row(v-if="general.automation.active")
+                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("automation_from") }}
+                  .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
+                    b-input-group
+                      b-form-input(
+                        id="automationStartTime"
+                        v-model="general.automation.startTime"
+                        type="text"
+                        placeholder="HH:mm"
+                        @change="function(){restartAutomation = true; stopAutomation = false;}"
+                      )
+                      b-input-group-append
+                        b-form-timepicker(
+                          v-model="general.automation.startTime"
+                          button-only
+                          no-close-button
+                          right
+                          aria-controls="automationStartTime"
+                          class="timePicker"
+                          @input="function(){restartAutomation = true; stopAutomation = false;}"
+                        )
+                hr.hr-underline(v-if="general.automation.active")
+                .row(v-if="general.automation.active")
+                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("automation_to") }}
+                  .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
+                    b-input-group
+                      b-form-input(
+                        id="automationEndTime"
+                        v-model="general.automation.endTime"
+                        type="text"
+                        placeholder="HH:mm"
+                        @change="function(){restartAutomation = true; stopAutomation = false;}"
+                      )
+                      b-input-group-append
+                        b-form-timepicker(
+                          v-model="general.automation.endTime"
+                          button-only
+                          no-close-button
+                          right
+                          aria-controls="automationEndTime"
+                          class="timePicker"
+                          @input="function(){restartAutomation = true; stopAutomation = false;}"
+                        )
       .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000", v-if="!uiConfig || (uiConfig && uiConfig.theme === 'auto')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.themes.expand ? "180" : "-90"', @click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand") {{ $t("themes") }}
@@ -59,6 +159,7 @@
                     :sync="true",
                     v-model="autoDarkmode"
                     @input="switchAutoDarkmode"
+                    @change="function(){restartAutomation = false; stopAutomation = false;}"
                   )
               hr.hr-underline(v-if="supportMatchMedia")
               .row(v-if="supportMatchMedia && !autoDarkmode")
@@ -70,6 +171,7 @@
                     :sync="true",
                     v-model="darkmode"
                     @input="switchDarkmode"
+                    @change="function(){restartAutomation = false; stopAutomation = false;}"
                   )
               hr.hr-underline(v-if="supportMatchMedia && !autoDarkmode")
               .row
@@ -107,6 +209,7 @@
                     v-model="form.newRoom",
                     :state="roomState",
                     v-disable-leading-space
+                    @change="function(){restartAutomation = false; stopAutomation = false;}"
                   )
                 .col.d-flex.flex-wrap.align-content-center.justify-content-end.align-content-center.pl-0
                   b-link.text-success
@@ -158,6 +261,8 @@ export default {
       },
       generalTimer: null,
       loading: true,
+      restartAutomation: false,
+      stopAutomation: false,
       settingsLayout: {},
       supportMatchMedia: false,
     };
@@ -248,9 +353,24 @@ export default {
         this.generalTimer = null;
       }
 
+      const startTime = this.general.automation.startTime || '08:00:00';
+      const endTime = this.general.automation.endTime || '17:00:00';
+
+      if (startTime.split(':').length > 2) {
+        this.general.automation.startTime = startTime.split(':').slice(0, -1).join(':');
+      }
+
+      if (endTime.split(':').length > 2) {
+        this.general.automation.endTime = endTime.split(':').slice(0, -1).join(':');
+      }
+
       this.generalTimer = setTimeout(async () => {
         try {
-          await changeSetting('general', newValue);
+          await changeSetting(
+            'general',
+            newValue,
+            `?restartAutomation=${this.restartAutomation}&stopAutomation=${this.stopAutomation}`
+          );
           this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
@@ -508,5 +628,32 @@ export default {
   -webkit-transform: scale(1);
   -ms-transform: scale(1);
   transform: scale(1);
+}
+
+.timePicker >>> .dropdown-menu {
+  background: var(--secondary-bg-hover-color);
+  border: 1px solid var(--third-bg-color);
+  -webkit-box-shadow: 0px 0px 7px -2px rgb(0 0 0 / 50%);
+  box-shadow: 0px 0px 7px -4px rgb(0 0 0 / 50%);
+}
+
+.timePicker >>> button {
+  border-top-left-radius: 0px !important;
+  border-bottom-left-radius: 0px !important;
+}
+
+.timePicker >>> .bi-chevron-up,
+.timePicker >>> .bi-circle-fill {
+  color: var(--primary-font-color) !important;
+}
+
+.timePicker >>> .form-control.focus {
+  border-color: var(--trans-bg-color-3);
+  box-shadow: 0 0 0 0.2rem var(--trans-bg-color-3);
+}
+
+.timePicker >>> .btn-secondary {
+  background-color: var(--third-bg-color);
+  color: var(--font-primary-color);
 }
 </style>

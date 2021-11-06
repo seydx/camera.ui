@@ -48,6 +48,15 @@ class PrebufferService {
     }
   }
 
+  resetPrebuffer() {
+    this.prebufferFmp4 = [];
+    this.released = false;
+    this.ftyp = null;
+    this.moov = null;
+    this.idrInterval = 0;
+    this.prevIdr = 0;
+  }
+
   stop(killed) {
     if (this.prebufferSession) {
       const process = this.prebufferSession.process;
@@ -64,6 +73,8 @@ class PrebufferService {
       if (server) {
         server.close();
       }
+
+      this.resetPrebuffer();
 
       this.prebufferSession = null;
     }
@@ -147,7 +158,6 @@ class PrebufferService {
 
     if (this.debug) {
       cp.stdout.on('data', (data) => log.debug(data.toString(), this.cameraName));
-      //cp.stderr.on('data', (data) => log.debug(data.toString(), this.cameraName));
     }
 
     cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));
@@ -229,7 +239,7 @@ class PrebufferService {
       setTimeout(() => server.close(), 30000);
 
       const port = await cameraUtils.listenServer(server);
-      const ffmpegInput = ['-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
+      const ffmpegInput = [/*'-loglevel', 'error', */ '-hide_banner', '-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
 
       return ffmpegInput;
     } else {
