@@ -181,7 +181,7 @@ class PrebufferService {
     return { server: fmp4OutputServer, process: cp };
   }
 
-  async getVideo(requestedPrebuffer = 4000) {
+  async getVideo(requestedPrebuffer = 6000) {
     if (this.prebufferSession) {
       log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
 
@@ -239,7 +239,18 @@ class PrebufferService {
       setTimeout(() => server.close(), 30000);
 
       const port = await cameraUtils.listenServer(server);
-      const ffmpegInput = [/*'-loglevel', 'error', */ '-hide_banner', '-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
+      const ffmpegInput = [
+        //'-loglevel',
+        //'error',
+        '-hide_banner',
+        '-f',
+        'mp4',
+        //TODO
+        '-thread_queue_size',
+        '1024',
+        '-i',
+        `tcp://127.0.0.1:${port}`,
+      ];
 
       return ffmpegInput;
     } else {

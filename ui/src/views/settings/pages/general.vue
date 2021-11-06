@@ -47,7 +47,7 @@
                       )
                         template(slot="noOptions")
                           strong {{ $t("empty") }}
-      .col-12(data-aos="fade-up" data-aos-duration="1000", :class="general.automation.active ? 'mt-2' : ''" v-if="checkLevel('settings:general:edit')")
+      div(data-aos="fade-up" data-aos-duration="1000", :class="!settingsLayout.general.general.expand ? 'col-12 mt-2' : 'col-12'" v-if="checkLevel('settings:general:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.automation.expand ? "180" : "-90"', @click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand") {{ $t("automation") }}
         b-collapse(

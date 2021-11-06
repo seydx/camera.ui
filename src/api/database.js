@@ -188,15 +188,6 @@ class Database {
           .get('general')
           .set('exclude', inTime ? newExcludeValue : oldExcludeValue)
           .write();
-
-        if (inTime) {
-          console.log('We are between automation start/end time');
-        } else {
-          console.log('We are NOT between automation start/end time');
-        }
-
-        console.log(`Start: ${generalSettings.automation.startTime} - End: ${generalSettings.automation.endTime}`);
-        console.log(await Database.interfaceDB.get('settings').get('general').value());
       };
 
       const isBetween = () => {

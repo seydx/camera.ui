@@ -343,7 +343,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
-  const prebufferLength = 4000;
+  const prebufferLength = 6000;
   const audioArguments = ['-codec:a', 'copy'];
   const videoArguments = ['-codec:v', 'copy'];
 

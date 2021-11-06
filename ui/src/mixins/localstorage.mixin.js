@@ -31,19 +31,27 @@ export default {
           expand: true,
         },
       };
-    } else if (!this.settingsLayout.general.general) {
+    }
+
+    if (!this.settingsLayout.general.general) {
       this.settingsLayout.general.general = {
         expand: true,
       };
-    } else if (!this.settingsLayout.general.automation) {
+    }
+
+    if (!this.settingsLayout.general.automation) {
       this.settingsLayout.general.automation = {
         expand: true,
       };
-    } else if (!this.settingsLayout.general.themes) {
+    }
+
+    if (!this.settingsLayout.general.themes) {
       this.settingsLayout.general.themes = {
         expand: true,
       };
-    } else if (!this.settingsLayout.general.rooms) {
+    }
+
+    if (!this.settingsLayout.general.rooms) {
       this.settingsLayout.general.rooms = {
         expand: true,
       };
@@ -59,16 +67,22 @@ export default {
           camerasExpands: {},
         },
       };
-    } else if (!this.settingsLayout.dashboard.dashboard) {
+    }
+
+    if (!this.settingsLayout.dashboard.dashboard) {
       this.settingsLayout.dashboard.dashboard = {
         expand: true,
       };
-    } else if (!this.settingsLayout.dashboard.favourites) {
+    }
+
+    if (!this.settingsLayout.dashboard.favourites) {
       this.settingsLayout.dashboard.favourites = {
         expand: true,
         camerasExpands: {},
       };
-    } else if (!this.settingsLayout.dashboard.favourites.camerasExpands) {
+    }
+
+    if (!this.settingsLayout.dashboard.favourites.camerasExpands) {
       this.settingsLayout.dashboard.favourites.camerasExpands = {};
     }
 
@@ -82,16 +96,22 @@ export default {
           camerasExpands: {},
         },
       };
-    } else if (!this.settingsLayout.cameras.aws) {
+    }
+
+    if (!this.settingsLayout.cameras.aws) {
       this.settingsLayout.cameras.aws = {
         expand: true,
       };
-    } else if (!this.settingsLayout.cameras.cameras) {
+    }
+
+    if (!this.settingsLayout.cameras.cameras) {
       this.settingsLayout.cameras.cameras = {
         expand: true,
         camerasExpands: {},
       };
-    } else if (!this.settingsLayout.cameras.cameras.camerasExpands) {
+    }
+
+    if (!this.settingsLayout.cameras.cameras.camerasExpands) {
       this.settingsLayout.cameras.cameras.camerasExpands = {};
     }
 
@@ -101,7 +121,9 @@ export default {
           expand: true,
         },
       };
-    } else if (!this.settingsLayout.recordings.recordings) {
+    }
+
+    if (!this.settingsLayout.recordings.recordings) {
       this.settingsLayout.recordings.recordings = {
         expand: true,
       };
@@ -122,19 +144,27 @@ export default {
           expand: true,
         },
       };
-    } else if (!this.settingsLayout.notifications.notifications) {
+    }
+
+    if (!this.settingsLayout.notifications.notifications) {
       this.settingsLayout.notifications.notifications = {
         expand: true,
       };
-    } else if (!this.settingsLayout.notifications.alexa) {
+    }
+
+    if (!this.settingsLayout.notifications.alexa) {
       this.settingsLayout.notifications.alexa = {
         expand: true,
       };
-    } else if (!this.settingsLayout.notifications.telegram) {
+    }
+
+    if (!this.settingsLayout.notifications.telegram) {
       this.settingsLayout.notifications.telegram = {
         expand: true,
       };
-    } else if (!this.settingsLayout.notifications.webhook) {
+    }
+
+    if (!this.settingsLayout.notifications.webhook) {
       this.settingsLayout.notifications.webhook = {
         expand: true,
       };
@@ -150,16 +180,22 @@ export default {
           camerasExpands: {},
         },
       };
-    } else if (!this.settingsLayout.camview.camview) {
+    }
+
+    if (!this.settingsLayout.camview.camview) {
       this.settingsLayout.camview.camview = {
         expand: true,
       };
-    } else if (!this.settingsLayout.camview.favourites) {
+    }
+
+    if (!this.settingsLayout.camview.favourites) {
       this.settingsLayout.camview.favourites = {
         expand: true,
         camerasExpands: {},
       };
-    } else if (!this.settingsLayout.camview.favourites.camerasExpands) {
+    }
+
+    if (!this.settingsLayout.camview.favourites.camerasExpands) {
       this.settingsLayout.camview.favourites.camerasExpands = {};
     }
 
@@ -172,11 +208,15 @@ export default {
           expand: true,
         },
       };
-    } else if (!this.settingsLayout.config.server) {
+    }
+
+    if (!this.settingsLayout.config.server) {
       this.settingsLayout.config.server = {
         expand: true,
       };
-    } else if (!this.settingsLayout.config.config) {
+    }
+
+    if (!this.settingsLayout.config.config) {
       this.settingsLayout.config.config = {
         expand: true,
       };

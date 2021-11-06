@@ -321,6 +321,10 @@ class ConfigService {
             camera.videoConfig.source = `-re ${camera.videoConfig.source}`;
           }
 
+          if (camera.videoConfig.threadQueueSize >= 0) {
+            camera.videoConfig.source = `-thread_queue_size ${camera.videoConfig.threadQueueSize} ${camera.videoConfig.source}`;
+          }
+
           if (camera.videoConfig.stimeout > 0) {
             camera.videoConfig.source = `-stimeout ${camera.videoConfig.stimeout * 10000000} ${
               camera.videoConfig.source
