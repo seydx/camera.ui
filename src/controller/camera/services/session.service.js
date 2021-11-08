@@ -8,7 +8,7 @@ class SessionService {
   #camera;
 
   constructor(camera) {
-    log.debug('Initializing camera session', camera.name);
+    //log.debug('Initializing camera session', camera.name);
 
     this.#camera = camera;
     this.cameraName = camera.name;

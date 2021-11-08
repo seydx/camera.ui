@@ -135,14 +135,14 @@ const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audi
     const ffmpegArguments = [];
 
     ffmpegArguments.push(
-      '-loglevel',
-      'error',
+      //'-loglevel',
+      //'error',
       '-hide_banner',
       ...ffmpegInput,
       '-f',
       'mp4',
       ...videoOutArguments,
-      //...audioOutArguments,
+      ...audioOutArguments,
       '-fflags',
       '+genpts',
       '-reset_timestamps',
@@ -166,10 +166,10 @@ const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audi
 
     if (camera.videoConfig.debug) {
       cp.stdout.on('data', (data) => log.debug(data.toString(), camera.name));
-      //cp.stderr.on('data', (data) => log.debug(data.toString(), camera.name));
+      cp.stderr.on('data', (data) => log.debug(data.toString(), camera.name));
     }
 
-    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
+    //cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
   });
 };
 
@@ -198,15 +198,16 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegInput = camera.videoConfig.source.split('-i ')[1];
-    const ffmpegArguments = ['-y', '-re', '-i', ffmpegInput];
+    const ffmpegInput = [...camera.videoConfig.source.split(' ')];
 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
-    ffmpegArguments.push(
+    const ffmpegArguments = [
+      '-hide_banner',
       '-loglevel',
       'error',
-      '-hide_banner',
+      '-y',
+      ...ffmpegInput,
       '-s',
       `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
       '-frames:v',
@@ -216,8 +217,8 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
       '-update',
       '1',
       '-f',
-      'image2'
-    );
+      'image2',
+    ];
 
     if (camera.videoConfig.videoFilter) {
       ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
@@ -270,15 +271,17 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegInput = camera.videoConfig.source.split('-i ')[1];
-    const ffmpegArguments = ['-nostdin', '-y', '-re', '-i', ffmpegInput];
+    const ffmpegInput = [...camera.videoConfig.source.split(' ')];
 
     let videoName = `${recordingPath}/${fileName}.mp4`;
 
-    ffmpegArguments.push(
+    const ffmpegArguments = [
+      '-hide_banner',
       '-loglevel',
       'error',
-      '-hide_banner',
+      '-nostdin',
+      '-y',
+      ...ffmpegInput,
       '-t',
       recordingTimer.toString(),
       '-strict',
@@ -292,8 +295,8 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
       '-movflags',
       '+faststart',
       '-crf',
-      '23'
-    );
+      '23',
+    ];
 
     if (camera.videoConfig.videoFilter) {
       ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
@@ -343,7 +346,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
-  const prebufferLength = 6000;
+  const prebufferLength = 4000;
   const audioArguments = ['-codec:a', 'copy'];
   const videoArguments = ['-codec:v', 'copy'];
 
@@ -375,7 +378,7 @@ exports.handleFragmentsRequests = async function* (camera) {
 
   try {
     for await (const box of generator) {
-      const { header, type, length, data } = box;
+      const { header, type, data } = box;
 
       pending.push(header, data);
 
@@ -386,9 +389,9 @@ exports.handleFragmentsRequests = async function* (camera) {
         yield fileBuffer;
       }
 
-      if (camera.videoConfig.debug) {
+      /*if (camera.videoConfig.debug) {
         log.debug(`mp4 box type ${type} and lenght: ${length}`, camera.name);
-      }
+      }*/
     }
   } catch (error) {
     log.debug(`Recording completed. (${error})`, camera.name);

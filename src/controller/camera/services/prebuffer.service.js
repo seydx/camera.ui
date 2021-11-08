@@ -11,10 +11,11 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { log } = LoggerService;
 
-const videoDuration = 10000;
+const videoDuration = 15000;
 
 class PrebufferService {
   #camera;
+  #mediaService;
   #videoProcessor = ConfigService.ui.options.videoProcessor;
 
   prebufferFmp4 = [];
@@ -27,10 +28,11 @@ class PrebufferService {
   prebufferSession = null;
   killed = false;
 
-  constructor(camera) {
-    log.debug('Initializing camera prebuffering', camera.name);
+  constructor(camera, mediaService) {
+    //log.debug('Initializing camera prebuffering', camera.name);
 
     this.#camera = camera;
+    this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
@@ -41,7 +43,7 @@ class PrebufferService {
     try {
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
-      log.warn('An error occurrd during starting camera prebuffer!', this.cameraName);
+      log.warn('An error occured during starting camera prebuffer!', this.cameraName);
       log.error(error, this.cameraName);
 
       setTimeout(() => this.restartCamera(), 10000);
@@ -92,8 +94,37 @@ class PrebufferService {
 
     log.debug('Start prebuffering...', this.cameraName);
 
-    //const acodec = ['-acodec', 'copy'];
-    const vcodec = ['-vcodec', 'copy'];
+    let pcmAudio = this.#mediaService.codecs.audio.some((parameter) => parameter?.includes('pcm'));
+    let aacAudio = this.#mediaService.codecs.audio.some((parameter) => parameter?.includes('aac'));
+    let acodec = this.#camera.videoConfig.acodec || 'libfdk_aac';
+
+    const audioArguments = [];
+
+    if (pcmAudio) {
+      log.warn('PCM audio detected, skip transcoding', this.cameraName);
+    } else if (aacAudio) {
+      log.debug('Audio already AAC, no need to transcode...', this.cameraName);
+      acodec = 'copy';
+    }
+
+    if (!this.#camera.videoConfig.audio || pcmAudio) {
+      audioArguments.push('-an');
+    } else if (acodec !== 'copy') {
+      if (acodec !== 'libfdk_aac') {
+        log.warn(
+          'Recording audio codec is not explicitly "libfdk_aac", forcing transcoding. Setting audio codec to "libfdk_aac" is recommended.',
+          this.cameraName
+        );
+
+        acodec = 'libfdk_aac';
+      }
+
+      audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'libfdk_aac', '-profile:a', 'aac_low');
+    } else {
+      audioArguments.push('-acodec', 'copy');
+    }
+
+    const videoArguments = ['-vcodec', 'copy'];
 
     const fmp4OutputServer = createServer(async (socket) => {
       fmp4OutputServer.close();
@@ -138,19 +169,16 @@ class PrebufferService {
     const destination = `tcp://127.0.0.1:${fmp4Port}`;
 
     const ffmpegOutput = [
-      '-loglevel',
-      'error',
       '-f',
       'mp4',
-      //...acodec,
-      ...vcodec,
+      ...videoArguments,
+      ...audioArguments,
       '-movflags',
       'frag_keyframe+empty_moov+default_base_moof',
       destination,
     ];
 
-    const arguments_ = ['-hide_banner'];
-    arguments_.push(...this.ffmpegInput.split(' '), ...ffmpegOutput);
+    const arguments_ = ['-hide_banner', '-loglevel', 'error', ...this.ffmpegInput.split(' '), ...ffmpegOutput];
 
     log.debug(`Prebuffering command: ${this.#videoProcessor} ${arguments_.join(' ')}`, this.cameraName);
 
@@ -181,7 +209,7 @@ class PrebufferService {
     return { server: fmp4OutputServer, process: cp };
   }
 
-  async getVideo(requestedPrebuffer = 6000) {
+  async getVideo(requestedPrebuffer = 4000) {
     if (this.prebufferSession) {
       log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
 
@@ -239,18 +267,14 @@ class PrebufferService {
       setTimeout(() => server.close(), 30000);
 
       const port = await cameraUtils.listenServer(server);
-      const ffmpegInput = [
-        //'-loglevel',
-        //'error',
-        '-hide_banner',
-        '-f',
-        'mp4',
-        //TODO
-        '-thread_queue_size',
-        '1024',
-        '-i',
-        `tcp://127.0.0.1:${port}`,
-      ];
+
+      const ffmpegInput = ['-f', 'mp4'];
+
+      if (this.#camera.videoConfig.threadQueueSize >= 0) {
+        ffmpegInput.push('-thread_queue_size', this.#camera.videoConfig.threadQueueSize.toString());
+      }
+
+      ffmpegInput.push('-i', `tcp://127.0.0.1:${port}`);
 
       return ffmpegInput;
     } else {

@@ -12,6 +12,8 @@ const low = require('lowdb');
 const FileAsync = require('lowdb/adapters/FileAsync');
 const Memory = require('lowdb/adapters/Memory');
 
+const { Cleartimer } = require('../common/cleartimer');
+
 const { ConfigService } = require('../services/config/config.service');
 const { LoggerService } = require('../services/logger/logger.service');
 
@@ -148,6 +150,7 @@ class Database {
 
     await Database.interfaceDB.set('version', version).write();
     await Database.startAtHomeAutomation();
+    await Cleartimer.start(Database.interfaceDB, Database.recordingsDB);
 
     return {
       interface: Database.interfaceDB,

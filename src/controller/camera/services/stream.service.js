@@ -19,8 +19,8 @@ class StreamService {
 
   streamSession = null;
 
-  constructor(camera, sessionService, socket) {
-    log.debug('Initializing camera stream', camera.name);
+  constructor(camera, mediaService, sessionService, socket) {
+    //log.debug('Initializing camera stream', camera.name);
 
     this.#camera = camera;
     this.#sessionService = sessionService;

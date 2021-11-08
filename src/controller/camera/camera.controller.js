@@ -2,6 +2,7 @@
 
 const { ConfigService } = require('../../services/config/config.service');
 
+const { MediaService } = require('./services/media.service');
 const { PrebufferService } = require('./services/prebuffer.service');
 const { SessionService } = require('./services/session.service');
 const { StreamService } = require('./services/stream.service');
@@ -20,11 +21,13 @@ class CameraController {
   }
 
   #createController(camera, socket) {
-    const prebufferService = camera.prebuffering ? new PrebufferService(camera) : null;
+    const mediaService = new MediaService(camera);
+    const prebufferService = camera.prebuffering ? new PrebufferService(camera, mediaService) : null;
     const sessionService = new SessionService(camera);
-    const streamService = new StreamService(camera, sessionService, socket);
+    const streamService = new StreamService(camera, mediaService, sessionService, socket);
 
     const controller = {
+      media: mediaService,
       prebuffer: prebufferService,
       session: sessionService,
       stream: streamService,

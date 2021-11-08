@@ -23,10 +23,11 @@ module.exports = {
       return Buffer.alloc(0);
     }
 
-    const returnValue = readable.read(length);
-
-    if (returnValue) {
-      return returnValue;
+    {
+      const returnValue = readable.read(length);
+      if (returnValue) {
+        return returnValue;
+      }
     }
 
     // eslint-disable-next-line no-unused-vars

@@ -4,8 +4,6 @@ const compareVersions = require('compare-versions');
 const { EventEmitter } = require('events');
 const { spawn } = require('child_process');
 
-const { Cleartimer } = require('./common/cleartimer');
-
 const { ConfigService } = require('./services/config/config.service');
 const { LoggerService } = require('./services/logger/logger.service');
 
@@ -59,14 +57,17 @@ class Interface extends EventEmitter {
     const database = new Database(this);
     this.database = await database.prepareDatabase();
 
-    Cleartimer.start();
-
     // configure camera controller
     this.cameraController = new CameraController(this.#socket);
-    for (const controller of this.cameraController.values()) {
-      await controller.prebuffer?.start();
-      await controller.stream.configureStreamOptions();
-    }
+
+    await Promise.all(
+      [...this.cameraController.entries()].map(async (controller) => {
+        log.info('Setting up camera, please be patient...', controller[0]);
+        await controller[1].media.probe();
+        await controller[1].prebuffer?.start();
+        await controller[1].stream.configureStreamOptions();
+      })
+    );
 
     // configure event controller
     this.eventController = new EventController();
@@ -79,27 +80,18 @@ class Interface extends EventEmitter {
   }
 
   close() {
-    this.closeMotionController();
-    this.closeCameraController();
+    this.motionController?.closeMqttClient();
+    this.motionController?.closeSmtpServer();
+    this.motionController?.closeHttpServer();
 
-    if (this.#server) {
-      this.#server.close();
-    }
-  }
-
-  closeMotionController() {
-    this.motionController.closeMqttClient();
-    this.motionController.closeSmtpServer();
-    this.motionController.closeHttpServer();
-  }
-
-  closeCameraController() {
     if (this.cameraController) {
       for (const controller of this.cameraController.values()) {
         controller.prebuffer?.stop(true);
         controller.stream.stop();
       }
     }
+
+    this.#server?.close();
   }
 
   #cliMode() {

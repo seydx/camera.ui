@@ -5,29 +5,33 @@ const moment = require('moment');
 
 const { LoggerService } = require('../services/logger/logger.service');
 
-const { Database } = require('../api/database');
-
 const { log } = LoggerService;
 
 class Cleartimer {
+  static #interfaceDB;
+  static #recordingsDB;
+
   static #notificationsTimer = new Map();
   static #recordingsTimer = new Map();
 
   constructor() {}
 
-  static async start() {
+  static async start(interfaceDB, recordingsDB) {
+    Cleartimer.#interfaceDB = interfaceDB;
+    Cleartimer.#recordingsDB = recordingsDB;
+
     try {
       log.debug('Initializing clear timer');
 
-      await Database.interfaceDB.read();
+      await Cleartimer.#interfaceDB.read();
 
-      const notifications = await Database.interfaceDB.get('notifications').value();
-      const recordings = Database.recordingsDB.get('recordings').value();
+      const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
+      const recordings = Cleartimer.#recordingsDB.get('recordings').value();
 
-      const recSettings = await Database.interfaceDB.get('settings').get('recordings').value();
+      const recSettings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
       const recRemoveAfter = recSettings.removeAfter;
 
-      const notSettings = await Database.interfaceDB.get('settings').get('notifications').value();
+      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
       const notRemoveAfter = notSettings.removeAfter;
 
       for (const notification of notifications) {
@@ -100,9 +104,9 @@ class Cleartimer {
 
   static async setNotification(id, timestamp) {
     try {
-      await Database.interfaceDB.read();
+      await Cleartimer.#interfaceDB.read();
 
-      const settings = await Database.interfaceDB.get('settings').get('notifications').value();
+      const settings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
       const clearTimer = settings.removeAfter;
 
       Cleartimer.#timeout(clearTimer, 'hours', id, timestamp, false);
@@ -114,9 +118,9 @@ class Cleartimer {
 
   static async setRecording(id, timestamp) {
     try {
-      await Database.interfaceDB.read();
+      await Cleartimer.#interfaceDB.read();
 
-      const settings = await Database.interfaceDB.get('settings').get('recordings').value();
+      const settings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
       const clearTimer = settings.removeAfter;
 
       Cleartimer.#timeout(clearTimer, 'days', id, timestamp, true);
@@ -147,11 +151,11 @@ class Cleartimer {
   static async #clearNotification(id) {
     try {
       if (Cleartimer.#notificationsTimer.has(id)) {
-        await Database.interfaceDB.read();
+        await Cleartimer.#interfaceDB.read();
 
         log.debug(`Clear timer for notification (${id}) reached`);
 
-        await Database.interfaceDB
+        await Cleartimer.#interfaceDB
           .get('notifications')
           .remove((not) => not.id === id)
           .write();
@@ -167,9 +171,9 @@ class Cleartimer {
       if (Cleartimer.#recordingsTimer.has(id)) {
         log.debug(`Clear timer for recording (${id}) reached`);
 
-        const recPath = Database.recordingsDB.get('path').value();
+        const recPath = Cleartimer.#recordingsDB.get('path').value();
 
-        const recording = Database.recordingsDB
+        const recording = Cleartimer.#recordingsDB
           .get('recordings')
           .find((rec) => rec.id === id)
           .value();
@@ -183,7 +187,7 @@ class Cleartimer {
           }
         }
 
-        Database.recordingsDB
+        Cleartimer.#recordingsDB
           .get('recordings')
           .remove((rec) => rec.id === id)
           .write();
