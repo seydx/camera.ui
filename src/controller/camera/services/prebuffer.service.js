@@ -272,13 +272,7 @@ class PrebufferService {
 
       const port = await cameraUtils.listenServer(server);
 
-      const ffmpegInput = ['-f', 'mp4'];
-
-      if (this.#camera.videoConfig.threadQueueSize >= 0) {
-        ffmpegInput.push('-thread_queue_size', this.#camera.videoConfig.threadQueueSize.toString());
-      }
-
-      ffmpegInput.push('-i', `tcp://127.0.0.1:${port}`);
+      const ffmpegInput = ['-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
 
       return ffmpegInput;
     } else {
