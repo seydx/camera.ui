@@ -211,9 +211,10 @@ export default {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition-duration: 0.3s;
-  transition-property: opacity;
-  transition-timing-function: ease;
+  transition-duration: 0.1s;
+  transition-property: all;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0;
 }
 
 .fade-enter,
@@ -225,7 +226,7 @@ export default {
 .slide-left-leave-active,
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition-duration: 0.5s;
+  transition-duration: 0.2s;
   transition-property: height, opacity, transform;
   transition-timing-function: cubic-bezier(0.55, 0, 0.1, 1);
   overflow: hidden;

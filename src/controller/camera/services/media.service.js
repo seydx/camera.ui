@@ -17,10 +17,11 @@ class MediaService {
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
-    this.ffmpegInput = camera.videoConfig.source;
+    this.ffmpegInput = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
 
     this.codecs = {
       probe: false,
+      timedout: false,
       audio: [],
       video: [],
     };
@@ -67,12 +68,12 @@ class MediaService {
 
       setTimeout(() => {
         if (cp) {
-          cp.kill();
-          cp = null;
+          log.warn('Can not determine stream codecs, probe timed out');
 
-          resolve(this.codecs);
+          this.codecs.timedout = true;
+          cp.kill();
         }
-      }, 10000);
+      }, 8000);
     });
   }
 }

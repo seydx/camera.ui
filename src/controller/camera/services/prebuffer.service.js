@@ -100,6 +100,7 @@ class PrebufferService {
     let audioSourceFound = this.#mediaService.codecs.audio.length;
     let probeAudio = this.#mediaService.codecs.audio;
     let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
+    let probeTimedOut = this.#mediaService.codecs.timedout;
 
     const audioArguments = [];
 
@@ -114,8 +115,12 @@ class PrebufferService {
     }
 
     if (!audioSourceFound) {
-      audioEnabled = true;
-      acodec = 'copy';
+      if (!probeTimedOut) {
+        audioEnabled = true;
+        acodec = 'copy';
+      } else {
+        audioEnabled = false;
+      }
     }
 
     if (audioEnabled) {

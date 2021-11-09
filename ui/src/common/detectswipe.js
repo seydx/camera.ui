@@ -7,7 +7,7 @@ class DetectSwipe {
       eY: 0,
     };
 
-    this.min_x = 150; //min x swipe for horizontal swipe
+    this.min_x = 70; //min x swipe for horizontal swipe
     this.max_x = 30; //max x difference for vertical swipe
     this.min_y = 50; //min y swipe for vertical swipe
     this.max_y = 200; //max y difference for horizontal swipe

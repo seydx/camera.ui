@@ -6,48 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      b-collapse.col-12.z-index-1(
-        :visible="!general.automation.active"
-      )
-        .z-index-1(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
-          b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.general.expand ? "180" : "-90"', @click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand")
-          h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand") {{ $t("general") }}
-          b-collapse(
-            v-model="settingsLayout.general.general.expand"
-          )
-            div.mt-2.mb-4
-              .settings-box.container
-                .row
-                  .col-8.d-flex.flex-wrap.align-content-center {{ $t("at_home") }}
-                  .col-4.d-flex.flex-wrap.align-content-center.justify-content-end
-                    toggle-button(
-                      v-model="general.atHome"
-                      color="var(--primary-color) !important",
-                      :height="30",
-                      :sync="true",
-                      @change="function(){restartAutomation = false; stopAutomation = true;}"
-                    )
-                b-collapse(
-                  v-model="general.atHome"
-                )
-                  hr.hr-underline
-                  .row
-                    .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
-                    .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
-                      multiselect(
-                        v-model="general.exclude",
-                        :options="cameras.map(camera => { return camera.name })",
-                        :searchable="false",
-                        :close-on-select="false",
-                        :show-labels="false"
-                        :placeholder="$t('select')",
-                        :multiple="true",
-                        :limit="2"
-                        @input="function(){restartAutomation = false; stopAutomation = true;}"
-                      )
-                        template(slot="noOptions")
-                          strong {{ $t("empty") }}
-      div(data-aos="fade-up" data-aos-duration="1000", :class="!settingsLayout.general.general.expand ? 'col-12 mt-2' : 'col-12'" v-if="checkLevel('settings:general:edit')")
+      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.automation.expand ? "180" : "-90"', @click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand") {{ $t("automation") }}
         b-collapse(
@@ -142,6 +101,47 @@
                           class="timePicker"
                           @input="function(){restartAutomation = true; stopAutomation = false;}"
                         )
+      b-collapse.col-12.mt-2.z-index-1(
+        :visible="!general.automation.active"
+      )
+        .z-index-1(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
+          b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.general.expand ? "180" : "-90"', @click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand")
+          h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.general.expand = !settingsLayout.general.general.expand") {{ $t("general") }}
+          b-collapse(
+            v-model="settingsLayout.general.general.expand"
+          )
+            div.mt-2.mb-4
+              .settings-box.container
+                .row
+                  .col-8.d-flex.flex-wrap.align-content-center {{ $t("at_home") }}
+                  .col-4.d-flex.flex-wrap.align-content-center.justify-content-end
+                    toggle-button(
+                      v-model="general.atHome"
+                      color="var(--primary-color) !important",
+                      :height="30",
+                      :sync="true",
+                      @change="function(){restartAutomation = false; stopAutomation = true;}"
+                    )
+                b-collapse(
+                  v-model="general.atHome"
+                )
+                  hr.hr-underline
+                  .row
+                    .col-12.d-flex.flex-wrap.align-content-center {{ $t("exclude") }}
+                    .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
+                      multiselect(
+                        v-model="general.exclude",
+                        :options="cameras.map(camera => { return camera.name })",
+                        :searchable="false",
+                        :close-on-select="false",
+                        :show-labels="false"
+                        :placeholder="$t('select')",
+                        :multiple="true",
+                        :limit="2"
+                        @input="function(){restartAutomation = false; stopAutomation = true;}"
+                      )
+                        template(slot="noOptions")
+                          strong {{ $t("empty") }}
       .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000", v-if="!uiConfig || (uiConfig && uiConfig.theme === 'auto')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.themes.expand ? "180" : "-90"', @click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand") {{ $t("themes") }}
