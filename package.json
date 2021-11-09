@@ -17,7 +17,7 @@
   "main": "src/index.js",
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.40.0",
-    "alexa-remote2": "^4.0.3",
+    "alexa-remote2": "^4.0.4",
     "axios": "^0.24.0",
     "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
