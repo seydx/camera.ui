@@ -48,14 +48,14 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
     const ffmpegArguments = [
-      '-loglevel',
-      'error',
       '-hide_banner',
+      '-loglevel',
+      'quiet',
       '-an',
       '-sn',
       '-dn',
-      '-re',
       '-y',
+      '-re',
       '-i',
       '-',
       '-s',
@@ -76,8 +76,6 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name));
-
     ffmpeg.on('error', (error) => reject(error));
 
     ffmpeg.on('close', () => {
@@ -89,7 +87,7 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
       if (code === 1) {
         log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg snapshot process exit (expected)', camera.name);
+        log.debug('FFmpeg snapshot process exited (expected)', camera.name);
       }
     });
 
@@ -160,7 +158,7 @@ const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audi
       if (code === 1) {
         log.error(`FFmpeg recording process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg recording process exit (expected)', camera.name);
+        log.debug('FFmpeg recording process exited (expected)', camera.name);
       }
     });
 
@@ -260,7 +258,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
       if (code === 1) {
         log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg snapshot process exit (expected)', camera.name);
+        log.debug('FFmpeg snapshot process exited (expected)', camera.name);
       }
     });
   });
@@ -321,7 +319,7 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
       if (code === 1) {
         log.error(`FFmpeg video process exited with error! (${signal})`, camera.name);
       } else {
-        log.debug('FFmpeg video process exit (expected)', camera.name);
+        log.debug('FFmpeg video process exited (expected)', camera.name);
       }
     });
   });
@@ -346,7 +344,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
-  const prebufferLength = 4000;
+  const prebufferLength = 6000;
   const audioArguments = ['-codec:a', 'copy'];
   const videoArguments = ['-codec:v', 'copy'];
 

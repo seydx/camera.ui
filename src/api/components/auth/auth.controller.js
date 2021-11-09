@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 
 const { ConfigService } = require('../../../services/config/config.service');
 
+const { Socket } = require('../../socket');
+
 const AuthModel = require('./auth.model');
 
 const jwtSecret = ConfigService.interface.jwt_secret;
@@ -37,6 +39,7 @@ exports.login = async (req, res) => {
     if (sessionTimer / 3600 <= 25) {
       setTimeout(() => {
         AuthModel.invalidateByToken(token);
+        Socket.io.emit('invalidToken', token);
       }, (sessionTimer - 5) * 1000);
     }
 

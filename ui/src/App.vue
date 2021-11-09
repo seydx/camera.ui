@@ -44,9 +44,10 @@ export default {
 <style>
 .fade-enter-active,
 .fade-leave-active {
-  transition-duration: 0.3s;
-  transition-property: opacity;
-  transition-timing-function: ease;
+  transition-duration: 0.05s;
+  transition-property: all;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0;
 }
 
 .fade-enter,

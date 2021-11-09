@@ -6,9 +6,12 @@ const { Alexa } = require('../../../common/alexa');
 const { CameraController } = require('../../../controller/camera/camera.controller');
 const { Database } = require('../../database');
 
+const { LoggerService } = require('../../../services/logger/logger.service');
+
 const SettingsModel = require('./settings.model');
 
 const { cameras } = CameraController;
+const { log } = LoggerService;
 
 exports.show = async (req, res) => {
   try {
@@ -74,11 +77,13 @@ exports.patchTarget = async (req, res) => {
     await SettingsModel.patchByTarget(req.query.all, req.params.target, req.body);
 
     if (req.params.target === 'cameras') {
-      if (req.query.stopStream === 'true') {
+      /*if (req.query.stopStream === 'true') {
         for (const controller of cameras.values()) {
           controller.stream?.stop();
         }
-      }
+      }*/
+
+      log.info('Camera settings changed. The changes take effect when the camera stream is restarted.');
 
       const cameraSettings = req.body;
 

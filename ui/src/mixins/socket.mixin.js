@@ -48,6 +48,15 @@ export default {
       await this.$store.dispatch('auth/logout');
       setTimeout(() => this.$router.push('/'), 500);
     },
+    async invalidToken(token) {
+      if (token === this.currentUser.access_token) {
+        console.log('Session timed out');
+        this.connected = false;
+
+        await this.$store.dispatch('auth/logout');
+        setTimeout(() => this.$router.push('/'), 500);
+      }
+    },
     notification(notification) {
       if (this.isValidPage) {
         this.notId = '_' + Math.random().toString(36).substr(2, 9);

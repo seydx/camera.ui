@@ -82,11 +82,12 @@ div(
     v-else
     :data-stream-wrapper="camera.name",
     :class="!fullsize ? headerPosition === 'top' ? 'card-img-bottom' : 'card-img-top' : ''",
+    :style="onlyStream && started ? 'height:' + aspectRatioHandler() + 'px' : ''"
   )
     canvas.canvas.card-img.img-overlay.toggleArea(
       :data-stream-box="camera.name",
       :class="!fullsize ? headerPosition === 'top' ? 'card-img-bottom' : 'card-img-top' : ''",
-      :style="onlyStream ? 'height:' + aspectRatioHeight + 'px' : ''"
+      :style="onlyStream && started ? 'height:' + aspectRatioHandler() + 'px' : ''"
     )
   b-card-body(v-if="headerPosition === 'bottom' && !fullsize")
     b-card-title.float-left {{ camera.name }}
@@ -200,6 +201,7 @@ export default {
       index: null,
       fullscreen: false,
       player: null,
+      started: false,
       stopped: false,
       timer: null,
       timerCounter: 0,
@@ -239,6 +241,7 @@ export default {
     }
   },
   beforeDestroy() {
+    this.started = false;
     this.stopped = true;
     this.stopLivestream();
     this.stopSnapshot();
@@ -259,6 +262,8 @@ export default {
           16) *
           9
       );
+
+      return this.aspectRatioHeight;
     },
     handleFullscreen(camera) {
       const fullscreenBg = document.querySelector('#cameraFsBg');
@@ -431,6 +436,8 @@ export default {
       }
     },
     showOnline() {
+      this.started = true;
+
       let spinner = document.querySelector(`[data-stream-spinner="${this.camera.name}"]`);
       let statusIndicator = document.querySelector(`[data-stream-status="${this.camera.name}"]`);
       let offlineIcon = document.querySelector(`[data-stream-offline="${this.camera.name}"]`);
@@ -451,6 +458,8 @@ export default {
       }
     },
     showOffline() {
+      this.started = false;
+
       this.$toast.error(`${this.camera.name}: ${this.$t('offline')}`);
 
       let spinner = document.querySelector(`[data-stream-spinner="${this.camera.name}"]`);
@@ -777,32 +786,31 @@ div >>> .camera-fs {
 /* Equal-height card images, cf. https://stackoverflow.com/a/47698201/1375163*/
 a >>> .img-overlay {
   /*height: 11vw;*/
-  object-fit: cover;
-  height: 50vw;
+  object-fit: fill;
+  height: 250px;
 }
 /* Small devices (landscape phones, 576px and up) */
 @media (min-width: 576px) {
   a >>> .img-overlay {
-    height: 35vw;
+    max-height: 250px;
   }
 }
 /* Medium devices (tablets, 768px and up) */
 @media (min-width: 768px) {
   a >>> .img-overlay {
-    height: 18vw;
+    max-height: 180px;
   }
 }
 /* Large devices (desktops, 992px and up) */
 @media (min-width: 992px) {
   a >>> .img-overlay {
-    height: 15vw;
+    max-height: 160px;
   }
 }
 /* Extra large devices (large desktops, 1200px and up) */
 @media (min-width: 1200px) {
   a >>> .img-overlay {
-    height: 13vw;
-    max-height: 160px;
+    max-height: 180px;
   }
 }
 </style>

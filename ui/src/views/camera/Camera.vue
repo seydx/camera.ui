@@ -19,7 +19,7 @@ div
           :onlyStream="true",
           @refreshStream="refreshStreamProcess"
         )
-      b-card-title.mb-0.ml-1.mt-3 {{ $route.params.name }}
+      h3.mb-0.ml-1.mt-4 {{ $route.params.name }}
       b-card-text.text-muted-2.ml-1 {{ camera.settings.room }}
       .notifications-card
         b-card-title.notification-title.mb-4 {{ $t("notifications") }}
@@ -34,8 +34,8 @@ div
               @click="notification.recordStoring ? index = i : index = null"
             )
               b-icon(icon="arrow-right-circle-fill")
-        ul(v-else)
-          li.text-center {{ $t("no_notifications") }}
+        ul(v-else style="height: 120px;")
+          li.text-center.text-muted(style="line-height: 5;") {{ $t("no_notifications") }}
       CoolLightBox(
         :items="images" 
         :index="index"

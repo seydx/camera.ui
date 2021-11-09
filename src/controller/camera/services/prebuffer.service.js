@@ -11,7 +11,8 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { log } = LoggerService;
 
-const videoDuration = 15000;
+const videoDuration = 25000;
+const compatibleAudio = /(aac|mp3|mp2)/;
 
 class PrebufferService {
   #camera;
@@ -94,34 +95,37 @@ class PrebufferService {
 
     log.debug('Start prebuffering...', this.cameraName);
 
-    let pcmAudio = this.#mediaService.codecs.audio.some((parameter) => parameter?.includes('pcm'));
-    let aacAudio = this.#mediaService.codecs.audio.some((parameter) => parameter?.includes('aac'));
+    let audioEnabled = this.#camera.videoConfig.audio;
     let acodec = this.#camera.videoConfig.acodec || 'libfdk_aac';
+    let audioSourceFound = this.#mediaService.codecs.audio.length;
+    let probeAudio = this.#mediaService.codecs.audio;
+    let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
 
     const audioArguments = [];
 
-    if (pcmAudio) {
-      log.warn('PCM audio detected, skip transcoding', this.cameraName);
-    } else if (aacAudio) {
-      log.debug('Audio already AAC, no need to transcode...', this.cameraName);
+    /*if (audioEnabled && incompatibleAudio) {
+      log.warn(`Skip transcoding audio, incompatible audio detected (${probeAudio.toString()})`, this.cameraName);
+      audioEnabled = false;
+    }*/
+
+    if (audioEnabled && acodec === 'copy' && incompatibleAudio) {
+      log.warn('Can not copy non AAC typed audio, reencoding..');
+      acodec = 'libfdk_aac';
+    }
+
+    if (!audioSourceFound) {
+      audioEnabled = true;
       acodec = 'copy';
     }
 
-    if (!this.#camera.videoConfig.audio || pcmAudio) {
-      audioArguments.push('-an');
-    } else if (acodec !== 'copy') {
-      if (acodec !== 'libfdk_aac') {
-        log.warn(
-          'Recording audio codec is not explicitly "libfdk_aac", forcing transcoding. Setting audio codec to "libfdk_aac" is recommended.',
-          this.cameraName
-        );
-
-        acodec = 'libfdk_aac';
+    if (audioEnabled) {
+      if (acodec !== 'copy') {
+        audioArguments.push('-acodec', 'libfdk_aac', '-profile:a', 'aac_low');
+      } else {
+        audioArguments.push('-acodec', 'copy');
       }
-
-      audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'libfdk_aac', '-profile:a', 'aac_low');
     } else {
-      audioArguments.push('-acodec', 'copy');
+      audioArguments.push('-an');
     }
 
     const videoArguments = ['-vcodec', 'copy'];
@@ -154,7 +158,7 @@ class PrebufferService {
             });
           }
 
-          while (this.prebufferFmp4.length > 0 && this.prebufferFmp4[0].time < now - videoDuration) {
+          if (this.prebufferFmp4.length > 0 && this.prebufferFmp4[0].time < now - videoDuration) {
             this.prebufferFmp4.shift();
           }
 
@@ -194,7 +198,7 @@ class PrebufferService {
       if (code === 1) {
         log.error(`FFmpeg prebuffer process exited with error! (${signal})`, this.cameraName);
       } else {
-        log.debug('FFmpeg prebuffer process exit (expected)', this.cameraName);
+        log.debug('FFmpeg prebuffer process exited (expected)', this.cameraName);
       }
     });
 
@@ -209,7 +213,7 @@ class PrebufferService {
     return { server: fmp4OutputServer, process: cp };
   }
 
-  async getVideo(requestedPrebuffer = 4000) {
+  async getVideo(requestedPrebuffer = 6000) {
     if (this.prebufferSession) {
       log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
 

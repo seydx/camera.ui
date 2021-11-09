@@ -33,7 +33,7 @@ class MediaService {
 
       const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.ffmpegInput.split(' ')];
 
-      const cp = spawn('ffmpeg', arguments_, {
+      let cp = spawn('ffmpeg', arguments_, {
         env: process.env,
       });
 
@@ -60,8 +60,19 @@ class MediaService {
         this.codecs.probe = true;
         log.debug(this.codecs, this.cameraName);
 
+        cp = null;
+
         resolve(this.codecs);
       });
+
+      setTimeout(() => {
+        if (cp) {
+          cp.kill();
+          cp = null;
+
+          resolve(this.codecs);
+        }
+      }, 10000);
     });
   }
 }

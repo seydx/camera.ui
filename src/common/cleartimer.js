@@ -21,7 +21,7 @@ class Cleartimer {
     Cleartimer.#recordingsDB = recordingsDB;
 
     try {
-      log.debug('Initializing clear timer');
+      //log.debug('Initializing clear timer');
 
       await Cleartimer.#interfaceDB.read();
 
