@@ -20,10 +20,23 @@
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
                   a.d-block.w-100.text-center.mb-2(:href="'https://www.npmjs.com/package/' + npmPackageName" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
                   b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
-            b-button#updateButton.w-100.mt-3.updateButton(@click="onUpdate" :class="loadingUpdate || loadingRestart || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave") 
+            b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave") 
               span(v-if="loadingUpdate") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('update') }}
+            b-modal#updateModal.updateModal(
+              centered
+              scrollable
+              ref="updateModal"
+              :title="$t('release_notes')",
+              :cancel-title="$t('cancel')",
+              :ok-title="$t('update')",
+              ok-variant="primary",
+              size="lg"
+              @ok="onUpdate"
+            )
+              b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog")
+              vue-markdown.changelog(v-else) {{ changelog }}
             b-button#restartButton.w-100.mt-3.restartButton(v-if="serviceMode" @click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
@@ -56,9 +69,10 @@ import { BIcon, BIconTriangleFill } from 'bootstrap-vue';
 import compareVersions from 'compare-versions';
 import { ToggleButton } from 'vue-js-toggle-button';
 import VJsoneditor from 'v-jsoneditor';
+import VueMarkdown from 'vue-markdown';
 
 import { changeConfig, getConfig } from '@/api/config.api';
-import { getPackage, restartSystem, updateSystem } from '@/api/system.api';
+import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
 
@@ -71,11 +85,13 @@ export default {
     BIconTriangleFill,
     ToggleButton,
     VJsoneditor,
+    VueMarkdown,
   },
   mixins: [localStorageMixin],
   data() {
     return {
       availableVersions: [],
+      changelog: '',
       config: {},
       error: false,
       options: {
@@ -230,6 +246,10 @@ export default {
       }
 
       this.loadingSave = false;
+    },
+    async onBeforeUpdate() {
+      const response = await getChangelog(`?version=${this.currentVersion}`);
+      this.changelog = response.data;
     },
     async onUpdate() {
       const updateButton = document.getElementById('updateButton');
@@ -506,5 +526,8 @@ select .versionSelect {
     -webkit-transform: rotate(360deg);
     transform: rotate(360deg);
   }
+}
+.changelog >>> a {
+  color: var(--primary-color);
 }
 </style>

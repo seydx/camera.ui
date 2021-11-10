@@ -167,8 +167,8 @@ body {
 
 .close,
 .close:hover {
-  color: var(--primary-font-color);
-  text-shadow: 0 1px 0 var(--primary-bg-color);
+  color: var(--primary-font-color) !important;
+  text-shadow: 0 1px 0 var(--primary-bg-color) !important;
 }
 
 /*--------------------------------------------------------------

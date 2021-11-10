@@ -47,7 +47,8 @@ exports.App = (options) => {
           'ws:',
           'wss:',
           'https:',
-          'https://registry.npmjs.org/camera.ui',
+          'https://registry.npmjs.org',
+          'https://unpkg.com',
           // eslint-disable-next-line quotes
           "'unsafe-eval'",
           // eslint-disable-next-line quotes

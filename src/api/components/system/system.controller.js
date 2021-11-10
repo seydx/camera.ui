@@ -51,6 +51,22 @@ const updatePlugin = (version) => {
   });
 };
 
+exports.getChangelog = async (req, res) => {
+  try {
+    const moduleName = ConfigService.env.moduleName;
+    const version = req.query.version || ConfigService.version;
+
+    const response = await axios(`https://unpkg.com/${moduleName}@${version}/CHANGELOG.md`);
+
+    res.status(200).send(response.data);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.fetchNpm = async (req, res) => {
   try {
     const moduleName = ConfigService.env.moduleName;
