@@ -12,7 +12,7 @@ div
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:recordings:access', 'settings:recordings:edit'])", to="/settings/recordings", @click.native="subnaviClick('recordings')", :class="'sub-recordings' + ($route.meta.name === 'recordings' ? ' btn-settings-active' : '')") {{ $t("recordings") }}
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:notifications:access', 'settings:notifications:edit'])", to="/settings/notifications", @click.native="subnaviClick('notifications')", :class="'sub-notifications' + ($route.meta.name === 'notifications' ? ' btn-settings-active' : '')") {{ $t("notifications") }}
         router-link.btn.btn-settings.mr-1(v-if="checkLevel(['settings:camview:access', 'settings:camview:edit'])", to="/settings/camview", @click.native="subnaviClick('camview')", :class="'sub-camview' + ($route.meta.name === 'camview' ? ' btn-settings-active' : '')") {{ $t("camview") }}
-        router-link.btn.btn-settings.mr-1(v-if="checkLevel(['admin'])", to="/settings/config", @click.native="subnaviClick('config')", :class="'sub-config' + ($route.meta.name === 'config' ? ' btn-settings-active' : '')") {{ $t("config") }}
+        router-link.btn.btn-settings.mr-1(v-if="checkLevel(['admin'])", to="/settings/system", @click.native="subnaviClick('system')", :class="'sub-system' + ($route.meta.name === 'system' ? ' btn-settings-active' : '')") {{ $t("system") }}
   main.inner-container.w-100.h-100vh-calc-settings.pt-save.footer-offset
     .container.pt-2
       transition(:name="transitionName", mode="out-in", @beforeLeave="beforeLeave", @enter="enter", @afterEnter="afterEnter")
@@ -63,7 +63,7 @@ export default {
     return {
       prevHeight: 0,
       activeRoute: this.$route.meta.name,
-      routeOrder: ['profile', 'general', 'dashboard', 'cameras', 'recordings', 'notifications', 'camview', 'config'],
+      routeOrder: ['profile', 'general', 'dashboard', 'cameras', 'recordings', 'notifications', 'camview', 'system'],
       transitionName: DEFAULT_TRANSITION,
     };
   },

@@ -3,6 +3,7 @@
 
 const axios = require('axios');
 const { exec } = require('child_process');
+const fs = require('fs-extra');
 
 const { LoggerService } = require('../../../services/logger/logger.service');
 const { ConfigService } = require('../../../services/config/config.service');
@@ -10,7 +11,7 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { Database } = require('../../database');
 const { Socket } = require('../../socket');
 
-const { log } = LoggerService;
+const { log, filelogger } = LoggerService;
 
 let updating = false;
 
@@ -49,6 +50,53 @@ const updatePlugin = (version) => {
       resolve(true);
     });
   });
+};
+
+exports.getLog = async (req, res) => {
+  try {
+    const { logPath } = filelogger;
+
+    const truncateSize = 200000;
+    const logStats = await fs.stat(logPath);
+    const logStartPosition = logStats.size - truncateSize;
+    const logBuffer = Buffer.alloc(truncateSize);
+
+    const fd = await fs.open(logPath, 'r');
+    // eslint-disable-next-line no-unused-vars
+    const { bytesRead, buffer } = await fs.read(fd, logBuffer, 0, truncateSize, logStartPosition);
+
+    res.status(200).send(buffer.toString());
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.downloadLog = async (req, res) => {
+  try {
+    const { logPath } = filelogger;
+    //res.download(logPath);
+
+    res.set('Content-Type', 'application/octet-stream');
+    res.set('Content-Disposition', 'attachment; filename=camera.ui.log.txt');
+
+    const readStream = fs.createReadStream(logPath);
+
+    readStream.on('data', (data) => {
+      res.write(data);
+    });
+
+    readStream.on('end', async () => {
+      res.status(200).send();
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
 };
 
 exports.getChangelog = async (req, res) => {

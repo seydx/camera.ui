@@ -9,10 +9,10 @@
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
       .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.config.server.expand ? "180" : "-90"', @click="settingsLayout.config.server.expand = !settingsLayout.config.server.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.config.server.expand = !settingsLayout.config.server.expand") {{ $t("server") }}
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.server.expand ? "180" : "-90"', @click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand") {{ $t("server") }}
         b-collapse(
-          v-model="settingsLayout.config.server.expand"
+          v-model="settingsLayout.system.server.expand"
         )
           div.mt-2.mb-4
             .settings-box.container
@@ -42,10 +42,10 @@
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
       .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.config.config.expand ? "180" : "-90"', @click="settingsLayout.config.config.expand = !settingsLayout.config.config.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.config.config.expand = !settingsLayout.config.config.expand") {{ $t('config') }}
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.config.expand ? "180" : "-90"', @click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand") {{ $t('config') }}
         b-collapse(
-          v-model="settingsLayout.config.config.expand"
+          v-model="settingsLayout.system.config.expand"
         )
           div.mt-2.mb-4
             v-jsoneditor(
@@ -62,17 +62,31 @@
               span(v-if="loadingSave") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('save') }}
+      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.log.expand ? "180" : "-90"', @click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand") {{ $t('log') }}
+        b-collapse(
+          v-model="settingsLayout.system.log.expand"
+        )
+          div#log.mt-2.log
+            my-terminal(:terminal="terminal" ref="xterm")
+          b-button#dlButton.mt-3.w-100.dlButton(@click="onDownload" :class="loadingDownload ? 'btnError' : 'btnNoError'" :disabled="loadingDownload") 
+            span(v-if="loadingDownload") 
+              b-spinner(style="color: #fff" type="grow" small)
+            span(v-else) {{ $t('download') }}
 </template>
 
 <script>
 import { BIcon, BIconTriangleFill } from 'bootstrap-vue';
 import compareVersions from 'compare-versions';
+//import { saveAs } from 'file-saver';
 import { ToggleButton } from 'vue-js-toggle-button';
 import VJsoneditor from 'v-jsoneditor';
 import VueMarkdown from 'vue-markdown';
 
+import Console from '@/components/console.vue';
 import { changeConfig, getConfig } from '@/api/config.api';
-import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
+import { downloadLog, getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
 
@@ -86,6 +100,7 @@ export default {
     ToggleButton,
     VJsoneditor,
     VueMarkdown,
+    'my-terminal': Console,
   },
   mixins: [localStorageMixin],
   data() {
@@ -93,6 +108,7 @@ export default {
       availableVersions: [],
       changelog: '',
       config: {},
+      currentVersion: null,
       error: false,
       options: {
         mode: 'code',
@@ -101,15 +117,20 @@ export default {
         mainMenuBar: false,
         colorPicker: false,
       },
+      latestVersion: null,
       loading: true,
+      loadingDownload: false,
       loadingRestart: false,
       loadingSave: false,
       loadingUpdate: false,
-      serviceMode: false,
-      settingsLayout: {},
-      currentVersion: null,
-      latestVersion: null,
       npmPackageName: 'camera.ui',
+      serviceMode: false,
+      terminal: {
+        pid: 1,
+        name: 'terminal',
+        cols: 1000,
+        rows: 1000,
+      },
       updateAvailable: false,
     };
   },
@@ -206,6 +227,20 @@ export default {
     },
     onInput() {
       this.error = false;
+    },
+    async onDownload() {
+      this.loadingDownload = true;
+
+      const response = await downloadLog();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'camera.ui.log.txt');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      this.loadingDownload = false;
     },
     async onRestart() {
       const restartButton = document.getElementById('restartButton');
@@ -529,5 +564,11 @@ select .versionSelect {
 }
 .changelog >>> a {
   color: var(--primary-color);
+}
+
+.log {
+  height: 500px;
+  background: #000;
+  border: 1px solid var(--third-bg-color);
 }
 </style>

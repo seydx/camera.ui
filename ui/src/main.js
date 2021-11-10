@@ -45,6 +45,8 @@ import VueProgressBar from 'vue-progressbar';
 import VueSocketIOExt from 'vue-socket.io-extended';
 import socket from '@/common/socket-instance';
 
+import 'xterm/css/xterm.css';
+
 Vue.mixin(permission);
 
 Vue.use(AOS);

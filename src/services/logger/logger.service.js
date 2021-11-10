@@ -1,6 +1,7 @@
 'use-strict';
 
 const chalk = require('chalk');
+const fileLogger = require('./utils/filelogger.utils');
 
 const LogLevel = {
   INFO: 'info',
@@ -8,6 +9,21 @@ const LogLevel = {
   ERROR: 'error',
   DEBUG: 'debug',
 };
+
+function hookStream(stream, callback) {
+  var old_write = stream.write;
+
+  stream.write = (function (write) {
+    return function (string, encoding, fd) {
+      write.apply(stream, arguments); // comments this line if you don't want output in the console
+      callback(string, encoding, fd);
+    };
+  })(stream.write);
+
+  return function () {
+    stream.write = old_write;
+  };
+}
 
 class LoggerService {
   static #prefix = 'camera.ui';
@@ -18,6 +34,7 @@ class LoggerService {
   static #timestampEnabled = false;
 
   static socket;
+  static filelogger;
 
   static create = (logger) => new LoggerService(logger);
 
@@ -37,6 +54,11 @@ class LoggerService {
     if (process.env.CUI_LOG_TIMESTAMPS === '1') {
       LoggerService.#timestampEnabled = true;
     }
+
+    LoggerService.filelogger = new fileLogger({
+      path: process.env.CUI_STORAGE_LOG_PATH,
+      fileName: 'camera.ui.log.txt',
+    });
 
     LoggerService.log = {
       prefix: LoggerService.#prefix,
@@ -85,6 +107,7 @@ class LoggerService {
       return;
     }
 
+    //let fileMessage = (message = this.formatMessage(message, name, subprefix));
     message = this.formatMessage(message, name, subprefix);
 
     const logger = this.#logger;
@@ -106,14 +129,29 @@ class LoggerService {
 
     if (this.#withPrefix) {
       message = chalk.magenta(`[${this.#prefix}] `) + message;
+      //fileMessage = `[${this.#prefix}] ${fileMessage}`;
     }
 
     if (this.#timestampEnabled) {
       const date = new Date();
       message = chalk.white(`[${date.toLocaleString()}] `) + message;
+      //fileMessage = `[${date.toLocaleString()}] ${fileMessage}`;
     }
 
+    const unhookStdout = hookStream(process.stdout, () => {
+      LoggerService.filelogger.log(message);
+      //LoggerService.socket?.emit('logMessage', fileMessage);
+    });
+
+    const unhookStderr = hookStream(process.stderr, () => {
+      //LoggerService.socket?.emit('logMessage', fileMessage);
+      LoggerService.filelogger.log(message);
+    });
+
     loggingFunction(message);
+
+    unhookStdout();
+    unhookStderr();
   }
 
   info(message, name, subprefix) {

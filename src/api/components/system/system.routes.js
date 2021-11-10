@@ -14,6 +14,50 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
 exports.routesConfig = (app) => {
   /**
    * @swagger
+   * /api/system/log:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get truncated log
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/log', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getLog,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/log/download:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get truncated log
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/log/download', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.downloadLog,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/changelog:
    *   get:
    *     tags: [System]

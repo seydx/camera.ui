@@ -303,7 +303,6 @@ export default {
       loading: true,
       loadingAlexa: false,
       removeAfterTimer: [1, 3, 6, 12, 24],
-      settingsLayout: {},
       telegramTypes: [
         { value: 'Text', text: this.$t('text') },
         { value: 'Snapshot', text: this.$t('snapshot') },

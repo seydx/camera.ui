@@ -78,7 +78,6 @@ export default {
       dashboardTimer: null,
       loading: true,
       refreshTimer: [10, 20, 30, 40, 50, 60],
-      settingsLayout: {},
     };
   },
   async created() {

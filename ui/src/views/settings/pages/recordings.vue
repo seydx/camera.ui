@@ -96,7 +96,6 @@ export default {
         { value: 'Video', text: this.$t('video') },
       ],
       removeAfterTimer: [1, 3, 7, 14, 30],
-      settingsLayout: {},
     };
   },
   async created() {

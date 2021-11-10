@@ -175,10 +175,10 @@ const routes = [
         },
       },
       {
-        path: 'config',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/config.vue'),
+        path: 'system',
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/system.vue'),
         meta: {
-          name: 'config',
+          name: 'system',
           transitionName: 'slide',
           requiresAuth: true,
           requiredLevel: ['admin'],

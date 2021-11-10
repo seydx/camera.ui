@@ -198,7 +198,6 @@ export default {
         rooms: [],
       },
       loading: true,
-      settingsLayout: {},
     };
   },
   async created() {

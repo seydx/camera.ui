@@ -68,3 +68,4 @@ yarn.lock
 
 # dotenv environment variables file
 .envtest/stream
+writeStream.js

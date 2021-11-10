@@ -1,10 +1,13 @@
 export default {
+  data() {
+    return {
+      settingsLayout: {},
+    };
+  },
   watch: {
     settingsLayout: {
       handler() {
-        if (!this.loading) {
-          this.setLsSettings(this.settingsLayout);
-        }
+        this.setLsSettings(this.settingsLayout);
       },
       deep: true,
     },
@@ -199,9 +202,12 @@ export default {
       this.settingsLayout.camview.favourites.camerasExpands = {};
     }
 
-    if (!this.settingsLayout.config) {
-      this.settingsLayout.config = {
+    if (!this.settingsLayout.system) {
+      this.settingsLayout.system = {
         config: {
+          expand: true,
+        },
+        log: {
           expand: true,
         },
         server: {
@@ -210,17 +216,25 @@ export default {
       };
     }
 
-    if (!this.settingsLayout.config.server) {
-      this.settingsLayout.config.server = {
+    if (!this.settingsLayout.system.server) {
+      this.settingsLayout.system.server = {
         expand: true,
       };
     }
 
-    if (!this.settingsLayout.config.config) {
-      this.settingsLayout.config.config = {
+    if (!this.settingsLayout.system.config) {
+      this.settingsLayout.system.config = {
         expand: true,
       };
     }
+
+    if (!this.settingsLayout.system.log) {
+      this.settingsLayout.system.log = {
+        expand: true,
+      };
+    }
+
+    this.setLsSettings(this.settingsLayout);
   },
   methods: {
     getLsSettings() {
@@ -288,7 +302,7 @@ export default {
                 camerasExpands: {},
               },
             },
-            config: {
+            system: {
               config: {
                 expand: true,
               },

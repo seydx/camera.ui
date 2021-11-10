@@ -263,7 +263,6 @@ export default {
       loading: true,
       restartAutomation: false,
       stopAutomation: false,
-      settingsLayout: {},
       supportMatchMedia: false,
     };
   },
