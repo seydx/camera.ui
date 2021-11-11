@@ -86,6 +86,8 @@ class ConfigService {
   static databasePath = process.env.CUI_STORAGE_DATABASE_PATH;
   static databaseUserPath = process.env.CUI_STORAGE_DATABASE_USER_PATH;
   static databaseFilePath = process.env.CUI_STORAGE_DATABASE_FILE;
+  static logPath = process.env.CUI_STORAGE_LOG_PATH;
+  static logFile = process.env.CUI_STORAGE_LOG_FILE;
   static recordingsPath = process.env.CUI_STORAGE_RECORDINGS_PATH;
 
   static debugEnabled = process.env.CUI_LOG_DEBUG === '1';

@@ -1,3 +1,7 @@
+/* eslint-disable unicorn/better-regex */
+/* eslint-disable unicorn/escape-case */
+/* eslint-disable no-control-regex */
+/* eslint-disable unicorn/no-hex-escape */
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
@@ -11,7 +15,7 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { Database } = require('../../database');
 const { Socket } = require('../../socket');
 
-const { log, filelogger } = LoggerService;
+const { log } = LoggerService;
 
 let updating = false;
 
@@ -54,8 +58,7 @@ const updatePlugin = (version) => {
 
 exports.getLog = async (req, res) => {
   try {
-    const { logPath } = filelogger;
-
+    const logPath = ConfigService.logFile;
     const truncateSize = 200000;
     const logStats = await fs.stat(logPath);
     const logStartPosition = logStats.size - truncateSize;
@@ -76,7 +79,7 @@ exports.getLog = async (req, res) => {
 
 exports.downloadLog = async (req, res) => {
   try {
-    const { logPath } = filelogger;
+    const logPath = ConfigService.logFile;
     //res.download(logPath);
 
     res.set('Content-Type', 'application/octet-stream');
@@ -85,7 +88,7 @@ exports.downloadLog = async (req, res) => {
     const readStream = fs.createReadStream(logPath);
 
     readStream.on('data', (data) => {
-      res.write(data);
+      res.write(data.toString().replace(/\x1b\[[0-9;]*m/g, ''));
     });
 
     readStream.on('end', async () => {

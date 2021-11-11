@@ -83,4 +83,4 @@ class FileLogger {
   }
 }
 
-module.exports = FileLogger;
+exports.FileLogger = FileLogger;

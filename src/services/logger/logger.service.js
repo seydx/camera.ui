@@ -1,7 +1,7 @@
 'use-strict';
 
 const chalk = require('chalk');
-const fileLogger = require('./utils/filelogger.utils');
+const { FileLogger } = require('./utils/filelogger.utils');
 
 const LogLevel = {
   INFO: 'info',
@@ -33,19 +33,19 @@ class LoggerService {
   static #debugEnabled = false;
   static #timestampEnabled = false;
 
-  static socket;
-  static filelogger;
+  static #socket;
+  static #filelogger;
+
+  static logPath;
 
   static create = (logger) => new LoggerService(logger);
 
   constructor(logger) {
-    if (logger) {
-      LoggerService.#prefix = '';
-      LoggerService.#customLogger = logger;
-      LoggerService.#withPrefix = false;
+    if (process.env.CUI_LOG_COLOR === '1') {
+      chalk.level = 1;
     }
 
-    chalk.level = process.env.CUI_LOG_COLOR === '1' ? 1 : 0;
+    //chalk.level = process.env.CUI_LOG_COLOR === '1' ? 1 : 0;
 
     if (process.env.CUI_LOG_DEBUG === '1') {
       LoggerService.#debugEnabled = true;
@@ -55,7 +55,7 @@ class LoggerService {
       LoggerService.#timestampEnabled = true;
     }
 
-    LoggerService.filelogger = new fileLogger({
+    LoggerService.#filelogger = new FileLogger({
       path: process.env.CUI_STORAGE_LOG_PATH,
       fileName: 'camera.ui.log.txt',
     });
@@ -67,10 +67,22 @@ class LoggerService {
       error: this.error,
       debug: this.debug,
       notify: this.notify,
+      file: this.file,
     };
+
+    if (logger) {
+      LoggerService.#prefix = logger.log.prefix || '';
+      LoggerService.#logger = logger;
+      LoggerService.#customLogger = true;
+      LoggerService.#withPrefix = false;
+
+      if (logger.createUiLogger) {
+        logger.createUiLogger(LoggerService.log);
+      }
+    }
   }
 
-  static formatMessage(message, name, subprefix) {
+  static #formatMessage(message, name, subprefix) {
     let formatted = '';
 
     if (name || subprefix) {
@@ -98,19 +110,19 @@ class LoggerService {
     return formatted;
   }
 
-  static logging(level, message, name, subprefix) {
+  static #logging(level, message, name, subprefix) {
     if (LoggerService.#customLogger) {
-      return this.#customLogger[level](message, name, subprefix);
+      return LoggerService.#logger.log[level](message, name, subprefix);
     }
 
-    if (level === LogLevel.DEBUG && !this.#debugEnabled) {
+    if (level === LogLevel.DEBUG && !LoggerService.#debugEnabled) {
       return;
     }
 
-    //let fileMessage = (message = this.formatMessage(message, name, subprefix));
-    message = this.formatMessage(message, name, subprefix);
+    //let fileMessage = (message = LoggerService.#formatMessage(message, name, subprefix));
+    message = LoggerService.#formatMessage(message, name, subprefix);
 
-    const logger = this.#logger;
+    const logger = LoggerService.#logger;
     let loggingFunction = logger.log;
 
     switch (level) {
@@ -127,25 +139,25 @@ class LoggerService {
         break;
     }
 
-    if (this.#withPrefix) {
-      message = chalk.magenta(`[${this.#prefix}] `) + message;
+    if (LoggerService.#withPrefix) {
+      message = chalk.magenta(`[${LoggerService.#prefix}] `) + message;
       //fileMessage = `[${this.#prefix}] ${fileMessage}`;
     }
 
-    if (this.#timestampEnabled) {
+    if (LoggerService.#timestampEnabled) {
       const date = new Date();
       message = chalk.white(`[${date.toLocaleString()}] `) + message;
       //fileMessage = `[${date.toLocaleString()}] ${fileMessage}`;
     }
 
     const unhookStdout = hookStream(process.stdout, () => {
-      LoggerService.filelogger.log(message);
-      //LoggerService.socket?.emit('logMessage', fileMessage);
+      LoggerService.#filelogger.log(message);
+      LoggerService.socket?.emit('logMessage', message);
     });
 
     const unhookStderr = hookStream(process.stderr, () => {
-      //LoggerService.socket?.emit('logMessage', fileMessage);
-      LoggerService.filelogger.log(message);
+      LoggerService.#filelogger.log(message);
+      LoggerService.socket?.emit('logMessage', message);
     });
 
     loggingFunction(message);
@@ -155,19 +167,19 @@ class LoggerService {
   }
 
   info(message, name, subprefix) {
-    LoggerService.logging(LogLevel.INFO, message, name, subprefix);
+    LoggerService.#logging(LogLevel.INFO, message, name, subprefix);
   }
 
   warn(message, name, subprefix) {
-    LoggerService.logging(LogLevel.WARN, message, name, subprefix);
+    LoggerService.#logging(LogLevel.WARN, message, name, subprefix);
   }
 
   error(message, name, subprefix) {
-    LoggerService.logging(LogLevel.ERROR, message, name, subprefix);
+    LoggerService.#logging(LogLevel.ERROR, message, name, subprefix);
   }
 
   debug(message, name, subprefix) {
-    LoggerService.logging(LogLevel.DEBUG, message, name, subprefix);
+    LoggerService.#logging(LogLevel.DEBUG, message, name, subprefix);
   }
 
   notify(notification) {
@@ -188,8 +200,13 @@ class LoggerService {
      * };
      */
 
-    LoggerService.logging(LogLevel.DEBUG, `Interface received new message: ${JSON.stringify(notification)}`);
-    LoggerService.socket?.emit('notification', notification);
+    LoggerService.#logging(LogLevel.DEBUG, `Interface received new message: ${JSON.stringify(notification)}`);
+    LoggerService.#socket?.emit('notification', notification);
+  }
+
+  file(message) {
+    LoggerService.#filelogger.log(message);
+    LoggerService.socket?.emit('logMessage', message);
   }
 }
 
