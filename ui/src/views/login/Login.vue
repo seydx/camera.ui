@@ -1,5 +1,5 @@
 <template lang="pug">
-  main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
+  main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100(v-if="!loadRestart")
     .login.container
       .login-inner.row
         #left-side.col-5.d-flex.flex-wrap.bg-color-primary.justify-content-center.align-content-center
@@ -38,8 +38,26 @@ export default {
   data() {
     return {
       loading: false,
+      loadRestart: false,
       version: packageFile.version,
     };
+  },
+  computed: {
+    restarted() {
+      return Boolean(localStorage.getItem('restarted') === 'true');
+    },
+    updated() {
+      return Boolean(localStorage.getItem('updated') === 'true');
+    },
+  },
+  created() {
+    this.loadRestart = this.restarted;
+  },
+  mounted() {
+    if (this.restarted) {
+      localStorage.setItem('restarted', false);
+      window.location.reload(true);
+    }
   },
   methods: {
     async handleLogin(user) {

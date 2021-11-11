@@ -288,10 +288,11 @@ export default {
 
       this.loadingRestart = true;
 
-      this.$toast.success(this.$t('system_restart_initiated'));
+      //this.$toast.success(this.$t('system_restart_initiated'));
 
       try {
         await restartSystem();
+        localStorage.setItem('restarted', true);
       } catch (error) {
         this.$toast.error(error.message);
         this.loadingRestart = false;
@@ -335,6 +336,7 @@ export default {
 
       try {
         await updateSystem(`?version=${this.currentVersion}`);
+        localStorage.setItem('updated', true);
         await timeout(1000);
 
         //this.$toast.success(this.$t('system_successfully_updated'));
