@@ -65,7 +65,7 @@
       .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.log.expand ? "180" : "-90"', @click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand") {{ $t('log') }}
-        b-collapse(
+        b-collapse.position-relative(
           v-model="settingsLayout.system.log.expand"
         )
           div#log.mt-2.log
@@ -74,12 +74,14 @@
             span(v-if="loadingDownload") 
               b-spinner(style="color: #fff" type="grow" small)
             span(v-else) {{ $t('download') }}
+          .shareButton(v-if="showShare", @click="onShare")
+            b-spinner(style="color: #fff" small v-if="loadingShare")
+            b-icon(icon="share-fill", aria-hidden="true" v-else)
 </template>
 
 <script>
-import { BIcon, BIconTriangleFill } from 'bootstrap-vue';
+import { BIcon, BIconShareFill, BIconTriangleFill } from 'bootstrap-vue';
 import compareVersions from 'compare-versions';
-//import { saveAs } from 'file-saver';
 import { ToggleButton } from 'vue-js-toggle-button';
 import VJsoneditor from 'v-jsoneditor';
 import VueMarkdown from 'vue-markdown';
@@ -96,6 +98,7 @@ export default {
   name: 'SettingsConfig',
   components: {
     BIcon,
+    BIconShareFill,
     BIconTriangleFill,
     ToggleButton,
     VJsoneditor,
@@ -122,9 +125,11 @@ export default {
       loadingDownload: false,
       loadingRestart: false,
       loadingSave: false,
+      loadingShare: false,
       loadingUpdate: false,
       npmPackageName: 'camera.ui',
       serviceMode: false,
+      showShare: true,
       terminal: {
         pid: 1,
         name: 'terminal',
@@ -136,6 +141,8 @@ export default {
   },
   async created() {
     try {
+      this.showShare = navigator.share ? true : false;
+
       const config = await getConfig('?target=config');
       this.config = { ...config.data };
 
@@ -222,6 +229,35 @@ export default {
     }
   },
   methods: {
+    async onShare() {
+      this.loadingShare = true;
+
+      try {
+        const response = await downloadLog();
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/plain' }));
+
+        const res = await fetch(url);
+        const blob = await res.blob();
+
+        const data = {
+          title: this.$t('log'),
+          text: `${this.$t('log')} - ${new Date()}`,
+          files: [new File([blob], 'camera.ui.log.txt', { type: blob.type })],
+        };
+
+        navigator.share(data).catch((err) => {
+          if (err?.message !== 'Abort due to cancellation of share.') {
+            console.log(err);
+            this.$toast.error(err.message);
+          }
+        });
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingShare = false;
+    },
     onError(e) {
       this.error = e;
     },
@@ -229,6 +265,9 @@ export default {
       this.error = false;
     },
     async onDownload() {
+      const dlButton = document.getElementById('dlButton');
+      dlButton.blur();
+
       this.loadingDownload = true;
 
       const response = await downloadLog();
@@ -452,6 +491,7 @@ div >>> .ace-jsoneditor .ace_numeric {
   background: var(--secondary-color) !important;
 }
 
+.dlButton,
 .restartButton,
 .saveButton,
 .updateButton {
@@ -570,5 +610,27 @@ select .versionSelect {
   height: 500px;
   background: #000;
   border: 1px solid var(--third-bg-color);
+}
+
+.shareButton {
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-color);
+  border-radius: 30px;
+  text-align: center;
+  line-height: 2.7;
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  opacity: 0.4;
+  transition: 0.3s all;
+  z-index: 99;
+  cursor: pointer;
+  color: #fff;
+}
+
+.shareButton:hover {
+  opacity: 1;
 }
 </style>
