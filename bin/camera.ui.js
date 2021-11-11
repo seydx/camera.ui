@@ -2,6 +2,7 @@
 
 process.title = 'camera.ui';
 
+const cluster = require('cluster');
 const os = require('os');
 const path = require('path');
 const commander = require('commander');
@@ -53,4 +54,50 @@ process.env.CUI_MODULE_SUDO = sudoEnabled;
 
 LoggerService.create();
 
-require('../src/main');
+if (cluster.isPrimary) {
+  const { log } = LoggerService;
+  let shuttingDown = false;
+
+  cluster.on('exit', (worker, code) => {
+    if (code !== 0 && !worker.exitedAfterDisconnect) {
+      const worker = cluster.fork();
+      log.info(`Restarting camera.ui with PID: ${worker.process.pid}`);
+    }
+  });
+
+  // eslint-disable-next-line no-unused-vars
+  const signalHandler = (signal, signalNumber) => {
+    if (shuttingDown) {
+      return;
+    }
+
+    shuttingDown = true;
+
+    log.warn(`Got ${signal}, shutting down camera.ui...`);
+
+    setTimeout(() => {
+      // eslint-disable-next-line unicorn/no-process-exit
+      process.exit(128 + signalNumber);
+    }, 5000);
+
+    cluster.disconnect();
+  };
+
+  const errorHandler = (error) => {
+    if (error.stack) {
+      log.info(error.stack);
+    }
+
+    if (!shuttingDown) {
+      process.kill(process.pid, 'SIGTERM');
+    }
+  };
+
+  process.on('SIGINT', signalHandler.bind(undefined, 'SIGINT', 2));
+  process.on('SIGTERM', signalHandler.bind(undefined, 'SIGTERM', 15));
+  process.on('uncaughtException', errorHandler);
+
+  cluster.fork();
+} else {
+  require('../src/main');
+}

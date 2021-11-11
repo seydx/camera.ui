@@ -67,6 +67,7 @@ class LoggerService {
       error: this.error,
       debug: this.debug,
       notify: this.notify,
+      toast: this.toast,
       file: this.file,
     };
 
@@ -202,6 +203,11 @@ class LoggerService {
 
     LoggerService.#logging(LogLevel.DEBUG, `Interface received new message: ${JSON.stringify(notification)}`);
     LoggerService.#socket?.emit('notification', notification);
+  }
+
+  toast(message) {
+    LoggerService.#logging(LogLevel.DEBUG, `Toasting new message: ${message}`);
+    LoggerService.#socket?.emit('toast', message);
   }
 
   file(message) {

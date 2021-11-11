@@ -2,7 +2,6 @@
 
 const compareVersions = require('compare-versions');
 const { EventEmitter } = require('events');
-const { spawn } = require('child_process');
 
 const { ConfigService } = require('./services/config/config.service');
 const { LoggerService } = require('./services/logger/logger.service');
@@ -39,17 +38,16 @@ class Interface extends EventEmitter {
     this.#socket = socket;
 
     if (process.env.CUI_SERVICE_MODE === '1') {
-      this.log.debug('Initializing camera.ui in cli-mode');
-      this.#cliMode();
-    } else {
-      this.log.debug('Initializing camera.ui');
+      this.#startAsWorker();
     }
   }
 
   async start() {
+    this.log.debug(`Initializing camera.ui with PID: ${process.pid}`);
+
     if (!compareVersions.compare(process.version, '14.18.1', '>=')) {
       this.log.warn(
-        `Node.js v16.12.0 higher is required. You may experience issues running this plugin running on ${process.version}.`
+        `Node.js v16.12.0 or higher is required. You may experience issues running this plugin running on ${process.version}.`
       );
     }
 
@@ -94,30 +92,17 @@ class Interface extends EventEmitter {
     this.#server?.close();
   }
 
-  #cliMode() {
+  #startAsWorker() {
     let shuttingDown = false;
 
-    const signalHandler = (signal, signalNumber, restart) => {
+    const signalHandler = (signal, signalNumber) => {
       if (shuttingDown) {
         return;
       }
 
       shuttingDown = true;
 
-      log.info(`Got ${signal}, ${restart ? 'restarting' : 'shutting down'} camera.ui...`);
-
       setTimeout(() => {
-        //TODO: Not the best way to restart an app, for the future: IPC
-        if (restart) {
-          process.on('exit', function () {
-            spawn(process.argv.shift(), process.argv, {
-              cwd: process.cwd(),
-              detached: true,
-              stdio: 'inherit',
-            });
-          });
-        }
-
         // eslint-disable-next-line unicorn/no-process-exit
         process.exit(128 + signalNumber);
       }, 5000);
@@ -135,11 +120,10 @@ class Interface extends EventEmitter {
       }
     };
 
-    //this.on('restart', () => signalHandler('SIGTERM', 1, true));
-
-    process.on('SIGINT', () => signalHandler('SIGINT', 2, false));
-    process.on('SIGTERM', () => signalHandler('SIGTERM', 15, false));
-    process.on('uncaughtException', (error) => errorHandler(error));
+    this.on('restart', signalHandler.bind(undefined, 'SIGINT', 1));
+    process.on('SIGINT', signalHandler.bind(undefined, 'SIGINT', 2));
+    process.on('SIGTERM', signalHandler.bind(undefined, 'SIGTERM', 15));
+    process.on('uncaughtException', errorHandler);
 
     this.start();
   }

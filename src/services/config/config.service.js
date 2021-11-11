@@ -80,6 +80,8 @@ class ConfigService {
   static name = 'camera.ui';
   static configJson = {};
 
+  static restarted = false;
+
   //camera.ui env
   static storagePath = process.env.CUI_STORAGE_PATH;
   static configPath = process.env.CUI_STORAGE_CONFIG_FILE;

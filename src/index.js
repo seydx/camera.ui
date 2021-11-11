@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const { version } = require('../package.json');
 
+const { ConfigService } = require('./services/config/config.service');
 const { LoggerService } = require('./services/logger/logger.service');
 
 class CameraUI {
@@ -42,6 +43,7 @@ class CameraUI {
     process.env.CUI_MODULE_SUDO = environment.sudo ? '1' : '0';
 
     LoggerService.create(logger);
+    ConfigService.config;
 
     return require('./main');
   }

@@ -163,6 +163,7 @@
     "successfully_removed": "Successfully removed",
     "system": "System",
     "system_restart_initiated": "System restart was initiated",
+    "system_successfully_restarted": "System was successfully restarted",
     "system_successfully_updated": "System was successfully updated",
     "system_update_initiated": "System update was initiated",
     "telegram": "Telegram",

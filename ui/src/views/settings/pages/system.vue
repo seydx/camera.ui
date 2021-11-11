@@ -37,7 +37,7 @@
             )
               b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog")
               vue-markdown.changelog(v-else) {{ changelog }}
-            b-button#restartButton.w-100.mt-3.restartButton(v-if="serviceMode" @click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
+            b-button#restartButton.w-100.mt-3.restartButton(@click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
@@ -338,6 +338,7 @@ export default {
         await timeout(1000);
 
         //this.$toast.success(this.$t('system_successfully_updated'));
+        this.updateAvailable = false;
       } catch (error) {
         this.$toast.error(error.message);
       }
