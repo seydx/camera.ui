@@ -234,10 +234,7 @@ export default {
 
       try {
         const response = await downloadLog();
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/plain' }));
-
-        const res = await fetch(url);
-        const blob = await res.blob();
+        const blob = new Blob([response.data], { type: 'text/plain' });
 
         const data = {
           title: this.$t('log'),

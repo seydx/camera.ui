@@ -43,10 +43,17 @@ exports.App = (options) => {
         defaultSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
         // eslint-disable-next-line quotes
         scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:'],
+        // eslint-disable-next-line quotes
+        childSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'https:'],
         connectSrc: [
           'ws:',
           'wss:',
           'https:',
+          'blob:',
+          'data:',
+          'file:',
+          'filesystem:',
+          'mediastream:',
           'https://registry.npmjs.org',
           'https://unpkg.com',
           // eslint-disable-next-line quotes
