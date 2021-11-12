@@ -1,6 +1,10 @@
-const app = require('../../server/app');
-const config = require('../../services/config/config.service.js');
-const lowdb = require('../../server/services/lowdb.service');
+const { App } = require('../../src/api/app');
+const { Database } = require('../../src/api/database');
+
+const app = App({
+  debug: process.env.CUI_LOG_DEBUG === '1',
+  version: require('../../package.json').version,
+});
 
 const fs = require('fs-extra');
 const supertest = require('supertest');
@@ -12,19 +16,15 @@ const masterCredentials = {
 };
 
 beforeAll(async () => {
-  await lowdb.ensureDatabase();
-  await lowdb.resetDatabase();
-  await lowdb.prepareDatabase(config.plugin);
-  await lowdb.refreshRecordingsDatabase();
+  const database = new Database();
+  await database.prepareDatabase();
 
-  const recordingsDatabase = lowdb.recordingsDatabase();
-
-  recordingsDatabase
+  Database.recordingsDB
     .get('recordings')
     .remove(() => true)
     .write(); // eslint-disable-line no-unused-vars
 
-  let recPath = recordingsDatabase.get('path').value();
+  let recPath = Database.recordingsDB.get('path').value();
   await fs.emptyDir(recPath);
 
   let files = [
@@ -37,7 +37,7 @@ beforeAll(async () => {
     await fs.ensureFile(recPath + '/' + file);
   }
 
-  await lowdb.refreshRecordingsDatabase();
+  await Database.refreshRecordingsDatabase();
 });
 
 describe('GET /api/recordings', () => {

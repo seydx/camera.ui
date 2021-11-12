@@ -1,6 +1,10 @@
-const app = require('../../server/app');
-const config = require('../../services/config/config.service.js');
-const lowdb = require('../../server/services/lowdb.service');
+const { App } = require('../../src/api/app');
+const { Database } = require('../../src/api/database');
+
+const app = App({
+  debug: process.env.CUI_LOG_DEBUG === '1',
+  version: require('../../package.json').version,
+});
 
 const supertest = require('supertest');
 const request = supertest(app);
@@ -11,9 +15,8 @@ const masterCredentials = {
 };
 
 beforeAll(async () => {
-  await lowdb.ensureDatabase();
-  await lowdb.resetDatabase();
-  await lowdb.prepareDatabase(config.plugin);
+  const database = new Database();
+  await database.prepareDatabase();
 });
 
 describe('GET /api/cameras', () => {

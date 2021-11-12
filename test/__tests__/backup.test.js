@@ -1,6 +1,10 @@
-const app = require('../../server/app');
-const config = require('../../services/config/config.service.js');
-const lowdb = require('../../server/services/lowdb.service');
+const { App } = require('../../src/api/app');
+const { Database } = require('../../src/api/database');
+
+const app = App({
+  debug: process.env.CUI_LOG_DEBUG === '1',
+  version: require('../../package.json').version,
+});
 
 const fs = require('fs-extra');
 const path = require('path');
@@ -13,19 +17,15 @@ const masterCredentials = {
 };
 
 beforeAll(async () => {
-  await lowdb.ensureDatabase();
-  await lowdb.resetDatabase();
-  await lowdb.prepareDatabase(config.plugin);
-  await lowdb.refreshRecordingsDatabase();
+  const database = new Database();
+  await database.prepareDatabase();
 
-  const recordingsDatabase = lowdb.recordingsDatabase();
-
-  recordingsDatabase
+  Database.recordingsDB
     .get('recordings')
     .remove(() => true)
     .write(); // eslint-disable-line no-unused-vars
 
-  let recPath = recordingsDatabase.get('path').value();
+  let recPath = Database.recordingsDB.get('path').value();
   await fs.emptyDir(recPath);
 
   let files = [
@@ -43,7 +43,7 @@ describe('GET /api/backup/download', () => {
   // eslint-disable-next-line jest/no-done-callback
   it('should response if successfull', async (done) => {
     const backupFileName = 'cameraui-backup.tar.gz';
-    const backupDirectory = path.resolve(__dirname, '..', 'storage');
+    const backupDirectory = path.resolve(__dirname, '..', 'camera.ui');
     const backupPath = path.resolve(backupDirectory, backupFileName);
 
     const file = fs.createWriteStream(backupPath);
@@ -67,7 +67,7 @@ describe('POST /api/backup/restore', () => {
 
     //restore from created backup file
     const backupFileName = 'cameraui-backup.tar.gz';
-    const backupDirectory = path.resolve(__dirname, '..', 'storage');
+    const backupDirectory = path.resolve(__dirname, '..', 'camera.ui');
     const backupPath = path.resolve(backupDirectory, backupFileName);
 
     const response = await request

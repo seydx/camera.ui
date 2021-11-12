@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0-alpha.79",
+  "firstStart": true,
+  "cameras": [],
+  "notifications": [],
+  "users": [
+    {
+      "id": 1,
+      "username": "master",
+      "password": "3BuEzwKeynNdriBX4VN9Tw==$c2JlZJTlS/xkBrxN7wobr2/OOAGYRtECbZjE9x/cIZ7TkITWUrEsdt33GtYVfVKSRXyYwZk0KAe/D3OClcLbzA==",
+      "sessionTimer": 14400,
+      "photo": "no_img.png",
+      "permissionLevel": [
+        "admin"
+      ]
+    },
+    {
+      "id": "b5d76220-986d-4d96-8612-24eab4a9e3f0",
+      "username": "user",
+      "password": "5UAbVs2gQBoasU8rgwXoUA==$F/zGXi4Zxg0vhqpdTlRBJAx9mC4GhdjjCAddj+qjL2A/RWvzvCG14+o3Q/62vzBUbXz0cpG0wdjGGjaUa3QvIw==",
+      "photo": "/images/user/anonym.png",
+      "permissionLevel": [
+        "users:access"
+      ]
+    }
+  ],
+  "settings": {
+    "aws": {
+      "active": false,
+      "accessKeyId": "",
+      "secretAccessKey": "",
+      "region": "",
+      "contingent_total": 5000,
+      "contingent_left": 5000,
+      "last_rekognition": ""
+    },
+    "cameras": [],
+    "camview": {
+      "refreshTimer": 60
+    },
+    "dashboard": {
+      "refreshTimer": 60
+    },
+    "general": {
+      "atHome": false,
+      "theme": "default",
+      "exclude": [],
+      "rooms": [
+        "Standard"
+      ],
+      "automation": {
+        "active": false,
+        "atHome": false,
+        "exclude": [],
+        "startTime": "08:00",
+        "endTime": "17:00"
+      }
+    },
+    "notifications": {
+      "active": false,
+      "removeAfter": 3,
+      "alexa": {
+        "active": false,
+        "domain": "",
+        "serialNr": "",
+        "message": "",
+        "startTime": "00:00",
+        "endTime": "23:59",
+        "auth": {
+          "cookie": "",
+          "macDms": {
+            "device_private_key": "",
+            "adp_token": ""
+          }
+        },
+        "proxy": {
+          "port": 9494
+        }
+      },
+      "telegram": {
+        "active": false,
+        "token": "",
+        "chatID": "",
+        "message": ""
+      },
+      "webhook": {
+        "active": false
+      }
+    },
+    "recordings": {
+      "active": false,
+      "type": "Snapshot",
+      "timer": 10,
+      "path": "/home/pi/Desktop/camera.ui/camera.ui/recordings",
+      "removeAfter": 7
+    },
+    "webpush": {
+      "publicKey": "BKiP1w0TQwZuDUv5nNn4o1UctRO82bvq4RPkiZ0WwaxVqEQ-dNxhPGHpfV_rO_dyI7TB_Thy1hk06213hefzau0",
+      "privateKey": "svuK49-ZAFWUPJ3BNM5AfZhoW3QBvSyQA9EmXEl9h2w",
+      "subscription": false
+    }
+  }
+}
