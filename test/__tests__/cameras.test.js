@@ -17,6 +17,8 @@ const masterCredentials = {
 beforeAll(async () => {
   const database = new Database();
   await database.prepareDatabase();
+  await Database.resetDatabase();
+  await database.prepareDatabase();
 });
 
 describe('GET /api/cameras', () => {
@@ -51,7 +53,7 @@ describe('POST /api/cameras', () => {
     expect(auth.statusCode).toBe(201);
 
     const camera = {
-      name: 'Test Camera 2',
+      name: 'Test Camera 3',
       videoConfig: {
         source: '-rtsp_transport udp -i rtsp://192.168.111.1/onvif1',
       },
@@ -66,7 +68,7 @@ describe('POST /api/cameras', () => {
     expect(auth.statusCode).toBe(201);
 
     const camera = {
-      name: 'Test Camera 2',
+      name: 'Test Camera 3',
       videoConfig: {
         source: '-rtsp_transport udp -i rtsp://192.168.111.1/onvif1',
       },
@@ -90,7 +92,7 @@ describe('GET /api/cameras/:name', () => {
     const auth = await request.post('/api/auth/login').send(masterCredentials);
     expect(auth.statusCode).toBe(201);
 
-    const response = await request.get('/api/cameras/Test Camera 2').auth(auth.body.access_token, { type: 'bearer' });
+    const response = await request.get('/api/cameras/Test Camera 3').auth(auth.body.access_token, { type: 'bearer' });
     expect(response.statusCode).toBe(200);
     expect(Object.keys(response.body).length).toBeTruthy();
   });
@@ -112,7 +114,7 @@ describe('PATCH /api/cameras/:name', () => {
     const auth = await request.post('/api/auth/login').send(masterCredentials);
     expect(auth.statusCode).toBe(201);
 
-    const response = await request.patch('/api/cameras/Test Camera').auth(auth.body.access_token, { type: 'bearer' });
+    const response = await request.patch('/api/cameras/Test Camera 3').auth(auth.body.access_token, { type: 'bearer' });
     expect(response.statusCode).toBe(400);
   });
 
@@ -121,7 +123,7 @@ describe('PATCH /api/cameras/:name', () => {
     expect(auth.statusCode).toBe(201);
 
     const response = await request
-      .patch('/api/cameras/Test Camera 2')
+      .patch('/api/cameras/Test Camera 3')
       .auth(auth.body.access_token, { type: 'bearer' })
       .send({ manufacturer: 'camera.ui' });
     expect(response.statusCode).toBe(204);
@@ -142,7 +144,7 @@ describe('DELETE /api/cameras/:name', () => {
     expect(auth.statusCode).toBe(201);
 
     const response = await request
-      .delete('/api/cameras/Test Camera 2')
+      .delete('/api/cameras/Test Camera 3')
       .auth(auth.body.access_token, { type: 'bearer' });
     expect(response.statusCode).toBe(204);
   });

@@ -169,8 +169,9 @@ class ConfigService {
   }
 
   static writeToConfig(target, config) {
-    if (ConfigService.ui[target] && config) {
-      fs.writeJSONSync(ConfigService.configPath, config, { spaces: 2 });
+    if (ConfigService.configJson[target] && config) {
+      ConfigService.configJson[target] = config;
+      fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
     }
   }
 

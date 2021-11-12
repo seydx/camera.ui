@@ -54,8 +54,8 @@ exports.patchCamera = async (name, cameraData) => {
 
   await Database.interfaceDB.read();
 
-  let cameraConfig = _.find(ConfigService.ui.cameras, { name: name });
-  _.assign(cameraConfig, cameraData);
+  //let cameraConfig = _.find(ConfigService.ui.cameras, { name: name });
+  _.assign(_.find(ConfigService.ui.cameras, { name: name }), cameraData);
 
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 

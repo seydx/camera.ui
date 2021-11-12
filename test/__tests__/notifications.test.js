@@ -26,6 +26,8 @@ const masterCredentials = {
 beforeAll(async () => {
   const database = new Database();
   await database.prepareDatabase();
+  await Database.resetDatabase();
+  await database.prepareDatabase();
 
   let cameraExist = await Database.interfaceDB.get('cameras').find({ name: 'Test Camera' }).value();
 

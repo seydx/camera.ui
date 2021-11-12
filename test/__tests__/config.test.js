@@ -17,6 +17,8 @@ const masterCredentials = {
 beforeAll(async () => {
   const database = new Database();
   await database.prepareDatabase();
+  await Database.resetDatabase();
+  await database.prepareDatabase();
 });
 
 describe('GET /api/system', () => {

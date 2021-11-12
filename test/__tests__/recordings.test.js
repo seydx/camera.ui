@@ -18,6 +18,8 @@ const masterCredentials = {
 beforeAll(async () => {
   const database = new Database();
   await database.prepareDatabase();
+  await Database.resetDatabase();
+  await database.prepareDatabase();
 
   Database.recordingsDB
     .get('recordings')

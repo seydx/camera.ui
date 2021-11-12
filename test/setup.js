@@ -7,7 +7,7 @@ let sudoEnabled = '1';
 let debugEnabled = '0';
 let logTimestamps = '1';
 let logColourful = '1';
-let storagePath = path.resolve('camera.ui');
+let storagePath = path.resolve('test', 'camera.ui');
 
 const { LoggerService } = require('../src/services/logger/logger.service');
 
