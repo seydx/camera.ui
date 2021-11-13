@@ -32,7 +32,7 @@ div
                 .card-title {{ notification.camera }}
                 .card-text 
                   b {{ $t("label") }}: 
-                  | {{ notification.label.toString() }}
+                  | {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
                 .card-text
                   b {{ $t("motion") }}: 
                   | {{ notification.time }}

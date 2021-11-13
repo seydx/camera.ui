@@ -33,7 +33,6 @@ const stringIsAValidUrl = (s) => {
 
 class EventController {
   static #movementHandler = {};
-  static #motionTimers = new Map();
 
   constructor() {
     this.triggerEvent = EventController.handle;
@@ -42,14 +41,6 @@ class EventController {
   // eslint-disable-next-line no-unused-vars
   static async handle(trigger, cameraName, active, fileBuffer, type) {
     if (active) {
-      /*
-       * Direct access possible (e.g. if the recording is sent by an external process).
-       * Direct access requires a fileBuffer to process the recording it.
-       *
-       * "trigger" should be motion, doorbell or custom.
-       * "type" should be Snapshot or Video if passed with a fileBuffer (Default: Video)
-       */
-
       const controller = CameraController.cameras.get(cameraName);
 
       try {
@@ -63,27 +54,6 @@ class EventController {
         }
 
         if (Camera && Camera.videoConfig) {
-          if (!fileBuffer) {
-            /*
-             * When accessing via MotionController an eventTimeout should be set up to prevent massive motion events e.g. via MQTT.
-             * For direct access it should be handled with its own logic.
-             */
-
-            const timeout = EventController.#motionTimers.get(cameraName);
-            const timeoutConfig = !Number.isNaN(Number.parseInt(Camera.motionTimeout)) ? Camera.motionTimeout : 1;
-
-            if (!timeout) {
-              const eventTimeout = setTimeout(() => {
-                log.info('Motion handler timeout.', cameraName);
-                EventController.#motionTimers.delete(cameraName);
-              }, timeoutConfig * 1000);
-
-              EventController.#motionTimers.set(cameraName, eventTimeout);
-            } else {
-              log.warn(`Event blocked due to motionTimeout (${timeoutConfig}s)`, cameraName);
-            }
-          }
-
           const SettingsDB = await SettingsModel.show(false);
 
           const awsSettings = {

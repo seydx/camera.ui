@@ -17,6 +17,7 @@ const { log } = LoggerService;
 
 class MotionController {
   #controller;
+  #motionTimers = new Map();
 
   #cameras = ConfigService.ui.cameras;
   #topics = ConfigService.ui.topics;
@@ -73,16 +74,37 @@ class MotionController {
       } else {
         result = {
           error: false,
-          message: 'Recording disabled for this camera',
+          message: 'Handled through extern controller',
         };
 
-        if (triggerType !== 'custom') {
-          this.#controller.emit('motion', cameraName, triggerType, state, event);
-        }
+        this.#controller.emit('motion', cameraName, triggerType, state, event);
 
         if (camera.recordOnMovement) {
-          result.message = 'Handled through EventController';
-          EventController.handle(triggerType, cameraName, state);
+          const timeout = this.#motionTimers.get(camera.name);
+          const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
+
+          if (timeout) {
+            clearTimeout(timeout);
+            this.#motionTimers.delete(camera.name);
+
+            if (state) {
+              result.message = 'Skip motion event, timeout active!';
+            } else {
+              EventController.handle(triggerType, cameraName, state);
+            }
+          } else {
+            if (state && timeoutConfig > 0) {
+              const timer = setTimeout(() => {
+                log.info('Motion handler timeout.', camera.name);
+                this.#motionTimers.delete(camera.name);
+              }, timeoutConfig * 1000);
+
+              this.#motionTimers.set(camera.name, timer);
+            }
+
+            EventController.handle(triggerType, cameraName, state);
+            result.message = 'Handled through intern controller';
+          }
         }
       }
     } else {
