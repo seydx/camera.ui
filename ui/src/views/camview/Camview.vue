@@ -75,6 +75,10 @@ export default {
       vm.prevRoute = from;
     });
   },
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       allCameras: [],

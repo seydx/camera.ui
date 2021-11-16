@@ -1,5 +1,5 @@
 <template lang="pug">
-.back-to-top.mr-save.mb-save.text-center(@click="backToTop()")
+.back-to-top.text-center(@click="backToTop()")
   b-icon(icon="arrow-up-short", aria-hidden="true", style="vertical-align: -.2em !important")
 </template>
 
@@ -26,7 +26,7 @@ export default {
         setTimeout(() => {
           window.scrollTo(0, dif);
           this.backToTop();
-        }, 5);
+        }, 1);
       }
     },
     scrollHandler() {
@@ -49,7 +49,7 @@ export default {
   display: block;
   opacity: 0;
   right: 25px;
-  bottom: 40px;
+  bottom: 45px;
   z-index: 98;
   width: 30px;
   height: 30px;

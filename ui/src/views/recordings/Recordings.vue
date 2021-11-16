@@ -78,6 +78,10 @@ export default {
     LightboxCard,
   },
   mixins: [SocketMixin],
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       index: null,

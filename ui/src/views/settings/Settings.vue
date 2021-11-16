@@ -49,6 +49,10 @@ export default {
     CoolLightBox,
   },
   mixins: [SocketMixin],
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       prevHeight: 0,

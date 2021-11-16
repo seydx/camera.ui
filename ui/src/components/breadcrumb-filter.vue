@@ -348,9 +348,9 @@ export default {
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
   height: 50px;
-  -webkit-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.2);
-  -moz-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.2);
-  box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.2);
+  -webkit-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
+  -moz-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
   transition: 0.3s all;
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);

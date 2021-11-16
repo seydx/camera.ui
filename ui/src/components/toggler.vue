@@ -56,15 +56,12 @@ export default {
       const target = event.target;
       const toggleMenu = document.querySelector('.navbar2-collapsed');
       const toggler_clicked = target.closest('#togglerBtn');
-      const navItem_clicked = target.classList.contains('nav-link');
+      //const navItem_clicked = target.classList.contains('nav-link');
       const navi_expanded = toggleMenu.classList.contains('navbar2-collapsed-expand');
 
       const togglerButton = document.querySelector('#togglerBtn');
 
-      if (
-        (navi_expanded && toggler_clicked && !navItem_clicked) ||
-        (navi_expanded && !navItem_clicked && !toggler_clicked)
-      ) {
+      if ((navi_expanded && toggler_clicked) || (navi_expanded && !toggler_clicked)) {
         togglerButton.classList.remove('bg-transparent');
         toggleMenu.classList.remove('navbar2-collapsed-expand');
       } else if (!navi_expanded && toggler_clicked) {
@@ -138,7 +135,7 @@ export default {
 
 .navbar2-collapsed-expand {
   height: 350px;
-  max-width: 500px;
+  width: 250px;
   display: block;
 }
 

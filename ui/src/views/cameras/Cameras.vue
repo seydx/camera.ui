@@ -59,6 +59,10 @@ export default {
     VideoCard,
   },
   mixins: [SocketMixin],
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       cameras: [],
@@ -150,6 +154,6 @@ export default {
 
 <style scoped>
 .inner-container {
-  margin-top: 140px;
+  margin-top: 120px;
 }
 </style>

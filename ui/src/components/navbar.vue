@@ -1,6 +1,6 @@
 <template lang="pug">
 div
-  .d-flex.flex-wrap.align-content-center.navbar2
+  div(:class="`d-flex flex-wrap align-content-center navbar2 ${!$route.meta.hasFilter ? 'bottom-shadow' : ''}`")
     .navbar2-inner.container.d-flex.flex-wrap.align-content-center.mt-save.toggleArea
       b-navbar.w-100.p-0.m-0(variant='faded' type='light')
         b-navbar-brand(href='/dashboard')
@@ -56,6 +56,17 @@ export default {
       return this.$store.state.notifications.size;
     },
   },
+  watch: {
+    $route() {
+      const navbar = document.querySelector('.navbar2-inner');
+      const navbarBrand = document.querySelector('.navbar-brand');
+      const navbarBrandIMG = document.querySelector('.navbar-brand-img');
+
+      navbar?.classList.remove('navbar2-inner-minify');
+      navbarBrand?.classList.remove('navbar-brand-minify');
+      navbarBrandIMG?.classList.remove('navbar-brand-img-minify');
+    },
+  },
   mounted() {
     document.addEventListener('scroll', this.navbarScrollHandler);
   },
@@ -96,6 +107,12 @@ export default {
   z-index: 90;
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
+}
+
+.bottom-shadow {
+  -webkit-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
+  -moz-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-light .navbar-brand {

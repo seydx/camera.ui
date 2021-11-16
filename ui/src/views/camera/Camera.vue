@@ -70,6 +70,10 @@ export default {
     VideoCard,
   },
   mixins: [SocketMixin],
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       camera: {},

@@ -98,6 +98,10 @@ export default {
     SwipeOut,
   },
   mixins: [SocketMixin],
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
   data() {
     return {
       infiniteId: Date.now(),
