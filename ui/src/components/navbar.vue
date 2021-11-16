@@ -23,7 +23,11 @@ div
 
             li.nav-item(v-if="checkLevel('settings:profile:access')")
               router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
-            
+
+            li.nav-item(v-if="checkLevel('settings:system:access')")
+              router-link.nav-link(to="/settings/system")
+                b-icon.system-btn(icon="gear-fill")
+
             li.nav-item.camview-btn(v-if="checkLevel('camview:access')")
               router-link.nav-link(to="/camview") {{ $t("camview") }}
             
@@ -36,12 +40,15 @@ div
 </template>
 
 <script>
+import { BIcon, BIconGearFill } from 'bootstrap-vue';
 import theme from '@/mixins/theme.mixin';
 import toggler from '@/components/toggler.vue';
 
 export default {
   name: 'Navbar',
   components: {
+    BIcon,
+    BIconGearFill,
     toggler,
   },
   mixins: [theme],
@@ -181,6 +188,17 @@ div.navbar2-items > ul > li > .nav-link {
 
 div.navbar2-items > ul > li > a.router-link-active {
   color: var(--primary-color) !important;
+}
+
+.system-btn {
+  margin-right: 5px;
+  color: var(--primary-font-color) !important;
+  opacity: 0.2;
+}
+
+.system-btn:hover {
+  color: var(--primary-color) !important;
+  opacity: 1;
 }
 
 .camview-btn {

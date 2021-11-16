@@ -385,7 +385,7 @@ export default {
   position: absolute;
   border-bottom-right-radius: 10px;
   border-bottom-left-radius: 10px;
-  left: 15px;
+  left: clamp(15px, env(safe-area-inset-left), env(safe-area-inset-left, 15px)) !important;
   font-size: 12px;
   border-bottom: 3px solid var(--secondary-color);
   color: #ffffff;
@@ -407,7 +407,7 @@ export default {
   position: absolute;
   border-bottom-right-radius: 10px;
   border-bottom-left-radius: 10px;
-  right: 15px;
+  right: clamp(15px, env(safe-area-inset-right), env(safe-area-inset-right, 15px)) !important;
   font-size: 12px;
   border-bottom: 3px solid var(--secondary-color);
   color: #ffffff;

@@ -16,6 +16,57 @@ body {
 }
 
 /*--------------------------------------------------------------
+# Container
+--------------------------------------------------------------*/
+
+.container {
+  padding-left: clamp(15px, env(safe-area-inset-left), env(safe-area-inset-right, 15px)) !important;
+  padding-right: clamp(15px, env(safe-area-inset-right), env(safe-area-inset-right, 15px)) !important;
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: unset;
+  }
+}
+
+@media (max-width: 1199px) {
+  .container {
+    max-width: 1170px !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: unset;
+  }
+}
+
+@media (max-width: 991px) {
+  .container {
+    max-width: 960px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: unset;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    max-width: 730px !important;
+  }
+}
+
+@media (min-width: 576px) {
+  /*.container {
+    max-width: 'unset';
+  }*/
+}
+
+/*--------------------------------------------------------------
 # Utils
 --------------------------------------------------------------*/
 .hr-underline {
@@ -795,7 +846,7 @@ iframe {
 
 .btn-primary:hover {
   background-color: var(--secondary-color) !important;
-  color: var(--primary-font-color) !important;
+  color: #fff !important;
 }
 
 .btn-primary:focus,

@@ -81,7 +81,7 @@ exports.createNotification = async (data) => {
   await Database.interfaceDB.read();
 
   const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
-  const cameraSettings = await Database.interfaceDB.get('settings').get('cameras').value();
+  const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
 
   if (!camera) {
     throw new Error('Can not assign notification to camera!');
@@ -95,11 +95,11 @@ exports.createNotification = async (data) => {
     await Database.interfaceDB.get('notifications').dropRight(notificationList, diff).write();
   }
 
-  camera.settings = cameraSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
   const cameraName = camera.name;
-  const room = camera.settings ? camera.settings.room : 'Standard';
+  const room = cameraSetting ? cameraSetting.room : 'Standard';
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 

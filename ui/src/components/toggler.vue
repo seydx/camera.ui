@@ -1,6 +1,9 @@
 <template lang="pug">
 #toggler.toggler.d-flex.w-100.justify-content-end.position-relative.toggleArea
-  b-link#togglerBtn.navbar2-toggler(aria-label="Mobile Navigation")
+  nav-item(v-if="checkLevel('settings:system:access')")
+    router-link.nav-link(to="/settings/system")
+      b-icon.system-btn(icon="gear-fill")
+  b-link#togglerBtn.navbar2-toggler.mt-1(aria-label="Mobile Navigation")
     b-icon.navbar-2toggler-icon(icon="list", aria-hidden="true")
   .navbar2-collapsed
     ul.h-100
@@ -195,5 +198,15 @@ div.navbar2-collapsed.navbar2-collapsed-expand > ul > li:last-child > a.router-l
   .toggler {
     display: none !important;
   }
+}
+
+.system-btn {
+  color: var(--primary-font-color) !important;
+  opacity: 0.2;
+}
+
+.system-btn:hover {
+  color: var(--primary-color) !important;
+  opacity: 1;
 }
 </style>

@@ -91,10 +91,10 @@ exports.createRecording = async (data, fileBuffer) => {
     throw new Error('Can not assign recording to camera!');
   }
 
-  const cameraSettings = await Database.interfaceDB.get('settings').get('cameras').value();
+  const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
   const recordingsSettings = await Database.interfaceDB.get('settings').get('recordings').value();
 
-  camera.settings = cameraSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
   const timestamp = data.timestamp || moment().unix();
@@ -121,7 +121,7 @@ exports.createRecording = async (data, fileBuffer) => {
     recordStoring: true,
     recordType: data.type,
     trigger: data.trigger,
-    room: camera.settings.room,
+    room: cameraSetting.room,
     time: time,
     timestamp: timestamp,
     label: label,

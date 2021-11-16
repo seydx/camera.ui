@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12.z-index-2(v-if="checkLevel('settings:general:edit')")
+      .col-12.z-index-2.px-0(v-if="checkLevel('settings:general:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.automation.expand ? "180" : "-90"', @click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.automation.expand = !settingsLayout.general.automation.expand") {{ $t("automation") }}
         b-collapse(
@@ -101,7 +101,7 @@
                           class="timePicker"
                           @input="function(){restartAutomation = true; stopAutomation = false;}"
                         )
-      b-collapse.col-12.mt-2.z-index-2(
+      b-collapse.col-12.mt-2.z-index-2.px-0(
         :visible="!general.automation.active"
       )
         .z-index-1(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
@@ -142,7 +142,7 @@
                       )
                         template(slot="noOptions")
                           strong {{ $t("empty") }}
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000", v-if="!uiConfig || (uiConfig && uiConfig.theme === 'auto')")
+      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000", v-if="!uiConfig || (uiConfig && uiConfig.theme === 'auto')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.themes.expand ? "180" : "-90"', @click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.themes.expand = !settingsLayout.general.themes.expand") {{ $t("themes") }}
         b-collapse(
@@ -193,7 +193,7 @@
                   label.m-0(for="switch-green")
                   input#switch-gray.theme-switches.switch-gray(@input="switchTheme('gray')", type="radio", name="theme-group")
                   label.m-0(for="switch-gray")
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
+      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:general:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.general.rooms.expand ? "180" : "-90"', @click="settingsLayout.general.rooms.expand = !settingsLayout.general.rooms.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.general.rooms.expand = !settingsLayout.general.rooms.expand") {{ $t("rooms") }}
         b-collapse(

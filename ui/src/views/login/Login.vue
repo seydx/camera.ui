@@ -1,6 +1,6 @@
 <template lang="pug">
-  main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100(v-if="!loadRestart")
-    .login.container
+  main.py-3.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100(v-if="!loadRestart")
+    .login
       .login-inner.row
         #left-side.col-5.d-flex.flex-wrap.bg-color-primary.justify-content-center.align-content-center
           img.d-block.theme-img(src="@/assets/img/logo_white_both@pink.png", alt="camera.ui")
@@ -92,6 +92,7 @@ export default {
 .login {
   max-height: 600px;
   min-height: 400px;
+  max-width: 730px !important;
   -webkit-box-shadow: 0px 17px 28px -21px rgba(0, 0, 0, 0.68);
   box-shadow: 0px 17px 28px -21px rgba(0, 0, 0, 0.68);
   min-width: 700px;
@@ -167,9 +168,9 @@ export default {
   #right-side {
     border-radius: 20px;
   }
-  main .container {
-    padding-left: 0;
-    padding-right: 0;
+  main .login {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     width: 80%;
     max-width: 400px;
   }

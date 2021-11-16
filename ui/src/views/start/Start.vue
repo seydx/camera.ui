@@ -11,7 +11,6 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
         .row.w-100.justify-content-center
           p.m-0.lh-1-7.text-center {{ $t("help_started") }} 
           b-spinner.text-color-primary.mt-3(v-if="loading")
-
           b-collapse(
             class="w-100 mt-5"
             id="formCollapse"

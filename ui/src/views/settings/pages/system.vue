@@ -8,7 +8,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(v-if="checkLevel('admin')")
+      .col-12.px-0(v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.server.expand ? "180" : "-90"', @click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand") {{ $t("server") }}
         b-collapse(
@@ -23,14 +23,14 @@
             b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave") 
               span(v-if="loadingUpdate") 
                 b-spinner(style="color: #fff" type="grow" small)
-              span(v-else) {{ $t('update') }}
+              span(v-else) {{ `${$t('update')} & ${$t('restart')}` }}
             b-modal#updateModal.updateModal(
               centered
               scrollable
               ref="updateModal"
               :title="$t('release_notes')",
               :cancel-title="$t('cancel')",
-              :ok-title="$t('update')",
+              :ok-title="`${$t('update')} & ${$t('restart')}`",
               ok-variant="primary",
               size="lg"
               @ok="onUpdate"
@@ -41,7 +41,7 @@
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.config.expand ? "180" : "-90"', @click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand") {{ $t('config') }}
         b-collapse(
@@ -62,7 +62,7 @@
               span(v-if="loadingSave") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('save') }}
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.log.expand ? "180" : "-90"', @click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand") {{ $t('log') }}
         b-collapse.position-relative(
@@ -295,8 +295,9 @@ export default {
         localStorage.setItem('restarted', true);
       } catch (error) {
         this.$toast.error(error.message);
-        this.loadingRestart = false;
       }
+
+      this.loadingRestart = false;
     },
     async onSave() {
       const saveButton = document.getElementById('saveButton');
@@ -324,28 +325,40 @@ export default {
       this.changelog = response.data;
     },
     async onUpdate() {
+      const restartButton = document.getElementById('restartButton');
+      restartButton.blur();
+
       const updateButton = document.getElementById('updateButton');
       updateButton.blur();
 
-      if (this.loadingUpdate) {
+      if (this.loadingUpdate || this.loadingRestart) {
         return;
       }
 
       this.loadingUpdate = true;
-      this.$toast.success(this.$t('system_update_initiated'));
+      this.loadingRestart = true;
 
       try {
+        this.$toast.success(this.$t('system_update_initiated'));
         await updateSystem(`?version=${this.currentVersion}`);
         localStorage.setItem('updated', true);
-        await timeout(1000);
-
         //this.$toast.success(this.$t('system_successfully_updated'));
+
+        await timeout(500);
+
+        this.$toast.success(this.$t('system_restart_initiated'));
+        await restartSystem();
+        localStorage.setItem('restarted', true);
+        //this.$toast.success(this.$t('system_successfully_restarted'));
+
+        await timeout(500);
+
         this.updateAvailable = false;
       } catch (error) {
         this.$toast.error(error.message);
+        this.loadingUpdate = false;
+        this.loadingRestart = false;
       }
-
-      this.loadingUpdate = false;
     },
   },
 };
@@ -632,5 +645,9 @@ select .versionSelect {
 
 .shareButton:hover {
   opacity: 1;
+}
+
+.modal-lg {
+  max-height: 90% !important;
 }
 </style>

@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded", v-if="currentUser")
-      .col-12.col-md.mb-5
+      .col-12.col-md.mb-5.px-0
         .settings-box.d-flex.flex-wrap.justify-content-center.align-content-center.container
           .image-upload
             label.profile-avatar-bg(for='file-input')
@@ -61,7 +61,8 @@
             rounded="sm"
           )
             p.my-4 {{ $t('reset_confirm_text') }}
-      .col-12.col-md-8
+      div(style="width: 15px;")
+      .col-12.col-md-8.px-0
         .settings-box.container
           h3.lh-1.font-weight-bold {{ $t("account") }}
           .w-100
