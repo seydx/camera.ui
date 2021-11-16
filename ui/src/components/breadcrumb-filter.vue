@@ -344,7 +344,7 @@ export default {
   position: fixed;
   left: 0;
   right: 0;
-  top: 48px;
+  top: 43px;
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
   height: 50px;
@@ -358,11 +358,11 @@ export default {
 }
 
 .breadcrumb-expand {
-  top: 63px;
+  top: 59px;
 }
 
 .breadcrumb-minify {
-  top: 18px;
+  top: 13px;
 }
 
 .breadcrumb-button {

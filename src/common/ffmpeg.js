@@ -345,8 +345,8 @@ exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
   const prebufferLength = 6000;
-  const audioArguments = ['-codec:a', 'copy'];
-  const videoArguments = ['-codec:v', 'copy'];
+  const audioArguments = ['-acodec', 'copy'];
+  const videoArguments = ['-vcodec', 'copy'];
 
   let ffmpegInput = [...camera.videoConfig.source.split(' ')];
 

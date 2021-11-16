@@ -7,7 +7,7 @@ transition(name="fade" @enter="enter")
       .row.pb-4(v-if="showLeftNavi || showRightNavi || showMiddleNavi")
         .col.d-flex.flex-wrap.justify-content-start.align-content-center(v-if="showLeftNavi")
           b-button.left-button(pill, @click="$emit('leftNaviClick')") {{ leftNaviName }}
-        .col.d-flex.flex-wrap.justify-content-center.align-content-center(v-if="showMiddleNavi")
+        .col.d-flex.flex-wrap.justify-content-center.align-content-center(v-if="showMiddleNavi && items.length")
           b-button.middle-button(pill, @click="$emit('middleNaviClick')") {{ middleNaviName }}
         .col.d-flex.flex-wrap.justify-content-end.align-content-center(v-if="showRightNavi")
           b-button.btn-primary.right-button(pill, @click="$emit('rightNaviClick')") {{ rightNaviName }}
@@ -42,6 +42,7 @@ export default {
     items: {
       type: Array,
       required: true,
+      default: () => [],
     },
     leftNaviName: {
       type: String,

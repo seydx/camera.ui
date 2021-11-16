@@ -11,7 +11,7 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { log } = LoggerService;
 
-const videoDuration = 25000;
+const videoDuration = 30000;
 const compatibleAudio = /(aac|mp3|mp2)/;
 
 class PrebufferService {
@@ -42,6 +42,7 @@ class PrebufferService {
 
   async start() {
     try {
+      this.killed = false;
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
       log.warn('An error occured during starting camera prebuffer!', this.cameraName);
@@ -58,27 +59,27 @@ class PrebufferService {
     this.moov = null;
     this.idrInterval = 0;
     this.prevIdr = 0;
+    this.events.removeAllListeners();
   }
 
   stop(killed) {
     if (this.prebufferSession) {
-      const process = this.prebufferSession.process;
-      const server = this.prebufferSession.server;
+      const prebufferProcess = this.prebufferSession.process;
+      const prebufferServer = this.prebufferSession.server;
 
       if (killed) {
         this.killed = true;
       }
 
-      if (process) {
-        process.kill();
+      if (prebufferProcess) {
+        prebufferProcess.kill();
       }
 
-      if (server) {
-        server.close();
+      if (prebufferServer) {
+        prebufferServer.close();
       }
 
       this.resetPrebuffer();
-
       this.prebufferSession = null;
     }
   }
@@ -109,21 +110,24 @@ class PrebufferService {
       audioEnabled = false;
     }*/
 
-    if (audioEnabled && acodec === 'copy' && incompatibleAudio) {
-      log.warn('Can not copy non AAC typed audio, reencoding..');
-      acodec = 'libfdk_aac';
-    }
-
     if (!audioSourceFound) {
       if (!probeTimedOut) {
-        audioEnabled = true;
         acodec = 'copy';
-      } else {
+      } else if (audioEnabled) {
+        log.warn('Turning off audio, audio source not found or timed out during probe stream', this.cameraName);
         audioEnabled = false;
       }
     }
 
     if (audioEnabled) {
+      if (incompatibleAudio && acodec !== 'libfdk_aac') {
+        log.warn(`Incompatible audio stream detected ${probeAudio}, transcoding with "libfdk_aac"..`, this.cameraName);
+        acodec = 'libfdk_aac';
+      } else if (!incompatibleAudio && acodec !== 'copy') {
+        log.info('Compatible audio stream detected, copying..');
+        acodec = 'copy';
+      }
+
       if (acodec !== 'copy') {
         audioArguments.push('-acodec', 'libfdk_aac', '-profile:a', 'aac_low');
       } else {
@@ -175,27 +179,30 @@ class PrebufferService {
     });
 
     const fmp4Port = await cameraUtils.listenServer(fmp4OutputServer);
-    const destination = `tcp://127.0.0.1:${fmp4Port}`;
 
-    const ffmpegOutput = [
+    const parameters = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      ...this.ffmpegInput.split(' '),
       '-f',
       'mp4',
       ...videoArguments,
       ...audioArguments,
       '-movflags',
       'frag_keyframe+empty_moov+default_base_moof',
-      destination,
+      `tcp://127.0.0.1:${fmp4Port}`,
     ];
 
-    const arguments_ = ['-hide_banner', '-loglevel', 'error', ...this.ffmpegInput.split(' '), ...ffmpegOutput];
+    log.debug(`Prebuffering command: ${this.#videoProcessor} ${parameters.join(' ')}`, this.cameraName);
 
-    log.debug(`Prebuffering command: ${this.#videoProcessor} ${arguments_.join(' ')}`, this.cameraName);
+    const cp = spawn(this.#videoProcessor, parameters, { env: process.env });
 
-    const cp = spawn(this.#videoProcessor, arguments_, { env: process.env });
-
-    if (this.debug) {
+    /*if (this.debug) {
       cp.stdout.on('data', (data) => log.debug(data.toString(), this.cameraName));
     }
+
+    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));*/
 
     cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));
 
@@ -250,7 +257,6 @@ class PrebufferService {
           }
 
           needMoof = false;
-
           writeAtom(prebuffer.atom);
         }
 
@@ -276,7 +282,6 @@ class PrebufferService {
       setTimeout(() => server.close(), 30000);
 
       const port = await cameraUtils.listenServer(server);
-
       const ffmpegInput = ['-f', 'mp4', '-i', `tcp://127.0.0.1:${port}`];
 
       return ffmpegInput;

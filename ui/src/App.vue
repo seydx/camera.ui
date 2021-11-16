@@ -3,16 +3,27 @@
     button.add-button(v-if="$route.meta.name !== 'login' && $route.meta.name !== 'start'", style="display: none;") {{ $t('add_to_homescreen') }}
     audio#soundFx(v-if="$route.meta.name !== 'login'")
       source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
+    BackToTop(v-if="$route.meta.showBackTop")
+    Navbar(:name="$route.params.name || $t($route.meta.parentName || $route.meta.name)", v-if="$route.meta.showNavi")
     transition(name='fade' mode='out-in')
       router-view
+    Footer(v-if="$route.meta.showFooter")
 </template>
 
 <script>
+import BackToTop from '@/components/back-to-top.vue';
+import Navbar from '@/components/navbar.vue';
+import Footer from '@/components/footer.vue';
 import update from '@/mixins/update.mixin';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
+  components: {
+    BackToTop,
+    Navbar,
+    Footer,
+  },
   mixins: [update],
   computed: {
     currentUser() {

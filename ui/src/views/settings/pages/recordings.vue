@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:recordings:edit')")
+      .col-12(v-if="checkLevel('settings:recordings:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.recordings.recordings.expand ? "180" : "-90"', @click="settingsLayout.recordings.recordings.expand = !settingsLayout.recordings.recordings.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.recordings.recordings.expand = !settingsLayout.recordings.recordings.expand") {{ $t("recordings") }}
         b-collapse(

@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$t('notifications')")
   BreadcrumbFilter(
     :active="true",
     dataType="notifications",
@@ -62,8 +60,8 @@ div
         infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
           div(slot="spinner")
             b-spinner.text-color-primary
-          div(slot="no-more") {{ $t("no_more_data") }}
-          div(slot="no-results") {{ $t("no_results") }}
+          div(slot="no-more") {{ $t("no_more_notifications") }}
+          div(slot="no-results") {{ $t("no_notifications") }}
   CoolLightBox(
     :items="notImages" 
     :index="notIndex"
@@ -72,7 +70,6 @@ div
     :useZoomBar="true",
     :zIndex=99999
   )
-  Footer
 </template>
 
 <script>
@@ -84,11 +81,7 @@ import { SwipeList, SwipeOut } from 'vue-swipe-actions';
 import 'vue-swipe-actions/dist/vue-swipe-actions.css';
 
 import { getNotifications, removeNotification, removeNotifications } from '@/api/notifications.api';
-import BackToTop from '@/components/back-to-top.vue';
 import BreadcrumbFilter from '@/components/breadcrumb-filter.vue';
-import Footer from '@/components/footer.vue';
-import Navbar from '@/components/navbar.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -96,14 +89,11 @@ const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
   name: 'Notifications',
   components: {
-    BackToTop,
     BIcon,
     BIconTrashFill,
     BreadcrumbFilter,
     CoolLightBox,
-    Footer,
     InfiniteLoading,
-    Navbar,
     SwipeList,
     SwipeOut,
   },

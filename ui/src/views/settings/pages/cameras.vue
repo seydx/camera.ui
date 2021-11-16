@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:cameras:edit'])")
+      .col-12(v-if="checkLevel(['settings:cameras:edit'])")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.aws.expand ? "180" : "-90"', @click="settingsLayout.cameras.aws.expand = !settingsLayout.cameras.aws.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.cameras.aws.expand = !settingsLayout.cameras.aws.expand") {{ $t("aws") }}
         b-collapse(
@@ -86,7 +86,7 @@
                       v-model="aws.last_rekognition"
                       style="background: var(--third-bg-color) !important"
                     )
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="cameras.length && checkLevel('settings:cameras:edit')")
+      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:cameras:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.cameras.cameras.expand ? "180" : "-90"', @click="settingsLayout.cameras.cameras.expand = !settingsLayout.cameras.cameras.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.cameras.cameras.expand = !settingsLayout.cameras.cameras.expand") {{ $t("cameras") }}
         b-collapse(
@@ -164,8 +164,7 @@
                           v-model="camera.rekognition.labels"
                         )
                         hr.hr-underline
-      .col-12.d-flex.justify-content-center(v-else)
-        span.text-muted-2 {{ $t("no_cameras") }}
+          .w-100.mt-4.text-muted-2.text-center {{ $t("no_cameras") }}
 </template>
 
 <script>

@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$t('recordings')")
   BreadcrumbFilter(
     :active="true",
     dataType="recordings",
@@ -47,8 +45,8 @@ div
         )
           div(slot="spinner")
             b-spinner.text-color-primary
-          div(slot="no-more") {{ $t("no_more_data") }}
-          div(slot="no-results") {{ $t("no_results") }}
+          div(slot="no-more") {{ $t("no_more_recordings") }}
+          div(slot="no-results") {{ $t("no_recordings") }}
   CoolLightBox(
     :items="notImages" 
     :index="notIndex"
@@ -57,7 +55,6 @@ div
     :useZoomBar="true",
     :zIndex=99999
   )
-  Footer
 </template>
 
 <script>
@@ -66,12 +63,8 @@ import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
 
 import { getRecordings, removeRecording, removeRecordings } from '@/api/recordings.api';
-import BackToTop from '@/components/back-to-top.vue';
 import BreadcrumbFilter from '@/components/breadcrumb-filter.vue';
-import Footer from '@/components/footer.vue';
 import LightboxCard from '@/components/lightbox-card.vue';
-import Navbar from '@/components/navbar.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,13 +72,10 @@ const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
   name: 'Recordings',
   components: {
-    BackToTop,
     BreadcrumbFilter,
     CoolLightBox,
-    Footer,
     InfiniteLoading,
     LightboxCard,
-    Navbar,
   },
   mixins: [SocketMixin],
   data() {

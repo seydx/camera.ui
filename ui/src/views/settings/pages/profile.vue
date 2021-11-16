@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded", v-if="currentUser")
-      .col-12.col-md.mb-5(data-aos="fade-up" data-aos-duration="1000")
+      .col-12.col-md.mb-5
         .settings-box.d-flex.flex-wrap.justify-content-center.align-content-center.container
           .image-upload
             label.profile-avatar-bg(for='file-input')
@@ -61,7 +61,7 @@
             rounded="sm"
           )
             p.my-4 {{ $t('reset_confirm_text') }}
-      .col-12.col-md-8(data-aos="fade-up" data-aos-duration="1000")
+      .col-12.col-md-8
         .settings-box.container
           h3.lh-1.font-weight-bold {{ $t("account") }}
           .w-100
@@ -174,7 +174,7 @@
                       .btn.btn-success.mt-4.w-100(@click="changeUser(user, index)") {{ $t("apply") }}
                   hr.hr-underline
           div(v-else)
-            p.mt-5.text-center {{ $t("no_registered_user") }}
+            p.mt-5.text-center.text-muted-2 {{ $t("no_registered_user") }}
 </template>
 
 <script>

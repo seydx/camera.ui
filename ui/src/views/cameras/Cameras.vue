@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$t('cameras')")
   BreadcrumbFilter(
     :active="true",
     dataType="cameras",
@@ -25,6 +23,12 @@ div
             :showSpinner="true",
             :onlySnapshot="true",
           )
+      div(data-aos="fade-up" data-aos-duration="1000")
+        infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
+          div(slot="spinner")
+            b-spinner.text-color-primary
+          div(slot="no-more") {{ $t("no_more_cameras") }}
+          div(slot="no-results") {{ $t("no_cameras") }} :(
   CoolLightBox(
     :items="notImages" 
     :index="notIndex"
@@ -33,38 +37,35 @@ div
     :useZoomBar="true",
     :zIndex=99999
   )
-  Footer
 </template>
 
 <script>
 import CoolLightBox from 'vue-cool-lightbox';
+import InfiniteLoading from 'vue-infinite-loading';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 
 import { getCameras, getCameraSettings, getCameraStatus } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
-import BackToTop from '@/components/back-to-top.vue';
 import BreadcrumbFilter from '@/components/breadcrumb-filter.vue';
-import Footer from '@/components/footer.vue';
-import Navbar from '@/components/navbar.vue';
 import VideoCard from '@/components/video-card.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 export default {
   name: 'Cameras',
   components: {
-    BackToTop,
     BreadcrumbFilter,
     CoolLightBox,
-    Footer,
-    Navbar,
+    InfiniteLoading,
     VideoCard,
   },
   mixins: [SocketMixin],
   data() {
     return {
       cameras: [],
+      infiniteId: Date.now(),
       loading: true,
+      page: 1,
+      query: '',
     };
   },
   async mounted() {
@@ -80,7 +81,6 @@ export default {
           camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
 
           this.cameras.push(camera);
-          this.loading = false;
         }
       } else {
         this.$toast.error(this.$t('no_access'));
@@ -88,6 +88,8 @@ export default {
     } catch (err) {
       this.$toast.error(err.message);
     }
+
+    this.loading = false;
   },
   methods: {
     async filterCameras(filter) {
@@ -129,6 +131,36 @@ export default {
           }
 
           this.loading = false;
+        }
+      } catch (err) {
+        this.$toast.error(err.message);
+      }
+    },
+    async infiniteHandler($state) {
+      try {
+        if (this.checkLevel('recordings:access')) {
+          const response = await getCameras(`?refresh=true&page=${this.page || 1}` + this.query);
+
+          for (const camera of response.data.result) {
+            const settings = await getCameraSettings(camera.name);
+            camera.settings = settings.data;
+
+            const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
+            camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
+
+            this.cameras.push(camera);
+          }
+
+          if (response.data.result.length > 0) {
+            this.page += 1;
+            this.cameras = [...this.cameras, ...response.data.result];
+            $state.loaded();
+          } else {
+            $state.complete();
+          }
+        } else {
+          this.$toast.error(this.$t('no_access'));
+          $state.complete();
         }
       } catch (err) {
         this.$toast.error(err.message);

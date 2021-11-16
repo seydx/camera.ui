@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:cameras:edit', 'settings:notifications:edit'])")
+      .col-12(v-if="checkLevel(['settings:cameras:edit', 'settings:notifications:edit'])")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.notifications.notifications.expand ? "180" : "-90"', @click="settingsLayout.notifications.notifications.expand = !settingsLayout.notifications.notifications.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.notifications.notifications.expand = !settingsLayout.notifications.notifications.expand") {{ $t("notifications") }}
         b-collapse(

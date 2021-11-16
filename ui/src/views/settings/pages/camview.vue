@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('settings:camview:edit')")
+      .col-12(v-if="checkLevel('settings:camview:edit')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.camview.expand ? "180" : "-90"', @click="settingsLayout.camview.camview.expand = !settingsLayout.camview.camview.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.camview.camview.expand = !settingsLayout.camview.camview.expand") {{ $t("camview") }}
         b-collapse(
@@ -21,7 +21,7 @@
                     v-model="camview.refreshTimer"
                     :options="refreshTimer"
                   )
-      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="cameras.length && checkLevel(['settings:camview:edit', 'settings:cameras:edit'])")
+      .col-12.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel(['settings:camview:edit', 'settings:cameras:edit'])")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.camview.favourites.expand ? "180" : "-90"', @click="settingsLayout.camview.favourites.expand = !settingsLayout.camview.favourites.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.camview.favourites.expand = !settingsLayout.camview.favourites.expand") {{ $t("favourites") }}
         b-collapse(
@@ -53,6 +53,7 @@
                       :height="30",
                       :sync="true"
                     )
+          .w-100.mt-4.text-muted-2.text-center {{ $t("no_cameras") }}
 </template>
 
 <script>

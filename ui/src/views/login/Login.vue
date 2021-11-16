@@ -26,7 +26,6 @@ import packageFile from '../../../../package.json';
 
 import loginForm from '@/components/login-form';
 import theme from '@/mixins/theme.mixin';
-
 import { getConfig } from '@/api/config.api';
 
 export default {

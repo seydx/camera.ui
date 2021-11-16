@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-alpha.84",
+  "version": "1.0.0-alpha.87",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -16,8 +16,8 @@
   },
   "main": "src/index.js",
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.40.0",
-    "alexa-remote2": "^4.0.4",
+    "@aws-sdk/client-rekognition": "^3.41.0",
+    "alexa-remote2": "^4.1.1",
     "axios": "^0.24.0",
     "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
@@ -54,7 +54,7 @@
     "@babel/core": "7.16.0",
     "@babel/eslint-parser": "7.16.3",
     "@babel/eslint-plugin": "7.14.5",
-    "concurrently": "^6.3.0",
+    "concurrently": "^6.4.0",
     "eslint": "^8.2.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.25.3",

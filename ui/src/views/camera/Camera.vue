@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$route.params.name")
   main.inner-container.w-100.h-100vh-calc.pt-save.footer-offset
     .container.pt-3.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
       b-spinner.text-color-primary
@@ -51,7 +49,6 @@ div
     :useZoomBar="true",
     :zIndex=99999
   )
-  Footer
 </template>
 
 <script>
@@ -61,23 +58,15 @@ import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
-
-import BackToTop from '@/components/back-to-top.vue';
-import Footer from '@/components/footer.vue';
-import Navbar from '@/components/navbar.vue';
 import VideoCard from '@/components/video-card.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 export default {
   name: 'Camera',
   components: {
-    BackToTop,
     BIcon,
     BIconArrowRightCircleFill,
     CoolLightBox,
-    Footer,
-    Navbar,
     VideoCard,
   },
   mixins: [SocketMixin],
@@ -115,13 +104,14 @@ export default {
         });
 
         this.camera = camera.data;
-        this.loading = false;
       } else {
         this.$toast.error(this.$t('no_access'));
       }
     } catch (err) {
       this.$toast.error(err.message);
     }
+
+    this.loading = false;
   },
   methods: {
     refreshStreamProcess(event) {

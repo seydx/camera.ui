@@ -8,7 +8,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded")
-      .col-12(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+      .col-12(v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.server.expand ? "180" : "-90"', @click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.server.expand = !settingsLayout.system.server.expand") {{ $t("server") }}
         b-collapse(

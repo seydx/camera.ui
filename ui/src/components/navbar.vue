@@ -27,7 +27,7 @@ div
             li.nav-item.camview-btn(v-if="checkLevel('camview:access')")
               router-link.nav-link(to="/camview") {{ $t("camview") }}
             
-            li.nav-item.logout-btn
+            li.nav-item.logout-btn(v-if="$store.state.auth.user")
               b-link.nav-link.text-white(v-on:click.native="handleLogout") {{ $t("signout") }}
         toggler(
           :notSize="notSize"
@@ -99,6 +99,11 @@ export default {
 }
 
 .navbar-light .navbar-brand {
+  color: var(--primary-font-color);
+}
+
+.navbar-light .navbar-brand:focus,
+.navbar-light .navbar-brand:hover {
   color: var(--primary-font-color);
 }
 

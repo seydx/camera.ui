@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$t('settings')")
   .subnavigation.d-flex.flex-wrap.align-content-center.mt-save
     .subnavigation-container.container.d-flex.flex-wrap.align-content-center.justify-content-center.overflow-hidden
       .subnavigation-scrollmenu.d-flex.justify-content-between.horizontal-btn-direction-settings
@@ -25,7 +23,6 @@ div
     :useZoomBar="true",
     :zIndex=99999
   )
-  Footer
 </template>
 
 <script>
@@ -33,10 +30,6 @@ import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 
 import DetectSwipe from '@/common/detectswipe';
-import BackToTop from '@/components/back-to-top.vue';
-import Footer from '@/components/footer.vue';
-import Navbar from '@/components/navbar.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 const DEFAULT_TRANSITION = 'fade';
@@ -53,10 +46,7 @@ Math.easeInOutQuad = (t, b, c, d) => {
 export default {
   name: 'Settings',
   components: {
-    BackToTop,
     CoolLightBox,
-    Footer,
-    Navbar,
   },
   mixins: [SocketMixin],
   data() {

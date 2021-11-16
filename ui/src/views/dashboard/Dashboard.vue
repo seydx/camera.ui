@@ -1,7 +1,5 @@
 <template lang="pug">
 div
-  BackToTop
-  Navbar(:name="$t('dashboard')")
   main.inner-container.w-100.h-100vh-calc.pt-save.footer-offset.toggleArea
     .container.pt-3.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
       b-spinner.text-color-primary
@@ -23,6 +21,8 @@ div
               :statusIndicator="true"
               @refreshStream="refreshStreamProcess"
             )
+      .mt-5.text-center(v-if="!cameras.length" data-aos="fade-up" data-aos-duration="1000")
+        span(style="color: var(--secondary-font-color)") {{ $t('no_cameras') }} :(
   CoolLightBox(
     :items="notImages" 
     :index="notIndex"
@@ -37,7 +37,6 @@ div
     state="favourite"
     @changeState="handleFavouriteCamera"
   )
-  Footer
 </template>
 
 <script>
@@ -49,11 +48,7 @@ import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 import ActionSheet from '@/components/actionsheet.vue';
-import BackToTop from '@/components/back-to-top.vue';
-import Footer from '@/components/footer.vue';
-import Navbar from '@/components/navbar.vue';
 import VideoCard from '@/components/video-card.vue';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 export default {
@@ -61,10 +56,7 @@ export default {
   components: {
     ActionSheet,
     CoolLightBox,
-    BackToTop,
     draggable,
-    Footer,
-    Navbar,
     VideoCard,
   },
   mixins: [SocketMixin],
@@ -111,13 +103,14 @@ export default {
         this.cameras = cameras.data.result.filter((camera) => camera.favourite);
 
         await this.updateLayout();
-        this.loading = false;
       } else {
         this.$toast.error(this.$t('no_access'));
       }
     } catch (err) {
       this.$toast.error(err.message);
     }
+
+    this.loading = false;
   },
   methods: {
     async handleFavouriteCamera(cam) {

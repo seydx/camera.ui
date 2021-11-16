@@ -37,8 +37,7 @@ class StreamService {
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
         '-preset': camera.videoConfig.encoderOptions.replace('-preset ', ''),
-        '-threads': '1',
-        '-loglevel': 'error',
+        //'-threads': '1',
       },
     };
 
@@ -113,6 +112,9 @@ class StreamService {
         }
 
         const spawnOptions = [
+          '-hide_banner',
+          '-loglevel',
+          'error',
           ...this.streamOptions.source.split(' '),
           '-f',
           'mpegts',
@@ -121,7 +123,6 @@ class StreamService {
           ...additionalFlags,
           '-q',
           '1',
-          '-hide_banner',
           '-max_muxing_queue_size',
           '1024',
           '-',

@@ -21,7 +21,7 @@
             @refreshStream="refreshStreamProcess"
           )
   ActionSheet(
-    v-if="allCameras.length && checkLevel(['cameras:access', 'settings:cameras:access', 'settings:camview:access'])"
+    v-if="checkLevel(['cameras:access', 'settings:cameras:access', 'settings:camview:access'])"
     :items="allCameras"
     state="favourite"
     :showLeftNavi="true"
@@ -147,6 +147,8 @@ export default {
     } catch (err) {
       this.$toast.error(err.message);
     }
+
+    this.loading = false;
   },
   beforeDestroy() {
     const body = document.querySelector('body');

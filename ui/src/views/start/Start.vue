@@ -47,7 +47,6 @@ main.d-flex.flex-wrap.justify-content-center.align-content-center.h-100vh.w-100
 import { changeUser } from '@/api/users.api';
 import { changeSetting } from '@/api/settings.api';
 import { getConfig } from '@/api/config.api';
-
 import SocketMixin from '@/mixins/socket.mixin';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
