@@ -53,7 +53,7 @@
                       :height="30",
                       :sync="true"
                     )
-          .w-100.mt-4.text-muted-2.text-center {{ $t("no_cameras") }}
+          .w-100.mt-4.text-muted-2.text-center(v-if="!cameras.length") {{ $t("no_cameras") }}
 </template>
 
 <script>

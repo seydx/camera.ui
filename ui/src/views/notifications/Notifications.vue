@@ -60,7 +60,7 @@ div
         infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
           div(slot="spinner")
             b-spinner.text-color-primary
-          div(slot="no-more") {{ $t("no_more_notifications") }}
+          div.mt-3(slot="no-more") {{ $t("no_more_notifications") }}
           div(slot="no-results") {{ $t("no_notifications") }}
   CoolLightBox(
     :items="notImages" 

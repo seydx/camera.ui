@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-alpha.87",
+  "version": "1.0.0-alpha.88",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {

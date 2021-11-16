@@ -45,7 +45,7 @@ div
         )
           div(slot="spinner")
             b-spinner.text-color-primary
-          div(slot="no-more") {{ $t("no_more_recordings") }}
+          div.mt-3(slot="no-more") {{ $t("no_more_recordings") }}
           div(slot="no-results") {{ $t("no_recordings") }}
   CoolLightBox(
     :items="notImages" 

@@ -12,7 +12,7 @@ div
     .container.pt-3.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
       b-spinner.text-color-primary
     .container.pt-3(v-else)
-      .row
+      .row.justify-content-center
         .col-lg-4.col-md-6.col-12.my-1(v-for="(camera, i) in cameras", :key="camera.name" :data-camera-aos="camera.name" data-aos="fade-up" data-aos-duration="1000" data-aos-mirror="true")
           VideoCard(
             :camera="camera",
@@ -27,7 +27,7 @@ div
         infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
           div(slot="spinner")
             b-spinner.text-color-primary
-          div(slot="no-more") {{ $t("no_more_cameras") }}
+          div.mt-3(slot="no-more") {{ $t("no_more_cameras") }}
           div(slot="no-results") {{ $t("no_cameras") }} :(
   CoolLightBox(
     :items="notImages" 
@@ -69,26 +69,6 @@ export default {
     };
   },
   async mounted() {
-    try {
-      if (this.checkLevel('cameras:access')) {
-        const cameras = await getCameras();
-
-        for (const camera of cameras.data.result) {
-          const settings = await getCameraSettings(camera.name);
-          camera.settings = settings.data;
-
-          const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
-          camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
-
-          this.cameras.push(camera);
-        }
-      } else {
-        this.$toast.error(this.$t('no_access'));
-      }
-    } catch (err) {
-      this.$toast.error(err.message);
-    }
-
     this.loading = false;
   },
   methods: {
@@ -138,7 +118,7 @@ export default {
     },
     async infiniteHandler($state) {
       try {
-        if (this.checkLevel('recordings:access')) {
+        if (this.checkLevel('cameras:access')) {
           const response = await getCameras(`?refresh=true&page=${this.page || 1}` + this.query);
 
           for (const camera of response.data.result) {
@@ -147,8 +127,6 @@ export default {
 
             const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
             camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
-
-            this.cameras.push(camera);
           }
 
           if (response.data.result.length > 0) {
