@@ -4,7 +4,7 @@ div
     .container.pt-3.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
       b-spinner.text-color-primary
     .container-fluid.position-fixed.p-0.m-0.inner-container(v-else)
-      div#log.log.h-100
+      div#log.log
         my-terminal(:terminal="terminal" ref="xterm")
       .logUtils.d-flex.justify-content-end.align-content-center
         #removeButton(@click="onRemove" :class="loadingRemove ? 'btnError' : 'btnNoError'")
@@ -132,6 +132,7 @@ export default {
   top: 0;
   left: 0;
   right: 0;
+  background: #000;
 }
 
 .btnError {
@@ -158,8 +159,11 @@ export default {
 }
 
 .log {
-  background: #000;
-  padding-top: 65px;
+  height: calc(100% - 60px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-left, 0px));
+  margin-top: calc(65px + env(safe-area-inset-top, 0px));
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .logUtils {

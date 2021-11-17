@@ -67,11 +67,11 @@ export default {
     resizeHandler() {
       setTimeout(() => this.fitAddon.fit(), 500);
 
-      const logContainer = document.querySelector('.log');
+      /*const logContainer = document.querySelector('.log');
       const logContainerWidth = logContainer.clientWidth;
 
       const xtermViewport = document.querySelector('.xterm-viewport');
-      xtermViewport.style.width = `${logContainerWidth}px`;
+      xtermViewport.style.width = `${logContainerWidth}px`;*/
     },
   },
 };

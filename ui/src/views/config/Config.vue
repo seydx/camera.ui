@@ -4,7 +4,7 @@ div
     .container.pt-3.d-flex.flex-wrap.justify-content-center.align-content-center.position-absolute-fullsize(v-if="loading")
       b-spinner.text-color-primary
     .container-fluid.position-fixed.p-0.m-0.inner-container(v-else)
-      div#config.config.h-100
+      div#config.config
         v-jsoneditor(
           v-model="config" 
           :options="options" 
@@ -70,6 +70,9 @@ export default {
       delete this.config.serviceMode;
       this.config.cameras?.forEach((camera) => delete camera.recordOnMovement);
 
+      window.addEventListener('orientationchange', this.resizeHandler);
+      //window.addEventListener('resize', this.resizeHandler);
+
       this.loading = false;
     } catch (err) {
       console.log(err.message);
@@ -107,12 +110,22 @@ export default {
 
       this.loadingSave = false;
     },
+    resizeHandler() {
+      if (typeof Event === 'function') {
+        window.dispatchEvent(new Event('resize'));
+      } else {
+        const evt = window.document.createEvent('UIEvents');
+        evt.initUIEvent('resize', true, false, window, 0);
+        window.dispatchEvent(evt);
+      }
+    },
   },
 };
 </script>
 
 <style scoped>
 .inner-container {
+  background-color: #1e1e1e;
   bottom: 0;
   top: 0;
   left: 0;
@@ -120,8 +133,11 @@ export default {
 }
 
 .config {
-  background: #000;
-  padding-top: 63px;
+  height: calc(100% - 60px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-left, 0px));
+  margin-top: calc(65px + env(safe-area-inset-top, 0px));
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .configUtils {

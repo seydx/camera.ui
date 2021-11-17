@@ -82,7 +82,9 @@ export default {
     });
   },
   async mounted() {
-    this.subnaviClick(this.activeRoute, true);
+    if (this.$route.meta.name !== 'profile') {
+      this.subnaviClick(this.activeRoute, true);
+    }
 
     DetectSwipe.detect('main', this.changePage);
     document.addEventListener('scroll', this.minifyScrollHandler);
