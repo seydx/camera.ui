@@ -37,7 +37,7 @@ class StreamService {
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
         '-preset': camera.videoConfig.encoderOptions.replace('-preset ', ''),
-        //'-threads': '1',
+        '-threads': '1',
       },
     };
 

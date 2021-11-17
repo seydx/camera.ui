@@ -326,7 +326,7 @@ export default {
     },
     async logOut() {
       await this.$store.dispatch('auth/logout');
-      this.$router.push('/');
+      setTimeout(() => this.$router.push('/'), 200);
     },
     openFullscreen() {
       const elem = document.querySelector('html');

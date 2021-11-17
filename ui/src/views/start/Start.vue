@@ -133,7 +133,7 @@ export default {
         this.$toast.success(this.$t('successfully_changed'));
 
         await this.$store.dispatch('auth/logout');
-        this.$router.push('/');
+        setTimeout(() => this.$router.push('/'), 200);
       } catch (error) {
         this.loading = false;
         this.$root.$emit('bv::toggle::collapse', 'formCollapse');

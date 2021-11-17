@@ -38,15 +38,13 @@ const getBearerToken = async (username, password) => {
 };
 
 exports.validJWTNeeded = async (req, res, next) => {
-  let bypassValidation = false;
-
   if (req.query.username && req.query.password) {
     const authorization = await getBearerToken(req.query.username, req.query.password);
     if (authorization) {
-      bypassValidation = true;
       req.headers['authorization'] = `Bearer ${authorization}`;
     }
   }
+
   if (req.headers['authorization'] || req.headers['Authorization']) {
     try {
       let authHeader = req.headers['authorization'] || req.headers['Authorization'];
@@ -61,7 +59,7 @@ exports.validJWTNeeded = async (req, res, next) => {
         //check if user/token exists in database and is still valid
         const user = AuthModel.findByToken(authorization[1]);
 
-        if (!bypassValidation && (!user || (user && !user.valid))) {
+        if (!user || (user && !user.valid)) {
           return res.status(401).send({
             statusCode: 401,
             message: 'Token expired',

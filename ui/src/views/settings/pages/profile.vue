@@ -6,7 +6,7 @@
   transition-group(name="fade", mode="out-in", v-if="loading")
   transition-group(name="fade", mode="out-in", v-else)
     .d-flex.flex-wrap.justify-content-between(key="loaded", v-if="currentUser")
-      .col-12.col-md.mb-5.px-0
+      .col-12.col-md.mb-3.px-0
         .settings-box.d-flex.flex-wrap.justify-content-center.align-content-center.container
           .image-upload
             label.profile-avatar-bg(for='file-input')
@@ -16,8 +16,7 @@
           h5.font-weight-bold.lh-1 {{ currentUser.username }}
           .w-100
           span.text-color-primary.fs-7.lh-1.m-0 {{ currentUser.permissionLevel.includes("admin") ? $t("master") : $t("user") }}
-        .btn.btn-danger.mt-2.w-100.p-2.mt-3(v-if="checkLevel('admin')", v-b-modal.modal-reset) {{ $t("reset") }}
-        .settings-box.container.mt-5(v-if="checkLevel('admin')")
+        .settings-box.container.mt-3(v-if="checkLevel('admin')")
           h3.lh-1.font-weight-bold {{ $t("backup") }}
           .w-100
           span.lh-1.text-muted-2.fs-6 {{ $t("backup_and_restore") }}
@@ -94,7 +93,8 @@
             :options="sessionTimerSelect"
           )
           .btn.btn-success.mt-4.w-100(@click="changeAdmin") {{ $t("apply") }}
-        .settings-box.container.mt-5(v-if="currentUser.permissionLevel.includes('admin')")
+          .btn.btn-danger.mt-2.w-100.p-2.mt-3(v-if="checkLevel('admin')", v-b-modal.modal-reset) {{ $t("reset") }}
+        .settings-box.container.mt-3(v-if="currentUser.permissionLevel.includes('admin')")
           h3.lh-1.font-weight-bold {{ $t("user") }}
           .w-100
           span.lh-1.text-muted-2.fs-6 {{ $t("registered_user") }}
@@ -423,7 +423,7 @@ export default {
         this.$toast.success(this.$t('successfully_changed'));
 
         await this.$store.dispatch('auth/logout');
-        this.$router.push('/');
+        setTimeout(() => this.$router.push('/'), 200);
       } catch (error) {
         this.$toast.error(error.message);
       }
@@ -509,8 +509,8 @@ export default {
           this.$toast.success(this.$t('backup_restored'));
 
           await this.$store.dispatch('auth/logout');
-          this.$router.push('/');
-          window.location.reload(true);
+          setTimeout(() => this.$router.push('/'), 200);
+          //window.location.reload(true);
         } else {
           this.$toast.error(this.$t('no_file_selected'));
         }
@@ -567,7 +567,7 @@ export default {
           this.$refs['reset-modal'].hide();
 
           await this.$store.dispatch('auth/logout');
-          this.$router.push('/');
+          setTimeout(() => this.$router.push('/'), 200);
         } catch (error) {
           this.$toast.error(error.message);
         }

@@ -32,8 +32,6 @@ export default {
     },
   },
   async mounted() {
-    console.log('pid : ' + this.terminal.pid + ' is on ready');
-
     let terminalContainer = document.getElementById('log');
 
     this.term = new Terminal();

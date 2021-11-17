@@ -24,21 +24,9 @@ body {
   padding-right: clamp(15px, env(safe-area-inset-right), env(safe-area-inset-right, 15px)) !important;
 }
 
-@media (min-width: 1200px) {
-  .container {
-    max-width: unset;
-  }
-}
-
 @media (max-width: 1199px) {
   .container {
     max-width: 1170px !important;
-  }
-}
-
-@media (min-width: 992px) {
-  .container {
-    max-width: unset;
   }
 }
 
@@ -48,22 +36,10 @@ body {
   }
 }
 
-@media (min-width: 768px) {
-  .container {
-    max-width: unset;
-  }
-}
-
 @media (max-width: 767px) {
   .container {
     max-width: 730px !important;
   }
-}
-
-@media (min-width: 576px) {
-  /*.container {
-    max-width: 'unset';
-  }*/
 }
 
 /*--------------------------------------------------------------
@@ -392,6 +368,13 @@ textarea:focus:-ms-input-placeholder {
 
 .modal-footer {
   border-top: 1px solid var(--third-bg-color) !important;
+}
+
+.modal-lg .modal-content {
+  height: 85% !important;
+  max-height: 85% !important;
+  min-height: 85% !important;
+  top: env(save-area-inset-top) !important;
 }
 
 .multiselect,

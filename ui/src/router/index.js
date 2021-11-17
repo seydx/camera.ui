@@ -11,6 +11,15 @@ Vue.use(VueRouter);
 const routes = [
   {
     path: '*',
+    name: 'Not Found',
+    meta: {
+      name: 'notfound',
+      requiresAuth: false,
+      requiredLevel: [],
+      showBackTop: false,
+      showFooter: false,
+      showNavi: false,
+    },
     component: () => import(/* webpackChunkName: "404" */ '@/views/notfound/Notfound.vue'),
   },
   {
@@ -123,7 +132,7 @@ const routes = [
   {
     path: '/settings',
     redirect: '/settings/profile',
-    name: 'settings',
+    name: 'Settings',
     meta: {
       name: 'settings',
       requiresAuth: true,
@@ -137,6 +146,7 @@ const routes = [
     children: [
       {
         path: 'profile',
+        name: 'Profile Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/profile.vue'),
         meta: {
           name: 'profile',
@@ -152,6 +162,7 @@ const routes = [
       },
       {
         path: 'general',
+        name: 'General Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/general.vue'),
         meta: {
           name: 'general',
@@ -167,6 +178,7 @@ const routes = [
       },
       {
         path: 'dashboard',
+        name: 'Dashboard Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/dashboard.vue'),
         meta: {
           name: 'dashboard',
@@ -182,6 +194,7 @@ const routes = [
       },
       {
         path: 'cameras',
+        name: 'Cameras Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/cameras.vue'),
         meta: {
           name: 'cameras',
@@ -197,6 +210,7 @@ const routes = [
       },
       {
         path: 'recordings',
+        name: 'Recordings Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/recordings.vue'),
         meta: {
           name: 'recordings',
@@ -212,6 +226,7 @@ const routes = [
       },
       {
         path: 'notifications',
+        name: 'Notifications Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/notifications.vue'),
         meta: {
           name: 'notifications',
@@ -227,6 +242,7 @@ const routes = [
       },
       {
         path: 'camview',
+        name: 'Camview Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/camview.vue'),
         meta: {
           name: 'camview',
@@ -242,6 +258,7 @@ const routes = [
       },
       {
         path: 'system',
+        name: 'System Settings',
         component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/system.vue'),
         meta: {
           name: 'system',
@@ -301,7 +318,7 @@ router.beforeEach(async (to, from, next) => {
       console.log(err);
 
       await store.dispatch('auth/logout');
-      next('/');
+      setTimeout(() => next('/'), 200);
     }
   } else {
     if (to.meta.name !== 'login') {

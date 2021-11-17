@@ -645,8 +645,4 @@ select .versionSelect {
 .shareButton:hover {
   opacity: 1;
 }
-
-.modal-lg {
-  max-height: 90% !important;
-}
 </style>

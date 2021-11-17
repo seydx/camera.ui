@@ -53,6 +53,10 @@ export default {
     this.loading = true;
     next();
   },
+  beforeRouteUpdate(to, from, next) {
+    this.subnaviClick(to.meta.name, true);
+    next();
+  },
   data() {
     return {
       prevHeight: 0,
@@ -239,7 +243,7 @@ export default {
 }
 
 .inner-container {
-  margin-top: 160px;
+  margin-top: 150px;
 }
 
 .subnavigation {

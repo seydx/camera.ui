@@ -24,7 +24,7 @@ div
             li.nav-item(v-if="checkLevel('settings:profile:access')")
               router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
 
-            li.nav-item(v-if="checkLevel('settings:system:access')")
+            li.nav-item(v-if="checkLevel('admin')")
               router-link.nav-link(to="/settings/system")
                 b-icon.system-btn(icon="gear-fill")
 
@@ -83,7 +83,7 @@ export default {
   methods: {
     async handleLogout() {
       await this.$store.dispatch('auth/logout');
-      this.$router.push('/');
+      setTimeout(() => this.$router.push('/'), 200);
     },
     navbarScrollHandler() {
       const navbar = document.querySelector('.navbar2-inner');

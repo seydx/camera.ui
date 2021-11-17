@@ -1,6 +1,6 @@
 <template lang="pug">
 #toggler.toggler.d-flex.w-100.justify-content-end.position-relative.toggleArea
-  nav-item(v-if="checkLevel('settings:system:access')")
+  .nav-item(v-if="checkLevel('admin')")
     router-link.nav-link(to="/settings/system")
       b-icon.system-btn(icon="gear-fill")
   b-link#togglerBtn.navbar2-toggler.mt-1(aria-label="Mobile Navigation")

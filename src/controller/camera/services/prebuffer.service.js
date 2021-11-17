@@ -203,7 +203,7 @@ class PrebufferService {
 
     cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));*/
 
-    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));
+    cp.stdout.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
