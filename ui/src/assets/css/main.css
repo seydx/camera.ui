@@ -838,6 +838,23 @@ iframe {
   background-color: var(--secondary-color) !important;
 }
 
+.btn-secondary {
+  background-color: #4b4b4b !important;
+  font-size: 14px !important;
+  color: #fff !important;
+}
+
+.btn-secondary:hover {
+  background-color: #646464 !important;
+  color: #fff !important;
+}
+
+.btn-secondary:focus,
+.btn-secondary:active,
+.btn-secondary:active:focus {
+  background-color: #646464 !important;
+}
+
 .btn-danger {
   background-color: rgb(255, 59, 48) !important;
   font-size: 14px !important;

@@ -102,6 +102,28 @@ exports.downloadLog = async (req, res) => {
   }
 };
 
+exports.clearLog = async (req, res) => {
+  try {
+    const logPath = ConfigService.logFile;
+    fs.truncate(logPath, (err) => {
+      if (err) {
+        return res.status(500).send({
+          statusCode: 500,
+          message: err.message,
+        });
+      }
+
+      Socket.io.emit('clearLog');
+      res.status(204).send({});
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.getChangelog = async (req, res) => {
   try {
     const moduleName = ConfigService.env.moduleName;

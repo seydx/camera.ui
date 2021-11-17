@@ -142,6 +142,8 @@
     "reset_confirm": "Confirm reset",
     "reset_confirm_text": "After clicking 'Reset' all stored data will be irrevocably deleted. Are you sure?",
     "restart": "Restart",
+    "restart_confirm": "Confirm restart",
+    "restart_confirm_text": "Do you really want to reboot @?",
     "room": "Room",
     "rooms": "Rooms",
     "room_already_exists": "Room already exists",

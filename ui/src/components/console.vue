@@ -23,6 +23,11 @@ export default {
     };
   },
   sockets: {
+    clearLog() {
+      if (this.term) {
+        this.term.clear();
+      }
+    },
     logMessage(message) {
       if (this.term) {
         message = message + '\r\n';
@@ -49,18 +54,18 @@ export default {
 
     this.term.write(message);
     this.fitAddon.fit();
-
     window.addEventListener('resize', this.resizeHandler);
   },
   beforeDestroy() {
     this.term?.dispose();
     this.fitAddon?.dispose();
 
+    window.addEventListener('orientationchange', this.resizeHandler);
     window.removeEventListener('resize', this.resizeHandler);
   },
   methods: {
     resizeHandler() {
-      this.fitAddon.fit();
+      setTimeout(() => this.fitAddon.fit(), 500);
 
       const logContainer = document.querySelector('.log');
       const logContainerWidth = logContainer.clientWidth;

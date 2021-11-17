@@ -1,8 +1,11 @@
 <template lang="pug">
 #toggler.toggler.d-flex.w-100.justify-content-end.position-relative.toggleArea
-  .nav-item(v-if="checkLevel('admin')")
-    router-link.nav-link(to="/settings/system")
-      b-icon.system-btn(icon="gear-fill")
+  .nav-item.pl-0(v-if="checkLevel('admin')")
+    router-link.nav-link.pl-0.navIcons(to="/log")
+      b-icon(icon="file-text-fill")
+  .nav-item.pl-0(v-if="checkLevel('admin')")
+    router-link.nav-link.pl-0.navIcons(to="/config")
+      b-icon(icon="gear-fill")
   b-link#togglerBtn.navbar2-toggler.mt-1(aria-label="Mobile Navigation")
     b-icon.navbar-2toggler-icon(icon="list", aria-hidden="true")
   .navbar2-collapsed
@@ -31,12 +34,14 @@
 </template>
 
 <script>
-import { BIcon, BIconList } from 'bootstrap-vue';
+import { BIcon, BIconGearFill, BIconFileTextFill, BIconList } from 'bootstrap-vue';
 
 export default {
   name: 'Toggler',
   components: {
     BIcon,
+    BIconFileTextFill,
+    BIconGearFill,
     BIconList,
   },
   props: {
@@ -208,5 +213,18 @@ div.navbar2-collapsed.navbar2-collapsed-expand > ul > li:last-child > a.router-l
 .system-btn:hover {
   color: var(--primary-color) !important;
   opacity: 1;
+}
+
+.navIcons {
+  color: var(--primary-font-folor);
+  transition: 0.3s all;
+}
+
+.navIcons:hover {
+  color: var(--primary-color);
+}
+
+.navIcons.router-link-exact-active {
+  color: var(--primary-color);
 }
 </style>

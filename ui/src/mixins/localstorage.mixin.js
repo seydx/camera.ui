@@ -204,12 +204,6 @@ export default {
 
     if (!this.settingsLayout.system) {
       this.settingsLayout.system = {
-        config: {
-          expand: true,
-        },
-        log: {
-          expand: true,
-        },
         server: {
           expand: true,
         },
@@ -218,18 +212,6 @@ export default {
 
     if (!this.settingsLayout.system.server) {
       this.settingsLayout.system.server = {
-        expand: true,
-      };
-    }
-
-    if (!this.settingsLayout.system.config) {
-      this.settingsLayout.system.config = {
-        expand: true,
-      };
-    }
-
-    if (!this.settingsLayout.system.log) {
-      this.settingsLayout.system.log = {
         expand: true,
       };
     }

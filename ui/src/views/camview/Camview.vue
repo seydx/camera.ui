@@ -555,6 +555,10 @@ export default {
 .save-height {
   --safe-area-inset-top: env(safe-area-inset-top);
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+  --safe-area-inset-right: env(safe-area-inset-right);
   height: calc(100vh - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+  width: calc(100vw - var(--safe-area-inset-left) - var(--safe-area-inset-right));
+  margin: 0 auto;
 }
 </style>

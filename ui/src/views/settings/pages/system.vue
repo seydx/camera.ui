@@ -20,7 +20,7 @@
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
                   a.d-block.w-100.text-center.mb-2(:href="'https://www.npmjs.com/package/' + npmPackageName" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
                   b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
-            b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart || loadingSave") 
+            b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart") 
               span(v-if="loadingUpdate") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ `${$t('update')} & ${$t('restart')}` }}
@@ -37,58 +37,32 @@
             )
               b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog")
               vue-markdown.changelog(v-else) {{ changelog }}
-            b-button#restartButton.w-100.mt-3.restartButton(@click="onRestart" :class="loadingRestart || loadingUpdate || loadingSave ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate || loadingSave") 
+            b-button#restartButton.w-100.mt-3.restartButton(v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
               span(v-if="loadingRestart") 
                 b-spinner(style="color: #fff" type="grow" small)
               span(v-else) {{ $t('restart') }}
-      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.config.expand ? "180" : "-90"', @click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.config.expand = !settingsLayout.system.config.expand") {{ $t('config') }}
-        b-collapse(
-          v-model="settingsLayout.system.config.expand"
-        )
-          div.mt-2.mb-4
-            v-jsoneditor(
-              v-model="config" 
-              :options="options" 
-              :plus="false" 
-              height="500px" 
-              @error="onError"
-              @input="onInput"
+            b-modal#restartModal.restartModal(
+              centered
+              scrollable
+              ref="restartModal"
+              :title="$t('restart_confirm')",
+              :cancel-title="$t('cancel')",
+              :ok-title="$t('restart')",
+              ok-variant="primary",
+              size="sm"
+              @ok="onRestart"
             )
-            b-card(class="mt-3" :header="$t('error')" v-if="error")
-              pre.m-0(style="color: var(--primary-font-color)") {{ error }}
-            b-button#saveButton.w-100.mt-3.saveButton(@click="onSave" :class="error || loadingSave || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="error || loadingSave || loadingRestart") 
-              span(v-if="loadingSave") 
-                b-spinner(style="color: #fff" type="grow" small)
-              span(v-else) {{ $t('save') }}
-      .col-12.mt-2.px-0(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.log.expand ? "180" : "-90"', @click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.log.expand = !settingsLayout.system.log.expand") {{ $t('log') }}
-        b-collapse.position-relative(
-          v-model="settingsLayout.system.log.expand"
-        )
-          div#log.mt-2.log
-            my-terminal(:terminal="terminal" ref="xterm")
-          b-button#dlButton.mt-3.w-100.dlButton(@click="onDownload" :class="loadingDownload ? 'btnError' : 'btnNoError'" :disabled="loadingDownload") 
-            span(v-if="loadingDownload") 
-              b-spinner(style="color: #fff" type="grow" small)
-            span(v-else) {{ $t('download') }}
-          .shareButton(v-if="showShare", @click="onShare")
-            b-spinner(style="color: #fff" small v-if="loadingShare")
-            b-icon(icon="share-fill", aria-hidden="true" v-else)
+              .w-100.text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
 </template>
 
 <script>
-import { BIcon, BIconShareFill, BIconTriangleFill } from 'bootstrap-vue';
+import { BIcon, BIconTriangleFill } from 'bootstrap-vue';
 import compareVersions from 'compare-versions';
 import { ToggleButton } from 'vue-js-toggle-button';
-import VJsoneditor from 'v-jsoneditor';
 import VueMarkdown from 'vue-markdown';
 
-import Console from '@/components/console.vue';
-import { changeConfig, getConfig } from '@/api/config.api';
-import { downloadLog, getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
+import { getConfig } from '@/api/config.api';
+import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
 
@@ -98,63 +72,29 @@ export default {
   name: 'SettingsConfig',
   components: {
     BIcon,
-    BIconShareFill,
     BIconTriangleFill,
     ToggleButton,
-    VJsoneditor,
     VueMarkdown,
-    'my-terminal': Console,
   },
   mixins: [localStorageMixin],
   data() {
     return {
       availableVersions: [],
       changelog: '',
-      config: {},
       currentVersion: null,
       error: false,
-      options: {
-        mode: 'code',
-        modes: ['code'],
-        statusBar: false,
-        mainMenuBar: false,
-        colorPicker: false,
-      },
       latestVersion: null,
       loading: true,
-      loadingDownload: false,
       loadingRestart: false,
-      loadingSave: false,
-      loadingShare: false,
       loadingUpdate: false,
       npmPackageName: 'camera.ui',
       serviceMode: false,
-      showShare: true,
-      terminal: {
-        pid: 1,
-        name: 'terminal',
-        cols: 1000,
-        rows: 1000,
-      },
       updateAvailable: false,
     };
   },
   async created() {
     try {
-      this.showShare = navigator.share ? true : false;
-
-      const config = await getConfig('?target=config');
-      this.config = { ...config.data };
-
-      //remove not used params from config editor
-      delete this.config.timestamp;
-      delete this.config.platform;
-      delete this.config.node;
-      delete this.config.version;
-      delete this.config.firstStart;
-      delete this.config.mqttConfigs;
-      delete this.config.serviceMode;
-      this.config.cameras?.forEach((camera) => delete camera.recordOnMovement);
+      const config = await getConfig();
 
       this.serviceMode = config.data.serviceMode;
       this.currentVersion = config.data.version;
@@ -229,55 +169,6 @@ export default {
     }
   },
   methods: {
-    async onShare() {
-      this.loadingShare = true;
-
-      try {
-        const response = await downloadLog();
-        const blob = new Blob([response.data], { type: 'text/plain' });
-
-        const data = {
-          title: this.$t('log'),
-          text: `${this.$t('log')} - ${new Date()}`,
-          files: [new File([blob], 'camera.ui.log.txt', { type: blob.type })],
-        };
-
-        navigator.share(data).catch((err) => {
-          if (err?.message !== 'Abort due to cancellation of share.') {
-            console.log(err);
-            this.$toast.error(err.message);
-          }
-        });
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }
-
-      this.loadingShare = false;
-    },
-    onError(e) {
-      this.error = e;
-    },
-    onInput() {
-      this.error = false;
-    },
-    async onDownload() {
-      const dlButton = document.getElementById('dlButton');
-      dlButton.blur();
-
-      this.loadingDownload = true;
-
-      const response = await downloadLog();
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'camera.ui.log.txt');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      this.loadingDownload = false;
-    },
     async onRestart() {
       const restartButton = document.getElementById('restartButton');
       restartButton.blur();
@@ -297,27 +188,6 @@ export default {
         this.$toast.error(error.message);
         this.loadingRestart = false;
       }
-    },
-    async onSave() {
-      const saveButton = document.getElementById('saveButton');
-      saveButton.blur();
-
-      if (this.loadingSave) {
-        return;
-      }
-
-      this.loadingSave = true;
-
-      try {
-        await changeConfig(this.config);
-        await timeout(1000);
-
-        this.$toast.success(this.$t('config_was_saved'));
-      } catch (error) {
-        this.$toast.error(error.message);
-      }
-
-      this.loadingSave = false;
     },
     async onBeforeUpdate() {
       const response = await getChangelog(`?version=${this.currentVersion}`);
@@ -374,115 +244,6 @@ export default {
   opacity: 0;
 }
 
-div >>> .jsoneditor {
-  border: 1px solid #363636;
-}
-
-div >>> .ace_editor {
-  font-size: 14px !important;
-}
-
-div >>> .ace-jsoneditor .ace_scroller {
-  background-color: #1e1e1e;
-}
-
-div >>> .ace-jsoneditor .ace_gutter {
-  background: #1e1e1e;
-  color: #808080;
-}
-
-div >>> .jsoneditor-statusbar {
-  color: #808080;
-  background-color: #1e1e1e;
-  border-top: 1px solid #2e2e2e;
-}
-
-div >>> .ace-jsoneditor .ace_marker-layer .ace_active-line {
-  background: rgba(0, 0, 0, 0);
-  border: 2px solid rgba(66, 66, 66, 0.336);
-}
-
-div >>> .ace-jsoneditor .ace_marker-layer .ace_selection {
-  background: #13517c;
-}
-
-div >>> .ace-jsoneditor .ace_gutter-active-line {
-  background: none;
-  color: #d3d3d3;
-}
-
-div >>> .ace-jsoneditor .ace_indent-guide {
-  background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==)
-    right repeat-y;
-  opacity: 0.2;
-}
-
-div >>> .ace-jsoneditor .ace_cursor {
-  border-left: 2px solid #fff;
-}
-
-div >>> .ace_mobile-menu {
-  border-radius: 4px;
-  background: #252526;
-  /*box-shadow: 1px 3px 2px grey;*/
-  -webkit-box-shadow: 0px 9px 11px -1px #000000;
-  box-shadow: 0px 9px 11px -1px #000000;
-  border: 1px solid #303030;
-  color: #cccccc;
-}
-
-div >>> .ace_search {
-  background: #252526;
-  color: #cccccc;
-  -webkit-box-shadow: 0px 9px 11px -1px #000000;
-  box-shadow: 0px 9px 11px -1px #000000;
-  border: 1px solid #303030;
-  border-top: 0 none;
-  padding: 10px;
-}
-
-div >>> .ace_search_field {
-  min-height: 2em;
-  background: #3c3c3c;
-  color: #cccccc;
-  padding-left: 6px;
-}
-
-div >>> .ace_searchbtn {
-  border: 1px solid #cbcbcb;
-  background: #3c3c3c;
-  border: 1px solid #474747;
-  color: #cccccc;
-}
-
-div >>> .ace_button {
-  color: #cccccc;
-}
-
-div >>> .ace_mobile-button:hover {
-  background: none;
-}
-
-div >>> .ace-jsoneditor .ace_text-layer {
-  color: #fff;
-}
-
-div >>> .ace-jsoneditor .ace_variable {
-  color: #85d8fb;
-}
-
-div >>> .ace-jsoneditor .ace_string {
-  color: #d88d73;
-}
-
-div >>> .ace-jsoneditor .ace_boolean {
-  color: #389edb;
-}
-
-div >>> .ace-jsoneditor .ace_numeric {
-  color: #aecfa4;
-}
-
 .card {
   background-color: var(--third-bg-color);
   color: var(--primary-font-color);
@@ -494,7 +255,7 @@ div >>> .ace-jsoneditor .ace_numeric {
 }
 
 .btnNoError {
-  background: var(--primary-color);
+  background: var(--primary-color) !important;
 }
 
 .btnNoError:hover,
@@ -503,9 +264,7 @@ div >>> .ace-jsoneditor .ace_numeric {
   background: var(--secondary-color) !important;
 }
 
-.dlButton,
 .restartButton,
-.saveButton,
 .updateButton {
   height: 40px;
   transition: 0.3s all;
@@ -616,33 +375,5 @@ select .versionSelect {
 }
 .changelog >>> a {
   color: var(--primary-color);
-}
-
-.log {
-  height: 500px;
-  background: #000;
-  border: 1px solid var(--third-bg-color);
-}
-
-.shareButton {
-  display: block;
-  width: 40px;
-  height: 40px;
-  background: var(--primary-color);
-  border-radius: 30px;
-  text-align: center;
-  line-height: 2.7;
-  position: absolute;
-  top: 30px;
-  right: 30px;
-  opacity: 0.4;
-  transition: 0.3s all;
-  z-index: 99;
-  cursor: pointer;
-  color: #fff;
-}
-
-.shareButton:hover {
-  opacity: 1;
 }
 </style>

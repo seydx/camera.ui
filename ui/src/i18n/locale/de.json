@@ -143,6 +143,8 @@
     "reset_confirm": "Zurücksetzen bestätigen",
     "reset_confirm_text": "Nach dem Klicken auf 'Zurücksetzen' werden alle gespeicherten Daten unwiederruflich gelöscht. Sind Sie sicher?",
     "restart": "Neustarten",
+    "restart_confirm": "Neustart Bestätigen",
+    "restart_confirm_text": "Wollen sie @ wirklich neu starten?",
     "room": "Raum",
     "rooms": "Räume",
     "room_already_exists": "Raum existiert bereits",

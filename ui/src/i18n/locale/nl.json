@@ -142,6 +142,8 @@
     "reset_confirm": "Bevestig reset",
     "reset_confirm_text": "Na het klikken op 'Reset' zullen alle opgeslagen gegevens onherroepelijk worden gewist. Ben je zeker?",
     "restart": "Herstarten",
+    "restart_confirm": "Bevestig herstart",
+    "restart_confirm_text": "Wil je echt dat @ opnieuw begint?",
     "room": "Kamer",
     "rooms": "Kamers",
     "room_already_exists": "Kamer bestaat al",

@@ -36,6 +36,28 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/log:
+   *   delete:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Clear log
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.delete('/api/system/log', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.clearLog,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/log/download:
    *   get:
    *     tags: [System]

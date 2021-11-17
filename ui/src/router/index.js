@@ -130,6 +130,32 @@ const routes = [
     component: () => import(/* webpackChunkName: "camview" */ '@/views/camview/Camview.vue'),
   },
   {
+    path: '/log',
+    name: 'Log',
+    meta: {
+      name: 'log',
+      requiresAuth: true,
+      requiredLevel: ['admin'],
+      showBackTop: false,
+      showFooter: false,
+      showNavi: true,
+    },
+    component: () => import(/* webpackChunkName: "log" */ '@/views/log/Log.vue'),
+  },
+  {
+    path: '/config',
+    name: 'Config',
+    meta: {
+      name: 'config',
+      requiresAuth: true,
+      requiredLevel: ['admin'],
+      showBackTop: false,
+      showFooter: false,
+      showNavi: true,
+    },
+    component: () => import(/* webpackChunkName: "config" */ '@/views/config/Config.vue'),
+  },
+  {
     path: '/settings',
     redirect: '/settings/profile',
     name: 'Settings',

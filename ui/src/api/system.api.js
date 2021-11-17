@@ -17,9 +17,11 @@ const getLog = async () => await api.get(`${resource}/${log_resource}`);
 
 const getPackage = async () => await api.get(`${resource}/${npm_resource}`);
 
+const removeLog = async () => await api.delete(`${resource}/${log_resource}`);
+
 const restartSystem = async () => await api.put(`${resource}/${restart_resource}`);
 
 const updateSystem = async (parameters) =>
   await api.put(`${resource}/${update_resource}${parameters ? parameters : ''}`);
 
-export { downloadLog, getChangelog, getLog, getPackage, restartSystem, updateSystem };
+export { downloadLog, getChangelog, getLog, getPackage, removeLog, restartSystem, updateSystem };

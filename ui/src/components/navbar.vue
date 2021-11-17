@@ -24,9 +24,13 @@ div
             li.nav-item(v-if="checkLevel('settings:profile:access')")
               router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
 
-            li.nav-item(v-if="checkLevel('admin')")
-              router-link.nav-link(to="/settings/system")
-                b-icon.system-btn(icon="gear-fill")
+            li.nav-item.pl-0(v-if="checkLevel('admin')")
+              router-link.nav-link.pl-0(to="/log")
+                b-icon(icon="file-text-fill")
+
+            li.nav-item.pl-0(v-if="checkLevel('admin')")
+              router-link.nav-link.pl-0(to="/config")
+                b-icon(icon="gear-fill")
 
             li.nav-item.camview-btn(v-if="checkLevel('camview:access')")
               router-link.nav-link(to="/camview") {{ $t("camview") }}
@@ -40,7 +44,7 @@ div
 </template>
 
 <script>
-import { BIcon, BIconGearFill } from 'bootstrap-vue';
+import { BIcon, BIconFileTextFill, BIconGearFill } from 'bootstrap-vue';
 import theme from '@/mixins/theme.mixin';
 import toggler from '@/components/toggler.vue';
 
@@ -48,6 +52,7 @@ export default {
   name: 'Navbar',
   components: {
     BIcon,
+    BIconFileTextFill,
     BIconGearFill,
     toggler,
   },
@@ -72,9 +77,17 @@ export default {
       navbar?.classList.remove('navbar2-inner-minify');
       navbarBrand?.classList.remove('navbar-brand-minify');
       navbarBrandIMG?.classList.remove('navbar-brand-img-minify');
+
+      if (this.$route.meta.name == 'log' || this.$route.meta.name == 'config') {
+        this.navbarScrollHandler();
+      }
     },
   },
   mounted() {
+    if (this.$route.meta.name == 'log' || this.$route.meta.name == 'config') {
+      this.navbarScrollHandler();
+    }
+
     document.addEventListener('scroll', this.navbarScrollHandler);
   },
   beforeDestroy() {
@@ -89,7 +102,8 @@ export default {
       const navbar = document.querySelector('.navbar2-inner');
       const navbarBrand = document.querySelector('.navbar-brand');
       const navbarBrandIMG = document.querySelector('.navbar-brand-img');
-      if (window.scrollY > 10) {
+
+      if (window.scrollY > 10 || this.$route.meta.name === 'log' || this.$route.meta.name === 'config') {
         navbar.classList.add('navbar2-inner-minify');
         navbarBrand.classList.add('navbar-brand-minify');
         navbarBrandIMG.classList.add('navbar-brand-img-minify');
