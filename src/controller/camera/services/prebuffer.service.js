@@ -11,7 +11,7 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { log } = LoggerService;
 
-const videoDuration = 30000;
+const videoDuration = 20000;
 const compatibleAudio = /(aac|mp3|mp2)/;
 
 class PrebufferService {
@@ -42,7 +42,7 @@ class PrebufferService {
 
   async start() {
     try {
-      this.killed = false;
+      this.resetPrebuffer();
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
       log.warn('An error occured during starting camera prebuffer!', this.cameraName);
@@ -53,6 +53,8 @@ class PrebufferService {
   }
 
   resetPrebuffer() {
+    this.prebufferSession = null;
+    this.killed = false;
     this.prebufferFmp4 = [];
     this.released = false;
     this.ftyp = null;
@@ -78,9 +80,6 @@ class PrebufferService {
       if (prebufferServer) {
         prebufferServer.close();
       }
-
-      this.resetPrebuffer();
-      this.prebufferSession = null;
     }
   }
 

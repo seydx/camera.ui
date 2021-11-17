@@ -295,9 +295,8 @@ export default {
         localStorage.setItem('restarted', true);
       } catch (error) {
         this.$toast.error(error.message);
+        this.loadingRestart = false;
       }
-
-      this.loadingRestart = false;
     },
     async onSave() {
       const saveButton = document.getElementById('saveButton');
