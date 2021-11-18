@@ -130,7 +130,7 @@ class PrebufferService {
       if (acodec !== 'copy') {
         audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'libfdk_aac', '-profile:a', 'aac_low');
       } else {
-        audioArguments.push('-acodec', 'copy');
+        audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'copy');
       }
     } else {
       audioArguments.push('-an');
