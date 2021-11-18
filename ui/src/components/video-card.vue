@@ -10,17 +10,27 @@ div(
     b-icon.refreshOverlay(
       icon="arrow-clockwise",
       :class="fullscreen ? 'refreshOverlay-on' : ''"
-      v-if="showRefreshIndicator && (camera.live || onlyStream)",
+      v-if="showRefreshIndicator && (camera.live || onlyStream) && !loading",
       @click="$emit('refreshStream', { camera: camera.name })"
     )
     b-icon.fullsizeOverlay(
       :icon="fullscreen ? 'arrows-angle-contract' : 'arrows-angle-expand'",
       :class="fullscreen ? 'fullsizeOverlay-on' : ''"
-      v-if="showFullsizeIndicator",
+      v-if="showFullsizeIndicator && !loading",
       @click="handleFullscreen(camera)"
     )
+    b-icon.volumeOverlay(
+      :icon="audio ? 'volume-up-fill' : 'volume-off-fill'",
+      v-if="showVolumeIndicator && (camera.live || onlyStream) && !loading",
+      @click="handleVolume()"
+    )
+    b-icon.startStopOverlay(
+      :icon="paused ? 'play-fill' : 'pause-fill'",
+      v-if="showStartStopIndicator && (camera.live || onlyStream) && !loading",
+      @click="handleStartStop()"
+    )
     b-link.notOverlay.text-center(
-      v-if="notificationOverlay && camera.lastNotification", 
+      v-if="notificationOverlay && camera.lastNotification && !loading", 
       :data-stream-notification="camera.name"
       :class="fullscreen ? 'notOverlay-on' : ''"
       @click="index = 0"
@@ -119,6 +129,10 @@ import {
   BIconArrowClockwise,
   BIconBellFill,
   BIconCircleFill,
+  BIconPlayFill,
+  BIconPauseFill,
+  BIconVolumeOffFill,
+  BIconVolumeUpFill,
 } from 'bootstrap-vue';
 
 import JSMpeg from 'jsmpeg-fast-player';
@@ -135,6 +149,10 @@ export default {
     BIconArrowClockwise,
     BIconBellFill,
     BIconCircleFill,
+    BIconPlayFill,
+    BIconPauseFill,
+    BIconVolumeOffFill,
+    BIconVolumeUpFill,
     CoolLightBox,
   },
   props: {
@@ -186,6 +204,14 @@ export default {
       type: Boolean,
       default: false,
     },
+    showStartStopIndicator: {
+      type: Boolean,
+      default: false,
+    },
+    showVolumeIndicator: {
+      type: Boolean,
+      default: false,
+    },
     showSpinner: {
       type: Boolean,
       default: false,
@@ -197,9 +223,12 @@ export default {
   },
   data() {
     return {
+      audio: false,
+      paused: true,
       images: [],
       index: null,
       fullscreen: false,
+      loading: true,
       player: null,
       started: false,
       stopped: false,
@@ -211,6 +240,7 @@ export default {
     };
   },
   mounted() {
+    document.addEventListener('touchstart', this.onTouchStart, false);
     window.addEventListener('resize', this.aspectRatioHandler);
 
     this.stopped = false;
@@ -246,6 +276,7 @@ export default {
     this.stopLivestream();
     this.stopSnapshot();
 
+    document.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('resize', this.aspectRatioHandler);
   },
   methods: {
@@ -306,6 +337,50 @@ export default {
         this.$refs.offline_icon.classList.remove('d-block');
         this.$refs.offline_icon.classList.add('d-none');
       }
+    },
+    handleStartStop() {
+      if (this.player) {
+        const paused = this.player.paused;
+
+        if (paused) {
+          this.player.play();
+          this.paused = false;
+        } else {
+          this.player.pause();
+          this.paused = true;
+        }
+      } else {
+        this.paused = true;
+      }
+    },
+    handleVolume() {
+      if (this.player) {
+        const state = this.player.volume;
+
+        if (state) {
+          this.player.volume = 0;
+          this.audio = false;
+        } else {
+          this.player.volume = 1;
+          this.audio = true;
+        }
+      } else {
+        this.audio = false;
+      }
+    },
+    onUnlocked() {
+      if (this.player) {
+        this.player.volume = 1;
+      }
+
+      document.removeEventListener('touchstart', this.onTouchStart);
+    },
+    onTouchStart() {
+      if (this.player) {
+        this.player.audioOut.unlock(this.onUnlocked);
+      }
+
+      document.removeEventListener('touchstart', this.onTouchStart);
     },
     setSnapshotTimer() {
       let timerIndicator = document.querySelector(`[data-stream-timer="${this.camera.name}"]`);
@@ -397,12 +472,21 @@ export default {
             disableWebAssembly: true,
             pauseWhenHidden: false,
             videoBufferSize: 1024 * 1024,
-            onSourcePaused: () => this.showLoading(),
-            onSourceEstablished: () => this.showOnline(),
+            onSourcePaused: () => {
+              this.showLoading();
+              this.paused = true;
+            },
+            onSourceEstablished: () => {
+              this.showOnline();
+              this.paused = false;
+              this.player.volume = 0;
+              this.audio = !this.isMobile() && this.player.volume;
+            },
           });
 
-          this.player.volume = 1;
+          this.player.volume = 0;
           this.player.name = this.camera.name;
+          this.audio = !this.isMobile() && this.player.volume;
         } else {
           this.showOffline();
         }
@@ -456,6 +540,8 @@ export default {
         statusIndicator.classList.remove('text-danger');
         statusIndicator.classList.add('text-success');
       }
+
+      this.loading = false;
     },
     showOffline() {
       this.started = false;
@@ -496,6 +582,8 @@ export default {
           target.replaceWith(canvas);
         }
       }
+
+      this.loading = false;
     },
     pauseStream() {
       if (this.player) {
@@ -506,6 +594,13 @@ export default {
       if (this.player) {
         this.player.source.write(buffer);
       }
+    },
+    isMobile() {
+      let isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.platform) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      return isMobile;
     },
   },
 };
@@ -732,6 +827,54 @@ div >>> .card-img-top {
 }
 
 .fullsizeOverlay:hover {
+  background: rgb(255 255 255 / 45%);
+}
+
+.startStopOverlay {
+  position: absolute;
+  left: 10px;
+  background: rgb(255 255 255 / 25%);
+  padding: 3px;
+  border-radius: 4px;
+  z-index: 1;
+  bottom: 5px;
+  cursor: pointer;
+  transition: 0.3s all;
+  font-size: 1.3rem;
+}
+
+.startStopOverlay-on {
+  z-index: 202;
+  bottom: calc(env(safe-area-inset-bottom, -17px) + 17px);
+  left: calc(env(safe-area-inset-left, -17px) + 17px);
+  position: fixed;
+}
+
+.startStopOverlay:hover {
+  background: rgb(255 255 255 / 45%);
+}
+
+.volumeOverlay {
+  position: absolute;
+  right: 10px;
+  background: rgb(255 255 255 / 25%);
+  padding: 3px;
+  border-radius: 4px;
+  z-index: 1;
+  bottom: 5px;
+  cursor: pointer;
+  transition: 0.3s all;
+  font-size: 1.3rem;
+}
+
+.volumeOverlay-on {
+  z-index: 202;
+  bottom: calc(env(safe-area-inset-bottom, -17px) + 17px);
+  right: calc(env(safe-area-inset-right, -17px) + 17px);
+  position: fixed;
+}
+
+.volumeOverlay:hover {
   background: rgb(255 255 255 / 45%);
 }
 

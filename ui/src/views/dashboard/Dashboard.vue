@@ -17,6 +17,8 @@ div
               :notificationOverlay="true",
               :showFullsizeIndicator="true",
               :showRefreshIndicator="true",
+              :showStartStopIndicator="camera.live",
+              :showVolumeIndicator="camera.settings.audio",
               :showSpinner="true",
               :statusIndicator="true"
               @refreshStream="refreshStreamProcess"

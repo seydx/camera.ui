@@ -371,9 +371,7 @@ textarea:focus:-ms-input-placeholder {
 }
 
 .modal-lg .modal-content {
-  height: 85% !important;
   max-height: 85% !important;
-  min-height: 85% !important;
   top: env(save-area-inset-top) !important;
 }
 

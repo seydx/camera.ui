@@ -277,6 +277,11 @@ class ConfigService {
       return;
     }
 
+    if (!ConfigService.ui.http) {
+      log.warn('Can not enable SMTP server, HTTP server needs to be enabled too');
+      return;
+    }
+
     ConfigService.ui.smtp = {
       port: smtp.port || smtpDefaults.port,
       httpPort: ConfigService.ui.http?.port || httpDefaults.port,

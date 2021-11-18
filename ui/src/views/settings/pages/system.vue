@@ -35,7 +35,7 @@
               size="lg"
               @ok="onUpdate"
             )
-              b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog")
+              b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog", style="position: relative; top: calc(50% - 16px)")
               vue-markdown.changelog(v-else) {{ changelog }}
             b-button#restartButton.w-100.mt-3.restartButton(v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
               span(v-if="loadingRestart") 

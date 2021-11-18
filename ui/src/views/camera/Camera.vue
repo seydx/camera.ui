@@ -13,6 +13,8 @@ div
           :fullsize="true",
           :showFullsizeIndicator="true",
           :showRefreshIndicator="true",
+          :showVolumeIndicator="camera.settings.audio",
+          :showStartStopIndicator="true",
           :showSpinner="true",
           :onlyStream="true",
           @refreshStream="refreshStreamProcess"
