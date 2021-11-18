@@ -292,6 +292,7 @@ class MotionController {
     MotionController.smtpServer = new SMTPServer({
       authOptional: true,
       disabledCommands: ['STARTTLS'],
+      disableReverseLookup: true,
       logger: bunyan,
       onAuth(_auth, _session, callback) {
         callback(null, { user: true });
