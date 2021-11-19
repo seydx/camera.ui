@@ -34,6 +34,9 @@ div
                 .card-text(:id="notification.id + 'notMessage'")
                   b {{ $t("message") }}: 
                   | {{ notification.message }}
+                .card-text
+                  b {{ $t("timestamp") }}: 
+                  | {{ notification.time }}
               .col-2.p-0.d-flex.flex-wrap.justify-content-end.align-content-center
                 b-card-img-lazy.notification-card.object-fit(@error.native="handleErrorImg" :src="'/files/' + (notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName)" :img-alt="notification.name"  right height=40 width=40 blank-height=40 blank-width=40)
             .card.z-index-2(v-else)
@@ -45,6 +48,9 @@ div
                 .card-text(:id="notification.id + 'notMessage'")
                   b {{ $t("message") }}: 
                   | {{ notification.message }}
+                .card-text
+                  b {{ $t("timestamp") }}: 
+                  | {{ notification.time }}
           template(v-if="checkLevel('notifications:edit')" v-slot:right)
             .swipeout-action(title="remove")
               .swipe-remove.d-flex.flex-wrap.justify-content-center.align-content-center(:data-remove-id="notification.id")
@@ -192,7 +198,7 @@ export default {
             this.notifications = [...this.notifications, ...response.data.result];
             this.notifications = this.notifications.map((not) => {
               if (!not.message) {
-                not.message = `${this.$t('movement_on')} ${not.time}`;
+                not.message = this.$t('movement_detected');
               }
 
               return not;

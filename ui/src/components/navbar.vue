@@ -20,7 +20,7 @@ div
             li.nav-item(v-if="checkLevel('camview:access')")
               router-link.nav-link(to="/camview") {{ $t("camview") }}
 
-            li.nav-item(v-if="checkLevel('settings:profile:access')")
+            li.nav-item.mr-2(v-if="checkLevel('settings:profile:access')")
               router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
 
             li.nav-item.pl-0(v-if="checkLevel('notifications:access')")
@@ -37,8 +37,7 @@ div
                 b-icon(icon="gear-fill")
             
             li.nav-item.logout-btn(v-if="$store.state.auth.user")
-              b-link.nav-link.text-white(v-on:click.native="handleLogout")
-                b-icon(icon="power")
+              b-link.nav-link.text-white(v-on:click.native="handleLogout") {{ $t('signout')}}
         toggler(
           :notSize="notSize"
           @logOut="handleLogout"
@@ -264,7 +263,7 @@ div.navbar2-items > ul > li > a.router-link-active {
   border: 1px solid var(--secondary-bg-color);
 }
 
-@media (min-width: 992px) {
+@media (min-width: 768px) {
   .navbar2-items {
     display: flex !important;
   }

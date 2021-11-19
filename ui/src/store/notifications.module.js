@@ -9,6 +9,9 @@ const notifications = {
         commit('increaseNotifications');
       }
     },
+    socket_increaseNotification({ commit }) {
+      commit('increaseNotifications');
+    },
     socket_notificationSize({ commit }, size) {
       commit('updateNotifications', size);
     },

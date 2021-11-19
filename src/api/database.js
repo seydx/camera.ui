@@ -104,6 +104,10 @@ const defaultTokensDatabase = {
   tokens: [],
 };
 
+const defaultNotificationsDatabase = {
+  notifications: [],
+};
+
 const defaultRecordingsDatabase = {
   path: path.join(process.env.CUI_STORAGE_PATH, 'recordings'),
   recordings: [],
@@ -114,6 +118,7 @@ class Database {
   static #videoProcessor = ConfigService.ui.options.videoProcessor;
 
   static interfaceDB;
+  static notificationsDB;
   static recordingsDB;
   static tokensDB;
 
@@ -137,10 +142,12 @@ class Database {
 
     Database.interfaceDB = await low(new FileAsync(Database.databaseFilePath));
     Database.recordingsDB = low(new Memory());
+    Database.notificationsDB = LoggerService.notificationsDB = low(new Memory()); //used for system events (errors)
     Database.tokensDB = low(new Memory());
 
     await Database.interfaceDB.defaults(defaultDatabase).write();
     Database.recordingsDB.defaults(defaultRecordingsDatabase).write();
+    Database.notificationsDB.defaults(defaultNotificationsDatabase).write();
     Database.tokensDB.defaults(defaultTokensDatabase).write();
 
     await Database.#ensureDatabaseValues();

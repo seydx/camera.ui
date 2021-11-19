@@ -2,6 +2,9 @@
 
 const chalk = require('chalk');
 const { FileLogger } = require('./utils/filelogger.utils');
+const moment = require('moment');
+const { customAlphabet } = require('nanoid/async');
+const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const LogLevel = {
   INFO: 'info',
@@ -32,11 +35,11 @@ class LoggerService {
   static #withPrefix = true;
   static #debugEnabled = false;
   static #timestampEnabled = false;
-
-  static #socket;
   static #filelogger;
 
   static logPath;
+  static notificationsDB;
+  static socket;
 
   static create = (logger) => new LoggerService(logger);
 
@@ -111,6 +114,32 @@ class LoggerService {
     return formatted;
   }
 
+  static async #db(level, message, name, subprefix) {
+    if (LoggerService.notificationsDB) {
+      //Check notification size, if we exceed more than {1000} notifications, remove the latest
+      const notificationsLimit = 1000;
+      const notificationList = LoggerService.notificationsDB.get('notifications').value();
+
+      if (notificationList.length > notificationsLimit) {
+        const diff = notificationList.length - notificationsLimit;
+        await LoggerService.notificationsDB.get('notifications').dropRight(notificationList, diff).write();
+      }
+
+      const notification = {
+        id: await nanoid(),
+        type: 'Error',
+        title: name || subprefix || 'System',
+        message: message.message || message,
+        timestamp: moment().unix(),
+        time: moment().format('YYYY-MM-DD HH:mm:ss'),
+        label: 'System',
+      };
+
+      LoggerService.notificationsDB.get('notifications').push(notification).write();
+      LoggerService.socket?.emit('increase_notification');
+    }
+  }
+
   static #logging(level, message, name, subprefix) {
     if (LoggerService.#customLogger) {
       return LoggerService.#logger.log[level](message, name, subprefix);
@@ -173,10 +202,12 @@ class LoggerService {
 
   warn(message, name, subprefix) {
     LoggerService.#logging(LogLevel.WARN, message, name, subprefix);
+    LoggerService.#db(LogLevel.WARN, message, name, subprefix);
   }
 
-  error(message, name, subprefix) {
+  async error(message, name, subprefix) {
     LoggerService.#logging(LogLevel.ERROR, message, name, subprefix);
+    LoggerService.#db(LogLevel.ERROR, message, name, subprefix);
   }
 
   debug(message, name, subprefix) {
@@ -202,12 +233,12 @@ class LoggerService {
      */
 
     LoggerService.#logging(LogLevel.DEBUG, `Interface received new message: ${JSON.stringify(notification)}`);
-    LoggerService.#socket?.emit('notification', notification);
+    LoggerService.socket?.emit('notification', notification);
   }
 
   toast(message) {
     LoggerService.#logging(LogLevel.DEBUG, `Toasting new message: ${message}`);
-    LoggerService.#socket?.emit('toast', message);
+    LoggerService.socket?.emit('toast', message);
   }
 
   file(message) {

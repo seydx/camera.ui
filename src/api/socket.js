@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/explicit-length-check */
 'use-strict';
 
 const socketioJwt = require('socketio-jwt');
@@ -57,7 +58,9 @@ class Socket {
         socket.decoded_token.permissionLevel.includes('admin')
       ) {
         const notifications = await Database.interfaceDB.get('notifications').value();
-        socket.emit('notification_size', notifications.length);
+        const systemNotifications = Database.notificationsDB.get('notifications').value();
+        const size = notifications.length || systemNotifications.length;
+        socket.emit('notification_size', size);
       } else {
         log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) no access for notifications socket`);
       }

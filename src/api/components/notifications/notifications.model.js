@@ -17,7 +17,21 @@ const notificationsLimit = 100;
 exports.list = async (query) => {
   await Database.interfaceDB.read();
 
-  let notifications = await Database.interfaceDB.get('notifications').reverse().value();
+  // eslint-disable-next-line unicorn/consistent-function-scoping
+  const GetSortOrder = (property) => {
+    return (a, b) => {
+      if (a[property] < b[property]) {
+        return 1;
+      } else if (a[property] > b[property]) {
+        return -1;
+      }
+      return 0;
+    };
+  };
+
+  let notifications = await Database.interfaceDB.get('notifications').value();
+  notifications.push(...Database.notificationsDB.get('notifications').value());
+  notifications.sort(GetSortOrder('timestamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
     notifications = notifications.filter((notification) => {
@@ -74,98 +88,25 @@ exports.listByCameraName = async (name) => {
 
 exports.findById = async (id) => {
   await Database.interfaceDB.read();
-  return await Database.interfaceDB.get('notifications').find({ id: id }).value();
+
+  const notification =
+    (await Database.interfaceDB.get('notifications').find({ id: id }).value()) ||
+    Database.notificationsDB.get('notifications').find({ id: id }).value();
+
+  return notification;
 };
 
 exports.createNotification = async (data) => {
   await Database.interfaceDB.read();
 
-  const id = data.id || (await nanoid());
-  const label = (data.label || 'no label').toString();
-  const timestamp = data.timestamp || moment().unix();
-  const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+  const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
+  const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
 
-  let notification = {
-    id: id,
-    label: label,
-    time: time,
-    timestamp: timestamp,
-  };
-
-  if (data.system) {
-    //every non camera (movement) notifications here
-    notification = {
-      ...notification,
-      title: data.title,
-      message: data.message,
-    };
-
-    log.notify({
-      ...notification,
-      title: data.title,
-      message: data.message,
-      subtxt: data.subtxt || false,
-      mediaSource: false,
-      count: true,
-      isNotification: false,
-    });
-  } else {
-    const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
-    const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
-
-    if (!camera) {
-      throw new Error('Can not assign notification to camera!');
-    }
-
-    const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
-
-    const cameraName = camera.name;
-    const room = cameraSetting ? cameraSetting.room : 'Standard';
-
-    const fileName =
-      cameraName.replace(/\s+/g, '_') +
-      '-' +
-      id +
-      '-' +
-      timestamp +
-      (data.trigger === 'motion' ? '_m' : data.trigger === 'doorbell' ? '_d' : '_c') +
-      '_CUI';
-
-    const extension = data.type === 'Video' ? 'mp4' : 'jpeg';
-    const storing = data.type === 'Video' || data.type === 'Snapshot';
-
-    notification = {
-      ...notification,
-      camera: cameraName,
-      fileName: `${fileName}.${extension}`,
-      name: fileName,
-      extension: extension,
-      recordStoring: storing,
-      recordType: data.type,
-      trigger: data.trigger,
-      room: room,
-    };
-
-    Cleartimer.setNotification(id, timestamp);
-
-    const eventTxt = data.trigger.charAt(0).toUpperCase() + data.trigger.slice(1);
-
-    log.notify({
-      ...notification,
-      title: cameraName,
-      message: `${eventTxt} Event - ${time}`,
-      subtxt: room,
-      mediaSource: storing
-        ? data.type === 'Video'
-          ? `/files/${fileName}@2.jpeg`
-          : `/files/${fileName}.${extension}`
-        : false,
-      count: true,
-      isNotification: true,
-    });
+  if (!camera) {
+    throw new Error('Can not assign notification to camera!');
   }
 
-  //Check notification size, if we exceed {100} notifications, remove the latest
+  //Check notification size, if we exceed more than {100} notifications, remove the latest
   const notificationList = await Database.interfaceDB.get('notifications').value();
 
   if (notificationList.length > notificationsLimit) {
@@ -173,7 +114,60 @@ exports.createNotification = async (data) => {
     await Database.interfaceDB.get('notifications').dropRight(notificationList, diff).write();
   }
 
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+
+  const id = data.id || (await nanoid());
+  const cameraName = camera.name;
+  const room = cameraSetting ? cameraSetting.room : 'Standard';
+  const timestamp = data.timestamp || moment().unix();
+  const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+
+  const fileName =
+    cameraName.replace(/\s+/g, '_') +
+    '-' +
+    id +
+    '-' +
+    timestamp +
+    (data.trigger === 'motion' ? '_m' : data.trigger === 'doorbell' ? '_d' : '_c') +
+    '_CUI';
+
+  const extension = data.type === 'Video' ? 'mp4' : 'jpeg';
+  const storing = data.type === 'Video' || data.type === 'Snapshot';
+  const label = (data.label || 'no label').toString();
+
+  const notification = {
+    id: id,
+    camera: cameraName,
+    fileName: `${fileName}.${extension}`,
+    name: fileName,
+    extension: extension,
+    recordStoring: storing,
+    recordType: data.type,
+    trigger: data.trigger,
+    room: room,
+    time: time,
+    timestamp: timestamp,
+    label: label,
+  };
+
   await Database.interfaceDB.get('notifications').push(notification).write();
+  Cleartimer.setNotification(id, timestamp);
+
+  const eventTxt = data.trigger.charAt(0).toUpperCase() + data.trigger.slice(1);
+
+  log.notify({
+    ...notification,
+    title: cameraName,
+    message: `${eventTxt} Event - ${time}`,
+    subtxt: room,
+    mediaSource: storing
+      ? data.type === 'Video'
+        ? `/files/${fileName}@2.jpeg`
+        : `/files/${fileName}.${extension}`
+      : false,
+    count: true,
+    isNotification: true,
+  });
 
   return notification;
 };
@@ -182,6 +176,11 @@ exports.removeById = async (id) => {
   await Database.interfaceDB.read();
 
   Cleartimer.removeNotificationTimer(id);
+
+  Database.notificationsDB
+    .get('notifications')
+    .remove((not) => not.id === id)
+    .write();
 
   return await Database.interfaceDB
     .get('notifications')
@@ -193,6 +192,11 @@ exports.removeAll = async () => {
   await Database.interfaceDB.read();
 
   Cleartimer.stopNotifications();
+
+  Database.notificationsDB
+    .get('notifications')
+    .remove(() => true)
+    .write();
 
   return await Database.interfaceDB
     .get('notifications')
