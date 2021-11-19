@@ -42,7 +42,7 @@
     "piexifjs": "^1.0.6",
     "ping": "^0.4.1",
     "smtp-server": "^3.9.0",
-    "socket.io": "4.3.2",
+    "socket.io": "4.4.0",
     "socketio-jwt": "^4.6.2",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.1.6",
