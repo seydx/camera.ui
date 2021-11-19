@@ -17,58 +17,68 @@ class Cleartimer {
   constructor() {}
 
   static async start(interfaceDB, recordingsDB) {
-    Cleartimer.#interfaceDB = interfaceDB;
-    Cleartimer.#recordingsDB = recordingsDB;
+    if (interfaceDB) {
+      Cleartimer.#interfaceDB = interfaceDB;
+    }
+
+    if (recordingsDB) {
+      Cleartimer.#recordingsDB = recordingsDB;
+    }
 
     try {
       //log.debug('Initializing clear timer');
 
       await Cleartimer.#interfaceDB.read();
 
-      const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
-      const recordings = Cleartimer.#recordingsDB.get('recordings').value();
+      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
+      const notRemoveAfter = notSettings.removeAfter;
+
+      if (notRemoveAfter > 0) {
+        const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
+
+        for (const notification of notifications) {
+          let timestampNow = moment();
+          let timestampFile = moment(moment.unix(notification.timestamp));
+          let timestampDif = timestampNow.diff(timestampFile, 'minutes');
+
+          let removeAfterTimer = notRemoveAfter * 60;
+
+          if (removeAfterTimer > timestampDif) {
+            removeAfterTimer -= timestampDif;
+          }
+
+          if (timestampDif > notRemoveAfter * 60) {
+            Cleartimer.#notificationsTimer.set(notification.id, false);
+            await Cleartimer.#clearNotification(notification.id);
+          } else {
+            Cleartimer.#timeout(removeAfterTimer / 60, 'hours', notification.id, notification.timestamp, false);
+          }
+        }
+      }
 
       const recSettings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
       const recRemoveAfter = recSettings.removeAfter;
 
-      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
-      const notRemoveAfter = notSettings.removeAfter;
+      if (recRemoveAfter) {
+        const recordings = Cleartimer.#recordingsDB.get('recordings').value();
 
-      for (const notification of notifications) {
-        let timestampNow = moment();
-        let timestampFile = moment(moment.unix(notification.timestamp));
-        let timestampDif = timestampNow.diff(timestampFile, 'minutes');
+        for (const recording of recordings) {
+          let timestampNow = moment();
+          let timestampFile = moment(moment.unix(recording.timestamp));
+          let timestampDif = timestampNow.diff(timestampFile, 'hours');
 
-        let removeAfterTimer = notRemoveAfter * 60;
+          let removeAfterTimer = recRemoveAfter * 24;
 
-        if (removeAfterTimer > timestampDif) {
-          removeAfterTimer -= timestampDif;
-        }
+          if (removeAfterTimer > timestampDif) {
+            removeAfterTimer -= timestampDif;
+          }
 
-        if (timestampDif > notRemoveAfter * 60) {
-          Cleartimer.#notificationsTimer.set(notification.id, false);
-          await Cleartimer.#clearNotification(notification.id);
-        } else {
-          Cleartimer.#timeout(removeAfterTimer / 60, 'hours', notification.id, notification.timestamp, false);
-        }
-      }
-
-      for (const recording of recordings) {
-        let timestampNow = moment();
-        let timestampFile = moment(moment.unix(recording.timestamp));
-        let timestampDif = timestampNow.diff(timestampFile, 'hours');
-
-        let removeAfterTimer = recRemoveAfter * 24;
-
-        if (removeAfterTimer > timestampDif) {
-          removeAfterTimer -= timestampDif;
-        }
-
-        if (timestampDif > recRemoveAfter * 24) {
-          Cleartimer.#recordingsTimer.set(recording.id, false);
-          await Cleartimer.#clearRecording(recording.id);
-        } else {
-          Cleartimer.#timeout(removeAfterTimer / 24, 'days', recording.id, recording.timestamp, true);
+          if (timestampDif > recRemoveAfter * 24) {
+            Cleartimer.#recordingsTimer.set(recording.id, false);
+            await Cleartimer.#clearRecording(recording.id);
+          } else {
+            Cleartimer.#timeout(removeAfterTimer / 24, 'days', recording.id, recording.timestamp, true);
+          }
         }
       }
     } catch (error) {
@@ -80,6 +90,76 @@ class Cleartimer {
   static stop() {
     Cleartimer.stopNotifications();
     Cleartimer.stopRecordings();
+  }
+
+  static async startNotifications() {
+    try {
+      await Cleartimer.#interfaceDB.read();
+
+      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
+      const notRemoveAfter = notSettings.removeAfter;
+
+      if (notRemoveAfter > 0) {
+        const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
+
+        for (const notification of notifications) {
+          let timestampNow = moment();
+          let timestampFile = moment(moment.unix(notification.timestamp));
+          let timestampDif = timestampNow.diff(timestampFile, 'minutes');
+
+          let removeAfterTimer = notRemoveAfter * 60;
+
+          if (removeAfterTimer > timestampDif) {
+            removeAfterTimer -= timestampDif;
+          }
+
+          if (timestampDif > notRemoveAfter * 60) {
+            Cleartimer.#notificationsTimer.set(notification.id, false);
+            await Cleartimer.#clearNotification(notification.id);
+          } else {
+            Cleartimer.#timeout(removeAfterTimer / 60, 'hours', notification.id, notification.timestamp, false);
+          }
+        }
+      }
+    } catch (error) {
+      log.error('An error occured during starting notifications clear timer');
+      log.error(error);
+    }
+  }
+
+  static async startRecordings() {
+    try {
+      await Cleartimer.#interfaceDB.read();
+
+      const recSettings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
+      const recRemoveAfter = recSettings.removeAfter;
+
+      if (recRemoveAfter) {
+        const recordings = Cleartimer.#recordingsDB.get('recordings').value();
+
+        for (const recording of recordings) {
+          let timestampNow = moment();
+          let timestampFile = moment(moment.unix(recording.timestamp));
+          let timestampDif = timestampNow.diff(timestampFile, 'hours');
+
+          let removeAfterTimer = recRemoveAfter * 24;
+
+          if (removeAfterTimer > timestampDif) {
+            removeAfterTimer -= timestampDif;
+          }
+
+          if (timestampDif > recRemoveAfter * 24) {
+            Cleartimer.#recordingsTimer.set(recording.id, false);
+            await Cleartimer.#clearRecording(recording.id);
+          } else {
+            Cleartimer.#timeout(removeAfterTimer / 24, 'days', recording.id, recording.timestamp, true);
+          }
+        }
+      }
+    } catch (error) {
+      log.error('An error occured during starting clear timer');
+      log.error(error);
+    }
   }
 
   static stopNotifications() {
@@ -199,25 +279,27 @@ class Cleartimer {
   }
 
   static #timeout(timeValue, timeTyp, id, timestamp, isRecording) {
-    const endTime = moment.unix(timestamp).add(timeValue, timeTyp);
+    if (timeValue) {
+      const endTime = moment.unix(timestamp).add(timeValue, timeTyp);
 
-    //log.debug(`SET cleartimer for ${isRecording ? 'Recording' : 'Notification'} (${id}) - Endtime: ${endTime}`);
+      //log.debug(`SET cleartimer for ${isRecording ? 'Recording' : 'Notification'} (${id}) - Endtime: ${endTime}`);
 
-    const interval = isRecording ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+      const interval = isRecording ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
 
-    const timer = setInterval(async () => {
-      const now = moment();
+      const timer = setInterval(async () => {
+        const now = moment();
 
-      if (now > endTime) {
-        clearInterval(timer);
-        await (isRecording ? Cleartimer.#clearRecording(id) : Cleartimer.#clearNotification(id));
+        if (now > endTime) {
+          clearInterval(timer);
+          await (isRecording ? Cleartimer.#clearRecording(id) : Cleartimer.#clearNotification(id));
+        }
+      }, interval);
+
+      if (isRecording) {
+        Cleartimer.#recordingsTimer.set(id, timer);
+      } else {
+        Cleartimer.#notificationsTimer.set(id, timer);
       }
-    }, interval);
-
-    if (isRecording) {
-      Cleartimer.#recordingsTimer.set(id, timer);
-    } else {
-      Cleartimer.#notificationsTimer.set(id, timer);
     }
   }
 }

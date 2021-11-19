@@ -68,4 +68,6 @@ exports.patchConfig = async (configJson) => {
   } else {
     await fs.writeJson(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
   }
+
+  ConfigService.configJson = configJson;
 };

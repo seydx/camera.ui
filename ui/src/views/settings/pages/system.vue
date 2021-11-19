@@ -271,7 +271,7 @@ import compareVersions from 'compare-versions';
 import { ToggleButton } from 'vue-js-toggle-button';
 import VueMarkdown from 'vue-markdown';
 
-import { /*changeConfig,*/ getConfig } from '@/api/config.api';
+import { changeConfig, getConfig } from '@/api/config.api';
 import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
@@ -460,8 +460,7 @@ export default {
 
       this.configTimer = setTimeout(async () => {
         try {
-          //await changeConfig(newValue);
-          console.log(newValue);
+          await changeConfig(newValue);
           this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);
@@ -481,10 +480,10 @@ export default {
       this.loadingSave = true;
 
       try {
-        //await changeConfig(newValue);
-        console.log(this.config);
+        await changeConfig(this.config);
         this.$Progress.finish();
         this.loadingSave = false;
+        this.$toast.success(this.$t('config_was_saved'));
       } catch (error) {
         this.$toast.error(error.message);
         this.$Progress.fail();

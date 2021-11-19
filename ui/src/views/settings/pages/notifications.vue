@@ -316,6 +316,7 @@ export default {
         { value: 'Video', text: this.$t('video') },
         { value: 'Disabled', text: this.$t('disabled') },
       ],
+      timerChanged: false,
     };
   },
   async mounted() {
@@ -395,6 +396,7 @@ export default {
 
         const notifications = await getSetting('notifications');
         this.notifications = notifications.data;
+        this.removeTimer = notifications.data.removeAfter;
 
         this.loadingAlexa = false;
       } catch (err) {
@@ -441,7 +443,14 @@ export default {
 
       this.notificationsTimer = setTimeout(async () => {
         try {
-          await changeSetting('notifications', newValue);
+          let params = '';
+
+          if (this.removeTimer !== newValue.removeAfter) {
+            this.removeTimer = newValue.removeAfter;
+            params = '?cleartimer=restart';
+          }
+
+          await changeSetting('notifications', newValue, params);
           this.$Progress.finish();
         } catch (error) {
           this.$toast.error(error.message);

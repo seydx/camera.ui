@@ -585,7 +585,7 @@ export default {
         }
       }
 
-      this.loading = false;
+      this.loading = true;
     },
     pauseStream() {
       if (this.player) {

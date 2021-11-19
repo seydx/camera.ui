@@ -60,10 +60,10 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
       '-',
       '-s',
       `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
-      '-vcodec',
+      /*'-vcodec',
       `${camera.videoConfig.vcodec || 'libx264'}`,
       '-pix_fmt',
-      'yuv420p',
+      'yuv420p',*/
       '-f',
       'image2',
       '-update',

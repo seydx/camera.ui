@@ -2,6 +2,7 @@
 'use-strict';
 
 const { Alexa } = require('../../../common/alexa');
+const { Cleartimer } = require('../../../common/cleartimer');
 
 const { CameraController } = require('../../../controller/camera/camera.controller');
 const { Database } = require('../../database');
@@ -12,6 +13,8 @@ const SettingsModel = require('./settings.model');
 
 const { cameras } = CameraController;
 const { log } = LoggerService;
+
+const setTimeoutAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 exports.show = async (req, res) => {
   try {
@@ -120,6 +123,38 @@ exports.patchTarget = async (req, res) => {
 
       if (req.query.restartAutomation === 'true') {
         await Database.restartAtHomeAutomation();
+      }
+    }
+
+    if (req.params.target === 'notifications') {
+      if (req.query.cleartimer === 'restart') {
+        Cleartimer.stopNotifications();
+        await setTimeoutAsync(500);
+        Cleartimer.startNotifications();
+      }
+
+      if (req.query.cleartimer === 'start') {
+        Cleartimer.startNotifications();
+      }
+
+      if (req.query.cleartimer === 'stop') {
+        Cleartimer.stopNotifications();
+      }
+    }
+
+    if (req.params.target === 'recordings') {
+      if (req.query.cleartimer === 'restart') {
+        Cleartimer.stopRecordings();
+        await setTimeoutAsync(500);
+        Cleartimer.startRecordings();
+      }
+
+      if (req.query.cleartimer === 'start') {
+        Cleartimer.startRecordings();
+      }
+
+      if (req.query.cleartimer === 'stop') {
+        Cleartimer.stopRecordings();
       }
     }
 
