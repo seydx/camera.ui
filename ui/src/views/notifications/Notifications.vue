@@ -25,26 +25,26 @@ div
             @rightRevealed="rightRevealed($event)"
           )
           template(v-slot="{ revealLeft, revealRight, close }")
-            b-link.card(v-if="notification.recordStoring" @click="index = i")
+            b-link.card.z-index-2(v-if="notification.recordStoring" @click="index = i")
               .col-10.p-0.flex-wrap.justify-content-start.align-content-center
-                .card-title {{ notification.camera }}
+                .card-title {{ notification.title || notification.camera || $t('notification') }}
                 .card-text 
                   b {{ $t("label") }}: 
                   | {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
-                .card-text
-                  b {{ $t("motion") }}: 
-                  | {{ notification.time }}
+                .card-text(:id="notification.id + 'notMessage'")
+                  b {{ $t("message") }}: 
+                  | {{ notification.message }}
               .col-2.p-0.d-flex.flex-wrap.justify-content-end.align-content-center
                 b-card-img-lazy.notification-card.object-fit(@error.native="handleErrorImg" :src="'/files/' + (notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName)" :img-alt="notification.name"  right height=40 width=40 blank-height=40 blank-width=40)
-            .card(v-else)
-              .col-10.p-0.flex-wrap.justify-content-start.align-content-center
-                .card-title {{ notification.camera }}
-                .card-text 
+            .card.z-index-2(v-else)
+              .col-12.p-0.flex-wrap.justify-content-start.align-content-center
+                .card-title {{ notification.title || notification.camera || $t('notification') }}
+                .card-text
                   b {{ $t("label") }}: 
                   | {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
-                .card-text
-                  b {{ $t("motion") }}: 
-                  | {{ notification.time }}
+                .card-text(:id="notification.id + 'notMessage'")
+                  b {{ $t("message") }}: 
+                  | {{ notification.message }}
           template(v-if="checkLevel('notifications:edit')" v-slot:right)
             .swipeout-action(title="remove")
               .swipe-remove.d-flex.flex-wrap.justify-content-center.align-content-center(:data-remove-id="notification.id")
@@ -190,6 +190,13 @@ export default {
           if (response.data.result.length > 0) {
             this.page += 1;
             this.notifications = [...this.notifications, ...response.data.result];
+            this.notifications = this.notifications.map((not) => {
+              if (!not.message) {
+                not.message = `${this.$t('movement_on')} ${not.time}`;
+              }
+
+              return not;
+            });
             this.images = this.notifications
               .map((not) => {
                 if (not.recordStoring) {
@@ -357,6 +364,12 @@ a.card:hover {
   font-weight: 300;
   line-height: 1.7;
   color: #7d7d7d;
+}
+
+.limitText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .swipe-remove {

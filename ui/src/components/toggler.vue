@@ -1,10 +1,14 @@
 <template lang="pug">
 #toggler.toggler.d-flex.w-100.justify-content-end.position-relative.toggleArea
-  .nav-item.pl-0(v-if="checkLevel('admin')")
-    router-link.nav-link.pl-0.navIcons(to="/log")
+  .nav-item.pl-0.mt-1.navIcons(v-if="checkLevel('notifications:access')")
+    router-link.nav-link.p-0.d-flex.align-content-center.justify-content-center.w-100.h-100(to="/notifications")
+      b-icon(icon="bell-fill")
+      span.notbadge.badge(v-if="notSize")
+  .nav-item.pl-0.mt-1.navIcons(v-if="checkLevel('admin')")
+    router-link.nav-link.p-0.d-flex.align-content-center.justify-content-center.w-100.h-100(to="/log")
       b-icon(icon="file-text-fill")
-  .nav-item.pl-0(v-if="checkLevel('admin')")
-    router-link.nav-link.pl-0.navIcons(to="/config")
+  .nav-item.pl-0.mt-1.navIcons.mr-2(v-if="checkLevel('admin')")
+    router-link.nav-link.p-0.d-flex.align-content-center.justify-content-center.w-100.h-100(to="/config")
       b-icon(icon="gear-fill")
   b-link#togglerBtn.navbar2-toggler.mt-1(aria-label="Mobile Navigation")
     b-icon.navbar-2toggler-icon(icon="list", aria-hidden="true")
@@ -18,16 +22,12 @@
       
       li.nav-item(v-if="checkLevel('recordings:access')")
         router-link.nav-link(to="/recordings") {{ $t("recordings") }}
-      
-      li.nav-item(v-if="checkLevel('notifications:access')")
-        router-link.nav-link(to="/notifications") {{ $t("notifications") }}
-          span.notbadge.badge.badge-light.ml-2 {{ notSize }}
+
+      li.nav-item(v-if="checkLevel('camview:access')")
+        router-link.nav-link(to="/camview") {{ $t("camview") }}
       
       li.nav-item(v-if="checkLevel('settings:profile:access')")
         router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
-      
-      li.nav-item(v-if="checkLevel('camview:access')")
-        router-link.nav-link(to="/camview") {{ $t("camview") }}
       
       li.nav-item
         b-link.nav-link(v-on:click.native="handleLogout") {{ $t("signout") }}
@@ -97,6 +97,18 @@ export default {
   border: none;
 }
 
+.notbadge {
+  display: inline-block !important;
+  width: 10px;
+  height: 10px;
+  background: #df0000;
+  border-radius: 10px;
+  margin-left: -7px;
+  position: relative;
+  top: -6px;
+  border: 1px solid var(--secondary-bg-color);
+}
+
 #togglerBtn {
   transition: 0.3s all;
 }
@@ -142,7 +154,7 @@ export default {
 }
 
 .navbar2-collapsed-expand {
-  height: 350px;
+  height: 300px;
   width: 250px;
   display: block;
 }
@@ -216,15 +228,24 @@ div.navbar2-collapsed.navbar2-collapsed-expand > ul > li:last-child > a.router-l
 }
 
 .navIcons {
+  font-size: 0.8rem;
+  color: var(--primary-font-folor);
+  transition: 0.3s all;
+  width: 30px;
+  height: 30px;
+}
+
+.navIcons a {
+  font-size: 0.8rem;
   color: var(--primary-font-folor);
   transition: 0.3s all;
 }
 
-.navIcons:hover {
+.navIcons a:hover {
   color: var(--primary-color);
 }
 
-.navIcons.router-link-exact-active {
+.navIcons a.router-link-exact-active {
   color: var(--primary-color);
 }
 </style>

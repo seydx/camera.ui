@@ -113,7 +113,7 @@
                       :options="camerasResolutions"
                     )
                     hr.hr-underline
-                    label.fs-6 {{ $t("ping_timeout") }}
+                    label.fs-6 {{ `${$t("ping_timeout")} (${$t("seconds")})` }}
                     b-form-input(
                       type='number',
                       :min="1",

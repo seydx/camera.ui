@@ -72,6 +72,7 @@ export default {
 
       window.addEventListener('orientationchange', this.resizeHandler);
       //window.addEventListener('resize', this.resizeHandler);
+      document.addEventListener('keydown', this.onKeyboardSave, false);
 
       this.loading = false;
     } catch (err) {
@@ -79,12 +80,21 @@ export default {
       this.$toast.error(err.message);
     }
   },
+  beforeDestroy() {
+    document.removeEventListener('keydown', this.onKeyboardSave);
+  },
   methods: {
     onError(e) {
       this.error = e;
     },
     onInput() {
       this.error = false;
+    },
+    async onKeyboardSave(e) {
+      if ((window.navigator.platform.match('Mac') ? e.metaKey : e.ctrlKey) && e.keyCode == 83) {
+        e.preventDefault();
+        await this.onSave();
+      }
     },
     async onSave() {
       const saveButton = document.getElementById('saveButton');

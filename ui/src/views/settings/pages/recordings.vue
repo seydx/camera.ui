@@ -55,7 +55,7 @@
                     )
                 hr.hr-underline
                 .row
-                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("remove_after_d") }}
+                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("remove_after") }}
                   .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
                     b-form-select(
                       v-model="recordings.removeAfter"
@@ -84,18 +84,25 @@ export default {
       recordingsTimer: null,
       loading: true,
       recordingTimer: [
-        { value: 10, text: '10' },
-        { value: 20, text: '20' },
-        { value: 30, text: '30' },
-        { value: 40, text: '40' },
-        { value: 50, text: '50' },
-        { value: 60, text: '60' },
+        { value: 10, text: `10 ${this.$t('seconds')}` },
+        { value: 20, text: `20 ${this.$t('seconds')}` },
+        { value: 30, text: `30 ${this.$t('seconds')}` },
+        { value: 40, text: `40 ${this.$t('seconds')}` },
+        { value: 50, text: `50 ${this.$t('seconds')}` },
+        { value: 60, text: `60 ${this.$t('seconds')}` },
       ],
       recordingTypes: [
         { value: 'Snapshot', text: this.$t('snapshot') },
         { value: 'Video', text: this.$t('video') },
       ],
-      removeAfterTimer: [1, 3, 7, 14, 30],
+      removeAfterTimer: [
+        { value: 1, text: `1 ${this.$t('day')}` },
+        { value: 3, text: `3 ${this.$t('days')}` },
+        { value: 7, text: `7 ${this.$t('days')}` },
+        { value: 14, text: `14 ${this.$t('days')}` },
+        { value: 30, text: `30 ${this.$t('days')}` },
+        { value: 0, text: this.$t('never') },
+      ],
     };
   },
   async created() {

@@ -21,11 +21,13 @@ div(
     )
     b-icon.volumeOverlay(
       :icon="audio ? 'volume-up-fill' : 'volume-off-fill'",
+      :class="fullscreen ? 'volumeOverlay-on' : ''"
       v-if="showVolumeIndicator && (camera.live || onlyStream) && !loading",
       @click="handleVolume()"
     )
     b-icon.startStopOverlay(
       :icon="paused ? 'play-fill' : 'pause-fill'",
+      :class="fullscreen ? 'startStopOverlay-on' : ''"
       v-if="showStartStopIndicator && (camera.live || onlyStream) && !loading",
       @click="handleStartStop()"
     )

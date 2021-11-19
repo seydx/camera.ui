@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-alpha.98",
+  "version": "1.0.0-alpha.99",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -28,7 +28,7 @@
     "express": "^4.17.1",
     "ffmpeg-for-homebridge": "^0.0.9",
     "fs-extra": "10.0.0",
-    "got": "^11.8.2",
+    "got": "^11.8.3",
     "helmet": "^4.6.0",
     "jsonwebtoken": "^8.5.1",
     "lodash.escaperegexp": "^4.1.2",
@@ -42,7 +42,7 @@
     "piexifjs": "^1.0.6",
     "ping": "^0.4.1",
     "smtp-server": "^3.9.0",
-    "socket.io": "4.3.2",
+    "socket.io": "4.4.0",
     "socketio-jwt": "^4.6.2",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.1.6",

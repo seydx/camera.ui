@@ -51,7 +51,11 @@ class FileLogger {
   }
 
   async #toFile(string) {
-    await this.#truncateFile();
+    try {
+      await this.#truncateFile();
+    } catch {
+      //ignore
+    }
 
     const output = `${string}\r\n`;
     this.stream.write(output);

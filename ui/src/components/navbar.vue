@@ -17,12 +17,16 @@ div
             li.nav-item(v-if="checkLevel('recordings:access')")
               router-link.nav-link(to="/recordings") {{ $t("recordings") }}
 
-            li.nav-item(v-if="checkLevel('notifications:access')")
-              router-link.nav-link(to="/notifications") {{ $t("notifications") }}
-                span.notbadge.badge.badge-light.ml-2 {{ notSize }}
+            li.nav-item(v-if="checkLevel('camview:access')")
+              router-link.nav-link(to="/camview") {{ $t("camview") }}
 
             li.nav-item(v-if="checkLevel('settings:profile:access')")
               router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
+
+            li.nav-item.pl-0(v-if="checkLevel('notifications:access')")
+              router-link.nav-link.pl-0(to="/notifications")
+                b-icon(icon="bell-fill")
+                span.notbadge.badge(v-if="notSize")
 
             li.nav-item.pl-0(v-if="checkLevel('admin')")
               router-link.nav-link.pl-0(to="/log")
@@ -31,12 +35,10 @@ div
             li.nav-item.pl-0(v-if="checkLevel('admin')")
               router-link.nav-link.pl-0(to="/config")
                 b-icon(icon="gear-fill")
-
-            li.nav-item.camview-btn(v-if="checkLevel('camview:access')")
-              router-link.nav-link(to="/camview") {{ $t("camview") }}
             
             li.nav-item.logout-btn(v-if="$store.state.auth.user")
-              b-link.nav-link.text-white(v-on:click.native="handleLogout") {{ $t("signout") }}
+              b-link.nav-link.text-white(v-on:click.native="handleLogout")
+                b-icon(icon="power")
         toggler(
           :notSize="notSize"
           @logOut="handleLogout"
@@ -44,7 +46,7 @@ div
 </template>
 
 <script>
-import { BIcon, BIconFileTextFill, BIconGearFill } from 'bootstrap-vue';
+import { BIcon, BIconBellFill, BIconFileTextFill, BIconGearFill, BIconPower } from 'bootstrap-vue';
 import theme from '@/mixins/theme.mixin';
 import toggler from '@/components/toggler.vue';
 
@@ -52,8 +54,10 @@ export default {
   name: 'Navbar',
   components: {
     BIcon,
+    BIconBellFill,
     BIconFileTextFill,
     BIconGearFill,
+    BIconPower,
     toggler,
   },
   mixins: [theme],
@@ -246,6 +250,18 @@ div.navbar2-items > ul > li > a.router-link-active {
 
 .logout-btn a:hover {
   color: #fff !important;
+}
+
+.notbadge {
+  display: inline-block !important;
+  width: 10px;
+  height: 10px;
+  background: #df0000;
+  border-radius: 10px;
+  margin-left: -7px;
+  position: relative;
+  top: -6px;
+  border: 1px solid var(--secondary-bg-color);
 }
 
 @media (min-width: 992px) {

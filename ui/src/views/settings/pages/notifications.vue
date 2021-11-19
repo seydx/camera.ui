@@ -30,7 +30,7 @@
               )
                 hr.hr-underline(v-if="notifications.active")
                 .row(v-if="notifications.active")
-                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("remove_after_h") }}
+                  .col-12.d-flex.flex-wrap.align-content-center {{ $t("remove_after") }}
                   .col-12.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
                     b-form-select(
                       v-model="notifications.removeAfter"
@@ -302,7 +302,14 @@ export default {
       notificationsTimer: null,
       loading: true,
       loadingAlexa: false,
-      removeAfterTimer: [1, 3, 6, 12, 24],
+      removeAfterTimer: [
+        { value: 1, text: `1 ${this.$t('hour')}` },
+        { value: 3, text: `3 ${this.$t('hours')}` },
+        { value: 6, text: `6 ${this.$t('hours')}` },
+        { value: 12, text: `12 ${this.$t('hours')}` },
+        { value: 24, text: `24 ${this.$t('hours')}` },
+        { value: 0, text: this.$t('never') },
+      ],
       telegramTypes: [
         { value: 'Text', text: this.$t('text') },
         { value: 'Snapshot', text: this.$t('snapshot') },

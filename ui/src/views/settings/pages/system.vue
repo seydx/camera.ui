@@ -17,8 +17,13 @@
           div.mt-2.mb-4
             .settings-box.container
               .row
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center
-                  a.d-block.w-100.text-center.mb-2(:href="'https://www.npmjs.com/package/' + npmPackageName" target="_blank" :class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("version") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  .d-block.w-100.text-right.mb-2(:class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("npm") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
                   b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
             b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart") 
               span(v-if="loadingUpdate") 
@@ -37,22 +42,227 @@
             )
               b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog", style="position: relative; top: calc(50% - 16px)")
               vue-markdown.changelog(v-else) {{ changelog }}
-            b-button#restartButton.w-100.mt-3.restartButton(v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
-              span(v-if="loadingRestart") 
-                b-spinner(style="color: #fff" type="grow" small)
-              span(v-else) {{ $t('restart') }}
-            b-modal#restartModal.restartModal(
-              centered
-              scrollable
-              ref="restartModal"
-              :title="$t('restart_confirm')",
-              :cancel-title="$t('cancel')",
-              :ok-title="$t('restart')",
-              ok-variant="primary",
-              size="sm"
-              @ok="onRestart"
-            )
-              .w-100.text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.interface.expand ? "180" : "-90"', @click="settingsLayout.system.interface.expand = !settingsLayout.system.interface.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.interface.expand = !settingsLayout.system.interface.expand") {{ $t('interface') }}
+        b-collapse(
+          v-model="settingsLayout.system.interface.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='number',
+                    placeholder=3333,
+                    v-model="config.port"
+                    number
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("language") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-select(
+                    v-model="config.language"
+                    :options="languages"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("theme") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-select(
+                    v-model="config.theme"
+                    :options="themes"
+                  )
+              hr.hr-underline
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("debug") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.debug"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.debug ? 'true' : 'false'"
+                    aria-controls="debug"
+                  )
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.ssl.expand ? "180" : "-90"', @click="settingsLayout.system.ssl.expand = !settingsLayout.system.ssl.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.ssl.expand = !settingsLayout.system.ssl.expand") {{ $t('ssl') }}
+        b-collapse(
+          v-model="settingsLayout.system.ssl.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_certificate") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    v-model="config.ssl.cert"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_key") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    v-model="config.ssl.key"
+                  )
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.options.expand ? "180" : "-90"', @click="settingsLayout.system.options.expand = !settingsLayout.system.options.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.options.expand = !settingsLayout.system.options.expand") {{ $t('options') }}
+        b-collapse(
+          v-model="settingsLayout.system.options.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("video_processor_path") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    placeholder="ffmpeg",
+                    v-model="config.options.videoProcessor"
+                  )
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.http.expand ? "180" : "-90"', @click="settingsLayout.system.http.expand = !settingsLayout.system.http.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.http.expand = !settingsLayout.system.http.expand") {{ $t('http') }}
+        b-collapse(
+          v-model="settingsLayout.system.http.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.http.active"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.http.active ? 'true' : 'false'"
+                    aria-controls="http"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='number',
+                    placeholder=7272,
+                    v-model="config.http.port"
+                    number
+                  )
+              hr.hr-underline
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("localhttp") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.http.localhttp"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.http.localhttp ? 'true' : 'false'"
+                    aria-controls="localhttp"
+                  )
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.mqtt.expand ? "180" : "-90"', @click="settingsLayout.system.mqtt.expand = !settingsLayout.system.mqtt.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.mqtt.expand = !settingsLayout.system.mqtt.expand") {{ $t('mqtt') }}
+        b-collapse(
+          v-model="settingsLayout.system.mqtt.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.mqtt.active"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.mqtt.active ? 'true' : 'false'"
+                    aria-controls="mqtt"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("host") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    v-model="config.mqtt.host"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='number',
+                    placeholder=1883,
+                    v-model="config.mqtt.port"
+                    number
+                  )
+      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
+        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.smtp.expand ? "180" : "-90"', @click="settingsLayout.system.smtp.expand = !settingsLayout.system.smtp.expand")
+        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.smtp.expand = !settingsLayout.system.smtp.expand") {{ $t('smtp') }}
+        b-collapse(
+          v-model="settingsLayout.system.smtp.expand"
+        )
+          div.mt-2.mb-4
+            .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.smtp.active"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.smtp.active ? 'true' : 'false'"
+                    aria-controls="smtp"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='number',
+                    placeholder=7272,
+                    v-model="config.smtp.port"
+                    number
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("space_replace") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    placeholder="+",
+                    v-model="config.smtp.space_replace"
+                  )
+      b-button#saveButton.w-100.saveButton(data-aos="fade-up" data-aos-duration="1000" @click="onSave" :class="(loadingRestart || loadingSave ? 'btnError' : 'btn-success') + (settingsLayout.system.smtp.expand ? '' : ' mt-3')" :disabled="loadingRestart || loadingSave" variant="success") 
+        span(v-if="loadingSave") 
+          b-spinner(style="color: #fff" type="grow" small)
+        span(v-else) {{ $t('save') }}
+      b-button#restartButton.w-100.restartButton.mt-3(data-aos="fade-up" data-aos-duration="1000" v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
+        span(v-if="loadingRestart") 
+          b-spinner(style="color: #fff" type="grow" small)
+        span(v-else) {{ $t('restart') }}
+      b-modal#restartModal.restartModal(
+        centered
+        scrollable
+        ref="restartModal"
+        :title="$t('restart_confirm')",
+        :cancel-title="$t('cancel')",
+        :ok-title="$t('restart')",
+        ok-variant="primary",
+        size="sm"
+        @ok="onRestart"
+      )
+        .w-100.text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
+                  
 </template>
 
 <script>
@@ -61,7 +271,7 @@ import compareVersions from 'compare-versions';
 import { ToggleButton } from 'vue-js-toggle-button';
 import VueMarkdown from 'vue-markdown';
 
-import { getConfig } from '@/api/config.api';
+import { /*changeConfig,*/ getConfig } from '@/api/config.api';
 import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 
 import localStorageMixin from '@/mixins/localstorage.mixin';
@@ -81,23 +291,92 @@ export default {
     return {
       availableVersions: [],
       changelog: '',
+      config: {},
+      configTimer: null,
       currentVersion: null,
       error: false,
+      languages: [
+        { value: 'auto', text: this.$t('auto') },
+        { value: 'de', text: this.$t('lang_german') },
+        { value: 'en', text: this.$t('lang_english') },
+        { value: 'nl', text: this.$t('lang_dutch') },
+      ],
       latestVersion: null,
       loading: true,
+      loadingSave: false,
       loadingRestart: false,
       loadingUpdate: false,
       npmPackageName: 'camera.ui',
       serviceMode: false,
+      themes: [
+        { value: 'auto', text: this.$t('auto') },
+        { value: 'light-pink', text: `${this.$t('light')} - ${this.$t('pink')}` },
+        { value: 'light-blue', text: `${this.$t('light')} - ${this.$t('blue')}` },
+        { value: 'light-blgray', text: `${this.$t('light')} - ${this.$t('blue_gray')}` },
+        { value: 'light-brown', text: `${this.$t('light')} - ${this.$t('brown')}` },
+        { value: 'light-orange', text: `${this.$t('light')} - ${this.$t('orange')}` },
+        { value: 'light-purple', text: `${this.$t('light')} - ${this.$t('purple')}` },
+        { value: 'light-yellow', text: `${this.$t('light')} - ${this.$t('yellow')}` },
+        { value: 'light-green', text: `${this.$t('light')} - ${this.$t('green')}` },
+        { value: 'light-gray', text: `${this.$t('light')} - ${this.$t('gray')}` },
+        { value: 'dark-pink', text: `${this.$t('dark')} - ${this.$t('pink')}` },
+        { value: 'dark-blue', text: `${this.$t('dark')} - ${this.$t('blue')}` },
+        { value: 'dark-blgray', text: `${this.$t('dark')} - ${this.$t('blue_gray')}` },
+        { value: 'dark-brown', text: `${this.$t('dark')} - ${this.$t('brown')}` },
+        { value: 'dark-orange', text: `${this.$t('dark')} - ${this.$t('orange')}` },
+        { value: 'dark-purple', text: `${this.$t('dark')} - ${this.$t('purple')}` },
+        { value: 'dark-yellow', text: `${this.$t('dark')} - ${this.$t('yellow')}` },
+        { value: 'dark-green', text: `${this.$t('dark')} - ${this.$t('green')}` },
+        { value: 'dark-gray', text: `${this.$t('dark')} - ${this.$t('gray')}` },
+      ],
       updateAvailable: false,
     };
   },
   async created() {
     try {
-      const config = await getConfig();
+      const config = await getConfig('?target=config');
 
       this.serviceMode = config.data.serviceMode;
       this.currentVersion = config.data.version;
+
+      //remove not used params from config editor
+      delete config.timestamp;
+      delete config.platform;
+      delete config.node;
+      delete config.version;
+      delete config.firstStart;
+      delete config.mqttConfigs;
+      delete config.serviceMode;
+
+      this.config = {
+        port: config.data.port || window.location.port || 80,
+        debug: config.data.debug || false,
+        language: config.data.language || 'auto',
+        theme: config.data.theme || 'auto',
+        ssl: config.data.ssl || {
+          key: '',
+          cert: '',
+        },
+        http: config.data.http || {
+          active: false,
+          localhttp: false,
+          port: 7575,
+        },
+        mqtt: config.data.mqtt || {
+          active: false,
+          host: '',
+          port: 1883,
+        },
+        smtp: config.data.smtp || {
+          active: false,
+          port: 2525,
+          space_replace: '+',
+        },
+        options: config.data.options || {
+          videoProcessor: 'ffmpeg',
+        },
+        cameras: config.data.cameras || [],
+      };
 
       let currentDistTag = this.currentVersion.split('-')[1];
 
@@ -162,6 +441,8 @@ export default {
       this.latestVersion = relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
+      //this.$watch('config', this.configWatcher, { deep: true });
+
       this.loading = false;
     } catch (err) {
       console.log(err.message);
@@ -169,6 +450,47 @@ export default {
     }
   },
   methods: {
+    async configWatcher(newValue) {
+      this.$Progress.start();
+
+      if (this.configTimer) {
+        clearTimeout(this.configTimer);
+        this.configTimer = null;
+      }
+
+      this.configTimer = setTimeout(async () => {
+        try {
+          //await changeConfig(newValue);
+          console.log(newValue);
+          this.$Progress.finish();
+        } catch (error) {
+          this.$toast.error(error.message);
+          this.$Progress.fail();
+        }
+      }, 2000);
+    },
+    async onSave() {
+      const saveButton = document.getElementById('saveButton');
+      saveButton.blur();
+
+      if (this.loadingSave || this.loadingRestart) {
+        return;
+      }
+
+      this.$Progress.start();
+      this.loadingSave = true;
+
+      try {
+        //await changeConfig(newValue);
+        console.log(this.config);
+        this.$Progress.finish();
+        this.loadingSave = false;
+      } catch (error) {
+        this.$toast.error(error.message);
+        this.$Progress.fail();
+        this.loadingSave = false;
+      }
+    },
     async onRestart() {
       const restartButton = document.getElementById('restartButton');
       restartButton.blur();
@@ -265,7 +587,8 @@ export default {
 }
 
 .restartButton,
-.updateButton {
+.updateButton,
+.saveButton {
   height: 40px;
   transition: 0.3s all;
 }

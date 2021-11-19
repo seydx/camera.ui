@@ -207,11 +207,65 @@ export default {
         server: {
           expand: true,
         },
+        http: {
+          expand: true,
+        },
+        mqtt: {
+          expand: true,
+        },
+        smtp: {
+          expand: true,
+        },
+        interface: {
+          expand: true,
+        },
+        ssl: {
+          expand: true,
+        },
+        options: {
+          expand: true,
+        },
       };
     }
 
     if (!this.settingsLayout.system.server) {
       this.settingsLayout.system.server = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.http) {
+      this.settingsLayout.system.http = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.mqtt) {
+      this.settingsLayout.system.mqtt = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.smtp) {
+      this.settingsLayout.system.smtp = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.interface) {
+      this.settingsLayout.system.interface = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.ssl) {
+      this.settingsLayout.system.ssl = {
+        expand: true,
+      };
+    }
+
+    if (!this.settingsLayout.system.options) {
+      this.settingsLayout.system.options = {
         expand: true,
       };
     }
@@ -289,6 +343,24 @@ export default {
                 expand: true,
               },
               server: {
+                expand: true,
+              },
+              http: {
+                expand: true,
+              },
+              mqtt: {
+                expand: true,
+              },
+              smtp: {
+                expand: true,
+              },
+              interface: {
+                expand: true,
+              },
+              ssl: {
+                expand: true,
+              },
+              options: {
                 expand: true,
               },
             },

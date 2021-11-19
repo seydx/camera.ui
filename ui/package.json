@@ -17,7 +17,7 @@
     "gridstack": "^4.3.1",
     "jsmpeg-fast-player": "^0.2.0",
     "register-service-worker": "^1.7.2",
-    "socket.io-client": "4.3.2",
+    "socket.io-client": "4.4.0",
     "v-calendar": "^2.3.4",
     "v-jsoneditor": "^1.4.5",
     "vee-validate": "^3.4.14",
