@@ -21,7 +21,7 @@ class Telegram {
     Telegram.bot = new Telegraf(telegramConfig.token);
 
     Telegram.bot.catch((error, context) => {
-      log.error('Telegram: ' + context.updateType + ' Error: ' + error.message);
+      log.error('Telegram: ' + context.updateType + ' Error: ' + error.message, 'Telegram', 'notifications');
     });
 
     Telegram.bot.start((context) => {
@@ -62,11 +62,11 @@ class Telegram {
           await Telegram.bot.telegram.sendVideo(chatID, { source: content.video });
         }
       } catch (error) {
-        log.error('An error occured during sending telegram message!');
-        log.error(error);
+        log.error('An error occured during sending telegram message!', 'Telegram', 'notifications');
+        log.error(error, 'Telegram', 'notifications');
       }
     } else {
-      log.warn('Can not send Telegram notification, bot is not initialized!');
+      log.warn('Can not send Telegram notification, bot is not initialized!', 'Telegram', 'notifications');
     }
   }
 }

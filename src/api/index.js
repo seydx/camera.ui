@@ -48,7 +48,7 @@ class Server {
       let error_;
 
       if (error.syscall !== 'listen') {
-        log.error(error);
+        log.error(error, 'Interface', 'server');
       }
 
       let bind = typeof port === 'string' ? 'Pipe ' + this.#port : 'Port ' + this.#port;
@@ -64,7 +64,7 @@ class Server {
           error_ = error;
       }
 
-      log.error(error_);
+      log.error(error_, 'Interface', 'server');
 
       server.close();
     });

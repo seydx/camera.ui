@@ -25,7 +25,7 @@ div
             @rightRevealed="rightRevealed($event)"
           )
           template(v-slot="{ revealLeft, revealRight, close }")
-            b-link.card.z-index-2(v-if="notification.recordStoring" @click="index = i")
+            b-link.card.z-index-2(v-if="notification.recordStoring" @click="index = i", :class="notification.type === 'ERROR' ? 'errorType' : notification.type === 'WARN' ? 'warnType' : 'infoType'")
               .col-10.p-0.flex-wrap.justify-content-start.align-content-center
                 .card-title {{ notification.title || notification.camera || $t('notification') }}
                 .card-text 
@@ -39,7 +39,7 @@ div
                   | {{ notification.time }}
               .col-2.p-0.d-flex.flex-wrap.justify-content-end.align-content-center
                 b-card-img-lazy.notification-card.object-fit(@error.native="handleErrorImg" :src="'/files/' + (notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName)" :img-alt="notification.name"  right height=40 width=40 blank-height=40 blank-width=40)
-            .card.z-index-2(v-else)
+            .card.z-index-2(v-else :class="notification.type === 'ERROR' ? 'errorType' : notification.type === 'WARN' ? 'warnType' : 'infoType'")
               .col-12.p-0.flex-wrap.justify-content-start.align-content-center
                 .card-title {{ notification.title || notification.camera || $t('notification') }}
                 .card-text
@@ -391,6 +391,18 @@ a.card:hover {
 
 .hideRemoveButton {
   opacity: 0 !important;
+}
+
+.errorType {
+  border-left: 2px solid #c92121;
+}
+
+.warnType {
+  border-left: 2px solid #bb9e11;
+}
+
+.infoType {
+  border-left: 2px solid var(--third-bg-color);
 }
 </style>
 

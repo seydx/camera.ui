@@ -4,7 +4,7 @@ transition(name="fade" @enter="enter")
     .wrapper.add-new-item.d-flex.flex-wrap.justify-content-center.align-content-center.add-new-item-hover.pulse(@click="show = !show")
       b-icon.add-icon.show-icon(icon="gear-wide-connected", animation="spin", aria-hidden="true")
     b-modal(v-model="show" modal-class="overflow-hidden" dialog-class="modal-bottom" hide-footer hide-header)
-      .row.pb-4(v-if="showLeftNavi || showRightNavi || showMiddleNavi")
+      .row.pb-4.pl-save.pr-save(v-if="showLeftNavi || showRightNavi || showMiddleNavi")
         .col.d-flex.flex-wrap.justify-content-start.align-content-center(v-if="showLeftNavi")
           b-button.left-button(pill, @click="$emit('leftNaviClick')") {{ leftNaviName }}
         .col.d-flex.flex-wrap.justify-content-center.align-content-center(v-if="showMiddleNavi && items.length")
@@ -13,7 +13,7 @@ transition(name="fade" @enter="enter")
           b-button.btn-primary.right-button(pill, @click="$emit('rightNaviClick')") {{ rightNaviName }}
       hr.mt-0.pt-0(v-if="showLeftNavi || showRightNavi || showMiddleNavi")
       div(v-for="(item, i) in items" :key="item.name")
-        .row
+        .row.pl-save.pr-save
           .col.d-flex.flex-wrap.align-content-center {{ item.name }}
           .col.d-flex.flex-wrap.align-content-center.justify-content-end.mt-3
             toggle-button(

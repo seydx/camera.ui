@@ -86,19 +86,11 @@ class LoggerService {
     }
   }
 
-  static #formatMessage(message, name, subprefix) {
+  static #formatMessage(message, name) {
     let formatted = '';
 
-    if (name || subprefix) {
-      if (typeof subprefix === 'string') {
-        formatted += `${subprefix} `;
-      } else if (subprefix) {
-        formatted += '[Interface] ';
-      }
-
-      if (name) {
-        formatted += `${name}: `;
-      }
+    if (name) {
+      formatted += `${name}: `;
     }
 
     if (message instanceof Error) {
@@ -114,7 +106,7 @@ class LoggerService {
     return formatted;
   }
 
-  static async #db(level, message, name, subprefix) {
+  static async #db(level, message, name = 'System', subprefix = 'console') {
     if (LoggerService.notificationsDB) {
       //Check notification size, if we exceed more than {1000} notifications, remove the latest
       const notificationsLimit = 1000;
@@ -127,12 +119,12 @@ class LoggerService {
 
       const notification = {
         id: await nanoid(),
-        type: 'Error',
-        title: name || subprefix || 'System',
+        type: level.toUpperCase(),
+        title: name,
         message: message.message || message,
         timestamp: moment().unix(),
         time: moment().format('YYYY-MM-DD HH:mm:ss'),
-        label: 'System',
+        label: subprefix.charAt(0).toUpperCase() + subprefix.slice(1),
       };
 
       LoggerService.notificationsDB.get('notifications').push(notification).write();
@@ -140,17 +132,17 @@ class LoggerService {
     }
   }
 
-  static #logging(level, message, name, subprefix) {
+  static #logging(level, message, name) {
     if (LoggerService.#customLogger) {
-      return LoggerService.#logger.log[level](message, name, subprefix);
+      return LoggerService.#logger.log[level](message, name);
     }
 
     if (level === LogLevel.DEBUG && !LoggerService.#debugEnabled) {
       return;
     }
 
-    //let fileMessage = (message = LoggerService.#formatMessage(message, name, subprefix));
-    message = LoggerService.#formatMessage(message, name, subprefix);
+    //let fileMessage = (message = LoggerService.#formatMessage(message, name));
+    message = LoggerService.#formatMessage(message, name);
 
     const logger = LoggerService.#logger;
     let loggingFunction = logger.log;
@@ -196,8 +188,8 @@ class LoggerService {
     unhookStderr();
   }
 
-  info(message, name, subprefix) {
-    LoggerService.#logging(LogLevel.INFO, message, name, subprefix);
+  info(message, name) {
+    LoggerService.#logging(LogLevel.INFO, message, name);
   }
 
   warn(message, name, subprefix) {
@@ -210,8 +202,8 @@ class LoggerService {
     LoggerService.#db(LogLevel.ERROR, message, name, subprefix);
   }
 
-  debug(message, name, subprefix) {
-    LoggerService.#logging(LogLevel.DEBUG, message, name, subprefix);
+  debug(message, name) {
+    LoggerService.#logging(LogLevel.DEBUG, message, name);
   }
 
   notify(notification) {

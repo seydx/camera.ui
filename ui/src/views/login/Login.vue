@@ -75,7 +75,7 @@ export default {
           }
         } catch (error) {
           this.loading = false;
-          console.log(error);
+          console.log(error.message);
           if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             this.$toast.error(this.$t('cannot_login'));
           } else {

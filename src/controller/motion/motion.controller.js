@@ -16,33 +16,26 @@ const { EventController } = require('../event/event.controller');
 const { log } = LoggerService;
 
 class MotionController {
-  #controller;
-  #motionTimers = new Map();
-
-  #cameras = ConfigService.ui.cameras;
-  #topics = ConfigService.ui.topics;
-
-  static #http = ConfigService.ui.http;
-  static #mqtt = ConfigService.ui.mqtt;
-  static #smtp = ConfigService.ui.smtp;
+  static #controller;
+  static #motionTimers = new Map();
 
   static httpServer = null;
   static mqttClient = null;
   static smtpServer = null;
 
   constructor(controller) {
-    this.#controller = controller;
+    MotionController.#controller = controller;
 
-    if (MotionController.#http) {
-      this.#startHttpServer();
+    if (ConfigService.ui.http) {
+      MotionController.startHttpServer();
     }
 
-    if (MotionController.#mqtt) {
-      this.#startMqttClient();
+    if (ConfigService.ui.mqtt) {
+      MotionController.startMqttClient();
     }
 
-    if (MotionController.#smtp) {
-      this.#startSmtpServer();
+    if (ConfigService.ui.smtp) {
+      MotionController.startSmtpServer();
     }
 
     //used for external events
@@ -52,75 +45,28 @@ class MotionController {
         message: 'Custom event could not be handled',
       };
 
-      result = await this.#handleMotion('custom', cameraName, state, 'extern', result);
+      result = await MotionController.#handleMotion('custom', cameraName, state, 'extern', result);
 
       log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
     };
+
+    this.httpServer = MotionController.httpServer;
+    this.startHttpServer = MotionController.startHttpServer;
+    this.closeHttpServer = MotionController.closeHttpServer;
+
+    this.mqttClient = MotionController.mqttClient;
+    this.startMqttClient = MotionController.startMqttClient;
+    this.closeMqttClient = MotionController.closeMqttClient;
+
+    this.smtpServer = MotionController.smtpServer;
+    this.startSmtpServer = MotionController.startSmtpServer;
+    this.closeSmtpServer = MotionController.closeSmtpServer;
   }
 
-  async #handleMotion(triggerType, cameraName, state, event, result) {
-    const camera = this.#getCamera(cameraName);
-
-    if (camera) {
-      const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
-      const atHome = generalSettings?.atHome || false;
-      const cameraExcluded = (generalSettings?.exclude || []).includes(cameraName);
-
-      if (atHome && !cameraExcluded) {
-        result = {
-          error: false,
-          message: `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`,
-        };
-      } else {
-        result = {
-          error: false,
-          message: 'Handled through extern controller',
-        };
-
-        this.#controller.emit('motion', cameraName, triggerType, state, event);
-
-        if (camera.recordOnMovement) {
-          const timeout = this.#motionTimers.get(camera.name);
-          const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
-
-          if (timeout) {
-            clearTimeout(timeout);
-            this.#motionTimers.delete(camera.name);
-
-            if (state) {
-              result.message = 'Skip motion event, timeout active!';
-            } else {
-              EventController.handle(triggerType, cameraName, state);
-            }
-          } else {
-            if (state && timeoutConfig > 0) {
-              const timer = setTimeout(() => {
-                log.info('Motion handler timeout.', camera.name);
-                this.#motionTimers.delete(camera.name);
-              }, timeoutConfig * 1000);
-
-              this.#motionTimers.set(camera.name, timer);
-            }
-
-            EventController.handle(triggerType, cameraName, state);
-            result.message = 'Handled through intern controller';
-          }
-        }
-      }
-    } else {
-      result = {
-        error: true,
-        message: `Camera '${cameraName}' not found`,
-      };
-    }
-
-    return result;
-  }
-
-  #startHttpServer() {
+  static startHttpServer() {
     log.debug('Setting up HTTP server for motion detection...');
 
-    const hostname = MotionController.#http.localhttp ? 'localhost' : undefined;
+    const hostname = ConfigService.ui.http.localhttp ? 'localhost' : undefined;
 
     MotionController.httpServer = http.createServer();
 
@@ -135,11 +81,10 @@ class MotionController {
       let error_;
 
       if (error.syscall !== 'listen') {
-        log.error(error);
+        log.error(error, 'HTTP Server', 'motion');
       }
 
-      let bind =
-        typeof port === 'string' ? 'Pipe ' + MotionController.#http.port : 'Port ' + MotionController.#http.port;
+      let bind = typeof port === 'string' ? 'Pipe ' + ConfigService.ui.http.port : 'Port ' + ConfigService.ui.http.port;
 
       switch (error.code) {
         case 'EACCES':
@@ -152,7 +97,7 @@ class MotionController {
           error_ = error;
       }
 
-      log.error(error_);
+      log.error(error_, 'HTTP Server', 'motion');
     });
 
     MotionController.httpServer.on('request', async (request, response) => {
@@ -177,7 +122,7 @@ class MotionController {
           let state = triggerType === 'dorbell' ? true : triggerType === 'reset' ? false : true;
           triggerType = triggerType === 'reset' ? 'motion' : triggerType;
 
-          result = await this.#handleMotion(triggerType, cameraName, state, 'http', result);
+          result = await MotionController.#handleMotion(triggerType, cameraName, state, 'http', result);
         }
       }
 
@@ -192,27 +137,27 @@ class MotionController {
       log.debug('HTTP Server closed');
     });
 
-    MotionController.httpServer.listen(MotionController.#http.port, hostname);
+    MotionController.httpServer.listen(ConfigService.ui.http.port, hostname);
   }
 
-  #startMqttClient() {
+  static startMqttClient() {
     log.debug('Setting up MQTT connection for motion detection...');
 
     MotionController.mqttClient = mqtt.connect(
-      (MotionController.#mqtt.tls ? 'mqtts://' : 'mqtt://') +
-        MotionController.#mqtt.host +
+      (ConfigService.ui.mqtt.tls ? 'mqtts://' : 'mqtt://') +
+        ConfigService.ui.mqtt.host +
         ':' +
-        MotionController.#mqtt.port,
+        ConfigService.ui.mqtt.port,
       {
-        username: MotionController.#mqtt.username,
-        password: MotionController.#mqtt.password,
+        username: ConfigService.ui.mqtt.username,
+        password: ConfigService.ui.mqtt.password,
       }
     );
 
     MotionController.mqttClient.on('connect', () => {
       log.debug('MQTT connected');
 
-      for (const [topic] of this.#topics) {
+      for (const [topic] of ConfigService.ui.topics) {
         log.debug(`Subscribing to MQTT topic: ${topic}`);
         MotionController.mqttClient.subscribe(topic + '/#');
       }
@@ -226,7 +171,7 @@ class MotionController {
 
       let cameraName;
 
-      const cameraMqttConfig = this.#topics.get(topic);
+      const cameraMqttConfig = ConfigService.ui.topics.get(topic);
 
       if (cameraMqttConfig) {
         message = message.toString();
@@ -249,7 +194,7 @@ class MotionController {
 
         result =
           state !== undefined
-            ? await this.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
+            ? await MotionController.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
             : {
                 error: true,
                 message: `The incoming MQTT message (${message}) for the topic (${topic}) was not the same as set in config.json. Skip...`,
@@ -269,10 +214,10 @@ class MotionController {
     });
   }
 
-  #startSmtpServer() {
+  static startSmtpServer() {
     log.debug('Setting up SMTP server for motion detection...');
 
-    const regex = new RegExp(EscapeRegExp(MotionController.#smtp.space_replace), 'g');
+    const regex = new RegExp(EscapeRegExp(ConfigService.ui.smtp.space_replace), 'g');
 
     const bunyan = Bunyan.createLogger({
       name: 'smtp',
@@ -306,37 +251,96 @@ class MotionController {
           log.debug(`Email received (${name}).`);
 
           try {
-            http.get(`http://127.0.0.1:${MotionController.#smtp.httpPort}/motion?${name}`);
+            http.get(`http://127.0.0.1:${ConfigService.ui.smtp.httpPort}/motion?${name}`);
           } catch (error) {
-            log.error(`Error making HTTP call (${name}): ${error}`);
+            log.error(`Error making HTTP call (${name}): ${error}`, 'SMTP Server', 'motion');
           }
         }
       },
     });
 
-    MotionController.smtpServer.listen(MotionController.#smtp.port);
+    MotionController.smtpServer.listen(ConfigService.ui.smtp.port);
   }
 
-  #getCamera(cameraName) {
-    return this.#cameras.find((camera) => camera && camera.name === cameraName);
-  }
-
-  closeHttpServer() {
+  static closeHttpServer() {
     if (MotionController.httpServer) {
       MotionController.httpServer.close();
     }
   }
 
-  closeMqttClient() {
+  static closeMqttClient() {
     if (MotionController.mqttClient) {
       MotionController.mqttClient.end();
     }
   }
 
-  closeSmtpServer() {
+  static closeSmtpServer() {
     if (MotionController.smtpServer) {
       MotionController.smtpServer.close();
     }
+  }
+
+  static #getCamera(cameraName) {
+    return ConfigService.ui.cameras.find((camera) => camera && camera.name === cameraName);
+  }
+
+  static async #handleMotion(triggerType, cameraName, state, event, result) {
+    const camera = MotionController.#getCamera(cameraName);
+
+    if (camera) {
+      const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
+      const atHome = generalSettings?.atHome || false;
+      const cameraExcluded = (generalSettings?.exclude || []).includes(cameraName);
+
+      if (atHome && !cameraExcluded) {
+        result = {
+          error: false,
+          message: `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`,
+        };
+      } else {
+        result = {
+          error: false,
+          message: 'Handled through extern controller',
+        };
+
+        MotionController.#controller.emit('motion', cameraName, triggerType, state, event);
+
+        if (camera.recordOnMovement) {
+          const timeout = MotionController.#motionTimers.get(camera.name);
+          const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
+
+          if (timeout) {
+            clearTimeout(timeout);
+            MotionController.#motionTimers.delete(camera.name);
+
+            if (state) {
+              result.message = 'Skip motion event, timeout active!';
+            } else {
+              EventController.handle(triggerType, cameraName, state);
+            }
+          } else {
+            if (state && timeoutConfig > 0) {
+              const timer = setTimeout(() => {
+                log.info('Motion handler timeout.', camera.name);
+                MotionController.#motionTimers.delete(camera.name);
+              }, timeoutConfig * 1000);
+
+              MotionController.#motionTimers.set(camera.name, timer);
+            }
+
+            EventController.handle(triggerType, cameraName, state);
+            result.message = 'Handled through intern controller';
+          }
+        }
+      }
+    } else {
+      result = {
+        error: true,
+        message: `Camera '${cameraName}' not found`,
+      };
+    }
+
+    return result;
   }
 }
 

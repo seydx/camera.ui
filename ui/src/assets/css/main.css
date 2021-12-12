@@ -534,19 +534,19 @@ iframe {
 }
 
 .pt-save {
-  padding-top: env(safe-area-inset-top) !important;
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
 .pb-save {
-  padding-bottom: env(safe-area-inset-bottom) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
 
 .pl-save {
-  padding-left: env(safe-area-inset-left) !important;
+  padding-left: env(safe-area-inset-left, 0px) !important;
 }
 
 .pr-save {
-  padding-bottom: env(safe-area-inset-right) !important;
+  padding-right: env(safe-area-inset-right, 0px) !important;
 }
 
 /*--------------------------------------------------------------

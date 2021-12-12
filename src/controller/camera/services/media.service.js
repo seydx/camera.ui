@@ -12,7 +12,10 @@ class MediaService {
 
   constructor(camera) {
     //log.debug('Initializing camera probe', camera.name);
+    this.reconfigure(camera);
+  }
 
+  reconfigure(camera) {
     this.#camera = camera;
 
     this.cameraName = camera.name;
@@ -68,7 +71,7 @@ class MediaService {
 
       setTimeout(() => {
         if (cp) {
-          log.warn('Can not determine stream codecs, probe timed out');
+          log.warn('Can not determine stream codecs, probe timed out', this.cameraName, 'ffmpeg');
 
           this.codecs.timedout = true;
           cp.kill();

@@ -52,7 +52,7 @@ exports.createBackup = async (localStorage) => {
       cwd: backupDirectory,
       filter: (filePath, stat) => {
         if (stat.size > 5e7) {
-          log.warn(`Backup is skipping "${filePath}" because it is larger than 50MB.`);
+          log.warn(`Backup is skipping "${filePath}" because it is larger than 50MB.`, 'Interface', 'interface');
           return false;
         }
         return true;
@@ -76,7 +76,7 @@ exports.restoreBackup = async (file) => {
   const backupFileName = file.filename; // eslint-disable-line no-unused-vars
   const backupPath = file.path;
 
-  log.warn('Starting backup restore...');
+  log.info('Starting backup restore...');
 
   // extract the tar
   await tar.x({
@@ -91,7 +91,7 @@ exports.restoreBackup = async (file) => {
   await fs.move(backupDirectory + '/recordings', recordingsPath, { overwrite: true });
 
   // remove tmp
-  log.warn('Removing unnecessary files...');
+  log.debug('Removing unnecessary files...');
   await fs.remove(backupDirectory);
 
   // refresh db

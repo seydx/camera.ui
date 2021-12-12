@@ -5,7 +5,7 @@
       source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
     back-to-top(v-if="$route.meta.showBackTop" bottom="45px" right="30px" visibleoffset="100")
       .back-to-top.text-center
-        b-icon(icon="arrow-up-short", aria-hidden="true", style="vertical-align: -.2em !important")
+        b-icon(icon="arrow-up-short", aria-hidden="true", style="vertical-align: -0.2em !important")
     Navbar(:name="$route.params.name || $t($route.meta.parentName || $route.meta.name)", v-if="$route.meta.showNavi")
     transition(name='fade' mode='out-in')
       router-view

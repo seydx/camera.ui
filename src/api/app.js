@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
@@ -39,12 +40,10 @@ exports.App = (options) => {
   app.use(
     helmet.contentSecurityPolicy({
       directives: {
-        // eslint-disable-next-line quotes
         defaultSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
-        // eslint-disable-next-line quotes
-        scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:'],
-        // eslint-disable-next-line quotes
+        scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:', 'data:'],
         childSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'https:'],
+        fontSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:'],
         connectSrc: [
           'ws:',
           'wss:',
@@ -56,17 +55,12 @@ exports.App = (options) => {
           'mediastream:',
           'https://registry.npmjs.org',
           'https://unpkg.com',
-          // eslint-disable-next-line quotes
           "'unsafe-eval'",
-          // eslint-disable-next-line quotes
           "'unsafe-inline'",
-          // eslint-disable-next-line quotes
           "'self'",
         ],
-        // eslint-disable-next-line quotes
-        'img-src': ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
-        // eslint-disable-next-line quotes
-        'media-src': ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
+        imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
+        mediaSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
       },
     })
   );

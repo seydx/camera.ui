@@ -31,13 +31,18 @@ class PrebufferService {
 
   constructor(camera, mediaService) {
     //log.debug('Initializing camera prebuffering', camera.name);
+    this.reconfigure(camera, mediaService);
+  }
 
+  reconfigure(camera, mediaService) {
     this.#camera = camera;
     this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
     this.ffmpegInput = camera.videoConfig.source;
+
+    this.restart();
   }
 
   async start() {
@@ -45,8 +50,8 @@ class PrebufferService {
       this.resetPrebuffer();
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
-      log.warn('An error occured during starting camera prebuffer!', this.cameraName);
-      log.error(error, this.cameraName);
+      log.warn('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
+      log.error(error, this.cameraName, 'prebuffer');
 
       setTimeout(() => this.restartCamera(), 10000);
     }
@@ -105,7 +110,7 @@ class PrebufferService {
     const audioArguments = [];
 
     /*if (audioEnabled && incompatibleAudio) {
-      log.warn(`Skip transcoding audio, incompatible audio detected (${probeAudio.toString()})`, this.cameraName);
+      log.warn(`Skip transcoding audio, incompatible audio detected (${probeAudio.toString()})`, this.cameraName, 'prebuffer');
       audioEnabled = false;
     }*/
 
@@ -113,14 +118,22 @@ class PrebufferService {
       if (!probeTimedOut) {
         acodec = 'copy';
       } else if (audioEnabled) {
-        log.warn('Turning off audio, audio source not found or timed out during probe stream', this.cameraName);
+        log.warn(
+          'Turning off audio, audio source not found or timed out during probe stream',
+          this.cameraName,
+          'prebuffer'
+        );
         audioEnabled = false;
       }
     }
 
     if (audioEnabled) {
       if (incompatibleAudio && acodec !== 'libfdk_aac') {
-        log.warn(`Incompatible audio stream detected ${probeAudio}, transcoding with "libfdk_aac"..`, this.cameraName);
+        log.warn(
+          `Incompatible audio stream detected ${probeAudio}, transcoding with "libfdk_aac"..`,
+          this.cameraName,
+          'prebuffer'
+        );
         acodec = 'libfdk_aac';
       } else if (!incompatibleAudio && acodec !== 'copy') {
         log.info('Compatible audio stream detected, copying..');
@@ -201,13 +214,15 @@ class PrebufferService {
       cp.stdout.on('data', (data) => log.debug(data.toString(), this.cameraName));
     }
 
-    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));*/
+    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'prebuffer'));*/
 
-    cp.stdout.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName));
+    cp.stdout.on('data', (data) =>
+      log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'prebuffer')
+    );
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg prebuffer process exited with error! (${signal})`, this.cameraName);
+        log.error(`FFmpeg prebuffer process exited with error! (${signal})`, this.cameraName, 'prebuffer');
       } else {
         log.debug('FFmpeg prebuffer process exited (expected)', this.cameraName);
       }

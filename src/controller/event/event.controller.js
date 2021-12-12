@@ -50,7 +50,7 @@ class EventController {
           Camera = await CamerasModel.findByName(cameraName);
           CameraSettings = await CamerasModel.getSettingsByName(cameraName);
         } catch (error) {
-          log.warn(error.message, cameraName);
+          log.warn(error.message, cameraName, 'events');
         }
 
         if (Camera && Camera.videoConfig) {
@@ -233,17 +233,21 @@ class EventController {
                 );
               }
             } else {
-              log.warn('Max sessions exceeded.', cameraName);
+              log.warn('Max sessions exceeded.', cameraName, 'events');
             }
           } else {
-            log.warn('Can not handle movement, another movement currently in progress for this camera.', cameraName);
+            log.warn(
+              'Can not handle movement, another movement currently in progress for this camera.',
+              cameraName,
+              'events'
+            );
           }
         } else {
-          log.warn(`Camera "${cameraName}" not found.`, cameraName);
+          log.warn(`Camera "${cameraName}" not found.`, cameraName, 'events');
         }
       } catch (error) {
-        log.error('An error occured during handling motion event', cameraName);
-        log.error(error, cameraName);
+        log.error('An error occured during handling motion event', cameraName, 'events');
+        log.error(error, cameraName, 'events');
       }
 
       EventController.#movementHandler[cameraName] = false;
@@ -324,11 +328,11 @@ class EventController {
           last_rekognition: moment().format('YYYY-MM-DD HH:mm:ss'),
         });
       } catch (error) {
-        log.error('An error occured during image rekognition', cameraName);
-        log.error(error, cameraName);
+        log.error('An error occured during image rekognition', cameraName, 'events');
+        log.error(error, cameraName, 'events');
       }
     } else {
-      log.warn('No AWS credentials setted up in config.json!', cameraName);
+      log.warn('No AWS credentials setted up in config.json!', cameraName, 'events');
     }
 
     return detected.length > 0 ? detected[0] : false;
@@ -411,8 +415,8 @@ class EventController {
         log.debug('Skip alexa notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending notification to alexa', cameraName);
-      log.error(error, cameraName);
+      log.error('An error occured during sending notification to alexa', cameraName, 'events');
+      log.error(error, cameraName, 'events');
     }
   }
 
@@ -505,8 +509,8 @@ class EventController {
         }
       }
     } catch (error) {
-      log.error('An error occured during sending telegram notification', cameraName);
-      log.error(error, cameraName);
+      log.error('An error occured during sending telegram notification', cameraName, 'events');
+      log.error(error, cameraName, 'events');
     }
   }
 
@@ -530,8 +534,8 @@ class EventController {
         log.debug('Skip Webhook notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending webhook notification', cameraName);
-      log.error(error, cameraName);
+      log.error('An error occured during sending webhook notification', cameraName, 'events');
+      log.error(error, cameraName, 'events');
     }
   }
 
@@ -552,16 +556,16 @@ class EventController {
             log.debug('Webpush Notification Grant changed! Removing subscription..', cameraName);
             await SettingsModel.patchByTarget(false, 'webpush', { subscription: false });
           } else {
-            log.error('An error occured during sending Wep-Push Notification!', cameraName);
-            log.error(error.body, cameraName);
+            log.error('An error occured during sending Wep-Push Notification!', cameraName, 'events');
+            log.error(error.body, cameraName, 'events');
           }
         });
       } else {
         log.debug('Skip Webpush notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending webpush notification', cameraName);
-      log.error(error, cameraName);
+      log.error('An error occured during sending webpush notification', cameraName, 'events');
+      log.error(error, cameraName, 'events');
     }
   }
 }

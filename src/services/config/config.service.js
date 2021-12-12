@@ -250,7 +250,7 @@ class ConfigService {
           cert: fs.readFileSync(ssl.cert, 'utf8'),
         };
       } catch (error) {
-        log.warn(`WARNING: Could not read SSL Cert/Key. Error: ${error.message}`);
+        log.warn(`WARNING: Could not read SSL Cert/Key. Error: ${error.message}`, 'Config', 'system');
       }
     }
   }
@@ -278,7 +278,7 @@ class ConfigService {
     }
 
     if (!ConfigService.ui.http) {
-      log.warn('Can not enable SMTP server, HTTP server needs to be enabled too');
+      log.warn('Can not enable SMTP server, HTTP server needs to be enabled too', 'Config', 'system');
       return;
     }
 
@@ -311,7 +311,11 @@ class ConfigService {
         const sourceArguments = camera.videoConfig.source.split(/\s+/);
 
         if (!sourceArguments.includes('-i')) {
-          log.warn(`${camera.name}: The source for this camera is missing "-i", it is likely misconfigured.`);
+          log.warn(
+            `${camera.name}: The source for this camera is missing "-i", it is likely misconfigured.`,
+            'Config',
+            'system'
+          );
           camera.videoConfig.source = false;
         }
 
@@ -319,7 +323,7 @@ class ConfigService {
           const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
 
           if (!stillArguments.includes('-i')) {
-            log.warn(`${camera.name}: The stillImageSource for this camera is missing "-i" !`);
+            log.warn(`${camera.name}: The stillImageSource for this camera is missing "-i" !`, 'Config', 'system');
             camera.videoConfig.stillImageSource = camera.videoConfig.source || false;
           }
         } else {

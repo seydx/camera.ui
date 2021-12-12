@@ -211,7 +211,7 @@ div.navbar2-collapsed.navbar2-collapsed-expand > ul > li:last-child > a.router-l
   border-bottom-left-radius: 8px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 850px) {
   .toggler {
     display: none !important;
   }

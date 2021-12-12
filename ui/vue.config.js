@@ -104,9 +104,9 @@ module.exports = {
     });
   },
   configureWebpack: {
-    performance: {
+    /*performance: {
       hints: process.env.NODE_ENV === 'production' ? false : 'warning',
-    },
+    },*/
     resolve: {
       alias: {
         jquery: path.resolve(__dirname, 'node_modules/gridstack/dist/jq/jquery.js'),

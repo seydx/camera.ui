@@ -31,11 +31,14 @@ class SessionService {
 
     log.warn(
       `Starting a new stream process not allowed! ${this.session.activeStreams} processes currently active!`,
-      this.cameraName
+      this.cameraName,
+      'sessions'
     );
+
     log.warn(
       `If you want to spawn more than ${this.session.maxStreams} strea processes at same time, please increase "maxStreams" under videoConfig!`,
-      this.cameraName
+      this.cameraName,
+      'sessions'
     );
 
     log.debug(`Currently active streams: ${this.session.activeStreams}`, this.cameraName);

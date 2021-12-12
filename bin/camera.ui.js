@@ -73,7 +73,7 @@ if (cluster.isPrimary) {
 
     shuttingDown = true;
 
-    log.warn(`Got ${signal}, shutting down camera.ui...`);
+    log.warn(`Got ${signal}, shutting down camera.ui...`, 'System', 'system');
 
     setTimeout(() => {
       // eslint-disable-next-line unicorn/no-process-exit

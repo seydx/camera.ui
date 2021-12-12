@@ -17,31 +17,31 @@
           div.mt-2.mb-4
             .settings-box.container
               .row
-                .col-7.d-flex.flex-wrap.align-content-center {{ $t("version") }}
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("status") }}
                 .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
                   .d-block.w-100.text-right.mb-2(:class="updateAvailable ? 'text-danger' : 'text-success'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
               hr.hr-underline
               .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("npm") }}
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("version") }}
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
                   b-form-select.versionSelect(v-model="currentVersion" :options="availableVersions")
-            b-button#updateButton.w-100.mt-3.updateButton(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart") 
-              span(v-if="loadingUpdate") 
-                b-spinner(style="color: #fff" type="grow" small)
-              span(v-else) {{ `${$t('update')} & ${$t('restart')}` }}
-            b-modal#updateModal.updateModal(
-              centered
-              scrollable
-              ref="updateModal"
-              :title="$t('release_notes')",
-              :cancel-title="$t('cancel')",
-              :ok-title="`${$t('update')} & ${$t('restart')}`",
-              ok-variant="primary",
-              size="lg"
-              @ok="onUpdate"
-            )
-              b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog", style="position: relative; top: calc(50% - 16px)")
-              vue-markdown.changelog(v-else) {{ changelog }}
+              b-button#updateButton.w-100.updateButton.mt-4(v-b-modal.updateModal @click="onBeforeUpdate" :class="loadingUpdate || loadingRestart ? 'btnError' : 'btnNoError'" :disabled="loadingUpdate || loadingRestart") 
+                span(v-if="loadingUpdate") 
+                  b-spinner(style="color: #fff" type="grow" small)
+                span(v-else) {{ `${$t('update')} & ${$t('restart')}` }}
+              b-modal#updateModal.updateModal(
+                centered
+                scrollable
+                ref="updateModal"
+                :title="$t('release_notes')",
+                :cancel-title="$t('cancel')",
+                :ok-title="`${$t('update')} & ${$t('restart')}`",
+                ok-variant="primary",
+                size="lg"
+                @ok="onUpdate"
+              )
+                b-spinner.text-color-primary.d-block.mx-auto(v-if="!changelog", style="position: relative; top: calc(50% - 16px)")
+                vue-markdown.changelog(v-else) {{ changelog }}
       .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.interface.expand ? "180" : "-90"', @click="settingsLayout.system.interface.expand = !settingsLayout.system.interface.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.interface.expand = !settingsLayout.system.interface.expand") {{ $t('interface') }}
@@ -51,6 +51,11 @@
           div.mt-2.mb-4
             .settings-box.container
               .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("status") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  .d-block.w-100.text-right.mb-2.text-success {{ $t('online') }}
+              hr.hr-underline
+              .row
                 .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
                 .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
                   b-form-input(
@@ -58,6 +63,34 @@
                     placeholder=3333,
                     v-model="config.port"
                     number
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_certificate") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    v-model="config.ssl.cert"
+                  )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_key") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='text',
+                    v-model="config.ssl.key"
+                  )
+              hr.hr-underline
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("debug") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  toggle-button(
+                    v-model="config.debug"
+                    color="var(--primary-color) !important",
+                    :height="30",
+                    :sync="true",
+                    :aria-expanded="config.debug ? 'true' : 'false'"
+                    aria-controls="debug"
                   )
               hr.hr-underline
               .row
@@ -76,56 +109,22 @@
                     :options="themes"
                   )
               hr.hr-underline
-              .row
-                .col-7.d-flex.flex-wrap.align-content-center {{ $t("debug") }}
-                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
-                  toggle-button(
-                    v-model="config.debug"
-                    color="var(--primary-color) !important",
-                    :height="30",
-                    :sync="true",
-                    :aria-expanded="config.debug ? 'true' : 'false'"
-                    aria-controls="debug"
-                  )
-      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.ssl.expand ? "180" : "-90"', @click="settingsLayout.system.ssl.expand = !settingsLayout.system.ssl.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.ssl.expand = !settingsLayout.system.ssl.expand") {{ $t('ssl') }}
-        b-collapse(
-          v-model="settingsLayout.system.ssl.expand"
-        )
-          div.mt-2.mb-4
-            .settings-box.container
-              .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_certificate") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
-                  b-form-input(
-                    type='text',
-                    v-model="config.ssl.cert"
-                  )
-              hr.hr-underline
-              .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("path_to_key") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
-                  b-form-input(
-                    type='text',
-                    v-model="config.ssl.key"
-                  )
-      .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
-        b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.options.expand ? "180" : "-90"', @click="settingsLayout.system.options.expand = !settingsLayout.system.options.expand")
-        h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.options.expand = !settingsLayout.system.options.expand") {{ $t('options') }}
-        b-collapse(
-          v-model="settingsLayout.system.options.expand"
-        )
-          div.mt-2.mb-4
-            .settings-box.container
-              .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("video_processor_path") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
-                  b-form-input(
-                    type='text',
-                    placeholder="ffmpeg",
-                    v-model="config.options.videoProcessor"
-                  )
+              b-button#restartButton.w-100.restartButton.mt-2(v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
+                span(v-if="loadingRestart") 
+                  b-spinner(style="color: #fff" type="grow" small)
+                span(v-else) {{ $t('save') + ' & ' + $t('restart') }}
+              b-modal#restartModal.restartModal(
+                centered
+                scrollable
+                ref="restartModal"
+                :title="$t('restart_confirm')",
+                :cancel-title="$t('cancel')",
+                :ok-title="$t('restart')",
+                ok-variant="primary",
+                size="sm"
+                @ok="onRestart"
+              )
+                .w-100.text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
       .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.http.expand ? "180" : "-90"', @click="settingsLayout.system.http.expand = !settingsLayout.system.http.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.http.expand = !settingsLayout.system.http.expand") {{ $t('http') }}
@@ -134,6 +133,11 @@
         )
           div.mt-2.mb-4
             .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("status") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  .d-block.w-100.text-right.mb-2.text-success {{ $t('online') }}
+              hr.hr-underline
               .row
                 .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
                 .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
@@ -147,16 +151,6 @@
                   )
               hr.hr-underline
               .row
-                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
-                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
-                  b-form-input(
-                    type='number',
-                    placeholder=7272,
-                    v-model="config.http.port"
-                    number
-                  )
-              hr.hr-underline
-              .row
                 .col-7.d-flex.flex-wrap.align-content-center {{ $t("localhttp") }}
                 .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
                   toggle-button(
@@ -167,6 +161,21 @@
                     :aria-expanded="config.http.localhttp ? 'true' : 'false'"
                     aria-controls="localhttp"
                   )
+              hr.hr-underline
+              .row
+                .col-12.d-flex.flex-wrap.align-content-center {{ $t("port") }}
+                .col-12.d-flex.flex-wrap.align-content-center.justify-content-center.mt-3
+                  b-form-input(
+                    type='number',
+                    placeholder=7272,
+                    v-model="config.http.port"
+                    number
+                  )
+              hr.hr-underline
+              b-button#restartHttpButton.w-100.restartButton.mt-4(@click="saveRestartHttp" :class="loadingRestart || loadingHttpRestart ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingHttpRestart") 
+                span(v-if="loadingRestart || loadingHttpRestart") 
+                  b-spinner(style="color: #fff" type="grow" small)
+                span(v-else) {{ $t('save') + ' & ' + $t('restart') }}
       .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.mqtt.expand ? "180" : "-90"', @click="settingsLayout.system.mqtt.expand = !settingsLayout.system.mqtt.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.mqtt.expand = !settingsLayout.system.mqtt.expand") {{ $t('mqtt') }}
@@ -175,6 +184,11 @@
         )
           div.mt-2.mb-4
             .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("status") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  .d-block.w-100.text-right.mb-2.text-success {{ $t('online') }}
+              hr.hr-underline
               .row
                 .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
                 .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
@@ -204,6 +218,10 @@
                     v-model="config.mqtt.port"
                     number
                   )
+              b-button#restartMqttButton.w-100.restartButton.mt-4(@click="saveRestartMqtt" :class="loadingRestart || loadingMqttRestart ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingMqttRestart") 
+                span(v-if="loadingRestart || loadingMqttRestart") 
+                  b-spinner(style="color: #fff" type="grow" small)
+                span(v-else) {{ $t('save') + ' & ' + $t('restart') }}
       .col-12.px-0.mt-2(data-aos="fade-up" data-aos-duration="1000" v-if="checkLevel('admin')")
         b-icon.cursor-pointer.expandTriangle(icon="triangle-fill", aria-hidden="true", :rotate='settingsLayout.system.smtp.expand ? "180" : "-90"', @click="settingsLayout.system.smtp.expand = !settingsLayout.system.smtp.expand")
         h5.cursor-pointer.settings-box-top(@click="settingsLayout.system.smtp.expand = !settingsLayout.system.smtp.expand") {{ $t('smtp') }}
@@ -212,6 +230,11 @@
         )
           div.mt-2.mb-4
             .settings-box.container
+              .row
+                .col-7.d-flex.flex-wrap.align-content-center {{ $t("status") }}
+                .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
+                  .d-block.w-100.text-right.mb-2.text-success {{ $t('online') }}
+              hr.hr-underline
               .row
                 .col-7.d-flex.flex-wrap.align-content-center {{ $t("active") }}
                 .col-5.d-flex.flex-wrap.align-content-center.justify-content-end
@@ -242,27 +265,10 @@
                     placeholder="+",
                     v-model="config.smtp.space_replace"
                   )
-      b-button#saveButton.w-100.saveButton(data-aos="fade-up" data-aos-duration="1000" @click="onSave" :class="(loadingRestart || loadingSave ? 'btnError' : 'btn-success') + (settingsLayout.system.smtp.expand ? '' : ' mt-3')" :disabled="loadingRestart || loadingSave" variant="success") 
-        span(v-if="loadingSave") 
-          b-spinner(style="color: #fff" type="grow" small)
-        span(v-else) {{ $t('save') }}
-      b-button#restartButton.w-100.restartButton.mt-3(data-aos="fade-up" data-aos-duration="1000" v-b-modal.restartModal :class="loadingRestart || loadingUpdate ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingUpdate") 
-        span(v-if="loadingRestart") 
-          b-spinner(style="color: #fff" type="grow" small)
-        span(v-else) {{ $t('restart') }}
-      b-modal#restartModal.restartModal(
-        centered
-        scrollable
-        ref="restartModal"
-        :title="$t('restart_confirm')",
-        :cancel-title="$t('cancel')",
-        :ok-title="$t('restart')",
-        ok-variant="primary",
-        size="sm"
-        @ok="onRestart"
-      )
-        .w-100.text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
-                  
+              b-button#restartSmtpButton.w-100.restartButton.mt-4(@click="saveRestartSmtp" :class="loadingRestart || loadingSmtpRestart ? 'btnError' : 'btnNoError'" :disabled="loadingRestart || loadingSmtpRestart") 
+                span(v-if="loadingRestart || loadingSmtpRestart") 
+                  b-spinner(style="color: #fff" type="grow" small)
+                span(v-else) {{ $t('save') + ' & ' + $t('restart') }}
 </template>
 
 <script>
@@ -305,6 +311,9 @@ export default {
       loading: true,
       loadingSave: false,
       loadingRestart: false,
+      loadingHttpRestart: false,
+      loadingMqttRestart: false,
+      loadingSmtpRestart: false,
       loadingUpdate: false,
       npmPackageName: 'camera.ui',
       serviceMode: false,
@@ -548,6 +557,97 @@ export default {
         this.$toast.error(error.message);
         this.loadingUpdate = false;
         this.loadingRestart = false;
+      }
+    },
+    async saveRestartInterface() {
+      const saveButton = document.getElementById('saveButton');
+      saveButton.blur();
+
+      if (this.loadingSave || this.loadingRestart) {
+        return;
+      }
+
+      this.$Progress.start();
+      this.loadingSave = true;
+
+      try {
+        await changeConfig(this.config);
+        this.$Progress.finish();
+        this.loadingSave = false;
+        this.$toast.success(this.$t('config_was_saved'));
+      } catch (error) {
+        this.$toast.error(error.message);
+        this.$Progress.fail();
+        this.loadingSave = false;
+      }
+    },
+    async saveRestartHttp() {
+      const restartButton = document.getElementById('restartHttpButton');
+      restartButton.blur();
+
+      if (this.loadingHttpRestart || this.loadingRestart) {
+        return;
+      }
+
+      this.$Progress.start();
+      this.loadingHttpRestart = true;
+
+      try {
+        await changeConfig(this.config.http, 'http');
+
+        this.$Progress.finish();
+        this.$toast.success(this.$t('success'));
+        this.loadingHttpRestart = false;
+      } catch (error) {
+        this.$Progress.fail();
+        this.$toast.error(error.message);
+        this.loadingHttpRestart = false;
+      }
+    },
+    async saveRestartMqtt() {
+      const restartButton = document.getElementById('restartMqttButton');
+      restartButton.blur();
+
+      if (this.loadingMqttRestart || this.loadingRestart) {
+        return;
+      }
+
+      this.$Progress.start();
+      this.loadingMqttRestart = true;
+
+      try {
+        await changeConfig(this.config.mqtt, 'mqtt');
+
+        this.$Progress.finish();
+        this.$toast.success(this.$t('success'));
+        this.loadingMqttRestart = false;
+      } catch (error) {
+        this.$Progress.fail();
+        this.$toast.error(error.message);
+        this.loadingMqttRestart = false;
+      }
+    },
+    async saveRestartSmtp() {
+      const restartButton = document.getElementById('restartSmtpButton');
+      restartButton.blur();
+
+      if (this.loadingSmtpRestart || this.loadingRestart) {
+        return;
+      }
+
+      this.$Progress.start();
+      this.loadingSmtpRestart = true;
+
+      try {
+        await changeConfig(this.config.smtp, 'smtp');
+
+        this.$Progress.finish();
+        this.$toast.success(this.$t('success'));
+        this.loadingSmtpRestart = false;
+      } catch (error) {
+        this.$Progress.fail();
+        this.$toast.error(error.message);
+        this.loadingSmtpRestart = false;
       }
     },
   },

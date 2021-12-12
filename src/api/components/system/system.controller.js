@@ -15,9 +15,13 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { Database } = require('../../database');
 const { Socket } = require('../../socket');
 
+const { MotionController } = require('../../../controller/motion/motion.controller');
+
 const { log } = LoggerService;
 
 let updating = false;
+
+const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const updatePlugin = (version) => {
   return new Promise((resolve, reject) => {
@@ -56,19 +60,20 @@ const updatePlugin = (version) => {
   });
 };
 
-exports.getLog = async (req, res) => {
+exports.clearLog = async (req, res) => {
   try {
     const logPath = ConfigService.logFile;
-    const truncateSize = 200000;
-    const logStats = await fs.stat(logPath);
-    const logStartPosition = logStats.size - truncateSize;
-    const logBuffer = Buffer.alloc(truncateSize);
+    fs.truncate(logPath, (err) => {
+      if (err) {
+        return res.status(500).send({
+          statusCode: 500,
+          message: err.message,
+        });
+      }
 
-    const fd = await fs.open(logPath, 'r');
-    // eslint-disable-next-line no-unused-vars
-    const { bytesRead, buffer } = await fs.read(fd, logBuffer, 0, truncateSize, logStartPosition);
-
-    res.status(200).send(buffer.toString());
+      Socket.io.emit('clearLog');
+      res.status(204).send({});
+    });
   } catch (error) {
     res.status(500).send({
       statusCode: 500,
@@ -102,20 +107,17 @@ exports.downloadLog = async (req, res) => {
   }
 };
 
-exports.clearLog = async (req, res) => {
+exports.fetchNpm = async (req, res) => {
   try {
-    const logPath = ConfigService.logFile;
-    fs.truncate(logPath, (err) => {
-      if (err) {
-        return res.status(500).send({
-          statusCode: 500,
-          message: err.message,
-        });
-      }
+    const moduleName = ConfigService.env.moduleName;
 
-      Socket.io.emit('clearLog');
-      res.status(204).send({});
+    const response = await axios(`https://registry.npmjs.org/${moduleName}`, {
+      headers: {
+        accept: 'application/vnd.npm.install-v1+json',
+      },
     });
+
+    res.status(200).send(response.data);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,
@@ -140,17 +142,115 @@ exports.getChangelog = async (req, res) => {
   }
 };
 
-exports.fetchNpm = async (req, res) => {
+exports.getHttpServerStatus = async (req, res) => {
   try {
-    const moduleName = ConfigService.env.moduleName;
+    const status = MotionController.httpServer.listening;
 
-    const response = await axios(`https://registry.npmjs.org/${moduleName}`, {
-      headers: {
-        accept: 'application/vnd.npm.install-v1+json',
-      },
+    res.status(200).send({
+      status: status ? 'running' : 'not running',
     });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
 
-    res.status(200).send(response.data);
+exports.getLog = async (req, res) => {
+  try {
+    const logPath = ConfigService.logFile;
+    const truncateSize = 200000;
+    const logStats = await fs.stat(logPath);
+    const logStartPosition = logStats.size - truncateSize;
+    const logBuffer = Buffer.alloc(truncateSize);
+
+    const fd = await fs.open(logPath, 'r');
+    // eslint-disable-next-line no-unused-vars
+    const { bytesRead, buffer } = await fs.read(fd, logBuffer, 0, truncateSize, logStartPosition);
+
+    res.status(200).send(buffer.toString());
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.getMqttClientStatus = async (req, res) => {
+  try {
+    const status = MotionController.mqttClient.connected;
+
+    res.status(200).send({
+      status: status ? 'running' : 'not running',
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.getSmtpServerStatus = async (req, res) => {
+  try {
+    const status = MotionController.smtpServer.server.listening;
+
+    res.status(200).send({
+      status: status ? 'running' : 'not running',
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restarHttpServer = async (req, res) => {
+  try {
+    MotionController.closeHttpServer();
+    await setTimeoutAsync(1000);
+
+    MotionController.startHttpServer();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restartMqttClient = async (req, res) => {
+  try {
+    MotionController.closeMqttClient();
+    await setTimeoutAsync(1000);
+
+    MotionController.startMqttClient();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restartSmtpServer = async (req, res) => {
+  try {
+    MotionController.closeSmtpServer();
+    await setTimeoutAsync(1000);
+
+    MotionController.startSmtpServer();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

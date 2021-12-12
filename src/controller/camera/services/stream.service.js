@@ -10,9 +10,10 @@ const { Database } = require('../../../api/database');
 const { log } = LoggerService;
 
 class StreamService {
+  #socket;
   #camera;
   #sessionService;
-  #socket;
+  #mediaService;
 
   #videoProcessor = ConfigService.ui.options.videoProcessor;
   #interfaceDB = Database.interfaceDB;
@@ -21,10 +22,23 @@ class StreamService {
 
   constructor(camera, mediaService, sessionService, socket) {
     //log.debug('Initializing camera stream', camera.name);
+    this.reconfigure(camera, mediaService, sessionService, socket);
+  }
 
+  reconfigure(camera, mediaService, sessionService, socket) {
     this.#camera = camera;
-    this.#sessionService = sessionService;
-    this.#socket = socket;
+
+    if (socket) {
+      this.#socket = socket;
+    }
+
+    if (sessionService) {
+      this.#sessionService = sessionService;
+    }
+
+    if (mediaService) {
+      this.#mediaService = mediaService;
+    }
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
@@ -142,12 +156,12 @@ class StreamService {
         });
 
         this.streamSession.stderr.on('data', (data) =>
-          log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName)
+          log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'streams')
         );
 
         this.streamSession.on('exit', (code, signal) => {
           if (code === 1) {
-            log.error(`Stream exited with error! (${signal})`, this.cameraName);
+            log.error(`Stream exited with error! (${signal})`, this.cameraName, 'streams');
           } else {
             log.debug('Stream exit (expected)', this.cameraName);
           }
@@ -156,7 +170,7 @@ class StreamService {
           this.#sessionService.closeSession();
         });
       } else {
-        log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName);
+        log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName, 'streams');
       }
     }
   }
@@ -181,7 +195,7 @@ class StreamService {
     if (source.inludes('-i')) {
       this.streamOptions.source = source.split(' ');
     } else {
-      log.warn(`Source ${source} is not valid, skipping`);
+      log.warn(`Source ${source} is not valid, skipping`, this.cameraName, 'streams');
     }
   }
 

@@ -217,7 +217,6 @@ export default {
         filter.status = configuredFilter.status.map((status) => status.value);
         filter.types = configuredFilter.types.map((type) => type.value);
 
-        console.log(filter);
         this.$emit('filter', filter);
       },
       deep: true,

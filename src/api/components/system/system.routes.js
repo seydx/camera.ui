@@ -153,6 +153,72 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/http/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart http server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/http/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.restarHttpServer,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/smtp/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart smtp server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/smtp/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.restartSmtpServer,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/mqtt/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart mqtt client
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/http/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.restartMqttClient,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/update:
    *   put:
    *     tags: [System]

@@ -200,7 +200,7 @@ export default {
 }
 
 div.navbar2-items > ul > li > .nav-link {
-  padding: 0.5rem 0.7rem;
+  padding: 0.5rem 0.5rem;
 }
 
 div.navbar2-items > ul > li > a.router-link-active {
@@ -237,6 +237,7 @@ div.navbar2-items > ul > li > a.router-link-active {
   background: var(--primary-color);
   border-radius: 5px;
   transition: 0.3s all;
+  margin-left: 0.5rem;
 }
 
 .logout-btn:hover {
@@ -263,7 +264,7 @@ div.navbar2-items > ul > li > a.router-link-active {
   border: 1px solid var(--secondary-bg-color);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 850px) {
   .navbar2-items {
     display: flex !important;
   }

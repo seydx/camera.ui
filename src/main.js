@@ -47,7 +47,9 @@ class Interface extends EventEmitter {
 
     if (!compareVersions.compare(process.version, '14.18.1', '>=')) {
       this.log.warn(
-        `Node.js v16.12.0 or higher is required. You may experience issues running this plugin running on ${process.version}.`
+        `Node.js v16.12.0 or higher is required. You may experience issues running this plugin running on ${process.version}.`,
+        'System',
+        'system'
       );
     }
 
@@ -75,6 +77,10 @@ class Interface extends EventEmitter {
 
     // start
     this.#server.listen(config.port);
+
+    this.on('finishLaunching', () => {
+      console.log(this);
+    });
   }
 
   close() {
@@ -112,7 +118,7 @@ class Interface extends EventEmitter {
 
     const errorHandler = (error) => {
       if (error.stack) {
-        log.error(error.stack);
+        log.error(error.stack, 'System', 'system');
       }
 
       if (!shuttingDown) {

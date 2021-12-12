@@ -120,7 +120,7 @@ class Alexa {
           });
         });
       } else {
-        log.warn('Can not send notification alexa, alexa is not initialized!');
+        log.warn('Can not send notification alexa, alexa is not initialized!', 'Alexa', 'notifications');
       }
     } catch (error) {
       if (error.includes('You can try to get the cookie manually by opening')) {
