@@ -1,4 +1,4 @@
-# camera.ui
+# ui
 
 ## Project setup
 ```

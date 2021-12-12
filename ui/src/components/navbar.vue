@@ -1,119 +1,86 @@
 <template lang="pug">
-div
-  div(:class="`d-flex flex-wrap align-content-center navbar2 ${!$route.meta.hasFilter ? 'bottom-shadow' : ''}`")
-    .navbar2-inner.container.d-flex.flex-wrap.align-content-center.mt-save.toggleArea
-      b-navbar.w-100.p-0.m-0(variant='faded' type='light')
-        b-navbar-brand(href='/dashboard')
-          img.navbar-brand-img.d-inline-block.align-middle.theme-img(src='@/assets/img/logo_transparent-256@pink.png', alt='camera.ui')
-          | {{ name }}
-        .navbar2-items.w-100.justify-content-end
-          ul
-            li.nav-item(v-if="checkLevel('dashboard:access')")
-              router-link.nav-link(to="/dashboard") {{ $t("dashboard") }}
+.tw-relative.tw-z-10
+  .top-navi-bar-minified(v-if="$route.meta.config.showMinifiedNavbar")
+    v-btn.text-font-default.included(@click="toggleNavi" icon height="38px" width="38px")
+      v-icon.text-transparent {{ showSidebar ? 'mdi-arrow-left-thick' : 'mdi-arrow-right-thick' }}
+  v-app-bar.top-navi-bar.pt-safe(v-else height="64px" :class="($route.meta.config.fixedNavbar ? 'top-navi-bar-fixed ' : '') + (extendSidebar ? 'extended-sidebar' : '')")
+    .navi-wrap.pl-safe.pr-safe.tw-max-w-10xl
+      v-btn.text-font-default.included(@click="toggleNavi" icon height="38px" width="38px")
+        v-icon mdi-menu
+      .tw-flex.tw-ml-auto(v-if="checkLevel('notifications:access')")
 
-            li.nav-item(v-if="checkLevel('cameras:access')")
-              router-link.nav-link(to="/cameras") {{ $t("cameras") }}
+        v-badge(:value="notSize" :dot="notSize < 1" :content="notSize" color="var(--cui-primary)" offset-x="20" offset-y="20" bordered overlap)
+          template(v-slot:badge)
+            .badge-text.tw-flex.tw-justify-center.tw-items-center.tw-h-full.tw-w-full
+              span(v-if="notSize > 99") 99+
+              span(v-else) {{ notSize }}
+          v-btn.text-font-default.tw-text-white.tw-mr-1(@click="$router.push('/notifications')" icon height="38px" width="38px")
+            v-icon mdi-bell
 
-            li.nav-item(v-if="checkLevel('recordings:access')")
-              router-link.nav-link(to="/recordings") {{ $t("recordings") }}
-
-            li.nav-item(v-if="checkLevel('camview:access')")
-              router-link.nav-link(to="/camview") {{ $t("camview") }}
-
-            li.nav-item.mr-2(v-if="checkLevel('settings:profile:access')")
-              router-link.nav-link(to="/settings/profile", :class="$route.path.includes('settings') ? 'router-link-exact-active router-link-active' : ''") {{ $t("settings") }}
-
-            li.nav-item.pl-0(v-if="checkLevel('notifications:access')")
-              router-link.nav-link.pl-0(to="/notifications")
-                b-icon(icon="bell-fill")
-                span.notbadge.badge(v-if="notSize")
-
-            li.nav-item.pl-0(v-if="checkLevel('admin')")
-              router-link.nav-link.pl-0(to="/log")
-                b-icon(icon="file-text-fill")
-
-            li.nav-item.pl-0(v-if="checkLevel('admin')")
-              router-link.nav-link.pl-0(to="/config")
-                b-icon(icon="gear-fill")
-            
-            li.nav-item.logout-btn(v-if="$store.state.auth.user")
-              b-link.nav-link.text-white(v-on:click.native="handleLogout") {{ $t('signout')}}
-        toggler(
-          :notSize="notSize"
-          @logOut="handleLogout"
-        )
 </template>
 
 <script>
-import { BIcon, BIconBellFill, BIconFileTextFill, BIconGearFill, BIconPower } from 'bootstrap-vue';
-import theme from '@/mixins/theme.mixin';
-import toggler from '@/components/toggler.vue';
+import { bus } from '@/main';
 
 export default {
   name: 'Navbar',
-  components: {
-    BIcon,
-    BIconBellFill,
-    BIconFileTextFill,
-    BIconGearFill,
-    BIconPower,
-    toggler,
-  },
-  mixins: [theme],
-  props: {
-    name: {
-      type: String,
-      default: 'camera.ui',
-    },
-  },
+
+  data: () => ({
+    extendSidebar: false,
+    showSidebar: false,
+    showNotificationsMenu: false,
+    showProfileMenu: false,
+  }),
+
   computed: {
     notSize() {
       return this.$store.state.notifications.size;
     },
   },
-  watch: {
-    $route() {
-      const navbar = document.querySelector('.navbar2-inner');
-      const navbarBrand = document.querySelector('.navbar-brand');
-      const navbarBrandIMG = document.querySelector('.navbar-brand-img');
 
-      navbar?.classList.remove('navbar2-inner-minify');
-      navbarBrand?.classList.remove('navbar-brand-minify');
-      navbarBrandIMG?.classList.remove('navbar-brand-img-minify');
+  created() {
+    bus.$on('extendSidebar', this.triggerSidebar);
+  },
 
-      if (this.$route.meta.name == 'log' || this.$route.meta.name == 'config') {
-        this.navbarScrollHandler();
+  beforeDestroy() {
+    bus.$off('extendSidebar', this.triggerSidebar);
+  },
+
+  methods: {
+    triggerSidebar(state) {
+      this.showSidebar = state;
+
+      if (this.$route.meta.config.fixedNavbar) {
+        this.extendSidebar = state;
+
+        setTimeout(() => {
+          this.scrollNavi();
+        }, 300);
+      } else {
+        this.extendSidebar = false;
       }
     },
-  },
-  mounted() {
-    if (this.$route.meta.name == 'log' || this.$route.meta.name == 'config') {
-      this.navbarScrollHandler();
-    }
+    toggleNavi() {
+      bus.$emit('showSidebar', true);
+      bus.$emit('showOverlay', true);
 
-    document.addEventListener('scroll', this.navbarScrollHandler);
-  },
-  beforeDestroy() {
-    document.removeEventListener('scroll', this.navbarScrollHandler);
-  },
-  methods: {
-    async handleLogout() {
-      await this.$store.dispatch('auth/logout');
-      setTimeout(() => this.$router.push('/'), 200);
+      setTimeout(() => {
+        this.scrollNavi();
+      }, 300);
     },
-    navbarScrollHandler() {
-      const navbar = document.querySelector('.navbar2-inner');
-      const navbarBrand = document.querySelector('.navbar-brand');
-      const navbarBrandIMG = document.querySelector('.navbar-brand-img');
+    scrollNavi() {
+      const activeNav = document.querySelector('.sidebar-nav-item-active');
+      const mainNavi = this.$route.meta.config.showMinifiedNavbar
+        ? document.querySelector('.minified-navi')
+        : document.querySelector('.main-navi');
 
-      if (window.scrollY > 10 || this.$route.meta.name === 'log' || this.$route.meta.name === 'config') {
-        navbar.classList.add('navbar2-inner-minify');
-        navbarBrand.classList.add('navbar-brand-minify');
-        navbarBrandIMG.classList.add('navbar-brand-img-minify');
-      } else {
-        navbar.classList.remove('navbar2-inner-minify');
-        navbarBrand.classList.remove('navbar-brand-minify');
-        navbarBrandIMG.classList.remove('navbar-brand-img-minify');
+      if (activeNav && mainNavi) {
+        this.$vuetify.goTo(activeNav, {
+          container: mainNavi,
+          duration: 250,
+          offset: 50,
+          easing: 'easeInOutCubic',
+        });
       }
     },
   },
@@ -121,158 +88,60 @@ export default {
 </script>
 
 <style scoped>
-.navbar2 {
-  background: var(--secondary-bg-color) !important;
-  border-bottom: 3px solid var(--primary-color-2) !important;
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 90;
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
+span >>> .v-badge__badge::after {
+  border-color: rgba(var(--cui-bg-app-bar-rgb)) !important;
 }
 
-.bottom-shadow {
-  -webkit-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
-  -moz-box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
-  box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1);
-}
-
-.navbar-light .navbar-brand {
-  color: var(--primary-font-color);
-}
-
-.navbar-light .navbar-brand:focus,
-.navbar-light .navbar-brand:hover {
-  color: var(--primary-font-color);
-}
-
-.navbar2-inner {
-  height: 90px;
-  transition: 0.3s all;
-}
-
-.navbar2-inner-minify {
-  height: 60px;
-}
-
-.navbar-brand {
-  transition: 0.3s all;
-}
-
-.navbar-brand-minify {
-  font-size: 1rem !important;
-}
-
-.navbar-brand-img {
-  transition: 0.3s all;
-  object-fit: cover;
-  max-width: 45px;
-  max-height: 45px;
-}
-
-.navbar-brand-img-minify {
-  max-width: 35px;
-  max-height: 35px;
-}
-
-.navbar2-items {
-  display: none !important;
-  font-size: 0.8rem;
-}
-
-.navbar2-items ul {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.navbar2-items ul li a {
-  color: var(--primary-font-color);
-}
-
-.navbar2-items ul li a:hover {
-  color: var(--primary-color);
-}
-
-div.navbar2-items > ul > li > .nav-link {
-  padding: 0.5rem 0.5rem;
-}
-
-div.navbar2-items > ul > li > a.router-link-active {
-  color: var(--primary-color) !important;
-}
-
-.system-btn {
-  margin-right: 5px;
-  color: var(--primary-font-color) !important;
-  opacity: 0.2;
-}
-
-.system-btn:hover {
-  color: var(--primary-color) !important;
-  opacity: 1;
-}
-
-.camview-btn {
-  background: var(--third-bg-color);
-  border-radius: 5px;
-  transition: 0.3s all;
-  margin-right: 5px;
-}
-
-.camview-btn:hover {
-  background: var(--third-bg-color-hover);
-}
-
-.camview-btn a:hover {
-  color: var(--primary-font-color) !important;
-}
-
-.logout-btn {
-  background: var(--primary-color);
-  border-radius: 5px;
-  transition: 0.3s all;
-  margin-left: 0.5rem;
-}
-
-.logout-btn:hover {
-  background: var(--secondary-color);
-}
-
-.logout-btn a {
-  color: #fff !important;
-}
-
-.logout-btn a:hover {
-  color: #fff !important;
-}
-
-.notbadge {
-  display: inline-block !important;
-  width: 10px;
-  height: 10px;
-  background: #df0000;
-  border-radius: 10px;
-  margin-left: -7px;
+.navi-wrap {
   position: relative;
-  top: -6px;
-  border: 1px solid var(--secondary-bg-color);
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
-@media (min-width: 850px) {
-  .navbar2-items {
-    display: flex !important;
+.top-navi-bar-minified {
+  position: absolute !important;
+  height: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem) !important;
+  padding-left: calc(env(safe-area-inset-left, 0px) + 1rem) !important;
+}
+
+.top-navi-bar {
+  transition: 0.3s all;
+  height: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+  background: rgba(var(--cui-bg-app-bar-rgb)) !important;
+  box-shadow: 0px 3px 3px -2px rgb(0 0 0 / 15%), 0px 3px 4px 0px rgb(0 0 0 / 1%), 0px 1px 8px 0px rgb(0 0 0 / 1%) !important;
+  border-bottom: 1px solid rgba(var(--cui-bg-app-bar-border-rgb)) !important;
+}
+
+.top-navi-bar-fixed {
+  margin-left: 78px;
+  position: fixed;
+}
+
+.notification-chip {
+  color: rgba(var(--cui-text-default-rgb)) !important;
+  background: rgba(var(--cui-bg-status-bar-rgb)) !important;
+}
+
+.extended-sidebar {
+  margin-left: 280px;
+}
+
+.text-transparent {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.badge-text {
+  font-size: 0.5rem;
+}
+
+@media (max-width: 960px) {
+  .top-navi-bar {
+    margin-left: 0 !important;
   }
-}
-
-@media (min-width: 1200px) {
-  .navbar2-items {
-    font-size: 0.9rem;
+  .extended-sidebar {
+    margin-left: 0 !important;
   }
 }
 </style>

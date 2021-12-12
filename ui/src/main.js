@@ -1,112 +1,54 @@
 import Vue from 'vue';
-import App from '@/App.vue';
-import router from '@/router';
-import store from '@/store';
-import '@/registerServiceWorker';
+import App from './App.vue';
+import router from './router';
+import store from './store';
+import vuetify from './plugins/vuetify';
+import './registerServiceWorker';
 
+import '@/assets/css/tailwind.css';
 import '@/assets/css/theme.css';
-import '@/assets/css/preloader.css';
 import '@/assets/css/main.css';
+
+import '@fontsource/inter/100.css';
+import '@fontsource/inter/200.css';
+import '@fontsource/inter/300.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import '@fontsource/inter/900.css';
+import 'vue-toastification/dist/index.css';
+import 'xterm/css/xterm.css';
 
 import permission from '@/mixins/permission.mixin';
 
-import AOS from '@/plugins/aos.plugin';
 import { i18n } from '@/i18n';
-
-import {
-  ButtonPlugin,
-  CardPlugin,
-  CollapsePlugin,
-  FormCheckboxPlugin,
-  FormFilePlugin,
-  FormGroupPlugin,
-  FormInputPlugin,
-  FormPlugin,
-  FormSelectPlugin,
-  FormTimepickerPlugin,
-  InputGroupPlugin,
-  LinkPlugin,
-  ModalPlugin,
-  OverlayPlugin,
-  NavbarPlugin,
-  PopoverPlugin,
-  SpinnerPlugin,
-} from 'bootstrap-vue';
-
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-vue/dist/bootstrap-vue.css';
+import Loader from '@/components/loader.vue';
 
 import Toast from 'vue-toastification';
 import ToastOptions from '@/common/toast.defaults.js';
-import 'vue-toastification/dist/index.css';
 
-import VueProgressBar from 'vue-progressbar';
-
-import VueSocketIOExt from 'vue-socket.io-extended';
 import socket from '@/common/socket-instance';
+import VueSocketIOExt from 'vue-socket.io-extended';
 
-import 'xterm/css/xterm.css';
-
-Vue.mixin(permission);
-
-Vue.use(AOS);
-Vue.use(ButtonPlugin);
-Vue.use(CardPlugin);
-Vue.use(CollapsePlugin);
-Vue.use(FormCheckboxPlugin);
-Vue.use(FormFilePlugin);
-Vue.use(FormGroupPlugin);
-Vue.use(FormInputPlugin);
-Vue.use(FormPlugin);
-Vue.use(FormSelectPlugin);
-Vue.use(FormTimepickerPlugin);
-Vue.use(InputGroupPlugin);
-Vue.use(LinkPlugin);
-Vue.use(ModalPlugin);
-Vue.use(OverlayPlugin);
-Vue.use(NavbarPlugin);
-Vue.use(PopoverPlugin);
-Vue.use(SpinnerPlugin);
 Vue.use(Toast, ToastOptions);
 Vue.use(VueSocketIOExt, socket, { store });
 
-Vue.use(VueProgressBar, {
-  color: 'var(--primary-color)',
-  failedColor: '#FF0000',
-  thickness: '5px',
-  transition: {
-    speed: '0.1s',
-    opacity: '0.6s',
-    termination: 300,
-  },
-  autoRevert: true,
-  location: 'top',
-  inverse: false,
-});
+Vue.component('Loader', Loader);
 
-let updateTimeout = null;
-
-Vue.directive('disable-leading-space', {
-  update(el) {
-    if (updateTimeout) {
-      clearTimeout(updateTimeout);
-      updateTimeout = null;
-    }
-
-    updateTimeout = setTimeout(() => {
-      el.value = el.value.replace(/^\s+|\s+$/g, '');
-      el.dispatchEvent(new Event('input'));
-    }, 300);
-  },
-});
+Vue.mixin(permission);
 
 Vue.config.productionTip = false;
+
+const bus = new Vue();
 
 const app = new Vue({
   router,
   store,
+  vuetify,
   i18n: i18n,
   render: (h) => h(App),
 }).$mount('#app');
 
-export default app;
+export { app, bus };

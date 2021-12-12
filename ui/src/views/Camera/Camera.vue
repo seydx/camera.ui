@@ -1,0 +1,185 @@
+<template lang="pug">
+.tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
+  v-progress-circular(indeterminate color="var(--cui-primary)")
+.tw-py-6.tw-px-4(v-else)
+  .tw-max-w-4xl.pl-safe.pr-safe
+        
+    .tw-flex.tw-flex-wrap
+      v-row.tw-w-full.tw-h-full
+        v-col.tw-mb-3.py-2(:cols="cols")
+          VideoCard(:ref="camera.name" :camera="camera" stream noLink)
+          
+    v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="12")
+      .tw-block
+        h2.tw-leading-6 {{ $route.params.name }}
+        span.subtitle {{ camera.settings.room }}
+
+    v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
+      v-expansion-panels(v-model="notificationsPanel" multiple)
+        v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
+          v-expansion-panel-header.notifications-panel-title.text-font-default.tw-font-bold {{ $t('notifications') }}
+          v-expansion-panel-content.notifications-panel-content
+            v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
+              template(v-slot:default="{ item }")
+                v-list.tw-p-0(two-line dense)
+                  v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
+                    v-list-item-avatar
+                      v-avatar(size="40" color="black")
+                        img(v-on:error="handleErrorImg" :src="`/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}`" width="56")
+                    v-list-item-content
+                      v-list-item-title.text-font-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
+                    v-list-item-action
+                      v-btn.text-muted(icon @click="index = i")
+                        v-icon mdi-plus-circle
+            .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
+              v-list.tw-p-0(dense)
+                v-list-item
+                  v-list-item-content
+                    v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
+
+  CoolLightBox(
+    :items="images" 
+    :index="index"
+    @close="index = null",
+    :closeOnClickOutsideMobile="true",
+    :useZoomBar="true"
+  )
+
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
+
+</template>
+
+<script>
+import CoolLightBox from 'vue-cool-lightbox';
+import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+
+import { getCamera, getCameraSettings } from '@/api/cameras.api';
+import { getNotifications } from '@/api/notifications.api';
+
+import VideoCard from '@/components/camera-card.vue';
+
+import socket from '@/mixins/socket';
+
+const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export default {
+  name: 'Camera',
+
+  components: {
+    CoolLightBox,
+    VideoCard,
+  },
+
+  mixins: [socket],
+
+  data: () => ({
+    camera: {},
+    cols: 12,
+    images: [],
+    index: null,
+    loading: true,
+    notifications: [],
+    notificationsPanel: [0],
+    showNotifications: false,
+  }),
+
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
+  async mounted() {
+    try {
+      const camera = await getCamera(this.$route.params.name);
+      const settings = await getCameraSettings(this.$route.params.name);
+
+      camera.data.settings = settings.data;
+
+      const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
+      this.notifications = lastNotifications.data.result;
+
+      this.images = lastNotifications.data.result.map((not) => {
+        return {
+          title: `${not.camera} - ${not.time}`,
+          src: `/files/${not.fileName}`,
+          thumb: not.recordType === 'Video' ? `/files/${not.name}@2.jpeg` : `/files/${not.fileName}`,
+        };
+      });
+
+      this.camera = camera.data;
+
+      this.loading = false;
+
+      await timeout(10);
+    } catch (err) {
+      console.log(err);
+      this.$toast.error(err.message);
+    }
+  },
+
+  methods: {
+    handleErrorImg(el) {
+      el.target.src = require('@/assets/img/logo.png');
+      el.target.style = 'border-radius: 0;';
+    },
+    toggleNotificationsPanel() {
+      this.showNotifications = !this.showNotifications;
+
+      if (this.showNotifications) {
+        this.notificationsPanel = [0];
+      } else {
+        this.notificationsPanel = [];
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.subtitle {
+  color: rgba(var(--cui-text-third-rgb)) !important;
+}
+
+.notifications-panel {
+  background: rgba(var(--cui-bg-card-rgb)) !important;
+}
+
+.notifications-panel-title {
+  /*border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);*/
+}
+
+.notifications-panel-content {
+  color: rgba(var(--cui-text-default-rgb));
+}
+
+.notification-item {
+  border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
+}
+
+div >>> .v-badge__badge {
+  font-size: 8px;
+  height: 15px;
+  min-width: 15px;
+  padding: 3px 3px;
+}
+
+div >>> .theme--light.v-btn.v-btn--disabled .v-icon {
+  color: rgba(var(--cui-text-default-rgb), 0.4) !important;
+}
+
+div >>> .v-expansion-panel-content__wrap {
+  padding: 0;
+}
+
+div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
+  color: rgba(var(--cui-text-default-rgb)) !important;
+}
+</style>

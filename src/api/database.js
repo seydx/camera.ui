@@ -432,23 +432,21 @@ class Database {
           resolution: '1280x720',
           pingTimeout: 1,
           audio: false,
-          telegramType: '',
-          alexa: 'Disabled',
+          telegramType: 'Image',
+          alexa: false,
           webhookUrl: '',
           camview: {
             favourite: true,
             live: true,
-            expand: true,
           },
           dashboard: {
             favourite: true,
             live: true,
-            expand: true,
           },
           rekognition: {
             active: false,
             confidence: 90,
-            labels: [''],
+            labels: [],
           },
         };
 

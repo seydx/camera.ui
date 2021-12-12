@@ -1,302 +1,455 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
 
-import app from '@/main';
+import { app } from '@/main';
 import store from '@/store';
 
 import { checkLogin } from '@/api/auth.api';
 
+const originalPush = VueRouter.prototype.push;
+VueRouter.prototype.push = function push(location) {
+  return originalPush.call(this, location).catch((err) => err);
+};
+
 Vue.use(VueRouter);
 
-const routes = [
+export const routes = [
   {
     path: '*',
-    name: 'Not Found',
+    name: '404',
     meta: {
-      name: 'notfound',
-      requiresAuth: false,
-      requiredLevel: [],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: false,
+      auth: {
+        requiresAuth: false,
+        requiredLevel: [],
+      },
+      config: {
+        showFooter: false,
+        showNavbar: false,
+        showSidebar: false,
+      },
     },
-    component: () => import(/* webpackChunkName: "404" */ '@/views/notfound/Notfound.vue'),
+    component: () => import(/* webpackChunkName: "404" */ '@/views/404/404.vue'),
   },
   {
     path: '/',
     name: 'Login',
     meta: {
-      name: 'login',
-      requiresAuth: false,
-      requiredLevel: [],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: false,
+      auth: {
+        requiresAuth: false,
+        requiredLevel: [],
+      },
+      config: {
+        showFooter: false,
+        showNavbar: false,
+        showSidebar: false,
+      },
     },
-    component: () => import(/* webpackChunkName: "login" */ '@/views/login/Login.vue'),
+    component: () => import(/* webpackChunkName: "login" */ '@/views/Login/Login.vue'),
   },
   {
     path: '/start',
     name: 'Start',
     meta: {
-      name: 'start',
-      requiresAuth: true,
-      requiredLevel: ['admin'],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: false,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['admin'],
+      },
+      config: {
+        showFooter: false,
+        showNavbar: false,
+        showSidebar: false,
+      },
     },
-    component: () => import(/* webpackChunkName: "login" */ '@/views/start/Start.vue'),
+    component: () => import(/* webpackChunkName: "start" */ '@/views/Start/Start.vue'),
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
     meta: {
-      name: 'dashboard',
-      requiresAuth: true,
-      requiredLevel: [/*"cameras:access", */ 'dashboard:access'],
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: [/*"cameras:access", */ 'dashboard:access'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        main: true,
+        icon: 'mdi-view-dashboard',
+      },
     },
-    component: () => import(/* webpackChunkName: "dashboard" */ '@/views/dashboard/Dashboard.vue'),
+    component: () => import(/* webpackChunkName: "dashboard" */ '@/views/Dashboard/Dashboard.vue'),
   },
   {
     path: '/cameras',
     name: 'Cameras',
     meta: {
-      name: 'cameras',
-      requiresAuth: true,
-      requiredLevel: ['cameras:access'],
-      hasFilter: true,
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        main: true,
+        icon: 'mdi-cctv',
+      },
     },
-    component: () => import(/* webpackChunkName: "cameras" */ '@/views/cameras/Cameras.vue'),
+    component: () => import(/* webpackChunkName: "cameras" */ '@/views/Cameras/Cameras.vue'),
   },
   {
     path: '/cameras/:name',
     name: 'Camera',
     meta: {
-      name: 'camera',
-      requiresAuth: true,
-      requiredLevel: ['cameras:access'],
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
     },
-    component: () => import(/* webpackChunkName: "camera" */ '@/views/camera/Camera.vue'),
+    component: () => import(/* webpackChunkName: "camera" */ '@/views/Camera/Camera.vue'),
   },
   {
     path: '/recordings',
     name: 'Recordings',
     meta: {
-      name: 'recordings',
-      requiresAuth: true,
-      requiredLevel: ['recordings:access'],
-      hasFilter: true,
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['recordings:access'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        main: true,
+        icon: 'mdi-image-multiple',
+      },
     },
-    component: () => import(/* webpackChunkName: "recordings" */ '@/views/recordings/Recordings.vue'),
+    component: () => import(/* webpackChunkName: "recordings" */ '@/views/Recordings/Recordings.vue'),
   },
   {
     path: '/notifications',
     name: 'Notifications',
     meta: {
-      name: 'notifications',
-      requiresAuth: true,
-      requiredLevel: ['notifications:access'],
-      hasFilter: true,
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['notifications:access'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        main: true,
+        icon: 'mdi-bell',
+      },
     },
-    component: () => import(/* webpackChunkName: "notifications" */ '@/views/notifications/Notifications.vue'),
+    component: () => import(/* webpackChunkName: "notifications" */ '@/views/Notifications/Notifications.vue'),
   },
   {
     path: '/camview',
     name: 'Camview',
     meta: {
-      name: 'camview',
-      requiresAuth: true,
-      requiredLevel: [/*"cameras:access", */ 'camview:access'],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: false,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: [/*"cameras:access", */ 'camview:access'],
+      },
+      config: {
+        showFooter: false,
+        showMinifiedNavbar: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        main: true,
+        icon: 'mdi-grid-large',
+      },
     },
-    component: () => import(/* webpackChunkName: "camview" */ '@/views/camview/Camview.vue'),
+    component: () => import(/* webpackChunkName: "camview" */ '@/views/Camview/Camview.vue'),
   },
   {
-    path: '/log',
-    name: 'Log',
+    path: '/console',
+    name: 'Console',
     meta: {
-      name: 'log',
-      requiresAuth: true,
-      requiredLevel: ['admin'],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['admin'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        extras: true,
+        icon: 'mdi-console',
+      },
     },
-    component: () => import(/* webpackChunkName: "log" */ '@/views/log/Log.vue'),
+    component: () => import(/* webpackChunkName: "console" */ '@/views/Console/Console.vue'),
   },
   {
     path: '/config',
     name: 'Config',
     meta: {
-      name: 'config',
-      requiresAuth: true,
-      requiredLevel: ['admin'],
-      showBackTop: false,
-      showFooter: false,
-      showNavi: true,
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['admin'],
+      },
+      config: {
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        extras: true,
+        icon: 'mdi-text-box-outline',
+      },
     },
-    component: () => import(/* webpackChunkName: "config" */ '@/views/config/Config.vue'),
+    component: () => import(/* webpackChunkName: "config" */ '@/views/Config/Config.vue'),
   },
   {
     path: '/settings',
-    redirect: '/settings/profile',
     name: 'Settings',
     meta: {
-      name: 'settings',
-      requiresAuth: true,
-      requiredLevel: ['settings:access'],
-      hasFilter: true,
-      showBackTop: true,
-      showFooter: true,
-      showNavi: true,
+      redirectTo: '/settings/account',
+      auth: {
+        requiresAuth: true,
+        requiredLevel: [],
+      },
+      config: {
+        fixedNavbar: true,
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        bottom: true,
+        icon: 'mdi-cog',
+      },
     },
-    component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/Settings.vue'),
+    component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/Settings.vue'),
     children: [
       {
-        path: 'profile',
-        name: 'Profile Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/profile.vue'),
+        path: 'account',
         meta: {
-          name: 'profile',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:profile:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Account',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: [],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-account-circle-outline',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/account.vue'),
       },
       {
-        path: 'general',
-        name: 'General Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/general.vue'),
+        path: 'appearance',
         meta: {
-          name: 'general',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:general:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Appearance',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: [],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-pencil-ruler',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/appearance.vue'),
       },
       {
-        path: 'dashboard',
-        name: 'Dashboard Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/dashboard.vue'),
+        path: 'interface',
         meta: {
-          name: 'dashboard',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:dashboard:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Interface',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['settings:general:access', 'settings:general:edit'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-application-cog',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/interface.vue'),
+      },
+      {
+        path: 'user',
+        meta: {
+          name: 'Users',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['admin'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-account-plus',
+          },
+        },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/user.vue'),
       },
       {
         path: 'cameras',
-        name: 'Cameras Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/cameras.vue'),
         meta: {
-          name: 'cameras',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:cameras:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Cameras',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['settings:cameras:access', 'settings:cameras:edit'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-cctv',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/cameras.vue'),
       },
       {
         path: 'recordings',
-        name: 'Recordings Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/recordings.vue'),
         meta: {
-          name: 'recordings',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:recordings:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Recordings',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['settings:recordings:access', 'settings:recordings:edit'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-image-multiple-outline',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/recordings.vue'),
       },
       {
         path: 'notifications',
-        name: 'Notifications Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/notifications.vue'),
         meta: {
-          name: 'notifications',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:notifications:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Notifications',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['settings:notifications:access', 'settings:notifications:edit'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-bell-outline',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/notifications.vue'),
       },
       {
-        path: 'camview',
-        name: 'Camview Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/camview.vue'),
+        path: 'rekognition',
         meta: {
-          name: 'camview',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['settings:camview:access'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'Rekognition',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['admin'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-face-recognition',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/rekognition.vue'),
+      },
+      {
+        path: 'backup',
+        meta: {
+          name: 'Backup',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['backup:download', 'backup:restore'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-backup-restore',
+          },
+        },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/backup.vue'),
       },
       {
         path: 'system',
-        name: 'System Settings',
-        component: () => import(/* webpackChunkName: "settings" */ '@/views/settings/pages/system.vue'),
         meta: {
-          name: 'system',
-          parentName: 'settings',
-          transitionName: 'slide',
-          requiresAuth: true,
-          requiredLevel: ['admin'],
-          hasFilter: true,
-          showBackTop: true,
-          showFooter: true,
-          showNavi: true,
+          name: 'System',
+          child: true,
+          auth: {
+            requiresAuth: true,
+            requiredLevel: ['admin'],
+          },
+          config: {
+            fixedNavbar: true,
+            showFooter: true,
+            showNavbar: true,
+            showSidebar: true,
+          },
+          navigation: {
+            icon: 'mdi-tune',
+          },
         },
+        component: () => import(/* webpackChunkName: "settings" */ '@/views/Settings/subpages/system.vue'),
       },
     ],
   },
@@ -317,23 +470,26 @@ const router = new VueRouter({
 
 router.beforeEach(async (to, from, next) => {
   const user = store.getters['auth/user'];
+  const pageName = (to.name || to.meta.name).toLowerCase();
 
   if (user && user.access_token) {
     try {
       await checkLogin();
 
-      if (to.meta.requiredLevel.length > 0) {
+      if (to.meta.auth.requiredLevel.length > 0) {
         const granted = user.permissionLevel.some(
-          (level) => to.meta.requiredLevel.includes(level) || level === 'admin'
+          (level) => to.meta.auth.requiredLevel.includes(level) || level === 'admin'
         );
+
         if (!granted) {
-          app.$toast.error(`${app.$t(to.meta.name)}: ${app.$t('permission_required')}`);
-          return next(false);
+          app.$toast.error(`${app.$t(pageName)}: ${app.$t('permission_required')}`);
+          return next('/settings/account');
+          //return next(false);
         }
       }
 
       const lastRouteName = localStorage.getItem('lastPage');
-      const shouldRedirect = Boolean(to.meta.name === 'login' && lastRouteName);
+      const shouldRedirect = Boolean(pageName === 'login' && lastRouteName);
 
       if (shouldRedirect) {
         next({ path: lastRouteName });
@@ -347,7 +503,7 @@ router.beforeEach(async (to, from, next) => {
       setTimeout(() => next('/'), 200);
     }
   } else {
-    if (to.meta.name !== 'login') {
+    if (pageName !== 'login') {
       next('/');
     } else {
       next();
@@ -356,7 +512,9 @@ router.beforeEach(async (to, from, next) => {
 });
 
 router.afterEach((to) => {
-  if (to.meta.name !== 'login') {
+  const pageName = (to.name || to.meta.name).toLowerCase();
+
+  if (pageName !== 'login') {
     localStorage.setItem('lastPage', to.path);
   }
 });

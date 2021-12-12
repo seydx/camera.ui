@@ -2,6 +2,12 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import Languages from './languages';
 
+const validLanguages = {
+  de: 'german',
+  nl: 'dutch',
+  en: 'english',
+};
+
 const supportedLanguages = (lang) => {
   switch (lang) {
     case 'de':
@@ -37,4 +43,4 @@ const index18n = new VueI18n({
   messages: loadLanguage(lang),
 });
 
-export { index18n as i18n, currentLanguage, loadLanguage, supportedLanguages };
+export { index18n as i18n, currentLanguage, loadLanguage, supportedLanguages, validLanguages };

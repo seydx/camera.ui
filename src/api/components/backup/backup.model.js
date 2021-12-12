@@ -40,6 +40,8 @@ exports.createBackup = async (localStorage) => {
       dashboardLayout: localStorage && localStorage.dashboardLayout ? JSON.parse(localStorage.dashboardLayout) : [],
       theme: localStorage && localStorage.theme ? localStorage.theme : 'light',
       themeColor: localStorage && localStorage.themeColor ? localStorage.themeColor : 'pink',
+      language: localStorage && localStorage.language ? localStorage.language : 'en',
+      darkmode: localStorage && localStorage.darkmode ? localStorage.darkmode : 'manual',
     },
   });
 

@@ -77,10 +77,6 @@ class Interface extends EventEmitter {
 
     // start
     this.#server.listen(config.port);
-
-    this.on('finishLaunching', () => {
-      console.log(this);
-    });
   }
 
   close() {

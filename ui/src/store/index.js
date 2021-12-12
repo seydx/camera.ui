@@ -1,15 +1,15 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { auth } from './auth.module';
-import { camview } from './camview.module';
-import { config } from './config.module';
-import { dashboard } from './dashboard.module';
-import { notifications } from './notifications.module';
+import { auth } from './auth';
+import { camview } from './camview';
+import { config } from './config';
+import { dashboard } from './dashboard';
+import { notifications } from './notifications';
 
 Vue.use(Vuex);
 
-const store = new Vuex.Store({
+export default new Vuex.Store({
   state: {},
   mutations: {},
   actions: {},
@@ -21,5 +21,3 @@ const store = new Vuex.Store({
     notifications,
   },
 });
-
-export default store;

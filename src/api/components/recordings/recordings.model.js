@@ -25,7 +25,19 @@ exports.refresh = async () => {
 exports.list = (query) => {
   let recordings = Database.recordingsDB.get('recordings').value();
 
-  recordings.sort((x, y) => y.timestamp - x.timestamp);
+  // eslint-disable-next-line unicorn/consistent-function-scoping
+  const GetSortOrder = (property) => {
+    return (a, b) => {
+      if (a[property] < b[property]) {
+        return 1;
+      } else if (a[property] > b[property]) {
+        return -1;
+      }
+      return 0;
+    };
+  };
+
+  recordings.sort(GetSortOrder('timestamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
     recordings = recordings.filter((recording) => {

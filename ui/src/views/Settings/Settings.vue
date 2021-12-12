@@ -1,0 +1,191 @@
+<template lang="pug">
+.tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
+  v-progress-circular(indeterminate color="var(--cui-primary)")
+.tw-py-6.tw-px-4(v-else)
+  .tw-max-w-10xl.tw-flex.tw-relative.pl-safe.pr-safe.pt-safe
+    
+    Sidebar
+  
+    .overlay(v-if="showOverlay")
+      
+    .settings-content.settings-included.tw-w-full.tw-relative
+      .tw-flex.tw-flex
+        v-btn.text-font-default.included.settings-nav-toggle(@click="toggleSettingsNavi" icon height="38px" width="38px")
+          v-icon mdi-menu
+        .page-title {{ $t($route.meta.name.toLowerCase()) }}
+      transition(name='fade' mode='out-in')
+        router-view.tw-px-2.tw-max-w-4xl
+
+  CoolLightBox(
+    :items="notImages" 
+    :index="notIndex"
+    @close="closeHandler"
+    :closeOnClickOutsideMobile="true"
+    :useZoomBar="true",
+    :zIndex=99999
+  )
+              
+</template>
+
+<script>
+import CoolLightBox from 'vue-cool-lightbox';
+import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+
+import { bus } from '@/main';
+
+import Sidebar from '@/components/sidebar-settings.vue';
+
+import socket from '@/mixins/socket';
+
+export default {
+  name: 'Settings',
+
+  components: {
+    CoolLightBox,
+    Sidebar,
+  },
+
+  mixins: [socket],
+
+  data: () => ({
+    loading: false,
+    showOverlay: false,
+  }),
+
+  watch: {
+    '$route.path': {
+      handler() {
+        this.showOverlay = false;
+      },
+    },
+  },
+
+  beforeRouteEnter(to, from, next) {
+    if (to.fullPath === '/settings') {
+      next('/settings/account');
+    } else {
+      next();
+    }
+  },
+
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
+  created() {
+    bus.$on('showSettingsOverlay', this.triggerSettingsOverlay);
+  },
+
+  beforeDestroy() {
+    bus.$off('showSettingsOverlay', this.triggerSettingsOverlay);
+  },
+
+  methods: {
+    triggerSettingsOverlay(state) {
+      this.showOverlay = state;
+    },
+    toggleSettingsNavi() {
+      this.showOverlay = true;
+      bus.$emit('showSettingsNavi', true);
+    },
+  },
+};
+</script>
+
+<style>
+.page-title {
+  font-size: 1.5rem !important;
+  letter-spacing: -0.025em !important;
+  font-weight: 700 !important;
+  line-height: 1.5 !important;
+  margin-left: 5px;
+}
+
+.page-subtitle {
+  font-size: 1.2rem !important;
+  font-weight: 500 !important;
+}
+
+.page-item-title {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+.page-subtitle-info {
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: var(--cui-text-hint);
+}
+
+.form-input-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 2;
+}
+
+.loader {
+  top: calc(64px + env(safe-area-inset-top, 0px)) !important;
+}
+
+.input-info {
+  font-size: 11px;
+  color: var(--cui-text-hint);
+  max-width: 90%;
+}
+
+.v-text-field__details {
+  padding-left: 0px !important;
+}
+</style>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition-duration: 0.1s;
+  transition-property: all;
+  transition-timing-function: ease-in-out;
+  transition-delay: 0;
+}
+
+.fade-enter,
+.fade-leave-active {
+  opacity: 0;
+}
+
+.page-loading {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+}
+
+.overlay {
+  background-color: #000 !important;
+  border-color: #000 !important;
+  opacity: 0.6;
+  z-index: 1;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  /*left: -1rem;
+  right: -1.5rem;
+  top: -1.5rem;
+  bottom: -1.5rem;*/
+}
+
+@media (min-width: 1280px) {
+  .overlay {
+    display: none;
+  }
+  .settings-nav-toggle {
+    display: none !important;
+  }
+  .settings-content {
+    margin-left: 320px;
+  }
+}
+</style>

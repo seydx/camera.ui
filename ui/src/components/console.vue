@@ -6,6 +6,8 @@
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
+import { bus } from '@/main';
+
 import { getLog } from '@/api/system.api';
 
 export default {
@@ -16,12 +18,14 @@ export default {
       default: () => ({}),
     },
   },
+
   data() {
     return {
       fitAddon: null,
       term: null,
     };
   },
+
   sockets: {
     clearLog() {
       if (this.term) {
@@ -36,6 +40,7 @@ export default {
       }
     },
   },
+
   async mounted() {
     let terminalContainer = document.getElementById('log');
 
@@ -49,29 +54,31 @@ export default {
     this.fitAddon.fit();
 
     const log = await getLog();
-
     const message = log.data + '\r\n';
-
     this.term.write(message);
+
     this.fitAddon.fit();
+
+    bus.$on('extendSidebar', this.triggerSidebar);
+
+    window.addEventListener('orientationchange', this.resizeHandler);
     window.addEventListener('resize', this.resizeHandler);
   },
   beforeDestroy() {
     this.term?.dispose();
     this.fitAddon?.dispose();
 
-    window.addEventListener('orientationchange', this.resizeHandler);
+    bus.$off('extendSidebar', this.triggerSidebar);
+
+    window.removeEventListener('orientationchange', this.resizeHandler);
     window.removeEventListener('resize', this.resizeHandler);
   },
   methods: {
     resizeHandler() {
       setTimeout(() => this.fitAddon.fit(), 500);
-
-      /*const logContainer = document.querySelector('.log');
-      const logContainerWidth = logContainer.clientWidth;
-
-      const xtermViewport = document.querySelector('.xterm-viewport');
-      xtermViewport.style.width = `${logContainerWidth}px`;*/
+    },
+    triggerSidebar() {
+      setTimeout(() => this.fitAddon.fit(), 500);
     },
   },
 };

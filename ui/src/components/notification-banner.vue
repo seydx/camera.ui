@@ -1,5 +1,5 @@
 <template lang="pug">
-b-link.notification(@click="$emit('showNotification')")
+.notification(@click="$emit('showNotification')")
   span.before
   span.after
   header
@@ -47,10 +47,10 @@ export default {
 }
 
 .Vue-Toastification__toast--info.notification-toast {
-  background-color: var(--trans-bg-color) !important;
+  background-color: rgba(var(--cui-bg-banner-rgb), 0.8) !important;
   backdrop-filter: blur(5px) !important;
   -webkit-backdrop-filter: blur(5px) !important;
-  color: var(--primary-font-color) !important;
+  color: var(--cui-text-default) !important;
   border-radius: 16px !important;
   padding: 14px !important;
 }
@@ -59,8 +59,9 @@ export default {
 .notification:hover {
   position: relative;
   overflow: hidden;
-  color: var(--primary-font-color) !important;
+  color: var(--cui-text-default) !important;
   text-decoration: none !important;
+  cursor: pointer;
 }
 
 .notification header,
@@ -76,7 +77,7 @@ export default {
 .notification header h2 {
   text-transform: uppercase;
   font-size: 10px;
-  color: var(--fourth-bg-color);
+  color: var(--cui-text-hint);
 }
 .notification header .timestamp {
   text-transform: lowercase;
@@ -109,7 +110,7 @@ export default {
 .notification .content .subtxt {
   margin-top: 4px;
   font-size: 10px;
-  color: var(--fourth-bg-color);
+  color: var(--cui-text-hint);
 }
 .notification .before,
 .notification .after {

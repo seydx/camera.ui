@@ -374,7 +374,7 @@ class EventController {
         alexaSettings.auth.macDms &&
         alexaSettings.auth.macDms.device_private_key &&
         alexaSettings.auth.macDms.adp_token &&
-        alexaSettings.enabled !== 'Disabled' &&
+        alexaSettings.enabled &&
         notificationActive
       ) {
         if (alexaSettings.message) {

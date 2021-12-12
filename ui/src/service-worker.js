@@ -27,10 +27,10 @@ self.addEventListener('push', function (event) {
     iconUrl: 'img/web/logo.png',
     image: data.recordStoring
       ? `files/${data.name}${data.recordType === 'Video' ? '@2.jpeg' : '.jpeg'}`
-      : 'img/web/no_recordings.png',
+      : 'img/web/logo.png',
     imageUrl: data.recordStoring
       ? `files/${data.name}${data.recordType === 'Video' ? '@2.jpeg' : '.jpeg'}`
-      : 'img/web/no_recordings.png',
+      : 'img/web/logo.png',
     vibrate: [100, 50, 100],
     eventTime: Date.now(),
     timestamp: Date.now(),

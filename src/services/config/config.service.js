@@ -12,8 +12,6 @@ const { log } = LoggerService;
 
 const uiDefaults = {
   port: 8081,
-  theme: 'auto',
-  language: 'auto',
 };
 
 const httpDefaults = {
@@ -108,8 +106,6 @@ class ConfigService {
   //defaults
   static ui = {
     port: uiDefaults.port,
-    theme: uiDefaults.theme,
-    language: uiDefaults.language,
     debug: true,
     ssl: false,
     mqtt: false,
@@ -176,40 +172,8 @@ class ConfigService {
   }
 
   #config(uiConfig) {
-    const validThemes = [
-      'auto',
-      'light-pink',
-      'light-blue',
-      'light-yellow',
-      'light-green',
-      'light-orange',
-      'light-brown',
-      'light-gray',
-      'light-blgray',
-      'light-purple',
-      'dark-pink',
-      'dark-blue',
-      'dark-yellow',
-      'dark-green',
-      'dark-orange',
-      'dark-brown',
-      'dark-gray',
-      'dark-blgray',
-      'dark-purple',
-    ];
-
-    const validLanguage = ['auto', 'de', 'en', 'nl'];
-
     if (Number.parseInt(uiConfig.port)) {
       ConfigService.ui.port = uiConfig.port;
-    }
-
-    if (validThemes.includes(uiConfig.theme)) {
-      ConfigService.ui.theme = uiConfig.theme;
-    }
-
-    if (validLanguage.includes(uiConfig.language)) {
-      ConfigService.ui.language = uiConfig.language;
     }
   }
 

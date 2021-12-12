@@ -59,7 +59,8 @@ class Socket {
       ) {
         const notifications = await Database.interfaceDB.get('notifications').value();
         const systemNotifications = Database.notificationsDB.get('notifications').value();
-        const size = notifications.length || systemNotifications.length;
+        const size = notifications.length + systemNotifications.length;
+
         socket.emit('notification_size', size);
       } else {
         log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) no access for notifications socket`);

@@ -1,66 +1,120 @@
 <template lang="pug">
-  #app(v-if="$route.meta.name === 'login' || $route.meta.name === 'start' || $route.meta.name === 'notfound' || currentUser")
-    button.add-button(v-if="$route.meta.name !== 'login' && $route.meta.name !== 'start'", style="display: none;") {{ $t('add_to_homescreen') }}
-    audio#soundFx(v-if="$route.meta.name !== 'login'")
-      source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
-    back-to-top(v-if="$route.meta.showBackTop" bottom="45px" right="30px" visibleoffset="100")
-      .back-to-top.text-center
-        b-icon(icon="arrow-up-short", aria-hidden="true", style="vertical-align: -0.2em !important")
-    Navbar(:name="$route.params.name || $t($route.meta.parentName || $route.meta.name)", v-if="$route.meta.showNavi")
-    transition(name='fade' mode='out-in')
-      router-view
-    Footer(v-if="$route.meta.showFooter")
-  #app(v-else)
-    #preloader2
+v-app.app(:style="$route.name === 'Camview' ? 'background: #121212 !important' : ''")
+
+  audio#soundFx
+    source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
+
+  button.add-button(style="display: none;") {{ $t('add_to_homescreen') }}
+  
+  transition(name='fade' mode='out-in')
+    Loader(v-if="loading")
+
+    div(v-else)
+      BackToTop
+      
+      .tw-flex
+        Sidebar(v-if="$route.meta.config && $route.meta.config.showSidebar")
+        
+        .overlay(v-if="showOverlay")
+
+        v-main.tw-relative(:class="$route.name !== 'Login' && $route.name !== 'Start' && $route.name !== '404' && ($route.meta.config && !$route.meta.config.showMinifiedNavbar ? 'content ' : '') + (extendSidebar ? 'extended-sidebar' : '')")
+          Navbar(v-if="$route.meta.config && $route.meta.config.showNavbar")
+          .router-container.tw-relative(:class="$route.meta.config && $route.meta.config.fixedNavbar ? 'fixed-navbar' : ''")
+            transition(name='fade' mode='out-in')
+              router-view
+
+      Footer(v-if="$route.meta.config && $route.meta.config.showFooter")
+      
 </template>
 
 <script>
-import BackToTop from 'vue-backtotop';
-import { BIcon, BIconArrowUpShort } from 'bootstrap-vue';
+import { bus } from '@/main';
 
-import Navbar from '@/components/navbar.vue';
+import BackToTop from '@/components/backtotop.vue';
 import Footer from '@/components/footer.vue';
-import update from '@/mixins/update.mixin';
+import Navbar from '@/components/navbar.vue';
+import Sidebar from '@/components/sidebar.vue';
 
-const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import update from '@/mixins/update';
 
 export default {
+  name: 'App',
+
   components: {
     BackToTop,
-    BIcon,
-    BIconArrowUpShort,
-    Navbar,
     Footer,
+    Navbar,
+    Sidebar,
   },
-  mixins: [update],
-  computed: {
-    currentUser() {
-      return this.$store.state.auth.user;
-    },
-    uiConfig() {
-      return this.$store.state.config.ui;
-    },
-  },
-  async mounted() {
-    const preloader = document.querySelector('#preloader');
 
-    if (preloader) {
-      preloader.classList.add('preloader-hide');
-      await timeout(200);
-      preloader.remove();
-    }
+  mixins: [update],
+
+  data: () => ({
+    extendSidebar: false,
+    loading: true,
+    showOverlay: false,
+  }),
+
+  watch: {
+    '$route.path': {
+      handler() {
+        this.showOverlay = false;
+      },
+    },
   },
+
+  mounted() {
+    bus.$on('showOverlay', this.triggerOverlay);
+    bus.$on('extendSidebar', this.triggerSidebar);
+
+    setTimeout(() => {
+      this.loading = false;
+    }, 2250);
+  },
+
+  beforeDestroy() {
+    bus.$off('showOverlay', this.triggerOverlay);
+    bus.$off('extendSidebar', this.triggerSidebar);
+  },
+
+  updated() {
+    bus.$emit('extendSidebarQuery');
+  },
+
   methods: {
-    closeHandler() {
-      this.index = null;
-      this.$toast.dismiss(this.id);
-      this.id = '';
+    triggerSidebar(state) {
+      this.extendSidebar = state;
+    },
+    triggerOverlay(state) {
+      this.showOverlay = state;
     },
   },
 };
 </script>
 
 <style>
+.page-loading {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.Vue-Toastification__toast {
+  margin-bottom: calc(env(safe-area-inset-top, -5px) + 5px) !important;
+}
+
+@media (max-width: 600px) {
+  .Vue-Toastification__toast {
+    width: 80% !important;
+    margin: 0 auto !important;
+    margin-bottom: clamp(1rem, env(safe-area-inset-bottom, 1rem), env(safe-area-inset-bottom, 1rem)) !important;
+  }
+}
+</style>
+
+<style scoped>
 .fade-enter-active,
 .fade-leave-active {
   transition-duration: 0.1s;
@@ -74,69 +128,95 @@ export default {
   opacity: 0;
 }
 
-.footer-offset {
-  margin-bottom: calc(env(safe-area-inset-bottom, -100px) + 100px) !important;
+.app {
+  color: rgba(var(--cui-text-default-rgb)) !important;
+  background: rgba(var(--cui-bg-default-rgb)) !important;
 }
 
-.offline-icon {
-  position: absolute;
+.content {
+  margin-left: 78px;
+  width: calc(100vw - 78px);
+  min-width: calc(100vw - 78px);
+  max-width: calc(100vw - 78px);
+}
+
+.overlay {
+  background-color: #000 !important;
+  border-color: #000 !important;
+  opacity: 0.6;
+  z-index: 31;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: none;
+}
+
+.router-container {
+  width: 100%;
+  min-height: calc(100vh - 64px - 44px - env(safe-area-inset-top, 0px));
+}
+
+.extended-sidebar {
+  margin-left: 280px;
+  width: calc(100vw - 280px);
+  min-width: calc(100vw - 280px);
+  max-width: calc(100vw - 280px);
+}
+
+.fixed-navbar {
+  margin-top: 64px;
+}
+
+.add-button {
+  position: fixed;
+  bottom: 50px;
   left: 50%;
-  top: 50%;
-  -webkit-transform: translate(-50%, -50%);
-  -ms-transform: translate(-50%, -50%);
-  transform: translate(-50%, -50%);
-  font-size: 30px;
-  color: #c4c4c4;
+  transform: translateX(-50%);
+  background: var(--cui-primary);
+  padding: 10px;
+  border-radius: 10px;
+  color: #ffffff;
+  z-index: 1;
 }
 
-.Vue-Toastification__toast {
-  margin-bottom: calc(env(safe-area-inset-top, -5px) + 5px) !important;
+div >>> .cool-lightbox-toolbar {
+  margin-top: env(safe-area-inset-top, 0px);
+  margin-right: env(safe-area-inset-right, 0px);
 }
 
-.page-link {
-  color: var(--primary-color) !important;
+div >>> .cool-lightbox-caption h6 {
+  margin-bottom: env(safe-area-inset-bottom, 6px);
 }
 
-.page-item.active .page-link {
-  z-index: 0 !important;
-  color: #fff !important;
-  background-color: var(--primary-color) !important;
-  border-color: var(--secondary-color) !important;
+div >>> .cool-lightbox-button--next {
+  margin-right: env(safe-area-inset-right, 0px);
 }
 
-.page-link:hover {
-  color: var(--primary-color) !important;
+div >>> .cool-lightbox-button--prev {
+  margin-left: env(safe-area-inset-left, 0px);
 }
 
-.page-link:focus {
-  box-shadow: none !important;
+div >>> .cool-lightbox-thumbs {
+  background: rgba(var(--cui-bg-card-rgb));
 }
 
-.infinite-status-prompt {
-  color: var(--secondary-font-color) !important;
-}
-
-@media only screen and (max-width: 600px) {
-  .Vue-Toastification__container .Vue-Toastification__toast {
-    width: 80% !important;
-    margin: 0 auto !important;
-    margin-bottom: env(safe-area-inset-bottom) !important;
+@media (max-width: 960px) {
+  .overlay {
+    display: block;
   }
-}
-
-.back-to-top {
-  width: 30px;
-  height: 30px;
-  background: var(--primary-color);
-  border-radius: 15px;
-  color: #ffffff !important;
-  border: 2px solid rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  opacity: 0.8;
-  transition: 0.3s all;
-}
-
-.back-to-top:hover {
-  opacity: 1;
+  .content {
+    margin-left: 0 !important;
+    width: 100vw;
+    min-width: 100vw;
+    max-width: 100vw;
+  }
+  .extended-sidebar {
+    margin-left: 0 !important;
+    width: 100vw;
+    min-width: 100vw;
+    max-width: 100vw;
+  }
 }
 </style>

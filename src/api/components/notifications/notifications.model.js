@@ -53,7 +53,9 @@ exports.list = async (query) => {
 
   if (query.cameras) {
     const cameras = query.cameras.split(',');
-    notifications = notifications.filter((notification) => cameras.includes(notification.camera));
+    notifications = notifications.filter(
+      (notification) => cameras.includes(notification.camera) || cameras.includes(notification.title)
+    );
   }
 
   if (query.labels) {
@@ -68,7 +70,9 @@ exports.list = async (query) => {
 
   if (query.types) {
     const types = query.types.split(',');
-    notifications = notifications.filter((notification) => types.includes(notification.recordType));
+    notifications = notifications.filter(
+      (notification) => types.includes(notification.recordType) || types.includes(notification.type)
+    );
   }
 
   return notifications;

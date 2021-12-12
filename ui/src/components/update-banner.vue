@@ -1,7 +1,7 @@
 <template lang="pug">
-  .row.d-flex.flex-wrap.justify-content-center.align-content-center.z-index-999
-    span {{ updateInformTxt }}
-    button.action.refresh-button(@click="$emit('updateClicked')") {{ updateNowTxt }}
+.tw-flex.tw-align-center.tw-justify-center.tw-z-10
+  span {{ updateInformTxt }}
+  button.action.refresh-button(@click="$emit('updateClicked')") {{ updateNowTxt }}
 </template>
 
 <script>
