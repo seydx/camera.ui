@@ -51,7 +51,7 @@
     .page-subtitle.tw-mt-8 {{ $t('rooms') }}
     .page-subtitle-info {{ $t('new_room') }}
 
-    v-form.tw-w-full.tw-mt-8.tw-mb-3(ref="form" v-model="valid" lazy-validation)
+    v-form.tw-w-full.tw-mt-8.tw-mb-3(ref="form" v-model="valid" lazy-validation @submit.prevent="addRoom")
       label.form-input-label {{ $t('name') }}
       v-text-field(v-model="roomName" :label="$t('room_name')" prepend-inner-icon="mdi-door" append-outer-icon="mdi-check-bold" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.room" required solo)
         template(v-slot:append-outer)

@@ -33,7 +33,7 @@
           .loading(v-if="loadingProgress")
             v-progress-circular(indeterminate color="var(--cui-primary)")
 
-          v-form.login-content.tw-mt-5(ref="form" v-model="valid" lazy-validation v-else)
+          v-form.login-content.tw-mt-5(ref="form" v-model="valid" lazy-validation v-else @submit.prevent="change")
             
             span.login-input-label {{ $t('username') }}
             v-text-field.tw-my-0.login-input.tw-text-white(required ref="name" v-model="name" :rules="rules.username" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('username')")

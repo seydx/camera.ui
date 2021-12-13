@@ -1,7 +1,10 @@
 <template lang="pug">
 v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col
         
-  v-img.video-card-img.tw-items-end.tw-text-white.tw-relative.tw-cursor-pointer(:contain="errorImg" v-on:error="handleErrorImg" :src="src" height="calc(100% - 37px)" @click="$emit('show')")
+  v-img.video-card-img.tw-items-end.tw-text-white.tw-relative.tw-cursor-pointer(v-on:error="handleErrorImg" :src="src" height="calc(100% - 37px)" @click="$emit('show')" :class="errorImg ? 'errorImg' : ''")
+    template(v-slot:placeholder)
+      .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+        v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
     .tw-z-10.tw-absolute.tw-bottom-0
       v-card-title.tw-leading-none.text-shadow.tw-text-base {{ recording.camera }}
       v-card-subtitle.text-muted.text-shadow.tw-text-sm {{ recording.label.includes("no label") ? $t("no_label") : recording.label.includes("Custom") ? $t("custom") : recording.label }}
@@ -94,7 +97,7 @@ export default {
     },
     handleErrorImg() {
       this.errorImg = true;
-      this.src = require('@/assets/img/no_img_white.png');
+      this.src = require('../assets/img/logo.png');
     },
     async remove() {
       this.removing = true;
@@ -157,5 +160,9 @@ export default {
 
 div >>> .v-image__image--contain {
   background-size: unset !important;
+}
+
+.errorImg >>> .v-image__image {
+  background-size: 50% !important;
 }
 </style>

@@ -11,7 +11,7 @@
         v-col.tw-p-0(cols="3").redline.mr-3
         v-col.tw-p-0(cols="3").grayline
         
-      v-form.login-content.tw-mt-5(ref="form" v-model="valid" lazy-validation)
+      v-form.login-content.tw-mt-5(ref="form" v-model="valid" lazy-validation @submit.prevent="signin")
         
         span.login-input-label {{ $t('username') }}
         v-text-field.tw-mb-0.login-input.tw-text-white(required v-model="user.username" :rules="rules.username" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('username')")
@@ -19,7 +19,7 @@
         span.login-input-label {{ $t('password') }}
         v-text-field.tw-mb-0.login-input(required autocomplete="current-password" v-model="user.password" :rules="rules.password" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword ? 'text' : 'password'" :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showPassword = !showPassword")
         
-        v-btn.login-btn.tw-text-white.tw-mt-5(:loading="loading" block rounded depressed color="var(--cui-primary)" height="48px" @click="signin") {{ $t('signin') }}
+        v-btn.login-btn.tw-text-white.tw-mt-2(:loading="loading" block depressed color="var(--cui-primary)" height="48px" type="submit") {{ $t('signin') }}
               
 </template>
 
@@ -117,6 +117,7 @@ export default {
   text-transform: none;
   text-indent: unset;
   letter-spacing: unset;
+  border-radius: 10px;
 }
 
 .redline {

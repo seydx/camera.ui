@@ -15,6 +15,9 @@
           .tw-flex.tw-justify-start.tw-items-center.tw-mt-3
             .notifications-card-img.tw-mr-3(v-if="notification.recordStoring")
               v-img(:contain="errorImg" v-on:error="handleErrorImg" style="border-radius: 5px;" :src="src" width="40" max-width="40" min-width="40" height="40" max-height="40" min-height="40")
+                template(v-slot:placeholder)
+                  .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                    v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
             v-card-subtitle.tw-p-0.text-muted.tw-font-normal {{ notification.message }}
     .tw-flex.tw-justify-center.tw-items-center.swiper-slide.notification-card-remove
       v-btn(icon color="error" @click="remove")
@@ -34,6 +37,7 @@ export default {
 
   data() {
     return {
+      test: true,
       errorImg: false,
       src: `/files/${
         this.notification.recordType === 'Video' ? `${this.notification.name}@2.jpeg` : this.notification.fileName
@@ -64,7 +68,7 @@ export default {
   methods: {
     handleErrorImg() {
       this.errorImg = true;
-      this.src = require('@/assets/img/no_img_white.png');
+      this.src = require('../assets/img/logo.png');
     },
     onClickOutside() {
       if (this.swiper?.isEnd) {

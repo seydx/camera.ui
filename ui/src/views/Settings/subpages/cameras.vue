@@ -92,15 +92,15 @@
           v-list-item
             v-list-item-content
               v-list-item-title 
-                | No results matching 
+                span {{ $t('no_label_matching') }} 
                 strong "{{ search }}"
-                | . Press 
-                kbd enter
-                |  to create a new one
+                span . {{ $t('press_enter_to_create').split(' %')[0] }} 
+                kbd {{ $t('press_enter_to_create').split(' %')[1].split('% ')[0] }}
+                span  {{ $t('press_enter_to_create').split('% ')[1] }} 
       
       v-divider.tw-mt-4.tw-mb-8
       
-      div(v-if="moduleName === 'camera.ui'")
+      div(v-if="moduleName === 'homebridge-camera-ui'")
         .page-subtitle-info Homebridge
         .input-info Changing the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
           

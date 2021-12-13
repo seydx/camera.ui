@@ -1,7 +1,7 @@
 html,
 body {
   background: rgba(var(--cui-bg-app-bar-rgb)) !important;
-  font-family: 'Inter', sans-serif !important;
+  /*font-family: 'Inter', sans-serif !important;*/
   font-feature-settings: 'salt';
   text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
@@ -99,9 +99,9 @@ body .v-application .v-stepper__step__step.primary {
   color: rgba(var(--cui-text-default-rgb)) !important;
 }
 
-.v-application {
+/*.v-application {
   font-family: 'Inter', sans-serif !important;
-}
+}*/
 
 .v-messages {
   color: rgba(var(--cui-text-default-rgb), 0.6) !important;

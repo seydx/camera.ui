@@ -15,7 +15,10 @@
           v-list-item.tw-px-6.tw-py-3.profile-menu-header.dropdown-title
             v-list-item-action.tw-m-0
               v-avatar(size="40" color="black")
-                img(v-on:error="handleErrorImg" :src="avatarSrc" :alt="currentUser.username")
+                v-img(v-on:error="handleErrorImg" :src="avatarSrc" :alt="currentUser.username")
+                  template(v-slot:placeholder)
+                    .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                      v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
             v-list-item-content.tw-ml-3
               v-list-item-title
                 .text-left.tw-text-sm.tw-font-medium {{ currentUser.username }}
@@ -54,7 +57,10 @@
       
       .tw-w-full.tw-text-center.tw-mb-10
         v-avatar.tw-mt-5(size="120" color="#121212")
-          img(v-on:error="handleErrorImg" :src="avatarSrc" :alt="currentUser.username" style="border: 1px solid #1a1a1a")
+          v-img(v-on:error="handleErrorImg" :src="avatarSrc" :alt="currentUser.username" style="border: 1px solid #1a1a1a")
+            template(v-slot:placeholder)
+              .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
         .tw-w-full.tw-text-l.tw-leading-2.tw-mt-6.tw-text-white.tw-font-bold.tw-text-xl {{ currentUser.username }}
         .tw-w-full.tw-text-sm.tw-leading-1.text-muted {{ currentUser.permissionLevel && currentUser.permissionLevel.includes("admin") ? $t("master") : $t("user") }}
       
@@ -83,7 +89,7 @@
             v-icon(height="24px" width="24px").tw-mr-4 {{ point.icon }}
             span.sidebar-nav-item-text {{ $t(point.name.toLowerCase()) }}
             
-        .tw-block.tw-text-center.tw-mt-5.sidebar-nav-footer
+        .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
           span.version v1.0.0
 
     .tw-flex.tw-flex-col.tw-h-full.tw.tw-pt-10(v-if="showSidebarMinifiedNav" key="nav")
@@ -110,7 +116,7 @@
           v-btn.tw-p-0.tw-justify-center.sidebar-nav-item-minified(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-minified-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-minified-active v-btn--active' : ''" plain block tile)
             v-icon(height="24px" width="24px") {{ point.icon }}
             
-        .tw-block.tw-text-center.tw-mt-3.sidebar-nav-footer
+        .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
           span.version v1.0.0
 
 </template>
@@ -174,7 +180,7 @@ export default {
     if (this.currentUser.photo && this.currentUser.photo !== 'no_img.png') {
       this.avatarSrc = `/files/${this.currentUser.photo}`;
     } else {
-      this.avatarSrc = require('@/assets/img/no_user.png');
+      this.avatarSrc = require('../assets/img/no_user.png');
     }
   },
 
@@ -195,7 +201,7 @@ export default {
       return [...document.querySelectorAll('.included')];
     },
     handleErrorImg() {
-      this.avatarSrc = require('@/assets/img/no_user.png');
+      this.avatarSrc = require('../assets/img/no_user.png');
     },
     hideNavi() {
       this.showSidebar = this.showSidebarContent = this.showProfileMenu = false;

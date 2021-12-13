@@ -25,7 +25,10 @@
                   v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
                     v-list-item-avatar
                       v-avatar(size="40" color="black")
-                        img(v-on:error="handleErrorImg" :src="`/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}`" width="56")
+                        v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
+                          template(v-slot:placeholder)
+                            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                              v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
                       v-list-item-title.text-font-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
@@ -126,10 +129,6 @@ export default {
   },
 
   methods: {
-    handleErrorImg(el) {
-      el.target.src = require('@/assets/img/logo.png');
-      el.target.style = 'border-radius: 0;';
-    },
     toggleNotificationsPanel() {
       this.showNotifications = !this.showNotifications;
 

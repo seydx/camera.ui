@@ -9,6 +9,9 @@
     .image-upload.tw-ml-auto
       label.profile-avatar-bg(for='file-input')
         v-img.profile-avatar(v-on:error="handleErrorImg" :src="avatarSrc" alt="Avatar" width="4rem" height="4rem" style="border: 1px solid #1a1a1a")
+          template(v-slot:placeholder)
+            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+              v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
       input#file-input(type="file", name="photo", placeholder="Photo", required="", accept="image/png,image/jpeg", @change="changeProfileImg")
 
   v-form.tw-w-full.tw-mt-4.tw-mb-8(ref="form" v-model="valid" lazy-validation)
@@ -99,7 +102,7 @@ export default {
     if (this.currentUser.photo && this.currentUser.photo !== 'no_img.png') {
       this.avatarSrc = `/files/${this.currentUser.photo}`;
     } else {
-      this.avatarSrc = require('@/assets/img/no_user.png');
+      this.avatarSrc = require('../../../assets/img/no_user.png');
     }
   },
 
@@ -125,7 +128,7 @@ export default {
       }
     },
     handleErrorImg() {
-      this.avatarSrc = require('@/assets/img/no_user.png');
+      this.avatarSrc = require('../../../assets/img/no_user.png');
     },
     reset() {
       this.form = { ...this.currentUser };

@@ -14,11 +14,12 @@
       v-text-field(v-model="form.password" label="******" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.password" required solo)
 
       label.form-input-label {{ $t('permission') }}
-      v-select(small-chips multiple v-model="form.permission" :items="permissions" prepend-inner-icon="mdi-security" append-outer-icon="mdi-plus-circle" background-color="var(--cui-bg-card)" :rules="rules.permission" solo)
-        template(v-slot:append-outer)
-          v-icon.tw-cursor-pointer(@click="add" color="success") mdi-plus-circle
+      v-select(small-chips multiple v-model="form.permission" label="..." :items="permissions" background-color="var(--cui-bg-card)" :rules="rules.permission" solo)
 
-    v-divider.tw-mt-4.tw-mb-8
+      .tw-flex.tw-justify-end
+        v-btn.tw-text-white.tw-text-xs.tw-font-semibold(@click="add" color="success" rounded depressed) {{ $t('add') }}
+
+    v-divider.tw-my-8
 
     .page-subtitle {{ $t('user_list') }}
     .page-subtitle-info {{ $t('list_of_existing_user') }}
