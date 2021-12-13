@@ -364,6 +364,7 @@ export default {
       this.loadingProgress = true;
       this.loadingRestart = true;
       this.loadingSave = true;
+      this.loadingReset = true;
 
       //this.$toast.success(this.$t('system_restart_initiated'));
 
@@ -377,6 +378,7 @@ export default {
         this.loadingRestart = false;
         this.loadingProgress = false;
         this.loadingSave = false;
+        this.loadingReset = false;
       }
     },
     async onUpdateRestart() {
@@ -390,6 +392,7 @@ export default {
       this.loadingUpdate = true;
       this.loadingRestart = true;
       this.loadingSave = true;
+      this.loadingReset = true;
 
       try {
         this.$toast.success(this.$t('system_update_initiated'));
@@ -415,6 +418,7 @@ export default {
         this.loadingUpdate = false;
         this.loadingRestart = false;
         this.loadingSave = false;
+        this.loadingReset = false;
       }
     },
   },

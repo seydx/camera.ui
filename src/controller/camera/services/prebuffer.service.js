@@ -42,7 +42,8 @@ class PrebufferService {
     this.debug = camera.videoConfig.debug;
     this.ffmpegInput = camera.videoConfig.source;
 
-    this.restart();
+    //todo: for reconfiguring during runtime
+    //this.restart();
   }
 
   async start() {
