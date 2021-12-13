@@ -29,7 +29,7 @@
     v-text-field(v-model="notifications.alexa.domain" label="amazon.de | amazon.com | amazon.co.uk" prepend-inner-icon="mdi-domain" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
 
     label.form-input-label {{ $t('port') }}
-    v-text-field(v-model="notifications.alexa.proxy.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+    v-text-field(v-model.number="notifications.alexa.proxy.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
 
     label.form-input-label {{ $t('serialNr') }}
     v-text-field(v-model="notifications.alexa.serialNr" prepend-inner-icon="mdi-identifier" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)

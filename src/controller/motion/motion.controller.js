@@ -329,7 +329,7 @@ class MotionController {
             }
 
             EventController.handle(triggerType, cameraName, state);
-            result.message = 'Handled through intern controller';
+            result.message = 'Handled through extern controller';
           }
         }
       }

@@ -63,7 +63,7 @@
       v-switch(color="var(--cui-primary)" v-model="config.debug")
 
     label.form-input-label {{ $t('port') }}
-    v-text-field(v-model="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+    v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
 
     v-divider.tw-mt-4.tw-mb-8
     
@@ -98,7 +98,7 @@
       v-switch(color="var(--cui-primary)" v-model="config.http.localHttp")
 
     label.form-input-label {{ $t('port') }}
-    v-text-field(v-model="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+    v-text-field(v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
     
     v-divider.tw-mt-4.tw-mb-8
     
@@ -110,7 +110,7 @@
       v-switch(color="var(--cui-primary)" v-model="config.smtp.active")
 
     label.form-input-label {{ $t('port') }}
-    v-text-field(v-model="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+    v-text-field(v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
     
     label.form-input-label {{ $t('space_replace') }}
     v-text-field(v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
@@ -128,7 +128,7 @@
     v-text-field(v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
     
     label.form-input-label {{ $t('port') }}
-    v-text-field(v-model="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+    v-text-field(v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
     
     v-divider.tw-mb-8
     v-btn.tw-text-white(:loading="loadingSave" block color="success" @click="onSave") {{ $t('save') }}
@@ -196,6 +196,7 @@ export default {
       delete config.firstStart;
       delete config.mqttConfigs;
       delete config.serviceMode;
+      delete config.env;
 
       this.config = {
         port: config.data.port || window.location.port || 80,

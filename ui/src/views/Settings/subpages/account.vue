@@ -50,7 +50,7 @@ export default {
     return {
       loading: false,
 
-      avatarSrc: '@/assets/img/no_user.png',
+      avatarSrc: '',
 
       form: {},
 
@@ -98,6 +98,8 @@ export default {
 
     if (this.currentUser.photo && this.currentUser.photo !== 'no_img.png') {
       this.avatarSrc = `/files/${this.currentUser.photo}`;
+    } else {
+      this.avatarSrc = require('@/assets/img/no_user.png');
     }
   },
 

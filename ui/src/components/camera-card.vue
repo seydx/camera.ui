@@ -125,6 +125,7 @@ export default {
     snapshotTimerTimeout: null,
     snapshotTimeout: null,
     streamTimeout: null,
+    timeout: 60,
   }),
 
   async mounted() {
@@ -147,6 +148,8 @@ export default {
         },
       ];
     }
+
+    this.timeout = this.camera.settings.streamTimeout || 60;
 
     if (this.stream) {
       this.startStream();
@@ -270,7 +273,7 @@ export default {
             this.stopStream();
             this.$toast.warning(`${this.camera.name}: ${this.$t('timeout')}`);
           }
-        }, 30000);
+        }, this.timeout * 1000);
       }
     },
     resizeFullscreenVideo() {
@@ -399,7 +402,7 @@ export default {
               this.stopStream();
               this.$toast.warning(`${this.camera.name}: ${this.$t('timeout')}`);
             }
-          }, 30000);
+          }, this.timeout * 1000);
         } else {
           this.stopStream();
 

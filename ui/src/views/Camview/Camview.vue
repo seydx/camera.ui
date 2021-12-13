@@ -91,7 +91,6 @@ export default {
   async mounted() {
     try {
       const cameras = await getCameras();
-      const camviewSettings = await getSetting('camview');
 
       for (const camera of cameras.data.result) {
         const settings = await getCameraSettings(camera.name);
@@ -99,7 +98,7 @@ export default {
 
         camera.favourite = camera.settings.camview.favourite;
         camera.live = camera.settings.camview.live || false;
-        camera.refreshTimer = camviewSettings.data.refreshTimer || 60;
+        camera.refreshTimer = camera.settings.camview.refreshTimer || 60;
 
         const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
         camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;

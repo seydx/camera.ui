@@ -6,20 +6,44 @@
     label.form-input-label {{ $t('selected_camera') }}
     v-select(v-model="camera" :items="cameras" item-text="name" prepend-inner-icon="mdi-cctv" background-color="var(--cui-bg-card)" return-object solo)
 
+    v-divider.tw-mt-4.tw-mb-8
+
     .tw-mt-8(v-for="cam in config.cameras" v-if="camera.name && camera.name === cam.name")
       .page-subtitle-info {{ $t('interface') }}
 
       .tw-flex.tw-justify-between.tw-items-center
+        .tw-block.tw-w-full.tw-pr-2
+          label.form-input-label {{ `${$t('dashboard')} ${$t('livestream')}` }}
+          .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+            v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+            .input-info.tw-italic {{ $t('livestream_snapshot') }}
+        v-switch(color="var(--cui-primary)" v-model="camera.dashboard.live")
+        
+      .tw-flex.tw-justify-between.tw-items-center
+        .tw-block.tw-w-full.tw-pr-2
+          label.form-input-label {{ `${$t('camview')} ${$t('livestream')}` }}
+          .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+            v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+            .input-info.tw-italic {{ $t('livestream_snapshot') }}
+        v-switch(color="var(--cui-primary)" v-model="camera.camview.live")
+
+      .tw-flex.tw-justify-between.tw-items-center.tw-mb-3
         .tw-block.tw-w-full.tw-pr-2
           label.form-input-label {{ $t('record_on_movement') }}
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ $t('record_on_movement_info') }}
         v-switch(color="var(--cui-primary)" v-model="cam.recordOnMovement")
-
+        
+      label.form-input-label {{ `${$t('dashboard')} ${$t('snapshot_timer')}` }}
+      v-text-field(v-model.number="camera.dashboard.snapshotTimer" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      
+      label.form-input-label {{ `${$t('camview')} ${$t('snapshot_timer')}` }}
+      v-text-field(v-model.number="camera.camview.snapshotTimer" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      
       label.form-input-label {{ $t('room') }}
       v-select.select(prepend-inner-icon="mdi-door" v-model="camera.room" :items="general.rooms" background-color="var(--cui-bg-card)" solo)
-
+        
       v-divider.tw-mt-4.tw-mb-8
 
       .page-subtitle-info {{ $t('interface_player') }}
@@ -32,7 +56,10 @@
       v-select.select(prepend-inner-icon="mdi-video-high-definition" v-model="camera.resolution" :items="resolutions" background-color="var(--cui-bg-card)" solo)
       
       label.form-input-label {{ $t('ping_timeout') }}
-      v-text-field(v-model="camera.pingTimeout" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="camera.pingTimeout" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      
+      label.form-input-label {{ $t('stream_timeout') }}
+      v-text-field(v-model.number="camera.streamTimeout" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
           
       v-divider.tw-mt-4.tw-mb-8
       
@@ -57,7 +84,7 @@
         v-switch(color="var(--cui-primary)" v-model="camera.rekognition.active")
 
       label.form-input-label {{ $t('confidence') }}
-      v-text-field(v-model="camera.rekognition.confidence" type="number" suffix="%" prepend-inner-icon="mdi-percent" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="camera.rekognition.confidence" type="number" suffix="%" prepend-inner-icon="mdi-percent" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
       
       label.form-input-label {{ $t('labels') }}
       v-combobox(v-model="camera.rekognition.labels" :items="labels" :search-input.sync="search" prepend-inner-icon="mdi-label" hide-selected :label="$t('add_labels')" multiple small-chips solo)
@@ -72,6 +99,81 @@
                 |  to create a new one
       
       v-divider.tw-mt-4.tw-mb-8
+      
+      div(v-if="moduleName === 'camera.ui'")
+        .page-subtitle-info Homebridge
+        .input-info Changing the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
+          
+        .tw-flex.tw-justify-between.tw-items-center.tw-mt-5
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Unbridge (Recommended)
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('unbridge_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.unbridge")
+          
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Motion Sensor
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('motionSensor_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.motion")
+          
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Doorbell Sensor
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('doorbellSensor_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.doorbell")
+          
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Motion / Doorbell Switches
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('motionDoorbellSwitch_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.switches")
+          
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Trigger Doorbell on Motion
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('motionDoorbell_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.motionDoorbell")
+
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Exclude Switch
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ $t('excludeSwitch_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.excludeSwitch")
+        
+        label.form-input-label Manufacturer
+        v-text-field(v-model="cam.manufacturer" :hint="$t('manufacturer_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          template(v-slot:message="{ key, message}")
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ message }}
+              
+        label.form-input-label Model
+        v-text-field(v-model="cam.model" :hint="$t('model_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          template(v-slot:message="{ key, message}")
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ message }}
+              
+        label.form-input-label Serial Number
+        v-text-field(v-model="cam.serialNumber" :hint="$t('serialNumber_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          template(v-slot:message="{ key, message}")
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) mdi-information-outline
+              .input-info.tw-italic {{ message }}
+      
+        v-divider.tw-mt-4.tw-mb-8
       
       .page-subtitle-info {{ $t('ffmpeg_and_stream') }}
 
@@ -89,7 +191,7 @@
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ $t('prebuffering_info') }}
-        v-switch(color="var(--cui-primary)" v-model="cam.videoConfig.prebuffering")
+        v-switch(color="var(--cui-primary)" v-model="cam.prebuffering")
 
       .tw-flex.tw-justify-between.tw-items-center
         .tw-block.tw-w-full.tw-pr-2
@@ -122,42 +224,42 @@
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Motion Timeout
-      v-text-field(v-model="cam.videoConfig.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Max Streams
-      v-text-field(v-model="cam.videoConfig.maxStreams" :hint="$t('max_streams_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxStreams" :hint="$t('max_streams_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Video Width
-      v-text-field(v-model="cam.videoConfig.maxWidth" :hint="$t('width_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxWidth" :hint="$t('width_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Video Height
-      v-text-field(v-model="cam.videoConfig.maxHeight" :hint="$t('height_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxHeight" :hint="$t('height_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label FPS
-      v-text-field(v-model="cam.videoConfig.maxFPS" :hint="$t('fps_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxFPS" :hint="$t('fps_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Bitrate
-      v-text-field(v-model="cam.videoConfig.maxBitrate" :hint="$t('bitrate_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxBitrate" :hint="$t('bitrate_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
@@ -185,35 +287,35 @@
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Stream Timeout
-      v-text-field(v-model="cam.videoConfig.stimeout" :hint="$t('timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.stimeout" :hint="$t('timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Analyze Duration
-      v-text-field(v-model="cam.videoConfig.analyzeDuration" :hint="$t('analyze_duration_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.analyzeDuration" :hint="$t('analyze_duration_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Probe Size
-      v-text-field(v-model="cam.videoConfig.probeSize" :hint="$t('probe_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.probeSize" :hint="$t('probe_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Reorder Queue Size
-      v-text-field(v-model="cam.videoConfig.reorderQueueSize" :hint="$t('reorder_queue_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.reorderQueueSize" :hint="$t('reorder_queue_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Max Timeout
-      v-text-field(v-model="cam.videoConfig.maxTimeout" :hint="$t('max_delay_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.videoConfig.maxTimeout" :hint="$t('max_delay_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) mdi-information-outline
@@ -272,6 +374,8 @@ export default {
         rooms: [],
       },
 
+      moduleName: 'camera.ui',
+
       search: null,
       labels: ['Human', 'Face', 'Person', 'Body'],
       resolutions: ['256x144', '426x240', '480x360', '640x480', '1280x720', '1920x1080'],
@@ -301,6 +405,8 @@ export default {
 
       const config = await getConfig('?target=config');
 
+      this.moduleName = config.data.env.moduleName;
+
       //remove not used params from config editor
       delete config.timestamp;
       delete config.platform;
@@ -309,6 +415,7 @@ export default {
       delete config.firstStart;
       delete config.mqttConfigs;
       delete config.serviceMode;
+      delete config.env;
 
       this.config = {
         port: config.data.port || window.location.port || 80,

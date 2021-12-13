@@ -130,7 +130,7 @@ export default {
 
   data() {
     return {
-      avatarSrc: '@/assets/img/no_user.png',
+      avatarSrc: '',
       navigation: routes
         .map((route) => {
           if (route.meta.navigation) {
@@ -173,6 +173,8 @@ export default {
 
     if (this.currentUser.photo && this.currentUser.photo !== 'no_img.png') {
       this.avatarSrc = `/files/${this.currentUser.photo}`;
+    } else {
+      this.avatarSrc = require('@/assets/img/no_user.png');
     }
   },
 

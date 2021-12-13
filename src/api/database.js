@@ -36,15 +36,8 @@ const defaultDatabase = {
       last_rekognition: '',
     },
     cameras: [],
-    camview: {
-      refreshTimer: 60,
-    },
-    dashboard: {
-      refreshTimer: 60,
-    },
     general: {
       atHome: false,
-      theme: 'default',
       exclude: [],
       rooms: ['Standard'],
       automation: {
@@ -338,14 +331,6 @@ class Database {
       database.settings.cameras = defaultDatabase.settings.cameras;
     }
 
-    if (typeof database?.settings.camview !== 'object') {
-      database.settings.camview = defaultDatabase.settings.camview;
-    }
-
-    if (typeof database?.settings.dashboard !== 'object') {
-      database.settings.dashboard = defaultDatabase.settings.dashboard;
-    }
-
     if (typeof database?.settings.general !== 'object') {
       database.settings.general = defaultDatabase.settings.general;
     }
@@ -431,17 +416,20 @@ class Database {
           room: 'Standard',
           resolution: '1280x720',
           pingTimeout: 1,
+          streamTimeout: 60,
           audio: false,
-          telegramType: 'Image',
+          telegramType: 'Snapshot',
           alexa: false,
           webhookUrl: '',
           camview: {
             favourite: true,
             live: true,
+            snapshotTimer: 60,
           },
           dashboard: {
             favourite: true,
             live: true,
+            snapshotTimer: 60,
           },
           rekognition: {
             active: false,

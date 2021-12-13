@@ -50,7 +50,6 @@ class StreamService {
         '-b:v': `${camera.videoConfig.maxBitrate}k`,
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
-        '-preset': camera.videoConfig.encoderOptions.replace('-preset ', ''),
         '-threads': '1',
       },
     };
@@ -142,10 +141,7 @@ class StreamService {
           '-',
         ].filter((key) => key !== '');
 
-        log.debug(
-          `Stream command: ${this.#videoProcessor} ${spawnOptions.toString().replace(/,/g, ' ')}`,
-          this.cameraName
-        );
+        log.debug(`Stream command: ${this.#videoProcessor} ${spawnOptions.join(' ')}`, this.cameraName);
 
         this.streamSession = spawn(this.#videoProcessor, spawnOptions, {
           env: process.env,

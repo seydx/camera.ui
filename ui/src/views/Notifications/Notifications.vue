@@ -17,7 +17,7 @@
         NotificationCard(ref="notifications" :notification="notification" @remove="remove(notification, i)" @show="showNotification(notification)" @slideStart="closeNotifications(notification)")
 
     infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
-      div(slot="spinner")
+      .tw-mt-10(slot="spinner")
         v-progress-circular(indeterminate color="var(--cui-primary)")
       .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_notifications") }}
       .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_notifications") }}

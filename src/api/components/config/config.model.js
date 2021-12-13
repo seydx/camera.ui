@@ -19,6 +19,7 @@ exports.show = async (user, target) => {
     language: ConfigService.ui.language,
     theme: ConfigService.ui.theme,
     serviceMode: ConfigService.serviceMode,
+    env: ConfigService.env,
   };
 
   switch (target) {
@@ -52,6 +53,7 @@ exports.show = async (user, target) => {
           ...info,
           ...ConfigService.ui,
           ...ConfigService.interface,
+          ...ConfigService.configJson,
         };
       }
       break;

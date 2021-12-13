@@ -80,6 +80,7 @@ export default {
     delete this.config.firstStart;
     delete this.config.mqttConfigs;
     delete this.config.serviceMode;
+    delete this.config.env;
     this.config.cameras?.forEach((camera) => delete camera.recordOnMovement);
 
     window.addEventListener('orientationchange', this.resizeHandler);

@@ -8,7 +8,7 @@
       .tw-block
         h2.tw-leading-10 {{ $t($route.name.toLowerCase()) }}
         span.tw-leading-3.subtitle {{ $t('welcome_back') }}, 
-          b Seydx
+          b {{ currentUser.username }}
 
       .tw-block
         v-menu.tw-z-30(v-if="checkLevel('settings:edit')" v-model="showCardsMenu" transition="slide-y-transition" min-width="250px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
@@ -83,6 +83,9 @@ export default {
   }),
 
   computed: {
+    currentUser() {
+      return this.$store.state.auth.user || {};
+    },
     dashboardLayout() {
       return this.$store.state.dashboard.layout;
     },
@@ -107,7 +110,6 @@ export default {
   async mounted() {
     try {
       const cameras = await getCameras();
-      const dashboardSettings = await getSetting('dashboard');
 
       for (const camera of cameras.data.result) {
         const settings = await getCameraSettings(camera.name);
@@ -115,7 +117,7 @@ export default {
 
         camera.favourite = camera.settings.dashboard.favourite;
         camera.live = camera.settings.dashboard.live || false;
-        camera.refreshTimer = dashboardSettings.data.refreshTimer || 60;
+        camera.refreshTimer = camera.settings.dashboard.refreshTimer || 60;
 
         const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
         camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;

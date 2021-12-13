@@ -20,7 +20,7 @@
     v-text-field(v-model="aws.region" prepend-inner-icon="mdi-crosshairs-gps" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
 
     label.form-input-label {{ $t('aws_contingent_total') }}
-    v-text-field(v-model="aws.contingent_total" type="number" prepend-inner-icon="mdi-contain" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
+    v-text-field(v-model.number="aws.contingent_total" type="number" prepend-inner-icon="mdi-contain" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
 
     label.form-input-label {{ $t('aws_contingent_left') }}
     v-text-field(disabled v-model="aws.contingent_left" prepend-inner-icon="mdi-contain" color="var(--cui-text-default)" :rules="rules.string" required solo)
