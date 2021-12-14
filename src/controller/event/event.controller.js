@@ -246,7 +246,7 @@ class EventController {
           log.warn(`Camera "${cameraName}" not found.`, cameraName, 'events');
         }
       } catch (error) {
-        log.error('An error occured during handling motion event', cameraName, 'events');
+        log.info('An error occured during handling motion event', cameraName, 'events');
         log.error(error, cameraName, 'events');
       }
 
@@ -328,7 +328,7 @@ class EventController {
           last_rekognition: moment().format('YYYY-MM-DD HH:mm:ss'),
         });
       } catch (error) {
-        log.error('An error occured during image rekognition', cameraName, 'events');
+        log.info('An error occured during image rekognition', cameraName, 'events');
         log.error(error, cameraName, 'events');
       }
     } else {
@@ -415,7 +415,7 @@ class EventController {
         log.debug('Skip alexa notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending notification to alexa', cameraName, 'events');
+      log.info('An error occured during sending notification to alexa', cameraName, 'events');
       log.error(error, cameraName, 'events');
     }
   }
@@ -509,7 +509,7 @@ class EventController {
         }
       }
     } catch (error) {
-      log.error('An error occured during sending telegram notification', cameraName, 'events');
+      log.info('An error occured during sending telegram notification', cameraName, 'events');
       log.error(error, cameraName, 'events');
     }
   }
@@ -534,7 +534,7 @@ class EventController {
         log.debug('Skip Webhook notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending webhook notification', cameraName, 'events');
+      log.info('An error occured during sending webhook notification', cameraName, 'events');
       log.error(error, cameraName, 'events');
     }
   }
@@ -556,7 +556,7 @@ class EventController {
             log.debug('Webpush Notification Grant changed! Removing subscription..', cameraName);
             await SettingsModel.patchByTarget(false, 'webpush', { subscription: false });
           } else {
-            log.error('An error occured during sending Wep-Push Notification!', cameraName, 'events');
+            log.info('An error occured during sending Wep-Push Notification!', cameraName, 'events');
             log.error(error.body, cameraName, 'events');
           }
         });
@@ -564,7 +564,7 @@ class EventController {
         log.debug('Skip Webpush notification', cameraName);
       }
     } catch (error) {
-      log.error('An error occured during sending webpush notification', cameraName, 'events');
+      log.info('An error occured during sending webpush notification', cameraName, 'events');
       log.error(error, cameraName, 'events');
     }
   }

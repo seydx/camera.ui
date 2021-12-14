@@ -1,6 +1,6 @@
 'use-strict';
 
-const fs = require('fs-extra');
+//const fs = require('fs-extra');
 const os = require('os');
 
 const { ConfigService } = require('../../../services/config/config.service');
@@ -67,9 +67,10 @@ exports.show = async (user, target) => {
 exports.patchConfig = async (configJson) => {
   if (process.env.CUI_SERVICE_MODE === '2') {
     Database.controller.emit('config', configJson);
-  } else {
+  } /*else {
     await fs.writeJson(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
-  }
+  }*/
 
-  ConfigService.configJson = configJson;
+  ConfigService.writeToConfig(false, configJson);
+  //ConfigService.configJson = configJson;
 };

@@ -147,17 +147,18 @@ class StreamService {
           env: process.env,
         });
 
+        const errors = [];
+
         this.streamSession.stdout.on('data', (data) => {
           this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
         });
 
-        this.streamSession.stderr.on('data', (data) =>
-          log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'streams')
-        );
+        this.streamSession.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
         this.streamSession.on('exit', (code, signal) => {
           if (code === 1) {
-            log.error(`Stream exited with error! (${signal})`, this.cameraName, 'streams');
+            errors.unshift(`Stream exited with error! (${signal})`);
+            log.error(errors.join(' - '), this.cameraName, 'streams');
           } else {
             log.debug('Stream exit (expected)', this.cameraName);
           }

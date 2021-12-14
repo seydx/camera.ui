@@ -50,7 +50,7 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
     const ffmpegArguments = [
       '-hide_banner',
       '-loglevel',
-      'quiet',
+      'error',
       '-an',
       '-sn',
       '-dn',
@@ -80,19 +80,29 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
+    const errors = [];
+
+    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+
     ffmpeg.on('error', (error) => reject(error));
 
-    ffmpeg.on('close', () => {
+    /*ffmpeg.on('close', () => {
       log.debug(`Snapshot stored to: ${outputPath}`, camera.name);
       resolve();
-    });
+    });*/
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name, 'ffmpeg');
+        errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
       } else {
         log.debug('FFmpeg snapshot process exited (expected)', camera.name, 'ffmpeg');
+        log.debug(`Snapshot stored to: ${outputPath}`, camera.name);
+
+        resolve();
       }
+
+      return;
     });
 
     ffmpeg.stdin.write(fileBuffer);
@@ -232,7 +242,9 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name, 'ffmpeg'));
+    const errors = [];
+
+    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
     let imageBuffer = Buffer.alloc(0);
 
@@ -246,7 +258,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
 
     ffmpeg.on('error', (error) => reject(error));
 
-    ffmpeg.on('close', () => {
+    /*ffmpeg.on('close', () => {
       if (!imageBuffer || (imageBuffer && imageBuffer.length <= 0)) {
         return reject(new Error('Image Buffer is empty!'));
       }
@@ -256,13 +268,23 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
       }
 
       resolve(imageBuffer);
-    });
+    });*/
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg snapshot process exited with error! (${signal})`, camera.name, 'ffmpeg');
+        errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
+      } else if (!imageBuffer || (imageBuffer && imageBuffer.length <= 0)) {
+        errors.unshift('Image Buffer is empty!');
+        reject(new Error(errors.join(' - ')));
       } else {
         log.debug('FFmpeg snapshot process exited (expected)', camera.name, 'ffmpeg');
+
+        if (storeSnapshot) {
+          replaceJpegWithExifJPEG(camera.name, destination, label);
+        }
+
+        resolve(imageBuffer);
       }
     });
   });
@@ -312,20 +334,26 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    ffmpeg.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name, 'ffmpeg'));
+    const errors = [];
+
+    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
     ffmpeg.on('error', (error) => reject(error));
 
-    ffmpeg.on('close', () => {
+    /*ffmpeg.on('close', () => {
       log.debug(`Video stored to: ${videoName}`, camera.name);
       resolve();
-    });
+    });*/
 
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg video process exited with error! (${signal})`, camera.name, 'ffmpeg');
+        errors.unshift(`FFmpeg video process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
       } else {
         log.debug('FFmpeg video process exited (expected)', camera.name, 'ffmpeg');
+        log.debug(`Video stored to: ${videoName}`, camera.name);
+
+        resolve();
       }
     });
   });
@@ -342,7 +370,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
     writeStream.write(fileBuffer);
     writeStream.end();
 
-    writeStream.on('finish', () => resolve());
+    writeStream.on('finish', resolve);
     writeStream.on('error', reject);
   });
 };

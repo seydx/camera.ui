@@ -165,9 +165,18 @@ class ConfigService {
   }
 
   static writeToConfig(target, config) {
-    if (ConfigService.configJson[target] && config) {
-      ConfigService.configJson[target] = config;
-      fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
+    if (config) {
+      if (ConfigService.configJson[target]) {
+        ConfigService.configJson[target] = config;
+        fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
+      } else if (!target) {
+        ConfigService.configJson = config;
+        fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
+      } else {
+        log.warn(`Can not save config, target ${target} not found in config!`, 'Config', 'system');
+      }
+    } else {
+      log.warn('Can not save config, no config defined!', 'Config', 'system');
     }
   }
 

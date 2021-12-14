@@ -74,18 +74,22 @@ export default {
 
   async mounted() {
     const config = await getConfig('?target=config');
-    this.config = { ...config.data };
+
+    if (config.data.env.moduleName === 'homebridge-camera-ui') {
+      config.data.cameras?.forEach((camera) => delete camera.recordOnMovement);
+    }
 
     //remove not used params from config editor
-    delete this.config.timestamp;
-    delete this.config.platform;
-    delete this.config.node;
-    delete this.config.version;
-    delete this.config.firstStart;
-    delete this.config.mqttConfigs;
-    delete this.config.serviceMode;
-    delete this.config.env;
-    this.config.cameras?.forEach((camera) => delete camera.recordOnMovement);
+    delete config.data.timestamp;
+    delete config.data.platform;
+    delete config.data.node;
+    delete config.data.version;
+    delete config.data.firstStart;
+    delete config.data.mqttConfigs;
+    delete config.data.serviceMode;
+    delete config.data.env;
+
+    this.config = { ...config.data };
 
     window.addEventListener('orientationchange', this.resizeHandler);
     document.addEventListener('keydown', this.onKeyboardSave, false);

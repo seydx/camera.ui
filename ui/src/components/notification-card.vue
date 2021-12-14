@@ -6,7 +6,7 @@
         v-card.tw-p-5(elevation="1" @click="$emit('show')")
           .tw-flex.tw-justify-between.tw-items-center.notifications-card-title
             v-card-title.tw-text-lg.tw-p-0 {{ notification.title || notification.camera || $t('notification') }}
-              v-chip.tw-ml-2(x-small v-if="notification.label" color="grey") {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
+              v-chip.tw-ml-2(x-small v-if="notification.label" :color="notification.label === 'Homebridge' ? 'purple' : 'grey'") {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
               v-chip.tw-ml-2(x-small v-if="notification.type === 'ERROR'" color="error") {{ $t('error') }}
               v-chip.tw-ml-2(x-small v-if="notification.type === 'WARN'" color="yellow") {{ $t('warning') }}
             .tw-block

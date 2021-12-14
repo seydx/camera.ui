@@ -51,7 +51,7 @@ class PrebufferService {
       this.resetPrebuffer();
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
-      log.warn('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
+      log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
       log.error(error, this.cameraName, 'prebuffer');
 
       setTimeout(() => this.restartCamera(), 10000);
@@ -211,19 +211,20 @@ class PrebufferService {
 
     const cp = spawn(this.#videoProcessor, parameters, { env: process.env });
 
+    const errors = [];
+
     /*if (this.debug) {
       cp.stdout.on('data', (data) => log.debug(data.toString(), this.cameraName));
     }
 
     cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'prebuffer'));*/
 
-    cp.stdout.on('data', (data) =>
-      log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'prebuffer')
-    );
+    cp.stdout.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg prebuffer process exited with error! (${signal})`, this.cameraName, 'prebuffer');
+        errors.unshift(`FFmpeg prebuffer process exited with error! (${signal})`);
+        log.error(errors.join(' - '), this.cameraName, 'prebuffer');
       } else {
         log.debug('FFmpeg prebuffer process exited (expected)', this.cameraName);
       }

@@ -72,6 +72,7 @@ class LoggerService {
       notify: this.notify,
       toast: this.toast,
       file: this.file,
+      db: LoggerService.#db,
     };
 
     if (logger) {
@@ -106,7 +107,7 @@ class LoggerService {
     return formatted;
   }
 
-  static async #db(level, message, name = 'System', subprefix = 'console') {
+  static async #db(level, message, name = 'System', subprefix = 'Console') {
     if (LoggerService.notificationsDB) {
       //Check notification size, if we exceed more than {1000} notifications, remove the latest
       const notificationsLimit = 1000;
@@ -114,7 +115,7 @@ class LoggerService {
 
       if (notificationList.length > notificationsLimit) {
         const diff = notificationList.length - notificationsLimit;
-        await LoggerService.notificationsDB.get('notifications').dropRight(notificationList, diff).write();
+        LoggerService.notificationsDB.get('notifications').dropRight(notificationList, diff).write();
       }
 
       const notification = {
@@ -197,7 +198,7 @@ class LoggerService {
     LoggerService.#db(LogLevel.WARN, message, name, subprefix);
   }
 
-  async error(message, name, subprefix) {
+  error(message, name, subprefix) {
     LoggerService.#logging(LogLevel.ERROR, message, name, subprefix);
     LoggerService.#db(LogLevel.ERROR, message, name, subprefix);
   }

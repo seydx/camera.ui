@@ -62,7 +62,7 @@ class Telegram {
           await Telegram.bot.telegram.sendVideo(chatID, { source: content.video });
         }
       } catch (error) {
-        log.error('An error occured during sending telegram message!', 'Telegram', 'notifications');
+        log.info('An error occured during sending telegram message!', 'Telegram', 'notifications');
         log.error(error, 'Telegram', 'notifications');
       }
     } else {

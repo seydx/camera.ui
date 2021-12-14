@@ -82,7 +82,7 @@ class Cleartimer {
         }
       }
     } catch (error) {
-      log.error('An error occured during starting clear timer', 'Cleartimer', 'interface');
+      log.info('An error occured during starting clear timer', 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -122,7 +122,7 @@ class Cleartimer {
         }
       }
     } catch (error) {
-      log.error('An error occured during starting notifications clear timer', 'Cleartimer', 'interface');
+      log.info('An error occured during starting notifications clear timer', 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -157,7 +157,7 @@ class Cleartimer {
         }
       }
     } catch (error) {
-      log.error('An error occured during starting clear timer', 'Cleartimer', 'interface');
+      log.info('An error occured during starting clear timer', 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -191,7 +191,7 @@ class Cleartimer {
 
       Cleartimer.#timeout(clearTimer, 'hours', id, timestamp, false);
     } catch (error) {
-      log.error(`An error occured during setting up cleartimer for notification (${id})`, 'Cleartimer', 'interface');
+      log.info(`An error occured during setting up cleartimer for notification (${id})`, 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -205,7 +205,7 @@ class Cleartimer {
 
       Cleartimer.#timeout(clearTimer, 'days', id, timestamp, true);
     } catch (error) {
-      log.error(`An error occured during setting up cleartimer for recording (${id})`, 'Cleartimer', 'interface');
+      log.info(`An error occured during setting up cleartimer for recording (${id})`, 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -241,7 +241,7 @@ class Cleartimer {
           .write();
       }
     } catch (error) {
-      log.error(`An error occured during removing notification (${id}) due to cleartimer`, 'Cleartimer', 'interface');
+      log.info(`An error occured during removing notification (${id}) due to cleartimer`, 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
@@ -273,7 +273,7 @@ class Cleartimer {
           .write();
       }
     } catch (error) {
-      log.error(`An error occured during removing recording (${id}) due to cleartimer`, 'Cleartimer', 'interface');
+      log.info(`An error occured during removing recording (${id}) due to cleartimer`, 'Cleartimer', 'interface');
       log.error(error, 'Cleartimer', 'interface');
     }
   }
