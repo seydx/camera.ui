@@ -3,10 +3,13 @@
  
   .login
     .tw-flex.tw-flex-col.tw-p-0
-      v-img.logo(src="@/assets/img/logo.svg" width="30px")
-      .login-header.tw-mt-6
-        h1.tw-leading-10.tw-font-black {{ $t('signin') }}
-        span.subtitle.tw-font-medium {{ $t('welcome_message') }} camera.ui
+      .login-header.tw-flex.tw-justify-between.tw-items-center
+        .tw-block
+          h1.tw-leading-10.tw-font-black {{ $t('signin') }}
+          span.subtitle.tw-font-medium.text-muted {{ $t('welcome_message') }} 
+            strong.text-primary camera.ui
+        .tw-ml-auto
+          v-img.logo(src="@/assets/img/logo.svg" width="35px")
       v-row.tw-w-full.tw-m-0.tw-mt-5
         v-col.tw-p-0(cols="3").redline.mr-3
         v-col.tw-p-0(cols="3").grayline
@@ -21,9 +24,11 @@
         
         v-btn.login-btn.tw-text-white.tw-mt-2(:loading="loading" block depressed color="var(--cui-primary)" height="48px" type="submit") {{ $t('signin') }}
               
+  span.tw-text-xs.text-muted camera.ui - v{{ version }}
 </template>
 
 <script>
+import { version } from '../../../../package.json';
 import { mdiEye, mdiEyeOff } from '@mdi/js';
 
 import { getConfig } from '@/api/config.api';
@@ -54,6 +59,7 @@ export default {
       },
 
       valid: true,
+      version,
     };
   },
 

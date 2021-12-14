@@ -239,6 +239,8 @@
     "prebuffering_info": "Enables camera video prebuffering.",
     "press_enter_to_create": "Druk op %Enter% om een nieuw label te maken",
     "prev": "Vorige",
+    "privacySwitch_info": "Exposes a 'privacyMode' switch to replace the camera feed with a privacy image in HomeKit",
+    "privacyMode_info": "Turn off the camera feed and replace it with a privacy image in HomeKit",
     "probe_size": "Probe Size",
     "probe_size_info": "Set probing size in bytes, i.e. the size of the data to analyze to get stream information. A higher value will enable detecting more information in case it is dispersed into the stream, but will increase latency. Must be an integer not lesser than 32. It is 5000000 by default (-probesize).",
     "profile": "Profile",

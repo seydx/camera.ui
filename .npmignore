@@ -70,5 +70,6 @@ yarn.lock
 .envtest/stream
 writeStream.js
 mp4
-ui/node_modules
 interface/report.html
+src
+ui

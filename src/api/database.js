@@ -421,6 +421,7 @@ class Database {
           telegramType: 'Snapshot',
           alexa: false,
           webhookUrl: '',
+          privacyMode: false,
           camview: {
             favourite: true,
             live: true,

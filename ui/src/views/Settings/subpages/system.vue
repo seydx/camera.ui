@@ -15,7 +15,7 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNpm'] }}
       template(v-slot:append-outer)
-        v-dialog(v-model="updateDialog" width="500" scrollable)
+        v-dialog(v-model="updateDialog" width="500" scrollable @click:outside="closeUpdateDialog" @keydown="closeUpdateDialog")
           template(v-slot:activator='{ on, attrs }')
             v-btn.tw-text-white(:loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
               v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") {{ icons['mdiUpdate'] }}
@@ -28,7 +28,7 @@
               vue-markdown.changelog(v-else) {{ changelog }}
             v-divider
             v-card-actions.tw-flex.tw-justify-end
-              v-btn.text-default(text @click='updateDialog = false') {{ $t('cancel') }}
+              v-btn.text-default(text @click='closeUpdateDialog') {{ $t('cancel') }}
               v-btn(color='var(--cui-primary)' text @click='onUpdateRestart') {{ `${$t('update')} & ${$t('restart')}` }}
 
     v-dialog(v-model="restartDialog" width="500" scrollable)
@@ -330,6 +330,16 @@ export default {
   },
 
   methods: {
+    closeUpdateDialog(e) {
+      if (e && e.constructor.name === 'KeyboardEvent') {
+        if (e.key !== 'Escape' && e.keyCode !== 27) {
+          return;
+        }
+      }
+
+      this.updateDialog = false;
+      this.changelog = '';
+    },
     async onBeforeUpdate() {
       try {
         const response = await getChangelog(`?version=${this.currentVersion}`);

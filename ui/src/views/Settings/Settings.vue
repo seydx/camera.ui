@@ -133,9 +133,10 @@ export default {
 }
 
 .input-info {
-  font-size: 11px;
-  color: var(--cui-text-hint);
+  font-size: 11px !important;
+  color: var(--cui-text-hint) !important;
   max-width: 90%;
+  margin-top: 4px;
 }
 
 .v-text-field__details {

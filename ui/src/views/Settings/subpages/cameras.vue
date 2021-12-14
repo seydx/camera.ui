@@ -122,11 +122,23 @@
       
       v-divider.tw-mt-4.tw-mb-8
       
-      div(v-if="moduleName === 'homebridge-camera-ui'")
+      div(v-if="moduleName === 'camera.ui'")
         .page-subtitle-info Homebridge
-        .input-info Changing the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
+        .input-info Changing some of the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
           
         .tw-flex.tw-justify-between.tw-items-center.tw-mt-5
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Privacy Mode
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+              .input-info.tw-italic {{ $t('privacyMode_info') }}
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal(v-if="!general.atHome")
+              v-btn.input-info(text to="/settings/interface" color="error" style="padding: 0; height: 17px;")
+                v-icon.text-muted.tw-mr-1(small color="error") {{ icons['mdiAlert'] }} 
+                span Attention: "At Home" must be enabled for privacy mode to work
+          v-switch(color="var(--cui-primary)" v-model="camera.privacyMode")
+        
+        .tw-flex.tw-justify-between.tw-items-center
           .tw-block.tw-w-full.tw-pr-2
             label.form-input-label Unbridge (Recommended)
             .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
@@ -157,6 +169,14 @@
               v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
               .input-info.tw-italic {{ $t('motionDoorbellSwitch_info') }}
           v-switch(color="var(--cui-primary)" v-model="cam.switches")
+
+        .tw-flex.tw-justify-between.tw-items-center
+          .tw-block.tw-w-full.tw-pr-2
+            label.form-input-label Privacy Switch
+            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+              v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+              .input-info.tw-italic {{ $t('privacySwitch_info') }}
+          v-switch(color="var(--cui-primary)" v-model="cam.privacySwitch")
           
         .tw-flex.tw-justify-between.tw-items-center
           .tw-block.tw-w-full.tw-pr-2
@@ -421,6 +441,7 @@
 
 <script>
 import {
+  mdiAlert,
   mdiAlphabetical,
   mdiCctv,
   mdiDoor,
@@ -443,6 +464,7 @@ export default {
   data() {
     return {
       icons: {
+        mdiAlert,
         mdiAlphabetical,
         mdiCctv,
         mdiDoor,
