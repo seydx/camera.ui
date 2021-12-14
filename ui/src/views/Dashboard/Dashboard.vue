@@ -14,7 +14,7 @@
         v-menu.tw-z-30(v-if="checkLevel('settings:edit')" v-model="showCardsMenu" transition="slide-y-transition" min-width="250px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
           template(v-slot:activator="{ on, attrs }")
             v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-              v-icon mdi-cog
+              v-icon {{ icons['mdiCog'] }}
 
           v-card.light-shadow.card-border.dropdown-content(max-width="360px")
             .tw-flex.tw-justify-between.tw-items-center.tw-py-3.tw-px-5.dropdown-title
@@ -32,7 +32,7 @@
                         v-switch.tw-m-0(v-model="item.favourite" @change="updateLayout(item.name, item.favourite)" color="rgba(var(--cui-primary-700-rgb))")
                     v-divider(v-if="index !== allCameras.length - 1")
 
-              span.text-font-default(v-else) {{ $t('no_cameras') }}
+              span.text-default(v-else) {{ $t('no_cameras') }}
 
     draggable.tw-mt-8.layout.row.wrap(v-model='cameras', ghost-class="ghost-box", @change="storeLayout", animation=200, delay="200" delay-on-touch-only="true")
       v-flex.tw-mb-5.tw-px-2(xs12 sm6 md4 lg3 v-for="camera in cameras" :key="camera.name" :style="`height: ${height}px`")
@@ -53,6 +53,7 @@
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import draggable from 'vuedraggable';
+import { mdiCog } from '@mdi/js';
 
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -78,6 +79,9 @@ export default {
   data: () => ({
     allCameras: [],
     cameras: [],
+    icons: {
+      mdiCog,
+    },
     loading: true,
     showCardsMenu: false,
   }),

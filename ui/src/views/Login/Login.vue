@@ -17,13 +17,15 @@
         v-text-field.tw-mb-0.login-input.tw-text-white(required v-model="user.username" :rules="rules.username" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('username')")
 
         span.login-input-label {{ $t('password') }}
-        v-text-field.tw-mb-0.login-input(required autocomplete="current-password" v-model="user.password" :rules="rules.password" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword ? 'text' : 'password'" :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showPassword = !showPassword")
+        v-text-field.tw-mb-0.login-input(required autocomplete="current-password" v-model="user.password" :rules="rules.password" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword ? 'text' : 'password'" :append-icon="showPassword ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showPassword = !showPassword")
         
         v-btn.login-btn.tw-text-white.tw-mt-2(:loading="loading" block depressed color="var(--cui-primary)" height="48px" type="submit") {{ $t('signin') }}
               
 </template>
 
 <script>
+import { mdiEye, mdiEyeOff } from '@mdi/js';
+
 import { getConfig } from '@/api/config.api';
 
 export default {
@@ -33,15 +35,24 @@ export default {
     return {
       loading: false,
       loadRestart: false,
+
+      icons: {
+        mdiEye,
+        mdiEyeOff,
+      },
+
       showPassword: false,
+
       rules: {
         username: [(v) => !!v || this.$t('username_is_required')],
         password: [(v) => !!v || this.$t('password_is_required')],
       },
+
       user: {
         username: '',
         password: '',
       },
+
       valid: true,
     };
   },

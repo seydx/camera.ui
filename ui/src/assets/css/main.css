@@ -26,7 +26,6 @@ select {
   appearance: none;
 }
 
-input,
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -319,11 +318,11 @@ body .v-application .primary--text {
   overflow: hidden;
 }
 
-.text-font-primary {
+.text-primary {
   color: var(--cui-primary-600) !important;
 }
 
-.text-font-default {
+.text-default {
   color: var(--cui-text-default) !important;
 }
 

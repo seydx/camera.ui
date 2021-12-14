@@ -39,10 +39,10 @@
             v-text-field.tw-my-0.login-input.tw-text-white(required ref="name" v-model="name" :rules="rules.username" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('username')")
 
             span.login-input-label {{ $t('new_password') }}
-            v-text-field.tw-my-0.login-input(required ref="password" v-model="password" :rules="rules.password" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword ? 'text' : 'password'" :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showPassword = !showPassword")
+            v-text-field.tw-my-0.login-input(required ref="password" v-model="password" :rules="rules.password" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword ? 'text' : 'password'" :append-icon="showPassword ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showPassword = !showPassword")
 
             span.login-input-label {{ $t('new_password_verify') }}
-            v-text-field.tw-my-0.login-input(required ref="password2" v-model="password2" :rules="rules.password2" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword2 ? 'text' : 'password'" :append-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showPassword2 = !showPassword2")
+            v-text-field.tw-my-0.login-input(required ref="password2" v-model="password2" :rules="rules.password2" solo background-color="rgba(var(--cui-menu-default-rgb), 0.7)" color="var(--cui-primary)" :label="$t('password')" :type="showPassword2 ? 'text' : 'password'" :append-icon="showPassword2 ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showPassword2 = !showPassword2")
 
         .tw-flex.tw-justify-center
           v-btn.tw-text-white.tw-my-5(color='var(--cui-primary)' @click='change') {{ $t('change') }}
@@ -65,12 +65,11 @@
 
 <script>
 import InlineSvg from 'vue-inline-svg';
+import { mdiEye, mdiEyeOff } from '@mdi/js';
 
 import { changeUser } from '@/api/users.api';
 import { changeSetting } from '@/api/settings.api';
 import { getConfig } from '@/api/config.api';
-
-import socket from '@/mixins/socket';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -81,12 +80,15 @@ export default {
     InlineSvg,
   },
 
-  mixins: [socket],
-
   data() {
     return {
       loading: true,
       loadingProgress: false,
+
+      icons: {
+        mdiEye,
+        mdiEyeOff,
+      },
 
       startMsg1: this.$t('start_info_message').split(' <br>')[0],
       startMsg2: this.$t('start_info_message').split('<br> ')[1],

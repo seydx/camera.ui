@@ -9,15 +9,20 @@
     v-form.tw-w-full.tw-mt-4(ref="form" v-model="valid" lazy-validation)
       label.form-input-label {{ $t('username') }}
       v-text-field(v-model="form.username" :label="$t('username')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.username" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAccount'] }}
 
       label.form-input-label {{ $t('password') }}
       v-text-field(v-model="form.password" label="******" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.password" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiKeyVariant'] }}
 
       label.form-input-label {{ $t('permission') }}
-      v-select(small-chips multiple v-model="form.permission" label="..." :items="permissions" background-color="var(--cui-bg-card)" :rules="rules.permission" solo)
+      v-select(small-chips multiple v-model="form.permission" label="..." prepend-inner-icon="mdi-security" :items="permissions" background-color="var(--cui-bg-card)" :rules="rules.permission" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiSecurity'] }}
 
-      .tw-flex.tw-justify-end
-        v-btn.tw-text-white.tw-text-xs.tw-font-semibold(@click="add" color="success" rounded depressed) {{ $t('add') }}
+      v-btn.tw-mt-3.tw-text-white(:loading="loadingAdd" @click="add" block color="success") {{ $t('add') }}
 
     v-divider.tw-my-8
 
@@ -28,8 +33,10 @@
         
       label.form-input-label {{ $t('username') }}
       v-text-field(readonly :value="user.username" prepend-inner-icon="mdi-account" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAccount'] }}
         template(v-slot:append-outer)
-          v-icon.tw-cursor-pointer(@click="remove(user, i)" color="error") mdi-close-thick
+          v-icon.tw-cursor-pointer(@click="remove(user, i)" color="error") {{ icons['mdiCloseThick'] }}
 
       label.form-input-label {{ $t('permissions') }}:
       v-chip.tw-text-white.tw-ml-1(small v-for="perm in user.permissionLevel" :key="perm" color="var(--cui-primary)") {{ perm }}
@@ -42,6 +49,8 @@
 </template>
 
 <script>
+import { mdiAccount, mdiCloseThick, mdiKeyVariant, mdiSecurity } from '@mdi/js';
+
 import { addUser, getUsers, removeUser } from '@/api/users.api';
 
 export default {
@@ -49,8 +58,11 @@ export default {
 
   data() {
     return {
+      icons: { mdiAccount, mdiCloseThick, mdiKeyVariant, mdiSecurity },
+
       loading: true,
       loadingProgress: true,
+      loadingAdd: false,
 
       users: [],
 
@@ -220,6 +232,11 @@ export default {
 
   methods: {
     async add() {
+      if (this.loadingAdd) {
+        return;
+      }
+
+      this.loadingAdd = true;
       this.loadingProgress = true;
 
       const valid = this.$refs.form.validate();
@@ -237,6 +254,7 @@ export default {
         this.$toast.success('New user added');
       }
 
+      this.loadingAdd = false;
       this.loadingProgress = false;
     },
     async remove(user, index) {

@@ -2,8 +2,8 @@
 v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePickerOpened' : 'datePickerClosed'" v-model="showFilter" transition="slide-y-transition" min-width="260px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
   template(v-slot:activator="{ on, attrs }")
     v-badge(:value="selected.length" :content="selected.length" color="var(--cui-primary)" offset-x="20" offset-y="20" overlap)
-      v-btn.text-font-default.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-        v-icon mdi-filter
+      v-btn.text-default.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
+        v-icon {{ icons['mdiFilter'] }}
 
   v-card.light-shadow.card-border(:class="datePicker && datePickerOpened ? 'datePickerOpened' : 'datePickerClosed'")
     .tw-p-6.tw-pb-0.tw-flex.tw-justify-between
@@ -11,22 +11,22 @@ v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePicker
 
       .t-block.tw-ml-auto
         v-btn.text-muted(icon height="38px" width="38px" @click="clearFilter")
-          v-icon mdi-autorenew
+          v-icon {{ icons['mdiAutorenew'] }}
 
       DatePicker(v-model="dateRange" :model-config="dateConfig" mode="date" color="pink" is24hr is-range :is-dark="darkMode" v-if="datePicker" :attributes="dateAttr" @popoverWillShow="datePickerOpened = true" @popoverDidHide="datePickerOpened = false")
         template(v-slot="{ inputValue, inputEvents, togglePopover }")
           v-btn(icon height="38px" width="38px" @click="togglePopover()" :color="dateRange.start || dateRange.end ? 'var(--cui-primary)' : 'var(--cui-text-hint)'")
-            v-icon mdi-calendar
+            v-icon {{ icons['mdiCalendar'] }}
 
     v-list(:dark="darkMode")
       v-list-group(v-for="item in items" :key="item.id" v-model="filter[item.type]" v-if="item.enabled" no-action)
         template(v-slot:prependIcon)
-          v-icon.text-font-default.tw-ml-5 {{ filter[item.type] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+          v-icon.text-default.tw-ml-5 {{ filter[item.type] ? icons['mdiChevronUp'] : icons['mdiChevronDown'] }}
         template(v-slot:activator)
           v-list-item-content
             v-list-item-title.filter-menu-subtitle {{ item.title }}
         template(v-slot:appendIcon)
-          v-icon.text-font-default 
+          v-icon.text-default 
           v-chip.tw-mr-5.tw-text-white(small color="rgba(0,0,0, 0.2)" style="font-size: 0.6rem !important;") {{ item.items.filter(child => child.selected).length }}
 
         v-list-item.tw-p-0(dense v-for="child in item.items" :key="child.title")
@@ -36,6 +36,7 @@ v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePicker
 
 <script>
 import DatePicker from 'v-calendar/lib/components/date-picker.umd';
+import { mdiAutorenew, mdiCalendar, mdiChevronDown, mdiChevronUp, mdiFilter } from '@mdi/js';
 
 import { getSetting } from '@/api/settings.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -82,6 +83,14 @@ export default {
         labels: false,
         rooms: false,
         types: false,
+      },
+
+      icons: {
+        mdiAutorenew,
+        mdiCalendar,
+        mdiChevronDown,
+        mdiChevronUp,
+        mdiFilter,
       },
 
       items: [

@@ -462,7 +462,7 @@ class EventController {
             //Snapshot
             if (recordingSettings.active || imgBuffer || customBuffer) {
               const content = {
-                message: telegramSettings.message,
+                //message: telegramSettings.message,
               };
 
               if (imgBuffer) {
@@ -489,7 +489,7 @@ class EventController {
           case 'Video': {
             if ((recordingSettings.active && recordingSettings.type === 'Video') || customBuffer) {
               const content = {
-                message: telegramSettings.message,
+                //message: telegramSettings.message,
               };
 
               content.video = customBuffer ? customBuffer : `${recordingSettings.path}/${notification.fileName}`;

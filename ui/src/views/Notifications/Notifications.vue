@@ -9,7 +9,7 @@
         h2 {{ $t($route.name.toLowerCase()) }}
       .header-utils
         v-btn(icon height="38px" width="38px" color="red" :disabled="!notifications.length" @click="removeAll")
-          v-icon mdi-delete
+          v-icon {{ icons['mdiDelete'] }}
         FilterCard(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
 
     v-row.tw-mt-5.overflow-hidden
@@ -46,6 +46,7 @@
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
+import { mdiDelete } from '@mdi/js';
 
 import { getNotifications, removeNotification, removeNotifications } from '@/api/notifications.api';
 
@@ -67,6 +68,9 @@ export default {
   mixins: [socket],
 
   data: () => ({
+    icons: {
+      mdiDelete,
+    },
     images: [],
     index: null,
     infiniteId: Date.now(),

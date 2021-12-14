@@ -12,6 +12,8 @@
 
     label.form-input-label {{ $t('exclude') }}
     v-select.select(:placeholder="$t('exclude')" prepend-inner-icon="mdi-cctv" small-chips deletable-chips v-model="general.exclude" :items="cameras" item-text="name" :disabled="!general.atHome || general.automation.active" background-color="var(--cui-bg-card)" solo multiple @change="function(){restartAutomation = false; stopAutomation = true;}")
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiCctv'] }}
 
     v-divider.tw-mt-4.tw-mb-8
 
@@ -27,11 +29,15 @@
 
     label.form-input-label {{ $t('exclude') }}
     v-select.select(:placeholder="$t('exclude')" prepend-inner-icon="mdi-cctv" small-chips deletable-chips v-model="general.automation.exclude" :items="cameras" item-text="name" :disabled="!general.automation.atHome || !general.automation.active" background-color="var(--cui-bg-card)" solo multiple @change="function(){restartAutomation = true; stopAutomation = false;}")
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiCctv'] }}
 
     label.form-input-label {{ $t('automation_from') }}
     v-dialog(ref="fromDialog" v-model="modalFrom" :return-value.sync="general.automation.startTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="general.automation.startTime" :disabled="!general.automation.active" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on" @change="function(){restartAutomation = true; stopAutomation = false;}")
+          template(v-slot:prepend-inner)
+            v-icon.text-muted {{ icons['mdiClockTimeFourOutline'] }}
       v-time-picker(v-if="modalFrom" v-model="general.automation.startTime" format="24hr" full-width)
         v-spacer
         v-btn(text color="var(--cui-primary)" @click="modalFrom = false") {{ $t('cancel') }}
@@ -41,6 +47,8 @@
     v-dialog(ref="toDialog" v-model="modalTo" :return-value.sync="general.automation.endTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="general.automation.endTime" :disabled="!general.automation.active" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on" @change="function(){restartAutomation = true; stopAutomation = false;}")
+          template(v-slot:prepend-inner)
+            v-icon.text-muted {{ icons['mdiClockTimeFourOutline'] }}
       v-time-picker(v-if="modalTo" v-model="general.automation.endTime" format="24hr" full-width)
         v-spacer
         v-btn(text color="var(--cui-primary)" @click="modalTo = false") {{ $t('cancel') }}
@@ -54,25 +62,33 @@
     v-form.tw-w-full.tw-mt-8.tw-mb-3(ref="form" v-model="valid" lazy-validation @submit.prevent="addRoom")
       label.form-input-label {{ $t('name') }}
       v-text-field(v-model="roomName" :label="$t('room_name')" prepend-inner-icon="mdi-door" append-outer-icon="mdi-check-bold" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.room" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiDoor'] }}
         template(v-slot:append-outer)
-          v-icon.tw-cursor-pointer(@click="addRoom" color="success") mdi-check-bold
+          v-icon.tw-cursor-pointer(@click="addRoom" color="success") {{ icons['mdiCheckBold'] }}
 
     .page-subtitle-info.tw-mb-4 {{ $t('existing_rooms') }}
 
     .tw-w-full(v-for="(room,i) in general.rooms" :key="room")
       v-text-field(:value="room === 'Standard' ? $t('standard') : room" prepend-inner-icon="mdi-door" :append-outer-icon="room !== 'Standard' ? 'mdi-close-thick' : ''" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" readonly solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiDoor'] }}
         template(v-slot:append-outer v-if="room !== 'Standard'")
-          v-icon.tw-cursor-pointer(@click="removeRoom(room,i)" color="error") mdi-close-thick
+          v-icon.tw-cursor-pointer(@click="removeRoom(room,i)" color="error") {{ icons['mdiCloseThick'] }}
 
 </template>
 
 <script>
+import { mdiCctv, mdiCheckBold, mdiClockTimeFourOutline, mdiCloseThick, mdiDoor } from '@mdi/js';
+
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 export default {
   name: 'GeneralSettings',
 
   data: () => ({
+    icons: { mdiCctv, mdiCheckBold, mdiClockTimeFourOutline, mdiCloseThick, mdiDoor },
+
     modalFrom: false,
     modalTo: false,
 

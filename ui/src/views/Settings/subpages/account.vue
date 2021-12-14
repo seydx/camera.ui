@@ -17,10 +17,14 @@
   v-form.tw-w-full.tw-mt-4.tw-mb-8(ref="form" v-model="valid" lazy-validation)
     label.form-input-label {{ $t('username') }}
     v-text-field(v-model="form.username" :label="$t('username')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.username" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiAccount'] }}
 
     label.form-input-label {{ $t('signout_after') }}
     v-select(ref="sessionTimer" :suffix="$t('hours')" :value="form.sessionTimer/3600 > 25 ? $t('never') : form.sessionTimer/3600" :items="sessionTimerSelect" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
     label.form-input-label {{ $t('permissions') }}: 
     v-chip.tw-text-white.tw-ml-1(small v-for="perm in currentUser.permissionLevel" :key="perm" color="var(--cui-primary)") {{ perm }}
     
@@ -30,10 +34,14 @@
     .page-subtitle-info.tw-mb-8 {{ $t('change_your_password') }}
     
     label.form-input-label {{ $t('new_password') }}
-    v-text-field(v-model="form.password" label="******" autocomplete="new-password" :type="showNewPassword ? 'text' : 'password'" :append-icon="showNewPassword ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showNewPassword = !showNewPassword" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" required solo)
+    v-text-field(v-model="form.password" label="******" autocomplete="new-password" :type="showNewPassword ? 'text' : 'password'" :append-icon="showNewPassword ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showNewPassword = !showNewPassword" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiKeyVariant'] }}
 
     label.form-input-label {{ $t('new_password_verify') }}
-    v-text-field(v-model="form.password2" label="******" autocomplete="new-password-confirm" :type="showNewPasswordConfirm ? 'text' : 'password'" :append-icon="showNewPasswordConfirm ? 'mdi-eye' : 'mdi-eye-off'" @click:append="showNewPasswordConfirm = !showNewPasswordConfirm" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.newpassword2" required solo)
+    v-text-field(v-model="form.password2" label="******" autocomplete="new-password-confirm" :type="showNewPasswordConfirm ? 'text' : 'password'" :append-icon="showNewPasswordConfirm ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showNewPasswordConfirm = !showNewPasswordConfirm" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.newpassword2" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiKeyVariant'] }}
 
     v-divider.tw-mt-4.tw-mb-8
 
@@ -44,6 +52,8 @@
 </template>
 
 <script>
+import { mdiAccount, mdiEye, mdiEyeOff, mdiKeyVariant, mdiTimelapse } from '@mdi/js';
+
 import { changeUser } from '@/api/users.api';
 
 export default {
@@ -51,6 +61,14 @@ export default {
 
   data() {
     return {
+      icons: {
+        mdiAccount,
+        mdiEye,
+        mdiEyeOff,
+        mdiKeyVariant,
+        mdiTimelapse,
+      },
+
       loading: false,
 
       avatarSrc: '',

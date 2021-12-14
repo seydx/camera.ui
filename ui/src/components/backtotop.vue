@@ -1,15 +1,20 @@
 <template lang="pug">
 v-fab-transition
   v-btn.backtotop-btn(v-scroll="onScroll" v-show="fab" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="toTop")
-    v-icon mdi-chevron-up
+    v-icon  {{ icons['mdiChevronUp'] }}
 </template>
 
 <script>
+import { mdiChevronUp } from '@mdi/js';
+
 export default {
   name: 'BackToTop',
 
   data: () => ({
     fab: false,
+    icons: {
+      mdiChevronUp,
+    },
   }),
 
   methods: {

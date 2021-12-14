@@ -2,13 +2,26 @@
 .settings-navi.pl-safe.pr-safe.tw-flex.tw-flex-col.tw-h-full(key="settingsSidebar" :class="(showSidebar ? 'settings-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
   .sidebar-nav-items.tw-p-3(v-for="point in navigation" v-if="checkLevel(point.requiredLevel)" :key="point.name" :class="$route.path === point.to || $route.meta.name === point.name ? 'sidebar-nav-items-active' : ''")
     v-btn.tw-m-3.tw-flex.tw-flex-col.tw-p-0.tw-justify-center.tw-items-start.sidebar-nav-item(type="div" @click="hideNavi" :to="point.to" active-class="sidebar-settings-nav-item-active" plain block tile :ripple="false")
-      v-icon(height="24px" width="24px" :class="$route.path === point.to ? darkmode ? 'sidebar-nav-item-text-dark' : 'sidebar-nav-item-text-light' : 'text-muted'").tw-mr-4 {{ point.icon }}
+      v-icon(height="24px" width="24px" :class="$route.path === point.to ? darkmode ? 'sidebar-nav-item-text-dark' : 'sidebar-nav-item-text-light' : 'text-muted'").tw-mr-4 {{ icons[point.icon] }}
       .tw-block(style="max-width: 240px")
         span.sidebar-nav-item-text(:class="$route.path === point.to ? darkmode ? 'sidebar-nav-item-text-dark' : 'sidebar-nav-item-text-light' : ''") {{ $t(point.name.toLowerCase()) }}
         .tw-block.text-muted {{ $t(`${point.name.toLowerCase()}_nav_info`) }}
 </template>
 
 <script>
+import {
+  mdiAccountCircleOutline,
+  mdiAccountPlus,
+  mdiApplicationCog,
+  mdiBackupRestore,
+  mdiBellOutline,
+  mdiCctv,
+  mdiFaceRecognition,
+  mdiImageMultipleOutline,
+  mdiPencilRuler,
+  mdiTune,
+} from '@mdi/js';
+
 import { bus } from '@/main';
 import { routes } from '@/router';
 
@@ -16,6 +29,18 @@ export default {
   name: 'SidebarSettings',
 
   data: () => ({
+    icons: {
+      'mdi-account-circle-outline': mdiAccountCircleOutline,
+      'mdi-account-plus': mdiAccountPlus,
+      'mdi-application-cog': mdiApplicationCog,
+      'mdi-backup-restore': mdiBackupRestore,
+      'mdi-bell-outline': mdiBellOutline,
+      'mdi-cctv': mdiCctv,
+      'mdi-face-recognition': mdiFaceRecognition,
+      'mdi-image-multiple-outline': mdiImageMultipleOutline,
+      'mdi-pencil-ruler': mdiPencilRuler,
+      'mdi-tune': mdiTune,
+    },
     navigation: routes
       .find((route) => route.name === 'Settings')
       .children.map((route) => {

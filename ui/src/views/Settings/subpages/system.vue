@@ -12,21 +12,23 @@
 
     label.form-input-label {{ $t('update_or_downgrade') }}
     v-select(:value="currentVersion" v-model="currentVersion" :items="availableVersions" prepend-inner-icon="mdi-npm" append-outer-icon="mdi-update" background-color="var(--cui-bg-card)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNpm'] }}
       template(v-slot:append-outer)
         v-dialog(v-model="updateDialog" width="500" scrollable)
           template(v-slot:activator='{ on, attrs }')
             v-btn.tw-text-white(:loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
-              v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") mdi-update
+              v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") {{ icons['mdiUpdate'] }}
           v-card
             v-card-title {{ $t('release_notes') }}
             v-divider
-            v-card-text.tw-p-7.text-font-default
+            v-card-text.tw-p-7.text-default
               .tw-flex.tw-justify-center.tw-items-center.tw-w-full.tw-h-full(v-if="!changelog") 
                 v-progress-circular(indeterminate color="var(--cui-primary)")
               vue-markdown.changelog(v-else) {{ changelog }}
             v-divider
             v-card-actions.tw-flex.tw-justify-end
-              v-btn.text-font-default(text @click='updateDialog = false') {{ $t('cancel') }}
+              v-btn.text-default(text @click='updateDialog = false') {{ $t('cancel') }}
               v-btn(color='var(--cui-primary)' text @click='onUpdateRestart') {{ `${$t('update')} & ${$t('restart')}` }}
 
     v-dialog(v-model="restartDialog" width="500" scrollable)
@@ -35,10 +37,10 @@
       v-card
         v-card-title {{ $t('restart') }}
         v-divider
-        v-card-text.tw-p-7.text-font-default.tw-text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
+        v-card-text.tw-p-7.text-default.tw-text-center {{ $t('restart_confirm_text').replace('@', npmPackageName) }}
         v-divider
         v-card-actions.tw-flex.tw-justify-end
-          v-btn.text-font-default(text @click='restartDialog = false') {{ $t('cancel') }}
+          v-btn.text-default(text @click='restartDialog = false') {{ $t('cancel') }}
           v-btn(color='var(--cui-primary)' text @click='onRestart') {{ $t('restart') }}
 
     v-dialog(v-model="resetDialog" width="500" scrollable)
@@ -47,10 +49,10 @@
       v-card
         v-card-title {{ $t('reset') }}
         v-divider
-        v-card-text.tw-p-7.text-font-default.tw-text-center {{ $t('reset_confirm_text') }}
+        v-card-text.tw-p-7.text-default.tw-text-center {{ $t('reset_confirm_text') }}
         v-divider
         v-card-actions.tw-flex.tw-justify-end
-          v-btn.text-font-default(text @click='resetDialog = false') {{ $t('cancel') }}
+          v-btn.text-default(text @click='resetDialog = false') {{ $t('cancel') }}
           v-btn(color='var(--cui-primary)' text @click='onReset') {{ $t('reset') }}
 
     v-divider.tw-mt-6.tw-mb-8
@@ -64,6 +66,8 @@
 
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
 
     v-divider.tw-mt-4.tw-mb-8
     
@@ -72,10 +76,14 @@
 
     label.form-input-label {{ $t('path_to_certificate') }}
     v-text-field(v-model="config.ssl.cert" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiAt'] }}
 
     label.form-input-label {{ $t('path_to_key') }}
     v-text-field(v-model="config.ssl.key" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiAt'] }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('options') }}
@@ -83,6 +91,8 @@
 
     label.form-input-label {{ $t('video_processor_path') }}
     v-text-field(v-model="config.options.videoProcessor" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiAt'] }}
 
     v-divider.tw-mt-4.tw-mb-8
     
@@ -99,7 +109,9 @@
 
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('smtp') }}
@@ -111,10 +123,14 @@
 
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
+
     label.form-input-label {{ $t('space_replace') }}
     v-text-field(v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiFindReplace'] }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('mqtt') }}
@@ -126,10 +142,14 @@
 
     label.form-input-label {{ $t('host') }}
     v-text-field(v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiWeb'] }}
+
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
+
     v-divider.tw-mb-8
     v-btn.tw-text-white(:loading="loadingSave" block color="success" @click="onSave") {{ $t('save') }}
 
@@ -138,6 +158,7 @@
 <script>
 import compareVersions from 'compare-versions';
 import VueMarkdown from 'vue-markdown';
+import { mdiAt, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
 import { changeConfig, getConfig } from '@/api/config.api';
 import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
@@ -153,6 +174,15 @@ export default {
   },
 
   data: () => ({
+    icons: {
+      mdiAt,
+      mdiFindReplace,
+      mdiNpm,
+      mdiNumeric,
+      mdiUpdate,
+      mdiWeb,
+    },
+
     loading: true,
     loadingProgress: true,
     loadingSave: false,

@@ -6,13 +6,13 @@
     .utils.tw-flex.tw-justify-between.tw-items-center
       .remove-btn.tw-block.tw-ml-auto
         v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onRemove" :loading="loadingRemove")
-          v-icon.tw-text-white mdi-delete-empty
+          v-icon.tw-text-white {{ icons['mdiDeleteEmpty'] }}
       .dl-btn.tw-block.tw-ml-1
         v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onDownload" :loading="loadingDownload")
-          v-icon.tw-text-white mdi-download
+          v-icon.tw-text-white {{ icons['mdiDownload'] }}
       .share-btn.tw-block.tw-ml-1(v-if="showShare")
         v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onShare" :loading="loadingShare")
-          v-icon.tw-text-white mdi-share-variant
+          v-icon.tw-text-white {{ icons['mdiShareVariant'] }}
     
     my-terminal(:terminal="terminal" ref="xterm")
 
@@ -31,6 +31,7 @@
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import Console from '@/components/console.vue';
+import { mdiDeleteEmpty, mdiDownload, mdiShareVariant } from '@mdi/js';
 
 import { downloadLog, removeLog } from '@/api/system.api';
 import socket from '@/mixins/socket';
@@ -46,6 +47,12 @@ export default {
   mixins: [socket],
 
   data: () => ({
+    icons: {
+      mdiDeleteEmpty,
+      mdiDownload,
+      mdiShareVariant,
+    },
+
     loading: true,
     loadingDownload: false,
     loadingRemove: false,

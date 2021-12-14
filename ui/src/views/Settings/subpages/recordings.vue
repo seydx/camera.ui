@@ -9,19 +9,29 @@
 
     label.form-input-label {{ $t('recording_type') }}
     v-select(:value="recordings.type" v-model="recordings.type" :items="recordingTypes" prepend-inner-icon="mdi-video-image" background-color="var(--cui-bg-card)" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiVideoImage'] }}
 
     label.form-input-label {{ $t('recording_time') }}
     v-select(:suffix="$t('seconds')" :value="recordings.time" v-model="recordings.timer" :items="recordingTimer" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
     label.form-input-label {{ $t('save_path') }}
     v-text-field(v-model="recordings.path" label="..." prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.path" required solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiAt'] }}
 
     label.form-input-label {{ $t('remove_after') }}
     v-select(:suffix="$t('days')" :value="recordings.removeAfter" v-model="recordings.removeAfter" :items="removeAfterTimer" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
-      
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
 </template>
 
 <script>
+import { mdiAt, mdiTimelapse, mdiVideoImage } from '@mdi/js';
+
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 export default {
@@ -29,6 +39,8 @@ export default {
 
   data() {
     return {
+      icons: { mdiAt, mdiTimelapse, mdiVideoImage },
+
       loading: true,
       loadingProgress: true,
 

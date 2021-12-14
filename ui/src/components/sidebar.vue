@@ -9,7 +9,7 @@
       v-menu.included.tw-z-30(v-model="showProfileMenu" transition="slide-y-transition" min-width="220px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" z-index="99" content-class="light-shadow")
         template(v-slot:activator="{ on, attrs }")
           v-btn.tw-text-white(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-            v-icon mdi-account
+            v-icon {{ icons['mdiAccount'] }}
 
         v-card.included.light-shadow.card-border.dropdown-content(min-width="220px" max-width="260px")
           v-list-item.tw-px-6.tw-py-3.profile-menu-header.dropdown-title
@@ -30,13 +30,13 @@
               v-list-item-group
                 v-list-item(@click="() => { hideNavi(); $router.push('/settings/account') }")
                   v-list-item-icon.tw-mr-4
-                    v-icon.touch-button-icon-light-nohover mdi-account-outline
+                    v-icon.touch-button-icon-light-nohover {{ icons['mdiAccountOutline'] }}
                   v-list-item-content.text-left
                     v-list-item-title.tw-text-xs.tw-font-medium.touch-button-icon-light-nohover {{ $t('account') }}
                 v-divider(v-if="checkLevel('admin')")
                 v-list-item(v-if="checkLevel('admin')" @click="() => { hideNavi(); $router.push('/settings/system') }")
                   v-list-item-icon.tw-mr-4
-                    v-icon.touch-button-icon-light-nohover mdi-tune
+                    v-icon.touch-button-icon-light-nohover {{ icons['mdiTune'] }}
                   v-list-item-content.text-left
                     v-list-item-title.tw-text-xs.tw-font-medium.touch-button-icon-light-nohover {{ $t('system') }}
 
@@ -47,7 +47,7 @@
               v-list-item-group
                 v-list-item(@click="signout")
                   v-list-item-icon.tw-mr-4
-                    v-icon.touch-button-icon-light-nohover mdi-logout-variant
+                    v-icon.touch-button-icon-light-nohover {{ icons['mdiLogoutVariant'] }}
                   v-list-item-content.text-left
                     v-list-item-title.tw-text-xs.tw-font-medium.touch-button-icon-light-nohover {{ $t('signout') }}
   
@@ -67,7 +67,7 @@
       .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.main && checkLevel(point.requiredLevel)")
         .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
         v-btn.tw-justify-start.sidebar-nav-item(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-active v-btn--active' : ''" plain block tile)
-          v-icon(height="24px" width="24px").tw-mr-4 {{ point.icon }}
+          v-icon(height="24px" width="24px").tw-mr-4 {{ icons[point.icon] }}
           span.sidebar-nav-item-text {{ $t(point.name.toLowerCase()) }}
           
       v-divider.siderbar-nav-divider.tw-my-3
@@ -75,7 +75,7 @@
       .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.extras && checkLevel(point.requiredLevel)")
         .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
         v-btn.tw-justify-start.sidebar-nav-item(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-active v-btn--active' : ''" plain block tile)
-          v-icon(height="24px" width="24px").tw-mr-4 {{ point.icon }}
+          v-icon(height="24px" width="24px").tw-mr-4 {{ icons[point.icon] }}
           span.sidebar-nav-item-text {{ $t(point.name.toLowerCase()) }}
           
       .tw-my-3
@@ -86,7 +86,7 @@
         .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.bottom && checkLevel(point.requiredLevel)")
           .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
           v-btn.tw-justify-start.sidebar-nav-item(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-active v-btn--active' : ''" plain block tile)
-            v-icon(height="24px" width="24px").tw-mr-4 {{ point.icon }}
+            v-icon(height="24px" width="24px").tw-mr-4 {{ icons[point.icon] }}
             span.sidebar-nav-item-text {{ $t(point.name.toLowerCase()) }}
             
         .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
@@ -97,14 +97,14 @@
       .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.main && checkLevel(point.requiredLevel)")
         .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
         v-btn.tw-p-0.tw-justify-center.sidebar-nav-item-minified(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-minified-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-minified-active v-btn--active' : ''" plain block tile)
-          v-icon(height="24px" width="24px") {{ point.icon }}
+          v-icon(height="24px" width="24px") {{ icons[point.icon] }}
           
       v-divider.siderbar-nav-divider.tw-my-3
       
       .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.extras && checkLevel(point.requiredLevel)")
         .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
         v-btn.tw-p-0.tw-justify-center.sidebar-nav-item-minified(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-minified-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-minified-active v-btn--active' : ''" plain block tile)
-          v-icon(height="24px" width="24px") {{ point.icon }}
+          v-icon(height="24px" width="24px") {{ icons[point.icon] }}
       
       .tw-my-6
           
@@ -114,7 +114,7 @@
         .tw-flex.tw-items-center.sidebar-nav-items(v-for="point in navigation" :key="point.name" v-if="point.bottom && checkLevel(point.requiredLevel)")
           .nav-active(:class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'nav-active-show' : ''")
           v-btn.tw-p-0.tw-justify-center.sidebar-nav-item-minified(@click="hideNavi" :to="point.redirect || point.to" active-class="sidebar-nav-item-minified-active" :class="$route.path === point.to || $route.path.split('/')[1] === point.to.replace('/', '') || ($route.name === point.name && !$route.meta.child) ? 'sidebar-nav-item-minified-active v-btn--active' : ''" plain block tile)
-            v-icon(height="24px" width="24px") {{ point.icon }}
+            v-icon(height="24px" width="24px") {{ icons[point.icon] }}
             
         .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
           span.version v1.0.0
@@ -123,6 +123,21 @@
 
 <script>
 import InlineSvg from 'vue-inline-svg';
+import {
+  mdiAccount,
+  mdiAccountOutline,
+  mdiChartArc,
+  mdiCog,
+  mdiConsole,
+  mdiGridLarge,
+  mdiLogoutVariant,
+  mdiBell,
+  mdiCctv,
+  mdiImageMultiple,
+  mdiTextBoxOutline,
+  mdiTune,
+  mdiViewDashboard,
+} from '@mdi/js';
 
 import { bus } from '@/main';
 import { routes } from '@/router';
@@ -137,6 +152,27 @@ export default {
   data() {
     return {
       avatarSrc: '',
+      mdiAccount: mdiAccount,
+      mdiAccountOutline: mdiAccountOutline,
+      mdiLogoutVariant: mdiLogoutVariant,
+      mdiTune: mdiTune,
+
+      icons: {
+        mdiAccount,
+        mdiAccountOutline,
+        mdiLogoutVariant,
+        mdiTune,
+        'mdi-bell': mdiBell,
+        'mdi-cctv': mdiCctv,
+        'mdi-chart-arc': mdiChartArc,
+        'mdi-cog': mdiCog,
+        'mdi-console': mdiConsole,
+        'mdi-grid-large': mdiGridLarge,
+        'mdi-image-multiple': mdiImageMultiple,
+        'mdi-text-box-outline': mdiTextBoxOutline,
+        'mdi-view-dashboard': mdiViewDashboard,
+      },
+
       navigation: routes
         .map((route) => {
           if (route.meta.navigation) {

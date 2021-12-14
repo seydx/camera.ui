@@ -17,7 +17,7 @@
     v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
       v-expansion-panels(v-model="notificationsPanel" multiple)
         v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
-          v-expansion-panel-header.notifications-panel-title.text-font-default.tw-font-bold {{ $t('notifications') }}
+          v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
           v-expansion-panel-content.notifications-panel-content
             v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
               template(v-slot:default="{ item }")
@@ -30,11 +30,11 @@
                             .tw-flex.tw-justify-center.tw-items-center.tw-h-full
                               v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
-                      v-list-item-title.text-font-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-title.text-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
                     v-list-item-action
                       v-btn.text-muted(icon @click="index = i")
-                        v-icon mdi-plus-circle
+                        v-icon {{ icons['mdiPlusCircle'] }}
             .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
               v-list.tw-p-0(dense)
                 v-list-item
@@ -63,6 +63,7 @@
 <script>
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import { mdiPlusCircle } from '@mdi/js';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -86,6 +87,7 @@ export default {
   data: () => ({
     camera: {},
     cols: 12,
+    icons: [mdiPlusCircle],
     images: [],
     index: null,
     loading: true,

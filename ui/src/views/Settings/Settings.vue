@@ -10,8 +10,8 @@
       
     .settings-content.settings-included.tw-w-full.tw-relative
       .tw-flex.tw-flex
-        v-btn.text-font-default.included.settings-nav-toggle(@click="toggleSettingsNavi" icon height="38px" width="38px")
-          v-icon mdi-menu
+        v-btn.text-default.included.settings-nav-toggle(@click="toggleSettingsNavi" icon height="38px" width="38px")
+          v-icon {{ icons['mdiMenu'] }}
         .page-title {{ $t($route.meta.name.toLowerCase()) }}
       transition(name='fade' mode='out-in')
         router-view.tw-px-2.tw-max-w-4xl
@@ -30,6 +30,7 @@
 <script>
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import { mdiMenu } from '@mdi/js';
 
 import { bus } from '@/main';
 
@@ -48,6 +49,9 @@ export default {
   mixins: [socket],
 
   data: () => ({
+    icons: {
+      mdiMenu,
+    },
     loading: false,
     showOverlay: false,
   }),

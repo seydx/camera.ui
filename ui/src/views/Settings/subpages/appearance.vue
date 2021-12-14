@@ -9,10 +9,14 @@
     .tw-w-full.tw-mt-4
       label.form-input-label {{ $t('mode') }}
       v-select(v-model="appearance.mode" :items="modes" prepend-inner-icon="mdi-theme-light-dark" background-color="var(--cui-bg-card)" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiThemeLightDark'] }}
 
       label.form-input-label {{ $t('color') }}
       v-select(v-model="appearance.color" :items="colors" prepend-inner-icon="mdi-palette" background-color="var(--cui-bg-card)" required solo)
-      
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiPalette'] }}
+
     v-divider.tw-mt-4.tw-mb-8
 
     .page-subtitle.tw-mt-8 {{ $t('language') }}
@@ -21,15 +25,21 @@
     .tw-w-full.tw-mt-4.tw-mb-8
       label.form-input-label {{ $t('language') }}
       v-select(v-model="appearance.lang" :items="langs" prepend-inner-icon="mdi-translate" background-color="var(--cui-bg-card)" required solo)
-    
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiTranslate'] }}
+
 </template>
 
 <script>
+import { mdiPalette, mdiThemeLightDark, mdiTranslate } from '@mdi/js';
+
 export default {
   name: 'AppearanceSettings',
 
   data() {
     return {
+      icons: { mdiPalette, mdiThemeLightDark, mdiTranslate },
+
       loading: false,
 
       appearance: {

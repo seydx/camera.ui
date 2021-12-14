@@ -1,12 +1,12 @@
 <template lang="pug">
 .tw-relative.tw-z-10
   .top-navi-bar-minified(v-if="$route.meta.config.showMinifiedNavbar")
-    v-btn.text-font-default.included(@click="toggleNavi" icon height="38px" width="38px")
-      v-icon.text-transparent {{ showSidebar ? 'mdi-arrow-left-thick' : 'mdi-arrow-right-thick' }}
+    v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
+      v-icon.text-transparent {{ showSidebar ? icons['mdiArrowLeftThick'] : icons['mdiArrowRightThick'] }}
   v-app-bar.top-navi-bar.pt-safe(v-else height="64px" :class="($route.meta.config.fixedNavbar ? 'top-navi-bar-fixed ' : '') + (extendSidebar ? 'extended-sidebar' : '')")
     .navi-wrap.pl-safe.pr-safe.tw-max-w-10xl
-      v-btn.text-font-default.included(@click="toggleNavi" icon height="38px" width="38px")
-        v-icon mdi-menu
+      v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
+        v-icon {{ icons['mdiMenu'] }}
       .tw-flex.tw-ml-auto(v-if="checkLevel('notifications:access')")
 
         v-badge(:value="notSize" :dot="notSize < 1" :content="notSize" color="var(--cui-primary)" offset-x="20" offset-y="20" bordered overlap)
@@ -14,12 +14,14 @@
             .badge-text.tw-flex.tw-justify-center.tw-items-center.tw-h-full.tw-w-full
               span(v-if="notSize > 99") 99+
               span(v-else) {{ notSize }}
-          v-btn.text-font-default.tw-text-white.tw-mr-1(@click="$router.push('/notifications')" icon height="38px" width="38px")
-            v-icon mdi-bell
+          v-btn.text-default.tw-text-white.tw-mr-1(@click="$router.push('/notifications')" icon height="38px" width="38px")
+            v-icon {{ icons['mdiBell'] }}
 
 </template>
 
 <script>
+import { mdiArrowLeftThick, mdiArrowRightThick, mdiBell, mdiMenu } from '@mdi/js';
+
 import { bus } from '@/main';
 
 export default {
@@ -27,6 +29,12 @@ export default {
 
   data: () => ({
     extendSidebar: false,
+    icons: {
+      mdiArrowLeftThick,
+      mdiArrowRightThick,
+      mdiBell,
+      mdiMenu,
+    },
     showSidebar: false,
     showNotificationsMenu: false,
     showProfileMenu: false,

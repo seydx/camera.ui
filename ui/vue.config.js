@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-//const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const config = require('../test/camera.ui/config.json');
 
 process.env.VUE_APP_SERVER_PORT = config.port || 8181;
@@ -147,7 +147,12 @@ module.exports = {
         'jquery.ui.touch-punch': path.resolve(__dirname, 'node_modules/gridstack/dist/jq/jquery.ui.touch-punch.js'),
       },
     },
-    //plugins: [new BundleAnalyzerPlugin()],
+    plugins: [
+      new BundleAnalyzerPlugin({
+        analyzerMode: 'static',
+        openAnalyzer: true,
+      }),
+    ],
   },
   css: {
     extract:

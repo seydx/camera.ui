@@ -10,7 +10,7 @@
               v-chip.tw-ml-2(x-small v-if="notification.type === 'ERROR'" color="error") {{ $t('error') }}
               v-chip.tw-ml-2(x-small v-if="notification.type === 'WARN'" color="yellow") {{ $t('warning') }}
             .tw-block
-              v-icon.text-muted mdi-clock-time-nine-outline
+              v-icon.text-muted {{ icons['ClockTimeNineOutline'] }}
               span.tw-p-0.text-muted.tw-text-xs.tw-pt-4.tw-ml-2 {{ notification.time }}
           .tw-flex.tw-justify-start.tw-items-center.tw-mt-3
             .notifications-card-img.tw-mr-3(v-if="notification.recordStoring")
@@ -21,12 +21,13 @@
             v-card-subtitle.tw-p-0.text-muted.tw-font-normal {{ notification.message }}
     .tw-flex.tw-justify-center.tw-items-center.swiper-slide.notification-card-remove
       v-btn(icon color="error" @click="remove")
-        v-icon mdi-close-circle
+        v-icon {{ icons['mdiCloseCircle'] }}
 </template>
 
 <script>
 /* eslint-disable vue/require-default-prop */
 
+import { mdiCloseCircle, mdiClockTimeNineOutline } from '@mdi/js';
 import 'swiper/dist/css/swiper.min.css';
 import { Swiper } from 'swiper/dist/js/swiper.esm.js';
 
@@ -39,6 +40,10 @@ export default {
     return {
       test: true,
       errorImg: false,
+      icons: {
+        mdiCloseCircle,
+        mdiClockTimeNineOutline,
+      },
       src: `/files/${
         this.notification.recordType === 'Video' ? `${this.notification.name}@2.jpeg` : this.notification.fileName
       }`,

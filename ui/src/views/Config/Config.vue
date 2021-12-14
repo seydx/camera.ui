@@ -7,7 +7,7 @@
 
     .save-btn(:style="loadingSave ? 'opacity: 1 !important' : ''")
       v-btn.tw-text-white(fab height="40px" width="40px" color="success" @click="onSave" :loading="loadingSave")
-        v-icon.tw-text-white mdi-check-bold
+        v-icon.tw-text-white {{ icons['mdiCheckBold'] }}
 
     v-jsoneditor(
       v-model="config" 
@@ -33,6 +33,7 @@
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import VJsoneditor from 'v-jsoneditor';
+import { mdiCheckBold } from '@mdi/js';
 
 import { changeConfig, getConfig } from '@/api/config.api';
 import socket from '@/mixins/socket';
@@ -52,6 +53,9 @@ export default {
   data: () => ({
     config: {},
     error: false,
+    icons: {
+      mdiCheckBold,
+    },
     loading: true,
     loadingSave: false,
     options: {

@@ -6,7 +6,7 @@
     v-menu.tw-z-30(v-if="checkLevel('settings:edit')" v-model="showCardsMenu" transition="slide-y-transition" min-width="200px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
       template(v-slot:activator="{ on, attrs }")
         v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-          v-icon mdi-cog
+          v-icon {{ icons['mdiCog'] }}
 
       v-card.light-shadow.card-border.dropdown-content(max-width="360px")
         .tw-flex.tw-justify-between.tw-items-center.tw-py-3.tw-px-5.dropdown-title
@@ -24,7 +24,7 @@
                     v-switch.tw-m-0(v-model="item.favourite" @change="updateLayout(item.name, item.favourite)" color="rgba(var(--cui-primary-700-rgb))")
                 v-divider
 
-          span.text-font-default(v-else) {{ $t('no_cameras') }}
+          span.text-default(v-else) {{ $t('no_cameras') }}
   #container.grid-stack
     .grid-stack-item(v-for="(camera, index) in cameras" :gs-id="index" :key="camera.name")
       .grid-stack-item-content
@@ -49,6 +49,7 @@ import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import 'gridstack/dist/gridstack.min.css';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/jq/gridstack-dd-jqueryui';
+import { mdiCog } from '@mdi/js';
 
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -73,6 +74,9 @@ export default {
   data: () => ({
     allCameras: [],
     cameras: [],
+    icons: {
+      mdiCog,
+    },
     loading: false,
     showCardsMenu: false,
   }),

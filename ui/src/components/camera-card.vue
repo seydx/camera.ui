@@ -30,9 +30,9 @@
 
         // Offline
         .offline.tw-flex.tw-flex-col.tw-justify-center.tw-items-center(v-if="!loading && offline")
-          v-icon.tw-text-white(x-large v-if="!stream") mdi-video-off
+          v-icon.tw-text-white(x-large v-if="!stream") {{ icons['mdiVideoOff'] }}
           v-btn.tw-text-white.tw-mt-3(v-if="stream" small color="var(--cui-primary)" @click="refreshStream" fab)
-            v-icon.tw-text-white mdi-reload
+            v-icon.tw-text-white {{ icons['mdiReload'] }}
           .tw-font-bold.tw-text-xs.tw-mt-2.text-muted {{ $t('offline') }}
 
         // Stream Canvas / Img Container
@@ -57,13 +57,13 @@
         .tw-z-10.tw-absolute.tw-bottom-0.tw-left-0.tw-right-0(v-if="stream && !hideController")
           .tw-flex.tw-content-end.tw-items-center.tw-justify-between.video-card-control(v-if="!loading && !offline")
             .tw-block.tw-p-2
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(small @click="handleStartStop") {{ !play ? 'mdi-play' : 'mdi-pause' }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleStartStop") {{ !play ? icons['mdiPlay'] : icons['mdiPause'] }}
             .tw-block.tw-p-2.tw-pr-0.tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(small @click="refreshStream") mdi-refresh
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
             .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio")
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(small @click="handleVolume") {{ audio ? 'mdi-volume-high' : 'mdi-volume-off' }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleVolume") {{ audio ? icons['mdiVolumeHigh'] : icons['mdiVolumeOff'] }}
             .tw-block.tw-p-2
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(small @click="toggleFullscreen") {{ !fullscreen ? 'mdi-arrow-expand' : 'mdi-arrow-collapse' }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="toggleFullscreen") {{ !fullscreen ? icons['mdiArrowExpand'] : icons['mdiArrowCollapse'] }}
 
       // Video Title (bottom)
       .tw-z-10(v-if="title && titlePosition === 'bottom' && !fullscreen")
@@ -86,6 +86,17 @@ import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import JSMpeg from 'jsmpeg-fast-player';
 import JSMpegWritableSource from '@/common/jsmpeg-source.js';
+import {
+  mdiArrowExpand,
+  mdiArrowCollapse,
+  mdiPause,
+  mdiPlay,
+  mdiReload,
+  mdiRefresh,
+  mdiVideoOff,
+  mdiVolumeHigh,
+  mdiVolumeOff,
+} from '@mdi/js';
 
 import { getCameraSnapshot, getCameraStatus } from '@/api/cameras.api';
 
@@ -113,6 +124,17 @@ export default {
   },
 
   data: () => ({
+    icons: {
+      mdiArrowExpand,
+      mdiArrowCollapse,
+      mdiPause,
+      mdiPlay,
+      mdiReload,
+      mdiRefresh,
+      mdiVideoOff,
+      mdiVolumeHigh,
+      mdiVolumeOff,
+    },
     images: [],
     imgSource: '',
     index: null,

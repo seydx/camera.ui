@@ -11,16 +11,17 @@ v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col
     .shadow.tw-absolute.tw-inset-0
 
   .video-card-content.tw-relative
-    v-icon.text-font-default(small style="margin-top: -3px; margin-right: 5px") mdi-clock-time-nine-outline
+    v-icon.text-default(small style="margin-top: -3px; margin-right: 5px") {{ icons['mdiClockTimeNineOutline'] }}
     span.text-font-disabled {{ recording.time }}
     v-btn.tw-text-white(style="top: -20px; right: 55px" width="36px" height="36px" @click="download(item)" :loading="downloading" absolute color="#333333" fab right top)
-      v-icon(small) mdi-download
+      v-icon(small) {{ icons['mdiDownload'] }}
     v-btn.tw-text-white(style="top: -20px; right: 10px" width="36px" height="36px" @click="remove" :loading="removing" small absolute color="red" fab right top)
-      v-icon(small) mdi-trash-can
+      v-icon(small) {{ icons['mdiTrashCan'] }}
 </template>
 
 <script>
 /* eslint-disable vue/require-default-prop */
+import { mdiClockTimeNineOutline, mdiDownload, mdiTrashCan } from '@mdi/js';
 import { saveAs } from 'file-saver';
 
 import { removeRecording } from '@/api/recordings.api';
@@ -34,6 +35,11 @@ export default {
     return {
       downloading: false,
       errorImg: false,
+      icons: {
+        mdiClockTimeNineOutline,
+        mdiDownload,
+        mdiTrashCan,
+      },
       item: {
         fileName: this.recording.fileName,
         url: '/files/' + this.recording.fileName,

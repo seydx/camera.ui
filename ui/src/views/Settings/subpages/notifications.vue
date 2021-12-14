@@ -9,7 +9,9 @@
 
     label.form-input-label {{ $t('remove_after') }}
     v-select(:suffix="$t('hours')" :value="notifications.removeAfter" v-model="notifications.removeAfter" :items="removeAfterTimer" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" solo)
-      
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
     v-divider.tw-mt-4.tw-mb-8
 
     .page-subtitle.tw-mt-8 {{ $t('alexa') }}
@@ -27,20 +29,30 @@
 
     label.form-input-label {{ $t('domain') }}
     v-text-field(v-model="notifications.alexa.domain" label="amazon.de | amazon.com | amazon.co.uk" prepend-inner-icon="mdi-domain" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiDomain'] }}
 
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="notifications.alexa.proxy.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
 
     label.form-input-label {{ $t('serialNr') }}
     v-text-field(v-model="notifications.alexa.serialNr" prepend-inner-icon="mdi-identifier" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiIdentifier'] }}
 
     label.form-input-label {{ $t('message') }}
     v-text-field(v-model="notifications.alexa.message" prepend-inner-icon="mdi-message" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiMessage'] }}
+
     label.form-input-label {{ $t('speaker_start_time') }}
     v-dialog(ref="fromDialog" v-model="modalFrom" :return-value.sync="notifications.alexa.startTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="notifications.alexa.startTime" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on")
+          template(v-slot:prepend-inner)
+            v-icon.text-muted {{ icons['mdiClockTimeFourOutline'] }}
       v-time-picker(v-if="modalFrom" v-model="notifications.alexa.startTime" format="24hr" full-width)
         v-spacer
         v-btn(text color="var(--cui-primary)" @click="modalFrom = false") {{ $t('cancel') }}
@@ -50,6 +62,8 @@
     v-dialog(ref="toDialog" v-model="modalTo" :return-value.sync="notifications.alexa.endTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="notifications.alexa.endTime" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on")
+          template(v-slot:prepend-inner)
+            v-icon.text-muted {{ icons['mdiClockTimeFourOutline'] }}
       v-time-picker(v-if="modalTo" v-model="notifications.alexa.endTime" format="24hr" full-width)
         v-spacer
         v-btn(text color="var(--cui-primary)" @click="modalTo = false") {{ $t('cancel') }}
@@ -66,12 +80,18 @@
 
     label.form-input-label {{ $t('token') }}
     v-text-field(v-model="notifications.telegram.token" prepend-inner-icon="mdi-security" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiSecurity'] }}
 
     label.form-input-label {{ $t('chat_id') }}
     v-text-field(v-model="notifications.telegram.chatID" prepend-inner-icon="mdi-identifier" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-    
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiIdentifier'] }}
+
     label.form-input-label {{ $t('message') }}
     v-text-field(v-model="notifications.telegram.message" prepend-inner-icon="mdi-message" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiMessage'] }}
 
     v-divider.tw-mt-4.tw-mb-8
     
@@ -85,6 +105,15 @@
 </template>
 
 <script>
+import {
+  mdiClockTimeFourOutline,
+  mdiDomain,
+  mdiIdentifier,
+  mdiMessage,
+  mdiNumeric,
+  mdiSecurity,
+  mdiTimelapse,
+} from '@mdi/js';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 export default {
@@ -92,6 +121,16 @@ export default {
 
   data() {
     return {
+      icons: {
+        mdiClockTimeFourOutline,
+        mdiDomain,
+        mdiIdentifier,
+        mdiMessage,
+        mdiNumeric,
+        mdiSecurity,
+        mdiTimelapse,
+      },
+
       modalFrom: false,
       modalTo: false,
 
