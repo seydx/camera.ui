@@ -19,6 +19,50 @@ exports.routesConfig = (app) => {
    *     tags: [System]
    *     security:
    *       - bearerAuth: []
+   *     summary: Get DB file info
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/db', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.lastModifiedDb,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/log/download:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get database.json
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/db/download', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.downloadDb,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/log:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
    *     summary: Get truncated log
    *     responses:
    *       200:

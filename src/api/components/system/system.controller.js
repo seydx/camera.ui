@@ -82,6 +82,21 @@ exports.clearLog = async (req, res) => {
   }
 };
 
+exports.downloadDb = async (req, res) => {
+  try {
+    const dbPath = ConfigService.databaseFilePath;
+    //const dbJson = JSON.stringify((await fs.readJSON(dbPath, { throws: false })) || {});
+
+    res.header('Content-Type', 'application/json');
+    res.sendFile(dbPath);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.downloadLog = async (req, res) => {
   try {
     const logPath = ConfigService.logFile;
@@ -200,6 +215,20 @@ exports.getSmtpServerStatus = async (req, res) => {
     res.status(200).send({
       status: status ? 'running' : 'not running',
     });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.lastModifiedDb = async (req, res) => {
+  try {
+    const dbPath = ConfigService.databaseFilePath;
+    const dbFileInfo = await fs.stat(dbPath);
+
+    res.status(200).send(dbFileInfo);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

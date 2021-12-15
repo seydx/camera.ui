@@ -8,7 +8,7 @@
 
     .tw-flex.tw-justify-between.tw-items-center.tw-my-5
       label.form-input-label {{ $t('version') }}
-      span(:class="updateAvailable ? 'tw-text-red-500' : 'tw-text-green-500'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
+      span.tw-text-right(:class="updateAvailable ? 'tw-text-red-500' : 'tw-text-green-500'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
 
     label.form-input-label {{ $t('update_or_downgrade') }}
     v-select(:value="currentVersion" v-model="currentVersion" :items="availableVersions" prepend-inner-icon="mdi-npm" append-outer-icon="mdi-update" background-color="var(--cui-bg-card)" solo)
@@ -56,6 +56,17 @@
           v-btn(color='var(--cui-primary)' text @click='onReset') {{ $t('reset') }}
 
     v-divider.tw-mt-6.tw-mb-8
+
+    .page-subtitle.tw-mt-8 {{ $t('database') }}
+    .page-subtitle-info {{ $t('database_information') }}
+
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('last_updated') }}
+      span.tw-text-right.tw-text-green-500 {{ dbFile.mtime }}
+
+    v-btn.tw-text-white(:loading="loadingDb" block color="success" @click="onDownloadDb") {{ $t('download') }}
+
+    v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('interface') }}
     .page-subtitle-info {{ $t('interface_config') }}
@@ -161,7 +172,7 @@ import VueMarkdown from 'vue-markdown';
 import { mdiAt, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
 import { changeConfig, getConfig } from '@/api/config.api';
-import { getChangelog, getPackage, restartSystem, updateSystem } from '@/api/system.api';
+import { downloadDb, getChangelog, getDb, getPackage, restartSystem, updateSystem } from '@/api/system.api';
 import { resetSettings } from '@/api/settings.api';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -189,6 +200,7 @@ export default {
     loadingReset: false,
     loadingRestart: false,
     loadingUpdate: false,
+    loadingDb: false,
 
     resetDialog: false,
     restartDialog: false,
@@ -199,6 +211,7 @@ export default {
     config: {},
     configTimer: null,
     currentVersion: null,
+    dbFile: {},
     latestVersion: null,
     serviceMode: false,
     updateAvailable: false,
@@ -214,6 +227,13 @@ export default {
   async created() {
     try {
       const config = await getConfig('?target=config');
+      const dbFile = await getDb();
+
+      this.dbFile = dbFile.data;
+
+      if (this.dbFile?.mtime) {
+        this.dbFile.mtime = this.dbFile.mtime.replace('T', ', ').split('.')[0];
+      }
 
       this.serviceMode = config.data.serviceMode;
       this.currentVersion = config.data.version;
@@ -349,8 +369,33 @@ export default {
         this.$toast.error(err);
       }
     },
+    async onDownloadDb() {
+      if (this.loadingDb) {
+        return;
+      }
+
+      this.loadingProgress = true;
+      this.loadingDb = true;
+
+      try {
+        const response = await downloadDb();
+        const url = window.URL.createObjectURL(new Blob([JSON.stringify(response.data)], { type: 'text/json' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'camera.ui.database.json');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingProgress = false;
+      this.loadingDb = false;
+    },
     async onSave() {
-      if (this.loadingSave || this.loadingRestart) {
+      if (this.loadingSave) {
         return;
       }
 
@@ -380,6 +425,7 @@ export default {
       this.lodingSave = true;
       this.loadingUpdate = true;
       this.loadingRestart = true;
+      this.loadingDb = true;
 
       try {
         await resetSettings();
@@ -396,6 +442,7 @@ export default {
         this.lodingSave = false;
         this.loadingUpdate = false;
         this.loadingRestart = false;
+        this.loadingDb = false;
       }
     },
     async onRestart() {
@@ -410,6 +457,7 @@ export default {
       this.loadingSave = true;
       this.loadingReset = true;
       this.loadingUpdate = true;
+      this.loadingDb = true;
 
       //this.$toast.success(this.$t('system_restart_initiated'));
 
@@ -425,6 +473,7 @@ export default {
         this.loadingSave = false;
         this.loadingReset = false;
         this.loadingUpdate = false;
+        this.loadingDb = false;
       }
     },
     async onUpdateRestart() {
@@ -439,6 +488,7 @@ export default {
       this.loadingRestart = true;
       this.loadingSave = true;
       this.loadingReset = true;
+      this.loadingDb = true;
 
       try {
         this.$toast.success(this.$t('system_update_initiated'));
@@ -465,6 +515,7 @@ export default {
         this.loadingRestart = false;
         this.loadingSave = false;
         this.loadingReset = false;
+        this.loadingDb = false;
       }
     },
   },
