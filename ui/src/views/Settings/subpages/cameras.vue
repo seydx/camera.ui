@@ -122,7 +122,7 @@
       
       v-divider.tw-mt-4.tw-mb-8
       
-      div(v-if="moduleName === 'camera.ui'")
+      div(v-if="moduleName === 'homebridge-camera-ui'")
         .page-subtitle-info Homebridge
         .input-info Changing some of the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
           
