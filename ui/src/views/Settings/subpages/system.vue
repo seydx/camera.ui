@@ -161,9 +161,6 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    v-divider.tw-mb-8
-    v-btn.tw-text-white(:loading="loadingSave" block color="success" @click="onSave") {{ $t('save') }}
-
 </template>
 
 <script>
@@ -209,7 +206,7 @@ export default {
     availableVersions: [],
     changelog: '',
     config: {},
-    configTimer: null,
+    configTimeout: null,
     currentVersion: null,
     dbFile: {},
     latestVersion: null,
@@ -339,7 +336,7 @@ export default {
       this.latestVersion = relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
-      //this.$watch('config', this.configWatcher, { deep: true });
+      this.$watch('config', this.configWatcher, { deep: true });
 
       this.loading = false;
       this.loadingProgress = false;
@@ -359,6 +356,31 @@ export default {
 
       this.updateDialog = false;
       this.changelog = '';
+    },
+    async configWatcher() {
+      if (this.loadingRestart || this.loadingReset || this.loadingUpdate) {
+        return;
+      }
+
+      this.loadingSave = true;
+      this.loadingProgress = true;
+
+      if (this.configTimeout) {
+        clearTimeout(this.configTimeout);
+        this.configTimeout = null;
+      }
+
+      this.configTimeout = setTimeout(async () => {
+        try {
+          await changeConfig(this.config);
+        } catch (err) {
+          console.log(err);
+          this.$toast.error(err.message);
+        }
+
+        this.loadingSave = false;
+        this.loadingProgress = false;
+      }, 2000);
     },
     async onBeforeUpdate() {
       try {

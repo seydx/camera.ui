@@ -122,7 +122,7 @@
       
       v-divider.tw-mt-4.tw-mb-8
       
-      div(v-if="moduleName === 'homebridge-camera-ui'")
+      div(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
         .page-subtitle-info Homebridge
         .input-info Changing some of the Homebridge plugin parameters requires a restart of camera.ui for the changes to take effect
           
@@ -132,10 +132,8 @@
             .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
               v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
               .input-info.tw-italic {{ $t('privacyMode_info') }}
-            .tw-flex.tw-flex-row.tw-items-center.tw-break-normal(v-if="!general.atHome")
-              v-btn.input-info(text to="/settings/interface" color="error" style="padding: 0; height: 17px;")
-                v-icon.text-muted.tw-mr-1(small color="error") {{ icons['mdiAlert'] }} 
-                span Attention: "At Home" must be enabled for privacy mode to work
+                br
+                span(style="color: #FF5252 !important") Attention: "At Home" must be enabled for privacy mode to work
           v-switch(color="var(--cui-primary)" v-model="camera.privacyMode")
         
         .tw-flex.tw-justify-between.tw-items-center
@@ -463,6 +461,8 @@ export default {
 
   data() {
     return {
+      env: '',
+
       icons: {
         mdiAlert,
         mdiAlphabetical,
@@ -515,6 +515,8 @@ export default {
 
   async created() {
     try {
+      this.env = process.env.NODE_ENV;
+
       const general = await getSetting('general');
       this.general = general.data;
 
