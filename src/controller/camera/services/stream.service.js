@@ -50,6 +50,7 @@ class StreamService {
         '-b:v': `${camera.videoConfig.maxBitrate}k`,
         '-r': camera.videoConfig.maxFPS,
         '-bf': 0,
+        '-preset:v': 'ultrafast',
         '-threads': '1',
       },
     };

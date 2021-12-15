@@ -90,7 +90,7 @@
             span.sidebar-nav-item-text {{ $t(point.name.toLowerCase()) }}
             
         .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
-          span.version v1.0.0
+          span.version v{{ version.split('-')[0] }}
 
     .tw-flex.tw-flex-col.tw-h-full.tw.tw-pt-10(v-if="showSidebarMinifiedNav" key="nav")
       
@@ -117,7 +117,7 @@
             v-icon(height="24px" width="24px") {{ icons[point.icon] }}
             
         .tw-block.tw-text-center.tw-my-2.sidebar-nav-footer
-          span.version v1.0.0
+          span.version v{{ version.split('-')[0] }}
 
 </template>
 
@@ -138,6 +138,7 @@ import {
   mdiTune,
   mdiViewDashboard,
 } from '@mdi/js';
+import { version } from '../../../package.json';
 
 import { bus } from '@/main';
 import { routes } from '@/router';
@@ -190,6 +191,7 @@ export default {
       showSidebar: false,
       showSidebarContent: false,
       showSidebarMinifiedNav: true,
+      version,
     };
   },
 
