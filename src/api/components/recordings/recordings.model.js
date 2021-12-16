@@ -14,6 +14,7 @@ const {
   getAndStoreSnapshot,
   handleFragmentsRequests,
   storeBuffer,
+  storeSnapshotFromVideo,
   storeVideo,
   storeVideoBuffer,
 } = require('../../../common/ffmpeg');
@@ -140,11 +141,8 @@ exports.createRecording = async (data, fileBuffer) => {
   };
 
   if (fileBuffer) {
-    const isPlaceholder = true;
-    const externRecording = true;
-
-    await storeBuffer(camera, fileBuffer, data.path, fileName, label, isPlaceholder, externRecording);
     await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
+    await storeSnapshotFromVideo(camera, data.path, fileName);
   } else {
     const isPlaceholder = data.type === 'Video';
     const externRecording = false;

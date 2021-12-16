@@ -241,7 +241,7 @@ class PrebufferService {
     return { server: fmp4OutputServer, process: cp };
   }
 
-  async getVideo(requestedPrebuffer = 6000) {
+  async getVideo(requestedPrebuffer = 4000) {
     if (this.prebufferSession) {
       log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
 

@@ -86,11 +86,6 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
 
     ffmpeg.on('error', (error) => reject(error));
 
-    /*ffmpeg.on('close', () => {
-      log.debug(`Snapshot stored to: ${outputPath}`, camera.name);
-      resolve();
-    });*/
-
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
         errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
@@ -258,18 +253,6 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
 
     ffmpeg.on('error', (error) => reject(error));
 
-    /*ffmpeg.on('close', () => {
-      if (!imageBuffer || (imageBuffer && imageBuffer.length <= 0)) {
-        return reject(new Error('Image Buffer is empty!'));
-      }
-
-      if (storeSnapshot) {
-        replaceJpegWithExifJPEG(camera.name, destination, label);
-      }
-
-      resolve(imageBuffer);
-    });*/
-
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
         errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
@@ -290,14 +273,63 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
   });
 };
 
+exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName) {
+  return new Promise((resolve, reject) => {
+    const videoProcessor = ConfigService.ui.options.videoProcessor;
+    const videoName = `${recordingPath}/${fileName}.mp4`;
+    const destination = `${recordingPath}/${fileName}@2.jpeg`;
+
+    const prebufferLength = 4000 / 1000;
+
+    const ffmpegArguments = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-ss',
+      prebufferLength,
+      '-i',
+      videoName,
+      '-f',
+      'image2',
+      '-update',
+      '1',
+    ];
+
+    if (camera.videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
+    }
+
+    ffmpegArguments.push(destination);
+
+    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
+
+    const errors = [];
+
+    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+
+    ffmpeg.on('error', (error) => reject(error));
+
+    ffmpeg.on('exit', (code, signal) => {
+      if (code === 1) {
+        errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
+      } else {
+        log.debug('FFmpeg snapshot process exited (expected)', camera.name, 'ffmpeg');
+        resolve();
+      }
+    });
+  });
+};
+
 // eslint-disable-next-line no-unused-vars
 exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-
     const ffmpegInput = [...camera.videoConfig.source.split(' ')];
-
-    let videoName = `${recordingPath}/${fileName}.mp4`;
+    const videoName = `${recordingPath}/${fileName}.mp4`;
 
     const ffmpegArguments = [
       '-hide_banner',
@@ -340,11 +372,6 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
 
     ffmpeg.on('error', (error) => reject(error));
 
-    /*ffmpeg.on('close', () => {
-      log.debug(`Video stored to: ${videoName}`, camera.name);
-      resolve();
-    });*/
-
     ffmpeg.on('exit', (code, signal) => {
       if (code === 1) {
         errors.unshift(`FFmpeg video process exited with error! (${signal})`);
@@ -361,7 +388,7 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
 
 exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName) {
   return new Promise((resolve, reject) => {
-    let videoName = `${recordingPath}/${fileName}.mp4`;
+    const videoName = `${recordingPath}/${fileName}.mp4`;
 
     log.debug(`Storing video to: ${videoName}`, camera.name);
 
@@ -378,7 +405,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
-  const prebufferLength = 6000;
+  const prebufferLength = 4000;
   const audioArguments = ['-acodec', 'copy'];
   const videoArguments = ['-vcodec', 'copy'];
 
