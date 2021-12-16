@@ -75,13 +75,20 @@ export default {
           ];
         }
 
+        let message = notification.message;
+
+        if (notification.isNotification) {
+          let trigger = message.split(' -')[0];
+          message = `${this.$t(trigger)} - ${message.split('- ')[1]}`;
+        }
+
         const content = {
           component: NotificationBanner,
           props: {
             headerTxt: this.$t('notifications'),
             timeTxt: this.$t('now'),
             title: notification.title,
-            message: notification.message,
+            message: message,
             subtxt: notification.subtxt,
           },
           listeners: {
@@ -100,6 +107,10 @@ export default {
 
       if (this.isPage('Notifications')) {
         if (notification.isNotification) {
+          notification.message = this.$t('notification_text')
+            .replace('@', notification.camera)
+            .replace('%', notification.room);
+
           this.notifications?.unshift(notification);
 
           if (notification.recordStoring) {

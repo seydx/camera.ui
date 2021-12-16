@@ -157,12 +157,10 @@ exports.createNotification = async (data) => {
   await Database.interfaceDB.get('notifications').push(notification).write();
   Cleartimer.setNotification(id, timestamp);
 
-  const eventTxt = data.trigger.charAt(0).toUpperCase() + data.trigger.slice(1);
-
-  log.notify({
+  const notify = {
     ...notification,
     title: cameraName,
-    message: `${eventTxt} Event - ${time}`,
+    message: `${data.trigger} - ${time}`,
     subtxt: room,
     mediaSource: storing
       ? data.type === 'Video'
@@ -171,9 +169,16 @@ exports.createNotification = async (data) => {
       : false,
     count: true,
     isNotification: true,
-  });
+  };
 
-  return notification;
+  if (!storing) {
+    log.notify(notify);
+  }
+
+  return {
+    notification: notification,
+    notify: notify,
+  };
 };
 
 exports.removeById = async (id) => {

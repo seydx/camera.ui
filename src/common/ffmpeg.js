@@ -279,20 +279,16 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
     const videoName = `${recordingPath}/${fileName}.mp4`;
     const destination = `${recordingPath}/${fileName}@2.jpeg`;
 
-    const prebufferLength = 4000 / 1000;
-
     const ffmpegArguments = [
       '-hide_banner',
       '-loglevel',
       'error',
       '-y',
       '-ss',
-      prebufferLength,
+      '00:00:03.500',
       '-i',
       videoName,
-      '-f',
-      'image2',
-      '-update',
+      '-frames:v',
       '1',
     ];
 

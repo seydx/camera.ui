@@ -120,12 +120,14 @@ class EventController {
             /*
              * Movement Event flow
              *
-             * 1) If webhook enabled, send webhook notification
-             * 2) If alexa enabled, send notification to alexa
-             * 3) If telegram enabled and type = "Text" for the camera, send telegram notification
-             * 4) Handle recording (Snapshot/Video)
-             * 5) Send webpush (ui) notification
-             * 6) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
+             * 1) If recording not enabled, send ui notification banner
+             * 2) If webhook enabled, send webhook notification
+             * 3) If alexa enabled, send notification to alexa
+             * 4) If telegram enabled and type = "Text" for the camera, send telegram notification
+             * 5) Handle recording (Snapshot/Video)
+             * 6) If recording enabled, send ui notification banner with media
+             * 7) Send webpush (ui) notification
+             * 8) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
              */
 
             log.debug(`New ${trigger} alert`, cameraName);
@@ -164,12 +166,13 @@ class EventController {
               }
 
               if (motionInfo.label || motionInfo.label === null) {
-                const notification = await EventController.#handleNotification(
+                // 1)
+                const { notification, notify } = await EventController.#handleNotification(
                   motionInfo,
                   notificationsSettings.active
                 );
 
-                // 1)
+                // 2)
                 await EventController.#sendWebhook(
                   cameraName,
                   notification,
@@ -177,10 +180,10 @@ class EventController {
                   notificationsSettings.active
                 );
 
-                // 2)
+                // 3)
                 await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
 
-                // 3)
+                // 4)
                 if (telegramSettings.type === 'Text') {
                   await EventController.#sendTelegram(
                     cameraName,
@@ -193,10 +196,15 @@ class EventController {
                   );
                 }
 
-                // 4)
+                // 5)
                 await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
 
-                // 5)
+                // 6)
+                if (recordingSettings.active) {
+                  log.notify(notify);
+                }
+
+                // 7)
                 await EventController.#sendWebpush(
                   cameraName,
                   notification,
@@ -204,7 +212,7 @@ class EventController {
                   notificationsSettings.active
                 );
 
-                // 6)
+                // 8)
                 if (
                   (telegramSettings.type === 'Snapshot' || telegramSettings.type === 'Video') &&
                   recordingSettings.active
