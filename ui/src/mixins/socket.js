@@ -75,11 +75,15 @@ export default {
           ];
         }
 
-        let message = notification.message;
+        let message = '';
 
         if (notification.isNotification) {
-          let trigger = message.split(' -')[0];
-          message = `${this.$t(trigger)} - ${message.split('- ')[1]}`;
+          let trigger = notification.message.split(' -')[0];
+          trigger = this.$t(trigger);
+
+          message = `${trigger} - ${notification.message.split('- ')[1]}`;
+        } else {
+          message = notification.message;
         }
 
         const content = {
@@ -107,11 +111,12 @@ export default {
 
       if (this.isPage('Notifications')) {
         if (notification.isNotification) {
-          notification.message = this.$t('notification_text')
-            .replace('@', notification.camera)
-            .replace('%', notification.room);
+          let message = this.$t('notification_text').replace('@', notification.camera).replace('%', notification.room);
 
-          this.notifications?.unshift(notification);
+          this.notifications?.unshift({
+            ...notification,
+            message: message,
+          });
 
           if (notification.recordStoring) {
             this.images?.unshift({
