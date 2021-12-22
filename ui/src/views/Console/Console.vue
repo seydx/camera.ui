@@ -2,7 +2,7 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .console-container.tw-relative(v-else)
-  #log.tw-max-w-10xl.tw-relative.tw-h-full
+  #log.tw-relative.tw-h-full
     .utils.tw-flex.tw-justify-between.tw-items-center
       .remove-btn.tw-block.tw-ml-auto
         v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onRemove" :loading="loadingRemove")
@@ -30,11 +30,12 @@
 <script>
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import Console from '@/components/console.vue';
 import { mdiDeleteEmpty, mdiDownload, mdiShareVariant } from '@mdi/js';
 
 import { downloadLog, removeLog } from '@/api/system.api';
 import socket from '@/mixins/socket';
+
+import Console from '@/components/console.vue';
 
 export default {
   name: 'Console',
@@ -62,8 +63,6 @@ export default {
     terminal: {
       pid: 1,
       name: 'terminal',
-      cols: 1000,
-      rows: 1000,
     },
   }),
 

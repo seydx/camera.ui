@@ -2,6 +2,7 @@
 'use-strict';
 
 const socketioJwt = require('socketio-jwt');
+const systeminformation = require('systeminformation');
 
 const { LoggerService } = require('../services/logger/logger.service');
 const { ConfigService } = require('../services/config/config.service');
@@ -14,6 +15,10 @@ const { log } = LoggerService;
 
 class Socket {
   #streamTimeouts = new Map();
+
+  static #cpuLoadHistory = [];
+  static #cpuTempHistory = [];
+  static #memoryUsageHistory = [];
 
   static io;
 
@@ -98,6 +103,18 @@ class Socket {
         }
       });
 
+      socket.on('getCpuLoad', () => {
+        Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
+      });
+
+      socket.on('getCpuTemp', () => {
+        Socket.io.emit('cpuTemp', Socket.#cpuTempHistory);
+      });
+
+      socket.on('getMemory', () => {
+        Socket.io.emit('memory', Socket.#memoryUsageHistory);
+      });
+
       socket.on('disconnect', () => {
         log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) disconnected from socket`);
       });
@@ -163,6 +180,10 @@ class Socket {
       }
     });
 
+    Socket.handleCpuLoad();
+    Socket.handleCpuTemperature();
+    Socket.handleMemoryUsage();
+
     return Socket.io;
   }
 
@@ -181,6 +202,78 @@ class Socket {
           controller.stream.restart();
           break;
       }
+    }
+  }
+
+  static async handleCpuLoad() {
+    try {
+      const cpuLoad = await systeminformation.currentLoad();
+
+      let time = new Date();
+      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+
+      Socket.#cpuLoadHistory = Socket.#cpuLoadHistory.slice(-60);
+      Socket.#cpuLoadHistory.push({
+        time: time,
+        value: cpuLoad ? cpuLoad.currentLoad : 0,
+      });
+    } catch (error) {
+      log.error(error, 'Socket');
+    } finally {
+      Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
+
+      setTimeout(() => {
+        Socket.handleCpuLoad();
+      }, 20000);
+    }
+  }
+
+  static async handleCpuTemperature() {
+    try {
+      const cpuTemperatureData = await systeminformation.cpuTemperature();
+
+      let time = new Date();
+      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+
+      Socket.#cpuTempHistory = Socket.#cpuTempHistory.slice(-60);
+      Socket.#cpuTempHistory.push({
+        time: time,
+        value: cpuTemperatureData ? cpuTemperatureData.main : 0,
+      });
+    } catch (error) {
+      log.error(error, 'Socket');
+    } finally {
+      Socket.io.emit('cpuTemp', Socket.#cpuTempHistory);
+
+      setTimeout(() => {
+        Socket.handleCpuTemperature();
+      }, 20000);
+    }
+  }
+
+  static async handleMemoryUsage() {
+    try {
+      const mem = await systeminformation.mem();
+      const memoryFreePercent = mem ? ((mem.total - mem.available) / mem.total) * 100 : 50;
+
+      let time = new Date();
+      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+
+      Socket.#memoryUsageHistory = Socket.#memoryUsageHistory.slice(-60);
+      Socket.#memoryUsageHistory.push({
+        time: time,
+        value: memoryFreePercent,
+        available: mem ? (mem.available / 1024 / 1024 / 1024).toFixed(2) : 4,
+        total: mem ? (mem.total / 1024 / 1024 / 1024).toFixed(2) : 8,
+      });
+    } catch (error) {
+      log.error(error, 'Socket');
+    } finally {
+      Socket.io.emit('memory', Socket.#memoryUsageHistory);
+
+      setTimeout(() => {
+        Socket.handleMemoryUsage();
+      }, 20000);
     }
   }
 }

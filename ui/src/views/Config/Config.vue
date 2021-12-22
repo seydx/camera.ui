@@ -3,7 +3,7 @@
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .config-container.tw-relative(v-else)
 
-  .tw-max-w-10xl.tw-relative.tw-h-full
+  .tw-relative.tw-h-full
 
     .save-btn(:style="loadingSave ? 'opacity: 1 !important' : ''")
       v-btn.tw-text-white(fab height="40px" width="40px" color="success" @click="onSave" :loading="loadingSave")

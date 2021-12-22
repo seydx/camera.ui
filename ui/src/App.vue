@@ -144,7 +144,7 @@ export default {
   background-color: #000 !important;
   border-color: #000 !important;
   opacity: 0.6;
-  z-index: 31;
+  z-index: 100;
   position: fixed;
   left: 0;
   right: 0;
@@ -166,7 +166,7 @@ export default {
 }
 
 .fixed-navbar {
-  margin-top: 64px;
+  margin-top: calc(64px + env(safe-area-inset-top, 0px));
 }
 
 .add-button {

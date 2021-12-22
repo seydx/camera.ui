@@ -6,7 +6,7 @@
       inline-svg(:src="require('../assets/img/logo_animated.svg')" title="camera.ui" aria-label="camera.ui" width="38px" height="44px")
 
     .tw-block.tw-ml-auto(v-if="showSidebarContent")
-      v-menu.included.tw-z-30(v-model="showProfileMenu" transition="slide-y-transition" min-width="220px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" z-index="99" content-class="light-shadow")
+      v-menu.included.tw-z-30(v-model="showProfileMenu" transition="slide-y-transition" min-width="220px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" z-index="999" content-class="light-shadow")
         template(v-slot:activator="{ on, attrs }")
           v-btn.tw-text-white(icon height="38px" width="38px" v-bind="attrs" v-on="on")
             v-icon {{ icons['mdiAccount'] }}
@@ -320,7 +320,7 @@ export default {
   min-width: 78px;
   max-width: 280px;
   transition: 0.2s all;
-  z-index: 99;
+  z-index: 999;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

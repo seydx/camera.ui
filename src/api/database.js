@@ -90,6 +90,12 @@ const defaultDatabase = {
       ...webpush.generateVAPIDKeys(),
       subscription: false,
     },
+    widgets: {
+      options: {
+        locked: false,
+      },
+      items: [],
+    },
   },
 };
 
@@ -363,6 +369,18 @@ class Database {
       database.settings.webpush = defaultDatabase.settings.webpush;
     }
 
+    if (typeof database?.settings.widgets !== 'object') {
+      database.settings.widgets = defaultDatabase.settings.widgets;
+    }
+
+    if (typeof database?.settings.widgets.options !== 'object') {
+      database.settings.widgets.options = defaultDatabase.settings.widgets.options;
+    }
+
+    if (!Array.isArray(database?.settings.widgets.items)) {
+      database.settings.widgets.items = defaultDatabase.settings.widgets;
+    }
+
     await Database.interfaceDB.assign(database).write();
   }
 
@@ -428,7 +446,6 @@ class Database {
             snapshotTimer: 60,
           },
           dashboard: {
-            favourite: true,
             live: true,
             snapshotTimer: 60,
           },

@@ -2,66 +2,61 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .tw-max-w-10xl.pl-safe.pr-safe.tw-mb-5
+  .pl-safe.pr-safe
+
+    Sidebar(ref="widgetBar" :items="items" @refreshDrag="setupDrag")
   
     .tw-flex.tw-justify-between.tw-items-center
-      .tw-block
+      .tw-block(style="margin-left: 10px;")
         h2.tw-leading-10 {{ $t($route.name.toLowerCase()) }}
         span.tw-leading-3.subtitle {{ $t('welcome_back') }}, 
           b {{ currentUser.username }}
 
-      .tw-block
-        v-menu.tw-z-30(v-if="checkLevel('settings:edit')" v-model="showCardsMenu" transition="slide-y-transition" min-width="250px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
-          template(v-slot:activator="{ on, attrs }")
-            v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-              v-icon {{ icons['mdiCog'] }}
+      .tw-block.widgets-included.tw-ml-auto.tw-mr-1(v-if="!showWidgetsNavi")
+        v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" @click="toggleLock" :color="locked ? 'error' : 'var(--cui-text-hint)'")
+          v-icon {{ locked ? icons['mdiLock'] : icons['mdiLockOpen'] }}
 
-          v-card.light-shadow.card-border.dropdown-content(max-width="360px")
-            .tw-flex.tw-justify-between.tw-items-center.tw-py-3.tw-px-5.dropdown-title
-              v-card-subtitle.tw-p-0.tw-m-0.tw-text-sm.tw-font-medium {{ $t('favourites') }}
-            v-divider
-            v-card-text.tw-py-3.tw-px-5.text-center
-              v-virtual-scroll(v-if="allCameras.length" :items="allCameras" item-height="64" height="192" bench="10")
-                template(v-slot:default="{ item, index }")
-                  v-list.tw-p-0
-                    v-list-item.dropdown-content.tw-p-0(inactive)
-                      v-list-item-content
-                        v-list-item-title
-                          .text-left.tw-text-sm.tw-font-medium {{ item.name }}
-                      v-list-item-action.tw-pr-4
-                        v-switch.tw-m-0(v-model="item.favourite" @change="updateLayout(item.name, item.favourite)" color="rgba(var(--cui-primary-700-rgb))")
-                    v-divider(v-if="index !== allCameras.length - 1")
-
-              span.text-default(v-else) {{ $t('no_cameras') }}
-
-    draggable.tw-mt-8.layout.row.wrap(v-model='cameras', ghost-class="ghost-box", @change="storeLayout", animation=200, delay="200" delay-on-touch-only="true")
-      v-flex.tw-mb-5.tw-px-2(xs12 sm6 md4 lg3 v-for="camera in cameras" :key="camera.name" :style="`height: ${height}px`")
-        VideoCard(:ref="camera.name" :camera="camera" title titlePosition="top" status :stream="camera.live" :refreshSnapshot="!camera.live" :notifications="Boolean(camera.lastNotification)")
-
+      .tw-block.widgets-included(v-if="!showWidgetsNavi")
+        v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" @click="toggleWidgetsNavi")
+          v-icon {{ icons['mdiWidgets'] }}
+    
+    #dashboard.tw-mt-5.tw-relative.tw-max-w-10xl(:class="itemChange ? 'grid-stack-dragging-border' : ''")
+      //.drag-info(v-if="dragging") DROP HERE
+      .grid-stack(ref="gridStack")
+          
   CoolLightBox(
     :items="notImages" 
     :index="notIndex"
     @close="closeHandler"
     :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
+    :useZoomBar="true"
     :zIndex=99999
   )
 
 </template>
 
 <script>
+import Vue from 'vue';
+import { i18n } from '@/i18n';
+import vuetify from '@/plugins/vuetify';
+import router from '@/router';
+import store from '@/store';
+
 import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import draggable from 'vuedraggable';
-import { mdiCog } from '@mdi/js';
+import { GridStack } from 'gridstack';
+import 'gridstack/dist/jq/gridstack-dd-jqueryui';
+import 'gridstack/dist/gridstack.min.css';
+import 'gridstack/dist/gridstack-extra.min.css';
+import { mdiLock, mdiLockOpen, mdiWidgets } from '@mdi/js';
 
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
-import VideoCard from '@/components/camera-card.vue';
-
+import { bus } from '@/main';
 import socket from '@/mixins/socket';
+import Sidebar from '@/components/sidebar-widgets.vue';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -70,71 +65,188 @@ export default {
 
   components: {
     CoolLightBox,
-    draggable,
-    VideoCard,
+    Sidebar,
   },
 
   mixins: [socket],
 
   data: () => ({
-    allCameras: [],
-    cameras: [],
+    itemChange: false,
+
     icons: {
-      mdiCog,
+      mdiLock,
+      mdiLockOpen,
+      mdiWidgets,
     },
+
+    instances: {},
+    items: [],
+    widgets: [],
+    widgetsTimeout: null,
+
+    cameras: [],
+    notifications: [],
+
     loading: true,
-    showCardsMenu: false,
+    locked: false,
+    showWidgetsNavi: false,
   }),
 
   computed: {
     currentUser() {
       return this.$store.state.auth.user || {};
     },
-    dashboardLayout() {
-      return this.$store.state.dashboard.layout;
-    },
-    height() {
-      switch (this.$vuetify.breakpoint.name) {
-        case 'xs':
-          return 300;
-        case 'sm':
-          return 250;
-        case 'md':
-          return 225;
-        case 'lg':
-          return 225;
-        case 'xl':
-          return 250;
-        default:
-          return 250;
-      }
-    },
   },
 
   async mounted() {
     try {
       const cameras = await getCameras();
-
       for (const camera of cameras.data.result) {
+        camera.id = camera.name;
         const settings = await getCameraSettings(camera.name);
         camera.settings = settings.data;
-
         camera.favourite = camera.settings.dashboard.favourite;
         camera.live = camera.settings.dashboard.live || false;
         camera.refreshTimer = camera.settings.dashboard.refreshTimer || 60;
-
         const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
         camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
       }
 
-      this.allCameras = cameras.data.result;
-      this.cameras = cameras.data.result.filter((camera) => camera.favourite);
+      const widgets = await getSetting('widgets');
+      this.items = widgets.data.items;
+      this.locked = widgets.data.options.locked;
+      this.showWidgetsNavi = this.windowWidth() < 768;
 
       this.loading = false;
 
-      await timeout(10);
+      await timeout(100);
 
-      this.getLayout();
+      this.$refs.widgetBar.widgets.forEach((widget) => {
+        if (widget.name === 'Cameras') {
+          widget.items = cameras.data.result;
+        }
+      });
+
+      this.widgets = this.$refs.widgetBar.widgets;
+
+      this.grid = GridStack.init({
+        alwaysShowResizeHandle: this.isMobile(),
+        disableOneColumnMode: true,
+        acceptWidgets: true,
+        float: true,
+        column: 12,
+        //row: 12,
+        //maxRow: 22,
+        cellHeight: this.cellHeight(),
+        removable: true,
+        resizable: {
+          autoHide: !this.isMobile(),
+          handles: 'all',
+        },
+      });
+
+      if (this.locked) {
+        this.grid.disable();
+      } else {
+        this.grid.enable();
+      }
+
+      // eslint-disable-next-line no-unused-vars
+      this.grid.on('drag dragstart resizestart', (event) => {
+        this.$refs.widgetBar?.hideNavi();
+        this.itemChange = true;
+      });
+
+      // eslint-disable-next-line no-unused-vars
+      this.grid.on('dropped dragstop resizestop', (event, previousWidget, newWidget) => {
+        if (event.type === 'dropped') {
+          this.setupDrag();
+
+          const itemsCopy = [...this.items];
+
+          const item = {
+            id: newWidget.id,
+            x: newWidget.x,
+            y: newWidget.y,
+            w: newWidget.w,
+            minW: newWidget.minW,
+            maxW: newWidget.maxW,
+            h: newWidget.h,
+            minH: newWidget.minH,
+            maxH: newWidget.maxH,
+            noMove: newWidget.noMove,
+            noResize: newWidget.noResize,
+          };
+
+          this.grid.removeWidget(newWidget.el, true, false);
+
+          const instance = this.createInstance(newWidget.id);
+
+          if (instance) {
+            this.grid.addWidget({
+              ...item,
+              content: instance.div.outerHTML,
+            });
+
+            itemsCopy.push(item);
+
+            document.getElementById(instance.div.id).appendChild(instance.instance.$el);
+          }
+
+          this.items = itemsCopy;
+        }
+
+        this.itemChange = false;
+      });
+
+      // eslint-disable-next-line no-unused-vars
+      this.grid.on('change', (event, changedItems) => {
+        if (this.grid.getColumn() === 12 && changedItems) {
+          let items = [...this.items];
+          const changedItemsCopy = [...changedItems];
+
+          changedItemsCopy.forEach((changedItem) => {
+            const item = items.find((item) => item.id === changedItem.id);
+            items = items.filter((item) => item.id !== changedItem.id);
+
+            items.push({
+              ...item,
+              x: changedItem.x,
+              y: changedItem.y,
+              w: changedItem.w,
+              h: changedItem.h,
+            });
+          });
+
+          this.items = items;
+        }
+      });
+
+      /*// eslint-disable-next-line no-unused-vars
+      this.grid.on('added', (event, items) => {
+        console.log('ADD');
+      });*/
+
+      this.grid.on('removed', async (event, items) => {
+        this.items = this.items.filter((item) => item.id !== items[0].id);
+        this.destroyInstance(items[0].id);
+
+        await timeout(100);
+        this.setupDrag();
+      });
+
+      this.createLayout();
+      //this.grid.load(this.items);
+
+      this.setupDrag();
+      this.onResize();
+
+      ['resize', 'orientationchange'].forEach((event) => {
+        window.addEventListener(event, this.onResize);
+      });
+
+      this.$watch('items', this.widgetsWatcher, { deep: true });
+      this.$watch('locked', this.lockWatcher, { deep: true });
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
@@ -146,67 +258,203 @@ export default {
     next();
   },
 
+  beforeDestroy() {
+    ['resize', 'orientationchange'].forEach((event) => {
+      window.removeEventListener(event, this.onResize);
+    });
+
+    if (this.grid) {
+      this.grid.destroy();
+    }
+
+    this.destroyInstance();
+  },
+
   methods: {
-    getLayout() {
-      for (const [index, camFromLayout] of this.dashboardLayout.entries()) {
-        if (!this.cameras.some((camera) => camera && camera.name === camFromLayout.name))
-          this.dashboardLayout.splice(index, 1);
-      }
-
-      for (const camera of this.cameras) {
-        if (!this.dashboardLayout.some((camFromLayout) => camFromLayout && camFromLayout.name === camera.name))
-          this.dashboardLayout.push({
-            index: this.dashboardLayout.length > 0 ? this.dashboardLayout.length : 0,
-            name: camera.name,
-          });
-      }
-
-      const cameras = [...this.cameras];
-
-      this.cameras = this.dashboardLayout
-        .map((camera) => {
-          let index = cameras.findIndex((cam) => cam.name === camera.name);
-          return cameras[index];
-        })
-        .filter((camera) => camera);
-
-      this.storeLayout();
+    cellHeight() {
+      const width = this.windowWidth() < 1100 ? this.windowWidth() : 1100;
+      return width / 12 < 75 ? 75 : width / 12;
     },
-    storeLayout() {
-      this.$store.dispatch(
-        'dashboard/updateElements',
-        this.cameras
-          .map((camera, index) => {
-            return {
-              index: index,
-              name: camera.name,
-            };
-          })
-          .filter((camera) => camera)
+    createInstance(id) {
+      const widget = this.$refs.widgetBar.widgets.find((widget) => widget.items.some((item) => item.id === id));
+
+      if (widget) {
+        const item = widget.items.find((item) => item.id === id);
+
+        const ComponentClass = Vue.extend(widget.widgetComponent);
+
+        const instance = new ComponentClass({
+          router,
+          store,
+          vuetify,
+          i18n: i18n,
+          propsData: { item: item },
+        });
+
+        const div = document.createElement('div');
+        div.id = Math.random().toString(24).substring(8);
+        div.classList.add('tw-h-full', 'tw-w-full', 'tw-relative', 'tw-z-1');
+
+        instance.$on('refreshDrag', this.setupDrag);
+        instance.$mount(div);
+
+        this.instances[id] = instance;
+
+        return { instance: instance, div: div };
+      }
+
+      return null;
+    },
+    async createLayout() {
+      //const items = [];
+
+      this.items = this.items.filter((item) => {
+        const instance = this.createInstance(item.id);
+
+        if (instance) {
+          item.content = instance.div.outerHTML;
+          this.grid.addWidget(item);
+          document.getElementById(instance.div.id).appendChild(instance.instance.$el);
+          return item;
+        }
+      });
+
+      /*try {
+        await changeSetting('widgets', {
+          items: items.map((item) => {
+            delete item.content;
+            return item;
+          }),
+        });
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }*/
+    },
+    destroyInstance(id) {
+      if (id) {
+        this.instances[id]?.$destroy();
+        delete this.instances[id];
+      } else {
+        for (const instance of Object.keys(this.instances)) {
+          this.instances[instance].$destroy();
+        }
+      }
+    },
+    isMobile() {
+      return (
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.platform) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
       );
     },
-    async updateLayout(cameraName, state) {
+    async lockWatcher() {
       try {
-        const camera = this.allCameras.find((camera) => camera && camera.name === cameraName);
-        const cameraSettings = await getSetting('cameras');
-
-        for (const cameraSetting of cameraSettings.data) {
-          if (cameraSetting.name === camera.name) {
-            cameraSetting.dashboard.favourite = state;
-          }
-        }
-
-        await changeSetting('cameras', cameraSettings.data);
-
-        if (state) {
-          this.cameras.push(camera);
-        } else {
-          this.cameras = this.cameras.filter((camera) => camera && camera.name !== cameraName);
-        }
+        await changeSetting('widgets', {
+          options: {
+            locked: this.locked,
+          },
+        });
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
       }
+    },
+    async onResize() {
+      this.toggleWidgetsNavi(false);
+      this.showWidgetsNavi = this.windowWidth() < 768;
+
+      if (this.grid) {
+        const itemsCopy = [...this.items];
+
+        if (this.windowWidth() < 576 && this.grid.getColumn() !== 1) {
+          this.grid.column(1).cellHeight(100).disable().compact();
+        } else if (this.windowWidth() >= 576 && this.windowWidth() < 768 && this.grid.getColumn() !== 2) {
+          this.grid.column(2).cellHeight(75).enableResize(false).enableMove(true).compact();
+        } else if (this.windowWidth() >= 768 && this.grid.getColumn() !== 12) {
+          this.grid.column(12).cellHeight(this.cellHeight());
+
+          if (this.locked) {
+            this.grid.disable();
+          } else {
+            this.grid.enable();
+          }
+
+          const gridItems = this.grid.getGridItems();
+
+          itemsCopy.forEach((item) => {
+            const el = gridItems.find((el) => el.gridstackNode.id === item.id);
+
+            el.setAttribute('gs-x', item.x);
+            el.setAttribute('gs-y', item.y);
+            el.setAttribute('gs-w', item.w);
+            el.setAttribute('gs-h', item.h);
+
+            this.grid.batchUpdate();
+          });
+
+          this.grid.commit();
+          this.items = itemsCopy;
+        }
+      }
+    },
+    setupDrag() {
+      GridStack.setupDragIn('.widget .grid-stack-item', {
+        revert: 'invalid',
+        scroll: false,
+        appendTo: '.grid-stack',
+        helper: (e) => {
+          return e.target.closest('.grid-stack-item').cloneNode(true);
+        },
+      });
+    },
+    toggleLock() {
+      this.locked = !this.locked;
+
+      if (this.locked) {
+        this.grid.disable();
+      } else {
+        this.grid.enable();
+      }
+    },
+    toggleWidgetsNavi(state) {
+      bus.$emit('showWidgetsNavi', state);
+
+      if (state === undefined) {
+        this.setupDrag();
+      }
+    },
+    windowWidth() {
+      return window.innerWidth && document.documentElement.clientWidth
+        ? Math.min(window.innerWidth, document.documentElement.clientWidth)
+        : window.innerWidth ||
+            document.documentElement.clientWidth ||
+            document.getElementsByTagName('body')[0].clientWidth;
+    },
+    windowHeight() {
+      return document.getElementById('dashboard')?.offsetHeight;
+    },
+    widgetData(data) {
+      console.log(data);
+    },
+    async widgetsWatcher(items) {
+      if (this.widgetsTimeout) {
+        clearTimeout(this.widgetsTimeout);
+        this.widgetsTimeout = null;
+      }
+
+      items.forEach((item) => delete item.content);
+
+      this.widgetsTimeout = setTimeout(async () => {
+        try {
+          await changeSetting('widgets', {
+            items: items,
+          });
+        } catch (err) {
+          console.log(err);
+          this.$toast.error(err.message);
+        }
+      }, 1000);
     },
   },
 };
@@ -217,15 +465,167 @@ export default {
   color: rgba(var(--cui-text-third-rgb)) !important;
 }
 
-.dropdown-title {
-  background: rgba(var(--cui-menu-title-rgb)) !important;
+.drag-info {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(var(--cui-text-default-rgb), 0.03);
+  font-weight: bolder;
+  font-size: 2rem;
 }
 
-.dropdown-content {
-  background: rgba(var(--cui-menu-default-rgb)) !important;
+.grid-stack {
+  /* 100vh - navbar - saveAreaTop - paddingTop - paddingBottom - title - footer */
+  min-height: calc(
+    100vh - 64px - env(safe-area-inset-top, 12px) - env(safe-area-inset-bottom, 12px) - 1.5rem - 1.5rem - 64px - 44px -
+      50px
+  );
 }
 
-.ghost-box {
-  opacity: 0.2;
+.grid-stack-dragging-border {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='10' ry='10' stroke='%2371717133' stroke-width='4' stroke-dasharray='6%2c 14' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+  border-radius: 10px;
+}
+
+.grid-stack >>> .grid-stack-item-content {
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0px 0px 10px 3px rgb(0 0 0 / 10%);
+}
+
+.grid-stack >>> .grid-stack-placeholder {
+  /*border: 2px solid var(--cui-bg-disabled) !important;*/
+}
+
+.grid-stack >>> .placeholder-content {
+  border: none !important;
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='10' ry='10' stroke='%2371717133' stroke-width='4' stroke-dasharray='6%2c 14' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+  border-radius: 10px;
+  background-color: rgba(var(--cui-text-default-rgb), 0.05) !important;
+}
+
+.grid-stack >>> .ui-resizable-ne {
+  transform: none;
+  background: none;
+  right: 10px !important;
+  top: 10px !important;
+  width: 20px;
+  height: 20px;
+  z-index: 2 !important;
+}
+
+.grid-stack >>> .ui-resizable-nw {
+  transform: none;
+  background: none;
+  left: 10px !important;
+  top: 10px !important;
+  width: 20px;
+  height: 20px;
+  z-index: 2 !important;
+}
+
+.grid-stack >>> .ui-resizable-se {
+  transform: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' style='width:24px;height:24px' viewBox='0 0 24 24'%3E%3Cpath fill='rgba(109, 109, 109, 0.397)' d='M22,22H20V20H22V22M22,18H20V16H22V18M18,22H16V20H18V22M18,18H16V16H18V18M14,22H12V20H14V22M22,14H20V12H22V14Z' /%3E%3C/svg%3E");
+  background-size: 100%;
+  background-position: -5px -5px;
+  right: 10px !important;
+  bottom: 10px !important;
+  width: 20px;
+  height: 20px;
+  z-index: 2 !important;
+}
+
+.grid-stack >>> .ui-resizable-sw {
+  transform: none;
+  background: none;
+  left: 10px !important;
+  bottom: 10px !important;
+  width: 20px;
+  height: 20px;
+  z-index: 2 !important;
+}
+
+.grid-stack >>> .ui-resizable-e {
+  z-index: 1 !important;
+  right: 10px !important;
+  top: 20px !important;
+  bottom: 20px !important;
+}
+
+.grid-stack >>> .ui-resizable-w {
+  z-index: 1 !important;
+  left: 10px !important;
+  top: 20px !important;
+  bottom: 20px !important;
+}
+
+.grid-stack >>> .ui-resizable-n {
+  z-index: 1 !important;
+  left: 20px !important;
+  right: 20px !important;
+  top: 10px !important;
+}
+
+.grid-stack >>> .ui-resizable-s {
+  z-index: 1 !important;
+  left: 20px !important;
+  right: 20px !important;
+  bottom: 10px !important;
+}
+
+div >>> .grid-stack-item-removing .grid-stack-item-content {
+  opacity: 0.5 !important;
+  border: 2px solid rgba(255, 0, 0, 0.5);
+  border-radius: 12px;
+}
+
+div >>> .ui-draggable-dragging .grid-stack-item-content,
+div >>> .ui-resizable-resizing .grid-stack-item-content {
+  box-shadow: none !important;
+}
+
+/* animate new box */
+.grid-stack >>> .grid-stack-item:not(.grid-stack-placeholder) {
+  -webkit-animation: slide-in-fwd-center 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: slide-in-fwd-center 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* ----------------------------------------------
+ * Generated by Animista on 2021-12-17 18:18:5
+ * Licensed under FreeBSD License.
+ * See http://animista.net/license for more info. 
+ * w: http://animista.net, t: @cssanimista
+ * ---------------------------------------------- */
+
+/**
+ * ----------------------------------------
+ * animation slide-in-fwd-center
+ * ----------------------------------------
+ */
+@-webkit-keyframes slide-in-fwd-center {
+  0% {
+    -webkit-transform: translateZ(-1400px);
+    transform: translateZ(-1400px);
+    opacity: 0;
+  }
+  100% {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    opacity: 1;
+  }
+}
+@keyframes slide-in-fwd-center {
+  0% {
+    -webkit-transform: translateZ(-1400px);
+    transform: translateZ(-1400px);
+    opacity: 0;
+  }
+  100% {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    opacity: 1;
+  }
 }
 </style>

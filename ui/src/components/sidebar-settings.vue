@@ -135,7 +135,7 @@ export default {
   min-height: calc(100vh - 64px - env(safe-area-inset-top, 0px));
   max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px));
   transition: 0.3s all;
-  z-index: 2;
+  z-index: 98;
   left: -600px;
   scrollbar-width: none;
   -ms-overflow-style: none;

@@ -2,7 +2,7 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .tw-max-w-10xl.pl-safe.pr-safe
+  .pl-safe.pr-safe
     
     .header.tw-justify-between.tw-items-center.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
@@ -13,7 +13,7 @@
         FilterCard(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
 
     v-layout.tw-mt-5(row wrap)
-      v-flex.tw-mb-4.tw-px-2(xs12 sm6 md4 lg3 v-for="(recording, i) in recordings" :key="recording.id" :style="`height: ${height}px`")
+      v-flex.tw-mb-4.tw-px-2(xs12 sm6 md4 lg3 xl2 v-for="(recording, i) in recordings" :key="recording.id" :style="`height: ${height}px`")
         RecordingCard(ref="recordings" :recording="recording" @show="index = i" @remove="remove(recording, i)")
 
     infinite-loading(:identifier="infiniteId" @infinite="infiniteHandler")

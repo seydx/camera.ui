@@ -2,7 +2,7 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .tw-max-w-10xl.tw-flex.tw-relative.pl-safe.pr-safe.pt-safe
+  .tw-flex.tw-relative.pl-safe.pr-safe
     
     Sidebar
   

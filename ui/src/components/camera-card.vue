@@ -188,6 +188,8 @@ export default {
       this.streamTimeout = null;
     }
 
+    this.$socket.client.off(this.camera.name, this.writeStream);
+
     document.removeEventListener('keydown', this.logKey);
     document.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('orientationchange', this.resizeFullscreenVideo);

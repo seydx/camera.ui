@@ -126,9 +126,11 @@ class LoggerService {
         timestamp: moment().unix(),
         time: moment().format('YYYY-MM-DD HH:mm:ss'),
         label: subprefix.charAt(0).toUpperCase() + subprefix.slice(1),
+        isSystemNotification: true,
       };
 
       LoggerService.notificationsDB.get('notifications').push(notification).write();
+      LoggerService.socket?.emit('notification', notification);
       LoggerService.socket?.emit('increase_notification');
     }
   }

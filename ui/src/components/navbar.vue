@@ -1,10 +1,10 @@
 <template lang="pug">
-.tw-relative.tw-z-10
+.tw-relative(style="z-index: 99")
   .top-navi-bar-minified(v-if="$route.meta.config.showMinifiedNavbar")
     v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
       v-icon.text-transparent {{ showSidebar ? icons['mdiArrowLeftThick'] : icons['mdiArrowRightThick'] }}
   v-app-bar.top-navi-bar.pt-safe(v-else height="64px" :class="($route.meta.config.fixedNavbar ? 'top-navi-bar-fixed ' : '') + (extendSidebar ? 'extended-sidebar' : '')")
-    .navi-wrap.pl-safe.pr-safe.tw-max-w-10xl
+    .navi-wrap.pl-safe.pr-safe
       v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
         v-icon {{ icons['mdiMenu'] }}
       .tw-flex.tw-ml-auto(v-if="checkLevel('notifications:access')")

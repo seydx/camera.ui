@@ -289,4 +289,26 @@ exports.routesConfig = (app) => {
     PermissionMiddleware.onlyMasterCanDoThisAction,
     SystemController.updateSystem,
   ]);
+
+  /**
+   * @swagger
+   * /api/system/npm:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get npm package details
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/uptime', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getUptime,
+  ]);
 };

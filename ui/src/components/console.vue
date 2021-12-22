@@ -36,7 +36,7 @@ export default {
       if (this.term) {
         message = message + '\r\n';
         this.term.write(message);
-        this.fitAddon.fit();
+        this.fitAddon?.fit();
       }
     },
   },
@@ -44,7 +44,7 @@ export default {
   async mounted() {
     let terminalContainer = document.getElementById('log');
 
-    this.term = new Terminal();
+    this.term = new Terminal(this.terminal);
     this.fitAddon = new FitAddon();
 
     this.term.loadAddon(this.fitAddon);
@@ -68,6 +68,9 @@ export default {
     this.term?.dispose();
     this.fitAddon?.dispose();
 
+    this.term = null;
+    this.fitAddon = null;
+
     bus.$off('extendSidebar', this.triggerSidebar);
 
     window.removeEventListener('orientationchange', this.resizeHandler);
@@ -75,10 +78,10 @@ export default {
   },
   methods: {
     resizeHandler() {
-      setTimeout(() => this.fitAddon.fit(), 500);
+      setTimeout(() => this.fitAddon?.fit(), 500);
     },
     triggerSidebar() {
-      setTimeout(() => this.fitAddon.fit(), 500);
+      setTimeout(() => this.fitAddon?.fit(), 500);
     },
   },
 };

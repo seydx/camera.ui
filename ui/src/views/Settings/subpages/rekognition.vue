@@ -88,7 +88,7 @@ export default {
       this.loading = false;
       this.loadingProgress = false;
     } catch (err) {
-      console.log(err.data);
+      console.log(err);
       this.$toast.error(err.message);
     }
   },
@@ -105,8 +105,9 @@ export default {
       this.awsTimeout = setTimeout(async () => {
         try {
           await changeSetting('aws', newValue);
-        } catch (error) {
-          this.$toast.error(error.message);
+        } catch (err) {
+          console.log(err);
+          this.$toast.error(err.message);
         }
 
         this.loadingProgress = false;

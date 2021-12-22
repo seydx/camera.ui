@@ -9,6 +9,7 @@ const log_download_resource = 'log/download';
 const npm_resource = 'npm';
 const restart_resource = 'restart';
 const update_resource = 'update';
+const uptime_resource = 'uptime';
 
 const downloadDb = async () => await api.get(`${resource}/${db_download_resource}`);
 
@@ -23,6 +24,8 @@ const getLog = async () => await api.get(`${resource}/${log_resource}`);
 
 const getPackage = async () => await api.get(`${resource}/${npm_resource}`);
 
+const getUptime = async () => await api.get(`${resource}/${uptime_resource}`);
+
 const removeLog = async () => await api.delete(`${resource}/${log_resource}`);
 
 const restartSystem = async () => await api.put(`${resource}/${restart_resource}`);
@@ -30,4 +33,15 @@ const restartSystem = async () => await api.put(`${resource}/${restart_resource}
 const updateSystem = async (parameters) =>
   await api.put(`${resource}/${update_resource}${parameters ? parameters : ''}`);
 
-export { downloadDb, downloadLog, getChangelog, getDb, getLog, getPackage, removeLog, restartSystem, updateSystem };
+export {
+  downloadDb,
+  downloadLog,
+  getChangelog,
+  getDb,
+  getLog,
+  getPackage,
+  getUptime,
+  removeLog,
+  restartSystem,
+  updateSystem,
+};

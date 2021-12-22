@@ -8,6 +8,7 @@
 const axios = require('axios');
 const { exec } = require('child_process');
 const fs = require('fs-extra');
+const systeminformation = require('systeminformation');
 
 const { LoggerService } = require('../../../services/logger/logger.service');
 const { ConfigService } = require('../../../services/config/config.service');
@@ -214,6 +215,36 @@ exports.getSmtpServerStatus = async (req, res) => {
 
     res.status(200).send({
       status: status ? 'running' : 'not running',
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.getUptime = async (req, res) => {
+  try {
+    const humaniseDuration = (seconds) => {
+      if (seconds < 50) {
+        return '0m';
+      }
+      if (seconds < 3600) {
+        return Math.round(seconds / 60) + 'm';
+      }
+      if (seconds < 86400) {
+        return Math.round(seconds / 60 / 60) + 'h';
+      }
+      return Math.floor(seconds / 60 / 60 / 24) + 'd';
+    };
+
+    const systemTime = await systeminformation.time();
+    const processUptime = process.uptime();
+
+    res.status(200).send({
+      systemTime: humaniseDuration(systemTime ? systemTime.uptime : 0),
+      processTime: humaniseDuration(processUptime),
     });
   } catch (error) {
     res.status(500).send({

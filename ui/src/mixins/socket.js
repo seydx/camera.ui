@@ -62,7 +62,7 @@ export default {
       }
     },
     notification(notification) {
-      if (this.isValidPage) {
+      if (this.isValidPage && !notification.isSystemNotification) {
         this.notId = '_' + Math.random().toString(36).substr(2, 9);
 
         if (notification.mediaSource) {

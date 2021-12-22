@@ -11,6 +11,8 @@ const multer = require('multer');
 const path = require('path');
 const os = require('os');
 
+const { LoggerService } = require('../services/logger/logger.service');
+
 const express = require('express');
 const app = express();
 
@@ -31,6 +33,8 @@ const SettingsRouter = require('./components/settings/settings.routes');
 const SubscribeRouter = require('./components/subscribe/subscribe.routes');
 const SystemRouter = require('./components/system/system.routes');
 const UsersRouter = require('./components/users/users.routes');
+
+const { log } = LoggerService;
 
 exports.App = (options) => {
   app.enable('trust proxy');
@@ -70,7 +74,18 @@ exports.App = (options) => {
     })
   );
 
-  app.use(morgan('dev', { skip: () => !options.debug }));
+  //app.use(morgan('dev', { skip: () => !options.debug }));
+
+  app.use(
+    morgan('dev', {
+      skip: () => !options.debug,
+      stream: {
+        write: (a) => {
+          log.debug(a.replace(/^\s+|\s+$/g, ''));
+        },
+      },
+    })
+  );
 
   const backupUpload = multer({
     storage: multer.diskStorage({

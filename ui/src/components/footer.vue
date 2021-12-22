@@ -21,6 +21,5 @@ export default {
   width: 100%;
   text-align: right;
   padding-right: 1rem;
-  max-width: calc(100rem + 64px);
 }
 </style>

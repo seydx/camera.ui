@@ -5,8 +5,8 @@
     .tw-flex.tw-flex-col.tw-p-0
       .login-header.tw-flex.tw-justify-between.tw-items-center
         .tw-block
-          h1.tw-leading-10.tw-font-black {{ $t('signin') }}
-          span.subtitle.tw-font-medium.text-muted {{ $t('welcome_message') }} 
+          h2.tw-leading-10.tw-font-black {{ $t('signin') }}
+          span.subtitle.tw-font-medium {{ $t('welcome_message') }} 
             strong.text-primary camera.ui
         .tw-ml-auto
           v-img.logo(src="@/assets/img/logo.svg" width="35px")

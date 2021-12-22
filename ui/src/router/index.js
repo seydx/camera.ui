@@ -71,6 +71,7 @@ export const routes = [
         requiredLevel: [/*"cameras:access", */ 'dashboard:access'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
