@@ -101,6 +101,7 @@ export default {
   async mounted() {
     try {
       const cameras = await getCameras();
+
       for (const camera of cameras.data.result) {
         camera.id = camera.name;
         const settings = await getCameraSettings(camera.name);
@@ -122,7 +123,7 @@ export default {
       await timeout(100);
 
       this.$refs.widgetBar.widgets.forEach((widget) => {
-        if (widget.name === 'Cameras') {
+        if (widget.id === 'Cameras') {
           widget.items = cameras.data.result;
         }
       });
@@ -296,6 +297,8 @@ export default {
         div.classList.add('tw-h-full', 'tw-w-full', 'tw-relative', 'tw-z-1');
 
         instance.$on('refreshDrag', this.setupDrag);
+        instance.$on('widgetData', this.widgetData);
+
         instance.$mount(div);
 
         this.instances[id] = instance;
@@ -434,8 +437,20 @@ export default {
     windowHeight() {
       return document.getElementById('dashboard')?.offsetHeight;
     },
-    widgetData(data) {
-      console.log(data);
+    widgetData(widget) {
+      console.log('RECEIVED WIDGET DATA');
+      console.log(widget);
+
+      this.items = this.items.map((item) => {
+        if (item.id === widget.id) {
+          return {
+            ...item,
+            ...widget.data,
+          };
+        }
+
+        return item;
+      });
     },
     async widgetsWatcher(items) {
       if (this.widgetsTimeout) {
@@ -454,7 +469,7 @@ export default {
           console.log(err);
           this.$toast.error(err.message);
         }
-      }, 1000);
+      }, 250);
     },
   },
 };

@@ -83,23 +83,21 @@ export default {
 
   mounted() {
     if (this.item.id === 'cpuLoad') {
-      this.dataset.label = 'Last';
+      this.dataset.label = this.$t('load');
 
       this.$socket.client.on('cpuLoad', this.cpuLoad);
       this.$socket.client.emit('getCpuLoad');
     } else if (this.item.id === 'cpuTemperature') {
-      this.dataset.label = 'Temperature';
+      this.dataset.label = this.$t('temperature');
 
       this.$socket.client.on('cpuTemp', this.cpuTemp);
       this.$socket.client.emit('getCpuTemp');
     } else {
-      this.dataset.label = 'Memory';
+      this.dataset.label = this.$t('memory');
 
       this.$socket.client.on('memory', this.memory);
       this.$socket.client.emit('getMemory');
     }
-
-    console.log(this.item);
 
     this.loading = false;
   },

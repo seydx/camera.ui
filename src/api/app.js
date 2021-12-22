@@ -68,7 +68,7 @@ exports.App = (options) => {
           "'unsafe-inline'",
           "'self'",
         ],
-        imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
+        imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:', 'https://openweathermap.org'],
         mediaSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
       },
     })

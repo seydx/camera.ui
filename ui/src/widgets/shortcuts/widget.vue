@@ -13,7 +13,7 @@
   
   .tw-h-full.tw-w-full.tw-overflow-auto
     .tw-h-full.tw-p-4.tw-relative.tw-flex.tw-items-center.tw-justify-start(v-if="!loading && shortcutButtons.length")
-      v-btn.shortcut-btn.tw-flex.tw-items-center.tw-justify-center.tw-mx-1(v-for="button in shortcutButtons" :key="button.name" @click="clickShortcut(button)" :class="states[button.name] ? button.onClass ? button.onClass : '' : button.offClass ? button.offClass : ''")
+      v-btn.shortcut-btn.tw-flex.tw-items-center.tw-justify-center.tw-mx-1(v-for="button in shortcutButtons" :key="button.id" @click="clickShortcut(button)" :class="states[button.id] ? button.onClass ? button.onClass : '' : button.offClass ? button.offClass : ''")
         v-icon.text-default(size="20") {{ icons[button.icon] }}
 
   v-dialog(v-model="dialog" width="400" scrollable)
@@ -30,7 +30,7 @@
             
           .tw-w-full.tw-mt-5
             label.text-default {{ $t('shortcuts') }}
-            v-select(small-chips deletable-chips multiple v-model="selectedShortcutButtons" label="..." prepend-inner-icon="mdi-widgets-outline" :items="availableShortcuts" item-text="name" background-color="var(--cui-bg-card)" solo)
+            v-select(small-chips deletable-chips multiple v-model="selectedShortcutButtons" label="..." prepend-inner-icon="mdi-widgets-outline" :items="availableShortcuts" item-text="name" item-value="id" background-color="var(--cui-bg-card)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiWidgetsOutline'] }}
 
@@ -86,12 +86,14 @@ export default {
       shortcutButtons: [],
       availableShortcuts: [
         {
-          name: 'Account',
+          id: 'Account',
+          name: this.$t('account'),
           icon: 'mdiAccount',
           goTo: '/settings/account',
         },
         {
-          name: 'At Home',
+          id: 'At Home',
+          name: this.$t('at_home'),
           icon: 'mdiHome',
           set: 'atHome',
           get: 'atHome',
@@ -99,17 +101,20 @@ export default {
           offClass: 'athome-off',
         },
         {
-          name: 'Reload',
+          id: 'Reload',
+          name: this.$t('reload'),
           icon: 'mdiReload',
           set: 'reload',
         },
         {
-          name: 'Sign out',
+          id: 'Sign Out',
+          name: this.$t('signout'),
           icon: 'mdiLogoutVariant',
           set: 'singout',
         },
         {
-          name: 'Restart',
+          id: 'Restart',
+          name: this.$t('restart'),
           icon: 'mdiPower',
           set: 'restart',
         },
@@ -187,14 +192,14 @@ export default {
       if (shortcutsWidget?.buttons?.length) {
         this.selectedShortcutButtons = shortcutsWidget.buttons;
         this.shortcutButtons = this.availableShortcuts.filter((shortcut) =>
-          this.selectedShortcutButtons.some((selectedShortcut) => selectedShortcut === shortcut.name)
+          this.selectedShortcutButtons.some((selectedShortcut) => selectedShortcut === shortcut.id)
         );
       }
 
       this.shortcutButtons.forEach((shortcut) => {
         if (shortcut.get) {
           if (!this.getters[shortcut.get]) {
-            return this.$toast.error(`${shortcut.name}: Defined GET method not found!`);
+            return this.$toast.error(`${shortcut.name}: ${this.$t('error')} (GET)`);
           }
 
           this.getters[shortcut.get]();
@@ -212,56 +217,44 @@ export default {
 
   methods: {
     async applyData() {
-      try {
-        this.loadingDialog = true;
+      this.loadingDialog = true;
 
-        const widgets = await getSetting('widgets');
-        const items = widgets.data.items;
+      this.$emit('widgetData', {
+        id: this.item.id,
+        data: {
+          buttons: this.selectedShortcutButtons,
+        },
+      });
 
-        items.forEach((item) => {
-          if (item.id === this.item.id) {
-            item.buttons = this.selectedShortcutButtons;
+      this.shortcutButtons = this.availableShortcuts.filter((shortcut) =>
+        this.selectedShortcutButtons.some((selectedShortcut) => selectedShortcut === shortcut.id)
+      );
+
+      this.shortcutButtons.forEach((shortcut) => {
+        if (shortcut.get) {
+          if (!this.getters[shortcut.get]) {
+            return this.$toast.error(`${shortcut.name}: ${this.$t('error')} (GET)`);
           }
-        });
 
-        await changeSetting('widgets', {
-          items: items,
-        });
+          this.getters[shortcut.get]();
+        }
+      });
 
-        this.shortcutButtons = this.availableShortcuts.filter((shortcut) =>
-          this.selectedShortcutButtons.some((selectedShortcut) => selectedShortcut === shortcut.name)
-        );
-
-        this.shortcutButtons.forEach((shortcut) => {
-          if (shortcut.get) {
-            if (!this.getters[shortcut.get]) {
-              return this.$toast.error(`${shortcut.name}: Defined GET method not found!`);
-            }
-
-            this.getters[shortcut.get]();
-          }
-        });
-
-        this.dialog = false;
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }
-
+      this.dialog = false;
       this.loadingDialog = false;
     },
     clickShortcut(button) {
       try {
         if (button.set) {
           if (!this.setters[button.set]) {
-            return this.$toast.error(`${button.name}: Defined SET method not found!`);
+            return this.$toast.error(`${button.name}: ${this.$t('error')} (SET)`);
           }
 
           this.setters[button.set]();
         } else if (button.goTo) {
           this.$router.push(button.goTo);
         } else {
-          this.$toast.error(`${button.name}: No action defined for this shortcut!`);
+          this.$toast.error(`${button.name}: ${this.$t('error')} (ACTION)`);
         }
       } catch (err) {
         console.log(err);

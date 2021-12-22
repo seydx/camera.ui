@@ -41,6 +41,7 @@ export default {
 
       widgets: [
         {
+          id: 'Time',
           name: this.$t('time'),
           placeholderComponent: TimePlaceholder.default,
           widgetComponent: TimeWidget.default,
@@ -51,6 +52,7 @@ export default {
           ],
         },
         {
+          id: 'Weather',
           name: this.$t('weather'),
           placeholderComponent: WeatherPlaceholder.default,
           widgetComponent: WeatherWidget.default,
@@ -61,6 +63,7 @@ export default {
           ],
         },
         {
+          id: 'Uptime',
           name: this.$t('uptime'),
           placeholderComponent: UptimePlaceholder.default,
           widgetComponent: UptimeWidget.default,
@@ -71,12 +74,14 @@ export default {
           ],
         },
         {
+          id: 'Cameras',
           name: this.$t('cameras'),
           placeholderComponent: CameraPlaceholder.default,
           widgetComponent: CameraWidget.default,
           items: [],
         },
         {
+          id: 'Notifications',
           name: this.$t('notifications'),
           placeholderComponent: NotificationsPlaceholder.default,
           widgetComponent: NotificationsWidget.default,
@@ -87,6 +92,7 @@ export default {
           ],
         },
         {
+          id: 'Status',
           name: this.$t('status'),
           placeholderComponent: StatusPlaceholder.default,
           widgetComponent: StatusWidget.default,
@@ -97,6 +103,7 @@ export default {
           ],
         },
         {
+          id: 'Shortcuts',
           name: this.$t('shortcuts'),
           placeholderComponent: ShortcutsPlaceholder.default,
           widgetComponent: ShortcutsWidget.default,
@@ -107,6 +114,7 @@ export default {
           ],
         },
         {
+          id: 'Utilization',
           name: this.$t('utilization'),
           placeholderComponent: ChartPlaceholder.default,
           widgetComponent: ChartWidget.default,
@@ -123,6 +131,7 @@ export default {
           ],
         },
         {
+          id: 'Console',
           name: this.$t('console'),
           placeholderComponent: ConsolePlaceholder.default,
           widgetComponent: ConsoleWidget.default,

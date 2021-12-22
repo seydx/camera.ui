@@ -25,6 +25,7 @@ export default {
 
   data: () => ({
     loading: true,
+    destroyed: false,
 
     time: {
       system: '',
@@ -43,6 +44,8 @@ export default {
       clearTimeout(this.time.timer);
       this.time.timer = null;
     }
+
+    this.destroyed = true;
   },
 
   methods: {
@@ -61,7 +64,9 @@ export default {
         this.time.system = this.time.system ? this.time.system : '??d';
         this.time.process = this.time.process ? this.time.process : '??d';
       } finally {
-        this.time.timer = setTimeout(() => this.getUptime(), 60 * 1000);
+        if (!this.destroyed) {
+          this.time.timer = setTimeout(() => this.getUptime(), 60 * 1000);
+        }
       }
     },
   },

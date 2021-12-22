@@ -56,7 +56,7 @@
 /* eslint-disable vue/require-default-prop */
 import { mdiCog, mdiMapMarker, mdiPlusThick } from '@mdi/js';
 
-import { getSetting, changeSetting } from '@/api/settings.api';
+import { getSetting } from '@/api/settings.api';
 
 export default {
   name: 'WeatherWidget',
@@ -158,7 +158,7 @@ export default {
         );
 
         this.owmInfo = await response.json();
-        this.owmInfo.img = `https://openweathermap.org/img/wn/${this.owmInfo.weather[0].icon}@2x.png`;
+        this.owmInfo.img = `https://openweathermap.org/img/wn/${this.owmInfo.weather[0].icon}@4x.png`;
 
         if (!this.location) {
           this.saveLocation();
@@ -169,8 +169,6 @@ export default {
             this.applyData();
           }
         }, 60 * 60 * 1000);
-
-        console.log(this.owmInfo);
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -206,7 +204,7 @@ export default {
       ];
       return this.$t(month[index]);
     },
-    async saveLocation() {
+    saveLocation() {
       const location = {
         id: this.owmInfo.id,
         name: this.owmInfo.name,
@@ -214,25 +212,12 @@ export default {
         coord: this.owmInfo.coord,
       };
 
-      try {
-        const widgets = await getSetting('widgets');
-        const items = widgets.data.items;
-
-        items.forEach((item) => {
-          if (item.id === this.item.id) {
-            item.location = location;
-          }
-        });
-
-        await changeSetting('widgets', {
-          items: items,
-        });
-
-        this.location = location;
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }
+      this.$emit('widgetData', {
+        id: this.item.id,
+        data: {
+          location: location,
+        },
+      });
     },
   },
 };
@@ -295,8 +280,8 @@ export default {
   position: absolute;
   transform: translateY(-50%);
   top: 50%;
-  height: 75px;
-  width: 75px;
+  height: 100px;
+  width: 100px;
   /*border-radius: 50%;*/
   right: 20px;
   /*background: #efb76f;
