@@ -1,5 +1,7 @@
 <template lang="pug">
 .content
+  .tw-text-xs.tw-absolute.tw-top-2.tw-left-2.tw-font-bold.text-muted {{ $t('shortcuts') }}
+
   .tw-absolute.tw-right-2.tw-top-2.tw-z-10
     v-btn.text-muted(icon x-small @click="dialog = true")
       v-icon {{ icons['mdiCog'] }}
@@ -11,7 +13,7 @@
     v-btn(fab small depressed @click="dialog = true" color="var(--cui-text-hint)")
       v-icon.text-default {{ icons['mdiPlusThick'] }}
   
-  .tw-h-full.tw-w-full.tw-overflow-auto
+  .tw-h-full.tw-w-full.tw-overflow-x-auto
     .tw-h-full.tw-p-4.tw-relative.tw-flex.tw-items-center.tw-justify-start(v-if="!loading && shortcutButtons.length")
       v-btn.shortcut-btn.tw-flex.tw-items-center.tw-justify-center.tw-mx-1(v-for="button in shortcutButtons" :key="button.id" @click="clickShortcut(button)" :class="states[button.id] ? button.onClass ? button.onClass : '' : button.offClass ? button.offClass : ''")
         v-icon.text-default(size="20") {{ icons[button.icon] }}

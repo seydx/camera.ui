@@ -3,15 +3,18 @@
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .tw-h-full(v-else)
+    .tw-text-xs.tw-pl-3.tw-pt-1.tw-font-bold.text-muted {{ $t('notifications') }}
     .tw-py-4.tw-px-2(v-if="notifications.length")
       v-row.overflow-hidden
         v-col.tw-py-1(v-for="(notification,i) in notifications" :key="notification.id" cols="12")
-          v-card.tw-p-2(elevation="1")
+          v-card.tw-p-2.tw-relative(elevation="1")
+            v-btn.notification-goto-button(to="/notifications" icon small)
+              v-icon {{ icons['mdiChevronRight'] }}
             .tw-flex.tw-justify-between.tw-items-center.notifications-card-title
-              v-card-title.tw-text-base.tw-p-0 {{ notification.title || notification.camera || $t('notification') }}
-              .tw-block
-                v-icon.text-muted {{ icons['ClockTimeNineOutline'] }}
-                span.tw-p-0.text-muted.tw-text-xs.tw-pt-4.tw-ml-2 {{ notification.time }}
+              v-card-title.tw-text-sm.tw-p-0 {{ notification.title || notification.camera || $t('notification') }}
+                v-chip.tw-ml-2(x-small v-if="notification.type === 'ERROR'" color="error") {{ $t('error') }}
+                v-chip.tw-ml-2(x-small v-else-if="notification.type === 'WARN'" color="yellow") {{ $t('warning') }}
+                v-chip.tw-ml-2(x-small v-else-if="notification.label" :color="notification.label === 'Homebridge' ? 'purple' : 'grey'") {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
             .tw-flex.tw-justify-start.tw-items-center.tw-mt-1
               v-card-subtitle.tw-p-0.text-muted.tw-font-normal.text-truncate {{ notification.message }}
     .tw-h-full.tw-w-full.tw-flex.tw-justify-center.tw-items-center(v-else)
@@ -21,7 +24,7 @@
 
 <script>
 /* eslint-disable vue/require-default-prop */
-import { mdiClockTimeNineOutline } from '@mdi/js';
+import { mdiChevronRight } from '@mdi/js';
 
 import { getNotifications } from '@/api/notifications.api';
 
@@ -40,7 +43,7 @@ export default {
     loading: true,
 
     icons: {
-      mdiClockTimeNineOutline,
+      mdiChevronRight,
     },
 
     notifications: [],
@@ -50,6 +53,18 @@ export default {
     try {
       const lastNotifications = await getNotifications('?pageSize=5');
       this.notifications = lastNotifications.data.result;
+
+      this.notifications = this.notifications.map((not) => {
+        if (!not.message) {
+          if (not.camera && not.room) {
+            not.message = this.$t('notification_text').replace('@', not.camera).replace('%', not.room);
+          } else {
+            not.message = this.$t('movement_detected');
+          }
+        }
+
+        return not;
+      });
 
       this.$socket.client.on('notification', this.handleNotification);
 
@@ -61,7 +76,7 @@ export default {
   },
 
   beforeDestroy() {
-    this.$socket.client.off(this.camera.name, this.handleNotification);
+    this.$socket.client.off('notification', this.handleNotification);
   },
 
   methods: {
@@ -95,5 +110,14 @@ export default {
   background: var(--cui-bg-card);
   -webkit-box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.1);
   box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.1);
+}
+
+.notification-goto-button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff !important;
 }
 </style>

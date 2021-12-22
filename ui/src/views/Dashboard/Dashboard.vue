@@ -42,16 +42,15 @@ import vuetify from '@/plugins/vuetify';
 import router from '@/router';
 import store from '@/store';
 
-import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import { GridStack } from 'gridstack';
+import CoolLightBox from 'vue-cool-lightbox';
 import 'gridstack/dist/jq/gridstack-dd-jqueryui';
 import 'gridstack/dist/gridstack.min.css';
 import 'gridstack/dist/gridstack-extra.min.css';
+import { GridStack } from 'gridstack';
 import { mdiLock, mdiLockOpen, mdiWidgets } from '@mdi/js';
 
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
-import { getNotifications } from '@/api/notifications.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 import { bus } from '@/main';
@@ -106,11 +105,8 @@ export default {
         camera.id = camera.name;
         const settings = await getCameraSettings(camera.name);
         camera.settings = settings.data;
-        camera.favourite = camera.settings.dashboard.favourite;
         camera.live = camera.settings.dashboard.live || false;
         camera.refreshTimer = camera.settings.dashboard.refreshTimer || 60;
-        const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);
-        camera.lastNotification = lastNotification.data.result.length > 0 ? lastNotification.data.result[0] : false;
       }
 
       const widgets = await getSetting('widgets');
@@ -373,7 +369,13 @@ export default {
         if (this.windowWidth() < 576 && this.grid.getColumn() !== 1) {
           this.grid.column(1).cellHeight(100).disable().compact();
         } else if (this.windowWidth() >= 576 && this.windowWidth() < 768 && this.grid.getColumn() !== 2) {
-          this.grid.column(2).cellHeight(75).enableResize(false).enableMove(true).compact();
+          this.grid.column(2).cellHeight(75).compact();
+
+          if (this.locked) {
+            this.grid.disable();
+          } else {
+            this.grid.enableResize(false).enableMove(true);
+          }
         } else if (this.windowWidth() >= 768 && this.grid.getColumn() !== 12) {
           this.grid.column(12).cellHeight(this.cellHeight());
 

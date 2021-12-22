@@ -1,7 +1,8 @@
 <template lang="pug">
 v-footer.footer.tw-text-xs.tw-z-0(padless app absolute)
-  .footer-wrapper {{ new Date().getFullYear() }} - 
-    strong seydx
+  .footer-wrapper.tw-flex.tw-items-center.tw-justify-end
+    a.footer-link(href="https://github.com/SeydX" target="blank") {{ new Date().getFullYear() }} - 
+      strong seydx
 </template>
 
 <script>
@@ -21,5 +22,10 @@ export default {
   width: 100%;
   text-align: right;
   padding-right: 1rem;
+}
+
+.footer-link {
+  text-decoration: none;
+  color: var(--cui-text-default);
 }
 </style>

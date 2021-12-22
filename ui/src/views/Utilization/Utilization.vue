@@ -43,8 +43,8 @@
 </template>
 
 <script>
-import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import CoolLightBox from 'vue-cool-lightbox';
 
 import socket from '@/mixins/socket';
 
@@ -322,7 +322,7 @@ export default {
 
 <style scoped>
 .chart-badge {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   position: absolute;
   right: 10px;
   top: 40px;
@@ -330,6 +330,7 @@ export default {
   width: 80px;
   height: 80px;
   border-radius: 50px;
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.2);
 }
 
 .chart-badge-loading {

@@ -37,7 +37,7 @@ export default {
       w: 3,
       h: 3,
       minW: 3,
-      maxW: 5,
+      maxW: 6,
       minH: 2,
       maxH: 4,
       disableDrag: false,

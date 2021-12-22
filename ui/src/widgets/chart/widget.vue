@@ -3,6 +3,7 @@
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .chart-content.tw-relative.tw-overflow-hidden(v-else)
+    .tw-text-xs.tw-absolute.tw-top-2.tw-left-2.tw-font-bold.text-muted {{ dataset.label ? dataset.label : '' }}
     .chart-badge.tw-flex.tw-justify-center.tw-items-center.text-default(v-if="item.id === 'cpuLoad'") {{ dataset.data.length ? `${Math.round(dataset.data[dataset.data.length-1].value)}%` : '' }}
     .chart-badge.tw-flex.tw-justify-center.tw-items-center.text-default(v-if="item.id === 'cpuTemperature'") {{ dataset.data.length ? `${Math.round(dataset.data[dataset.data.length-1].value)}°` : '' }}
     .chart-badge.tw-flex.tw-justify-center.tw-items-center.text-default(v-if="item.id === 'memory'" style="font-size: 1.3rem !important;") {{ dataset.data.length ? dataset.data[dataset.data.length-1].available : '-' }} GB / {{ dataset.data.length ? dataset.data[dataset.data.length-1].total : '-' }} GB
@@ -41,6 +42,7 @@ export default {
         },
       },
       legend: {
+        display: false,
         labels: {
           boxWidth: 0,
         },

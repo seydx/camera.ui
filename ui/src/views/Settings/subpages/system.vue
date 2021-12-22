@@ -229,7 +229,8 @@ export default {
       this.dbFile = dbFile.data;
 
       if (this.dbFile?.mtime) {
-        this.dbFile.mtime = this.dbFile.mtime.replace('T', ', ').split('.')[0];
+        let time = new Date(this.dbFile.mtime);
+        this.dbFile.mtime = `${time.toLocaleDateString()}, ${time.toLocaleTimeString()}`;
       }
 
       this.serviceMode = config.data.serviceMode;

@@ -47,7 +47,7 @@
             .tw-flex.tw-justify-center.tw-items-center.video-card-timer.tw-text-center.tw-mr-3.tw-mb-3(ref="snapshotTimer") 0
 
         // Notifications
-        .tw-z-10.tw-absolute.tw-left-0.tw-right-0.tw-cursor-pointer(@click="index = 0" v-if="notifications && !loading && !offline" :style="`bottom: ${stream && !hideController ? '50px' : '10px'}`")
+        .tw-z-10.tw-absolute.tw-left-0.tw-right-0.tw-cursor-pointer(@click="index = 0" v-if="!hideNotifications && notifications && !loading && !offline" :style="`bottom: ${stream && !hideController ? '50px' : '10px'}`")
           .tw-flex.tw-justify-center
             .tw-flex.tw-flex-col.tw-justify-center.tw-items-center.video-card-notifications.tw-text-center
               .tw-text-white {{ $t("last_notification") + ": " }}
@@ -71,7 +71,7 @@
           span.font-weight-bold.text-truncate.tw-text-white {{ camera.name }}
 
   CoolLightBox(
-    v-if="notifications"
+    v-if="notifications && !hideNotifications"
     :items="images" 
     :index="index"
     @close="index = null"
@@ -82,8 +82,8 @@
 
 <script>
 /* eslint-disable vue/require-default-prop */
-import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import CoolLightBox from 'vue-cool-lightbox';
 import JSMpeg from 'jsmpeg-fast-player';
 import JSMpegWritableSource from '@/common/jsmpeg-source.js';
 import {
@@ -110,6 +110,7 @@ export default {
     blank: Boolean,
     camera: Object,
     hideController: Boolean,
+    hideNotifications: Boolean,
     noLink: Boolean,
     notifications: Boolean,
     refreshSnapshot: Boolean,
@@ -189,7 +190,6 @@ export default {
     }
 
     this.$socket.client.off(this.camera.name, this.writeStream);
-
     document.removeEventListener('keydown', this.logKey);
     document.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('orientationchange', this.resizeFullscreenVideo);

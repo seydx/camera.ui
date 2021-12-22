@@ -34,8 +34,8 @@
 </template>
 
 <script>
-import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import CoolLightBox from 'vue-cool-lightbox';
 import InfiniteLoading from 'vue-infinite-loading';
 import { getSetting } from '@/api/settings.api';
 import { getCameras, getCameraSettings } from '@/api/cameras.api';

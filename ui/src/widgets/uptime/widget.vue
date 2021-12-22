@@ -1,5 +1,7 @@
 <template lang="pug">
 .content
+  .tw-text-xs.tw-absolute.tw-top-2.tw-left-2.tw-font-bold.text-muted {{ $t('uptime') }}
+
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .tw-h-full.tw-w-full.tw-p-4.tw-relative.tw-flex.tw-flex-row.tw-items-center.tw-justify-center(v-else)

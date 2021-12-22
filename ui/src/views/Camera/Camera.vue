@@ -7,7 +7,7 @@
     .tw-flex.tw-flex-wrap
       v-row.tw-w-full.tw-h-full
         v-col.tw-mb-3.py-2(:cols="cols")
-          VideoCard(:ref="camera.name" :camera="camera" stream noLink)
+          VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
           
     v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="12")
       .tw-block
@@ -61,8 +61,8 @@
 </template>
 
 <script>
-import CoolLightBox from 'vue-cool-lightbox';
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
+import CoolLightBox from 'vue-cool-lightbox';
 import { mdiPlusCircle } from '@mdi/js';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';

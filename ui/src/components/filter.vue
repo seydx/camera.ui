@@ -6,7 +6,7 @@ v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePicker
         v-icon {{ icons['mdiFilter'] }}
 
   v-card.light-shadow.card-border(:class="datePicker && datePickerOpened ? 'datePickerOpened' : 'datePickerClosed'")
-    .tw-p-6.tw-pb-0.tw-flex.tw-justify-between
+    .tw-p-6.tw-pb-0.tw-flex.tw-justify-between.filter-title.tw-pb-4
       .tw-flex.tw-items-center.filter-menu-title {{ $t('filters') }}
 
       .t-block.tw-ml-auto
@@ -18,7 +18,7 @@ v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePicker
           v-btn(icon height="38px" width="38px" @click="togglePopover()" :color="dateRange.start || dateRange.end ? 'var(--cui-primary)' : 'var(--cui-text-hint)'")
             v-icon {{ icons['mdiCalendar'] }}
 
-    v-list(:dark="darkMode")
+    v-list.tw-pt-0(:dark="darkMode")
       v-list-group(v-for="item in items" :key="item.id" v-model="filter[item.type]" v-if="item.enabled" no-action)
         template(v-slot:prependIcon)
           v-icon.text-default.tw-ml-5 {{ filter[item.type] ? icons['mdiChevronUp'] : icons['mdiChevronDown'] }}
@@ -464,6 +464,10 @@ span >>> .v-badge__badge {
   height: 16px;
   font-size: 8px;
   min-width: 16px;
+}
+
+.filter-title {
+  border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
 }
 
 .filter-menu-title {
