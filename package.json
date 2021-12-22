@@ -46,7 +46,7 @@
     "socketio-jwt": "^4.6.2",
     "systeminformation": "^5.9.17",
     "swagger-jsdoc": "^6.1.0",
-    "swagger-ui-express": "4.1.6",
+    "swagger-ui-express": "4.3.0",
     "tar": "^6.1.11",
     "telegraf": "^4.5.2",
     "web-push": "^3.4.5"
