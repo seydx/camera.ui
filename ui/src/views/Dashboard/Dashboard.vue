@@ -124,6 +124,23 @@ export default {
         }
       });
 
+      this.items = this.items.map((item) => {
+        const widget = this.$refs.widgetBar.widgets.find((widget) =>
+          widget.items.some((widgetItem) => widgetItem.id === item.id)
+        );
+
+        return {
+          ...item,
+          minW: widget.defaultWidgetData.minW,
+          maxW: widget.defaultWidgetData.maxW,
+          h: widget.defaultWidgetData.h,
+          minH: widget.defaultWidgetData.minH,
+          maxH: widget.defaultWidgetData.maxH,
+          disableDrag: widget.defaultWidgetData.disableDrag,
+          disableResize: widget.defaultWidgetData.disableResize,
+        };
+      });
+
       this.widgets = this.$refs.widgetBar.widgets;
 
       this.grid = GridStack.init({
@@ -150,7 +167,7 @@ export default {
 
       // eslint-disable-next-line no-unused-vars
       this.grid.on('drag dragstart resizestart', (event) => {
-        this.$refs.widgetBar?.hideNavi();
+        this.toggleWidgetsNavi(false);
         this.itemChange = true;
       });
 
@@ -285,7 +302,7 @@ export default {
           store,
           vuetify,
           i18n: i18n,
-          propsData: { item: item },
+          propsData: { item: item, grid: this.grid },
         });
 
         const div = document.createElement('div');
@@ -305,8 +322,6 @@ export default {
       return null;
     },
     async createLayout() {
-      //const items = [];
-
       this.items = this.items.filter((item) => {
         const instance = this.createInstance(item.id);
 
@@ -317,18 +332,6 @@ export default {
           return item;
         }
       });
-
-      /*try {
-        await changeSetting('widgets', {
-          items: items.map((item) => {
-            delete item.content;
-            return item;
-          }),
-        });
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }*/
     },
     destroyInstance(id) {
       if (id) {
@@ -460,7 +463,15 @@ export default {
         this.widgetsTimeout = null;
       }
 
-      items.forEach((item) => delete item.content);
+      items.forEach((item) => {
+        delete item.minW;
+        delete item.maxW;
+        delete item.minH;
+        delete item.maxH;
+        delete item.disableDrag;
+        delete item.disableResize;
+        delete item.content;
+      });
 
       this.widgetsTimeout = setTimeout(async () => {
         try {

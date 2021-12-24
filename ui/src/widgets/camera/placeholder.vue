@@ -43,17 +43,6 @@ export default {
     },
 
     placeholders: [],
-
-    widgetData: {
-      w: 4,
-      h: 3,
-      minW: 4,
-      maxW: 5,
-      minH: 3,
-      maxH: 4,
-      disableDrag: false,
-      disableResize: false,
-    },
   }),
 
   watch: {
@@ -67,7 +56,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
-              ...this.widgetData,
+              ...widget.defaultWidgetData,
             });
           }
         });
@@ -85,7 +74,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
-          ...this.widgetData,
+          ...widget.defaultWidgetData,
         });
       }
     });

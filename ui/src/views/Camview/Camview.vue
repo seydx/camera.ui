@@ -99,6 +99,7 @@ export default {
       for (const camera of cameras.data.result) {
         const settings = await getCameraSettings(camera.name);
         camera.settings = settings.data;
+        camera.favourite = camera.settings.camview.favourite;
         camera.live = camera.settings.camview.live || false;
         camera.refreshTimer = camera.settings.camview.refreshTimer || 60;
         const lastNotification = await getNotifications(`?cameras=${camera.name}&pageSize=5`);

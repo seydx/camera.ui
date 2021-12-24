@@ -22,11 +22,8 @@
       .tw-flex.tw-flex-col.tw-justify-center.tw-items-center.video-card-content
         
         // Loading Circle
-        .lds-ring(v-if="loading && !offline" :class="title && titlePosition === 'top' ? 'tw-mt-4' : ''")
-          div
-          div
-          div
-          div
+        .loading-container.tw-flex.tw-justify-center.tw-items-center
+          v-progress-circular(style="z-index: 2" indeterminate color="var(--cui-primary)" v-if="loading && !offline" :class="title && titlePosition === 'top' ? 'tw-mt-4' : ''")
 
         // Offline
         .offline.tw-flex.tw-flex-col.tw-justify-center.tw-items-center(v-if="!loading && offline")
@@ -39,7 +36,9 @@
         .tw-w-full.tw-h-full(@click="!noLink && !blank ? $router.push(`cameras/${camera.name}`) : null" :class="!noLink && !blank ? 'tw-cursor-pointer' : ''")
           .tw-bg-black.tw-absolute.tw-inset-0(v-if="loading || false" style="border-radius: 10px;")
           canvas.main.tw-w-full.tw-h-full(v-if="stream" ref="streamBox" width="1280" height="720")
-          v-img.main.tw-w-full.tw-h-full(:src="imgSource" v-else)
+          .tw-w-full.tw-h-full(v-else)
+            .img-shadow-overlay
+            v-img.main.tw-w-full.tw-h-full(:src="imgSource")
 
         // Timer
         .tw-z-10.tw-absolute.tw-bottom-0.tw-left-0.tw-right-0(v-if="refreshSnapshot" :style="`bottom: ${stream && !hideController ? '50px' : '10px'}`")
@@ -616,5 +615,28 @@ export default {
 
 .offline {
   position: absolute;
+}
+
+.img-shadow-overlay {
+  background: transparent;
+  background: linear-gradient(0deg, rgb(0 0 0 / 82%) 0%, rgba(255, 255, 255, 0) 30%);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.loading-container {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
 }
 </style>

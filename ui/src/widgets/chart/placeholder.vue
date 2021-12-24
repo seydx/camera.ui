@@ -31,7 +31,7 @@ export default {
       placeholders: [],
 
       cpuData: {
-        label: this.$t('load'),
+        label: 'CPU ' + this.$t('load'),
         data: [],
       },
       memoryData: {
@@ -39,7 +39,7 @@ export default {
         data: [],
       },
       tempData: {
-        label: this.$t('temperature'),
+        label: 'CPU ' + this.$t('temperature'),
         data: [],
       },
 
@@ -90,17 +90,6 @@ export default {
           ],
         },
       },
-
-      widgetData: {
-        w: 3,
-        h: 2,
-        minW: 3,
-        maxW: 6,
-        minH: 2,
-        maxH: 4,
-        disableDrag: false,
-        disableResize: false,
-      },
     };
   },
 
@@ -115,7 +104,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
-              ...this.widgetData,
+              ...widget.defaultWidgetData,
             });
           }
         });
@@ -152,7 +141,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
-          ...this.widgetData,
+          ...widget.defaultWidgetData,
         });
       }
     });

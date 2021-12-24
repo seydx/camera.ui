@@ -45,6 +45,16 @@ export default {
           name: this.$t('time'),
           placeholderComponent: TimePlaceholder.default,
           widgetComponent: TimeWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 2,
+            minW: 2,
+            maxW: 4,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'time',
@@ -56,6 +66,16 @@ export default {
           name: this.$t('weather'),
           placeholderComponent: WeatherPlaceholder.default,
           widgetComponent: WeatherWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 2,
+            minW: 3,
+            maxW: 5,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'weather',
@@ -67,6 +87,16 @@ export default {
           name: this.$t('uptime'),
           placeholderComponent: UptimePlaceholder.default,
           widgetComponent: UptimeWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 2,
+            minW: 3,
+            maxW: 4,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'uptime',
@@ -78,6 +108,16 @@ export default {
           name: this.$t('cameras'),
           placeholderComponent: CameraPlaceholder.default,
           widgetComponent: CameraWidget.default,
+          defaultWidgetData: {
+            w: 4,
+            h: 3,
+            minW: 4,
+            maxW: 5,
+            minH: 3,
+            maxH: 4,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [],
         },
         {
@@ -85,6 +125,16 @@ export default {
           name: this.$t('notifications'),
           placeholderComponent: NotificationsPlaceholder.default,
           widgetComponent: NotificationsWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 3,
+            minW: 3,
+            maxW: 6,
+            minH: 2,
+            maxH: 4,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'notifications',
@@ -96,6 +146,16 @@ export default {
           name: this.$t('status'),
           placeholderComponent: StatusPlaceholder.default,
           widgetComponent: StatusWidget.default,
+          defaultWidgetData: {
+            w: 4,
+            h: 2,
+            minW: 2,
+            maxW: 6,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'status',
@@ -107,6 +167,16 @@ export default {
           name: this.$t('shortcuts'),
           placeholderComponent: ShortcutsPlaceholder.default,
           widgetComponent: ShortcutsWidget.default,
+          defaultWidgetData: {
+            w: 4,
+            h: 2,
+            minW: 2,
+            maxW: 6,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'shortcuts',
@@ -118,6 +188,16 @@ export default {
           name: this.$t('utilization'),
           placeholderComponent: ChartPlaceholder.default,
           widgetComponent: ChartWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 2,
+            minW: 3,
+            maxW: 6,
+            minH: 2,
+            maxH: 4,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'cpuLoad',
@@ -135,6 +215,16 @@ export default {
           name: this.$t('console'),
           placeholderComponent: ConsolePlaceholder.default,
           widgetComponent: ConsoleWidget.default,
+          defaultWidgetData: {
+            w: 6,
+            h: 4,
+            minW: 5,
+            maxW: 12,
+            minH: 3,
+            maxH: 8,
+            disableDrag: false,
+            disableResize: false,
+          },
           items: [
             {
               id: 'console',

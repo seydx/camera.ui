@@ -1,23 +1,33 @@
 <template lang="pug">
-.content
+.content(ref="clock")
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
-  .tw-h-full.tw-w-full.tw-p-4.tw-relative.tw-flex.tw-flex-col.tw-items-center.tw-justify-center(v-else)
-    .time {{ time }}
-    .date.text-muted
+  .tw-h-full.tw-w-full.tw-p-4.tw-relative.tw-flex.tw-flex-col.tw-items-center.tw-justify-center
+    .time(v-if="showDigital") {{ `${time.hours}:${time.minutes}` }}
+    .date.text-muted(v-if="showDigital")
       v-icon.tw-mr-1(size="14" color="var(--cui-text-hint)" style="margin-bottom: 2px;") {{ icons['mdiCalendarRange'] }}
       span {{ date }}
+    AnalogCock(v-if="!showDigital" :minute="time.minutes" :tick="tick")
 </template>
 
 <script>
 /* eslint-disable vue/require-default-prop */
 import { mdiCalendarRange } from '@mdi/js';
 
+import AnalogCock from './components/analog.vue';
+
+const timeout = (ms) => new Promise((res) => setTimeout(res, ms));
+
 export default {
   name: 'TimeWidget',
 
+  components: {
+    AnalogCock,
+  },
+
   props: {
     item: Object,
+    grid: Object,
   },
 
   data: () => ({
@@ -27,51 +37,79 @@ export default {
       mdiCalendarRange,
     },
 
-    time: '',
-    timeInterval: null,
+    showDigital: false,
+
     date: '',
+
+    tick: 0,
+    time: {
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+    },
+
+    rotation: { hours: 0, minutes: 0, seconds: 0 },
   }),
 
-  mounted() {
-    this.timeInterval = setInterval(() => {
-      this.time = this.getCurrentTime();
-    }, 1000);
+  async mounted() {
+    await timeout(10);
 
-    this.time = this.getCurrentTime();
+    const containerWidth = this.$refs.clock.offsetWidth;
+    this.showDigital = containerWidth >= 200;
 
+    this.updateTime(new Date());
     this.loading = false;
+
+    this.grid.on('resize', this.onResize);
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('orientationchange', this.onResize);
   },
 
   beforeDestroy() {
     if (this.timeInterval) {
-      clearInterval(this.timeInterval);
+      clearTimeout(this.timeInterval);
       this.timeInterval = null;
     }
+
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('orientationchange', this.onResize);
   },
 
   methods: {
-    getCurrentTime() {
-      const currentDate = new Date();
+    onResize() {
+      const containerWidth = this.$refs.clock.offsetWidth;
+      this.showDigital = containerWidth >= 200;
+    },
+    // eslint-disable-next-line no-unused-vars
+    onWidgetResize(event, el) {
+      const widget = event.target.gridstackNode;
+
+      if (widget.id === 'time') {
+        this.onResize();
+      }
+    },
+    updateTime(time) {
+      this.tick++;
+
+      const hours = time.getHours();
+      const minutes = time.getMinutes();
+      const seconds = time.getSeconds();
+
+      this.time = {
+        hours: /^\d$/.test(hours) ? `0${hours}` : hours,
+        minutes: /^\d$/.test(minutes) ? `0${minutes}` : minutes,
+        seconds: /^\d$/.test(seconds) ? `0${seconds}` : seconds,
+      };
 
       this.date = new Date().toISOString().slice(0, 10);
 
-      let hours = currentDate.getHours();
-      let minutes = currentDate.getMinutes();
-
-      if (/^\d$/.test(minutes)) {
-        minutes = `0${minutes}`;
-      }
-
-      //const seconds = currentDate.getSeconds() < 10 ? '0' + currentDate.getSeconds() : currentDate.getSeconds();
-      const currentTime = `${hours}:${minutes}`;
-
-      return currentTime;
+      this.timeInterval = setTimeout(() => this.updateTime(new Date()), 1000 - new Date().getMilliseconds());
     },
   },
 };
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .content {
   width: 100%;
   height: 100%;
