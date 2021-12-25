@@ -23,6 +23,7 @@ export default {
 
   props: {
     items: Array,
+    dataset: Object,
     widgets: Array,
   },
 
@@ -31,7 +32,7 @@ export default {
       placeholders: [],
 
       cpuData: {
-        label: 'CPU ' + this.$t('load'),
+        label: this.$t('load'),
         data: [],
       },
       memoryData: {
@@ -39,7 +40,7 @@ export default {
         data: [],
       },
       tempData: {
-        label: 'CPU ' + this.$t('temperature'),
+        label: this.$t('temperature'),
         data: [],
       },
 
@@ -104,7 +105,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
-              ...widget.defaultWidgetData,
+              ...this.dataset,
             });
           }
         });
@@ -141,7 +142,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
-          ...widget.defaultWidgetData,
+          ...this.dataset,
         });
       }
     });

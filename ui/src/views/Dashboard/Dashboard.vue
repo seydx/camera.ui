@@ -367,18 +367,18 @@ export default {
       this.showWidgetsNavi = this.windowWidth() < 768;
 
       if (this.grid) {
-        const itemsCopy = [...this.items];
+        //const itemsCopy = [...this.items];
 
         if (this.windowWidth() < 576 && this.grid.getColumn() !== 1) {
-          this.grid.column(1).cellHeight(100).disable().compact();
+          this.grid.column(1).cellHeight(100).compact().disable();
         } else if (this.windowWidth() >= 576 && this.windowWidth() < 768 && this.grid.getColumn() !== 2) {
-          this.grid.column(2).cellHeight(75).compact();
+          this.grid.column(2).cellHeight(75).compact().disable();
 
-          if (this.locked) {
+          /*if (this.locked) {
             this.grid.disable();
           } else {
             this.grid.enableResize(false).enableMove(true);
-          }
+          }*/
         } else if (this.windowWidth() >= 768 && this.grid.getColumn() !== 12) {
           this.grid.column(12).cellHeight(this.cellHeight());
 
@@ -388,7 +388,7 @@ export default {
             this.grid.enable();
           }
 
-          const gridItems = this.grid.getGridItems();
+          /*const gridItems = this.grid.getGridItems();
 
           itemsCopy.forEach((item) => {
             const el = gridItems.find((el) => el.gridstackNode.id === item.id);
@@ -402,7 +402,7 @@ export default {
           });
 
           this.grid.commit();
-          this.items = itemsCopy;
+          this.items = itemsCopy;*/
         }
       }
     },

@@ -1,5 +1,5 @@
 <template lang="pug">
-.content
+.content.tw-overflow-y-hidden
   .tw-text-xs.tw-absolute.tw-top-2.tw-left-2.tw-font-bold.text-muted {{ $t('shortcuts') }}
 
   .tw-absolute.tw-right-2.tw-top-2.tw-z-10

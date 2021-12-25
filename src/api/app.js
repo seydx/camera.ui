@@ -37,11 +37,6 @@ const UsersRouter = require('./components/users/users.routes');
 const { log } = LoggerService;
 
 exports.App = (options) => {
-  app.enable('trust proxy');
-  app.use((req, res, next) => {
-    req.secure ? next() : res.redirect('https://' + req.headers.host + req.url);
-  });
-
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

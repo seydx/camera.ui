@@ -26,6 +26,7 @@ export default {
 
   props: {
     items: Array,
+    dataset: Object,
     widgets: Array,
   },
 
@@ -48,7 +49,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
-              ...widget.defaultWidgetData,
+              ...this.dataset,
             });
           }
         });
@@ -66,7 +67,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
-          ...widget.defaultWidgetData,
+          ...this.dataset,
         });
       }
     });

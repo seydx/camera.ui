@@ -28,16 +28,12 @@ export default {
 
   sockets: {
     clearLog() {
-      if (this.term) {
-        this.term.clear();
-      }
+      this.term?.clear();
     },
     logMessage(message) {
-      if (this.term) {
-        message = message + '\r\n';
-        this.term.write(message);
-        this.fitAddon?.fit();
-      }
+      message = message + '\r\n';
+      this.term?.write(message);
+      this.fitAddon?.fit();
     },
   },
 
@@ -65,16 +61,15 @@ export default {
     window.addEventListener('resize', this.resizeHandler);
   },
   beforeDestroy() {
+    bus.$off('extendSidebar', this.triggerSidebar);
+    window.removeEventListener('orientationchange', this.resizeHandler);
+    window.removeEventListener('resize', this.resizeHandler);
+
     this.term?.dispose();
     this.fitAddon?.dispose();
 
     this.term = null;
     this.fitAddon = null;
-
-    bus.$off('extendSidebar', this.triggerSidebar);
-
-    window.removeEventListener('orientationchange', this.resizeHandler);
-    window.removeEventListener('resize', this.resizeHandler);
   },
   methods: {
     resizeHandler() {

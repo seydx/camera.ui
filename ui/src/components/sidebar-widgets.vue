@@ -7,7 +7,7 @@
       v-progress-circular.tw-mt-5(indeterminate color="var(--cui-primary)" size="20")
     .widget(v-for="(widget,i) in widgets" :key="widget.name" v-if="!loading && !widget.items.every((widgetItem) => items.some((item) => item.id === widgetItem.id))" :class="i !== widgets.length - 1 ? 'tw-mb-10' : ''")
       .widget-title.tw-mb-2.tw-ml-2 {{ widget.name }}
-      component(:is="widget.placeholderComponent" :items="items" :widgets="widget.items" @refreshDrag="$emit('refreshDrag')")
+      component(:is="widget.placeholderComponent" :items="items" :dataset="widget.defaultWidgetData" :widgets="widget.items" @refreshDrag="$emit('refreshDrag')")
 
 </template>
 

@@ -47,7 +47,10 @@ export default {
       this.rotation.minutes += 0.1;
     },
     minute(to, from) {
-      if (from === to) return;
+      if (from === to) {
+        return;
+      }
+
       this.rotation.hours += 0.5;
     },
   },
@@ -55,6 +58,7 @@ export default {
   mounted() {
     let date = new Date();
     let [h, m, s] = [date.getHours(), date.getMinutes(), date.getSeconds()];
+
     this.rotation = {
       hours: h * 30 + m * 0.5,
       minutes: m * 6 + s * 0.1,

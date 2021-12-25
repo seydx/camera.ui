@@ -1,5 +1,5 @@
 <template lang="pug">
-.content.tw-h-full
+.content.tw-h-full.tw-overflow-x-hidden
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .tw-h-full(v-else)
@@ -17,8 +17,8 @@
                 v-chip.tw-ml-2(x-small v-else-if="notification.label" :color="notification.label === 'Homebridge' ? 'purple' : 'grey'") {{ notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label }}
             .tw-flex.tw-justify-start.tw-items-center.tw-mt-1
               v-card-subtitle.tw-p-0.text-muted.tw-font-normal.text-truncate {{ notification.message }}
-    .tw-h-full.tw-w-full.tw-flex.tw-justify-center.tw-items-center(v-else)
-      span.text-muted {{ $t('no_notifications') }}
+    .tw-absolute.tw-inset-0.tw-flex.tw-justify-center.tw-items-center(v-else)
+      .text-muted {{ $t('no_notifications') }}
               
 </template>
 

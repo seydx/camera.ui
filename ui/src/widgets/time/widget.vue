@@ -3,11 +3,13 @@
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .tw-h-full.tw-w-full.tw-p-4.tw-relative.tw-flex.tw-flex-col.tw-items-center.tw-justify-center
-    .time(v-if="showDigital") {{ `${time.hours}:${time.minutes}` }}
+    .time(v-if="showDigital") {{ `${time.digital.hours}:${time.digital.minutes}` }}
     .date.text-muted(v-if="showDigital")
       v-icon.tw-mr-1(size="14" color="var(--cui-text-hint)" style="margin-bottom: 2px;") {{ icons['mdiCalendarRange'] }}
       span {{ date }}
-    AnalogCock(v-if="!showDigital" :minute="time.minutes" :tick="tick")
+    #clock.tw-w-full.tw-h-full(v-if="!showDigital")
+      template(v-if="tick")
+        AnalogCock(:minute="time.analog.minutes" :tick="tick")
 </template>
 
 <script>
@@ -40,15 +42,19 @@ export default {
     showDigital: false,
 
     date: '',
-
     tick: 0,
     time: {
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
+      analog: {
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+      },
+      digital: {
+        hours: '00',
+        minutes: '00',
+        seconds: '00',
+      },
     },
-
-    rotation: { hours: 0, minutes: 0, seconds: 0 },
   }),
 
   async mounted() {
@@ -95,13 +101,19 @@ export default {
       const minutes = time.getMinutes();
       const seconds = time.getSeconds();
 
-      this.time = {
-        hours: /^\d$/.test(hours) ? `0${hours}` : hours,
-        minutes: /^\d$/.test(minutes) ? `0${minutes}` : minutes,
-        seconds: /^\d$/.test(seconds) ? `0${seconds}` : seconds,
+      this.time.digital = {
+        hours: /^\d$/.test(hours) ? `0${hours}` : `${hours}`,
+        minutes: /^\d$/.test(minutes) ? `0${minutes}` : `${minutes}`,
+        seconds: /^\d$/.test(seconds) ? `0${seconds}` : `${seconds}`,
       };
 
-      this.date = new Date().toISOString().slice(0, 10);
+      this.time.analog = {
+        hours: hours,
+        minutes: minutes,
+        seconds: seconds,
+      };
+
+      this.date = time.toISOString().slice(0, 10);
 
       this.timeInterval = setTimeout(() => this.updateTime(new Date()), 1000 - new Date().getMilliseconds());
     },
