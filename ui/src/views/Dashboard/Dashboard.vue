@@ -89,6 +89,8 @@ export default {
     loading: true,
     locked: false,
     showWidgetsNavi: false,
+
+    resizedBack: false,
   }),
 
   computed: {
@@ -213,7 +215,7 @@ export default {
 
       // eslint-disable-next-line no-unused-vars
       this.grid.on('change', (event, changedItems) => {
-        if (this.grid.getColumn() === 12 && changedItems) {
+        if (this.grid.getColumn() === 12 && changedItems && !this.resizedBack) {
           let items = [...this.items];
           const changedItemsCopy = [...changedItems];
 
@@ -358,6 +360,8 @@ export default {
       this.showWidgetsNavi = this.windowWidth() < 768;
 
       if (this.grid) {
+        const items = [...this.items];
+
         if (this.windowWidth() < 576 && this.grid.getColumn() !== 1) {
           this.grid.margin('10px 0px 10px 0px');
           this.grid.column(1).cellHeight(100).compact().disable();
@@ -365,6 +369,8 @@ export default {
           this.grid.margin('10px 5px 10px 5px');
           this.grid.column(2).cellHeight(75).compact().disable();
         } else if (this.windowWidth() >= 768 && this.grid.getColumn() !== 12) {
+          this.resizedBack = true;
+
           this.grid.margin('10px 10px 10px 10px');
           this.grid.column(12).cellHeight(this.cellHeight());
 
@@ -373,6 +379,20 @@ export default {
           } else {
             this.grid.enable();
           }
+
+          const gridItems = this.grid.getGridItems();
+          items.forEach((item) => {
+            const el = gridItems.find((el) => el.gridstackNode.id === item.id);
+            el.setAttribute('gs-x', item.x);
+            el.setAttribute('gs-y', item.y);
+            el.setAttribute('gs-w', item.w);
+            el.setAttribute('gs-h', item.h);
+            this.grid.batchUpdate();
+          });
+
+          this.grid.commit();
+
+          this.resizedBack = false;
         }
       }
     },

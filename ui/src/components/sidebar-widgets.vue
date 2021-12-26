@@ -126,9 +126,9 @@ export default {
           placeholderComponent: NotificationsPlaceholder.default,
           widgetComponent: NotificationsWidget.default,
           defaultWidgetData: {
-            w: 3,
+            w: 4,
             h: 3,
-            minW: 3,
+            minW: 2,
             maxW: 6,
             minH: 2,
             maxH: 4,

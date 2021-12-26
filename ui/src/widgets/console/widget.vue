@@ -1,5 +1,5 @@
 <template lang="pug">
-.content.tw-relative
+.content.tw-relative.tw-overflow-y-hidden
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .tw-h-full(v-else)

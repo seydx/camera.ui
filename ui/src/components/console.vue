@@ -12,6 +12,7 @@ import { getLog } from '@/api/system.api';
 
 export default {
   name: 'Console',
+
   props: {
     terminal: {
       type: Object,
@@ -43,17 +44,17 @@ export default {
     this.term = new Terminal(this.terminal);
     this.fitAddon = new FitAddon();
 
-    this.term.loadAddon(this.fitAddon);
-    this.term.open(terminalContainer);
+    this.term?.loadAddon(this.fitAddon);
+    this.term?.open(terminalContainer);
 
     this.term._initialized = true;
-    this.fitAddon.fit();
+    this.fitAddon?.fit();
 
     const log = await getLog();
     const message = log.data + '\r\n';
-    this.term.write(message);
 
-    this.fitAddon.fit();
+    this.term?.write(message);
+    this.fitAddon?.fit();
 
     bus.$on('extendSidebar', this.triggerSidebar);
 

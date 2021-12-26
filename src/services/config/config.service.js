@@ -344,6 +344,9 @@ class ConfigService {
         camera.videoConfig.vcodec = camera.videoConfig.vcodec || 'libx264';
         camera.videoConfig.encoderOptions = camera.videoConfig.encoderOptions || '-preset ultrafast -tune zerolatency';
 
+        // min motionTimeout
+        camera.motionTimeout = camera.motionTimeout >= 15 ? camera.motionTimeout : 15;
+
         return camera;
       })
       // exclude cameras with invalid videoConfig, source
