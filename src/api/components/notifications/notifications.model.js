@@ -6,11 +6,7 @@ const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const { Cleartimer } = require('../../../common/cleartimer');
 
-const { LoggerService } = require('../../../services/logger/logger.service');
-
 const { Database } = require('../../database');
-
-const { log } = LoggerService;
 
 const notificationsLimit = 100;
 
@@ -170,10 +166,6 @@ exports.createNotification = async (data) => {
     count: true,
     isNotification: true,
   };
-
-  if (!storing) {
-    log.notify(notify);
-  }
 
   return {
     notification: notification,

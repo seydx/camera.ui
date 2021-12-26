@@ -166,11 +166,12 @@ class EventController {
               }
 
               if (motionInfo.label || motionInfo.label === null) {
+                const { notification, notify } = await EventController.#handleNotification(motionInfo);
+
                 // 1)
-                const { notification, notify } = await EventController.#handleNotification(
-                  motionInfo,
-                  notificationsSettings.active
-                );
+                if (notificationsSettings.active && !recordingSettings.active) {
+                  log.notify(notify);
+                }
 
                 // 2)
                 await EventController.#sendWebhook(
@@ -200,7 +201,7 @@ class EventController {
                 await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
 
                 // 6)
-                if (recordingSettings.active) {
+                if (notificationsSettings.active && recordingSettings.active) {
                   log.notify(notify);
                 }
 
@@ -346,12 +347,7 @@ class EventController {
     return detected.length > 0 ? detected[0] : false;
   }
 
-  static async #handleNotification(motionInfo, notificationActive) {
-    if (!notificationActive) {
-      log.debug('Skip interface notification');
-      return;
-    }
-
+  static async #handleNotification(motionInfo) {
     return await NotificationsModel.createNotification(motionInfo);
   }
 

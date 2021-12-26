@@ -1,7 +1,7 @@
 <template lang="pug">
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
-.tw-py-6.tw-px-4(v-else)
+.tw-py-6.tw-px-3(v-else)
   .pl-safe.pr-safe
 
     Sidebar(ref="widgetBar" :items="items" @refreshDrag="setupDrag")
@@ -133,7 +133,6 @@ export default {
           ...item,
           minW: widget.defaultWidgetData.minW,
           maxW: widget.defaultWidgetData.maxW,
-          h: widget.defaultWidgetData.h,
           minH: widget.defaultWidgetData.minH,
           maxH: widget.defaultWidgetData.maxH,
           disableDrag: widget.defaultWidgetData.disableDrag,
@@ -149,9 +148,8 @@ export default {
         acceptWidgets: true,
         float: true,
         column: 12,
-        //row: 12,
-        //maxRow: 22,
         cellHeight: this.cellHeight(),
+        margin: 10,
         removable: true,
         resizable: {
           autoHide: !this.isMobile(),
@@ -236,11 +234,6 @@ export default {
         }
       });
 
-      /*// eslint-disable-next-line no-unused-vars
-      this.grid.on('added', (event, items) => {
-        console.log('ADD');
-      });*/
-
       this.grid.on('removed', async (event, items) => {
         this.items = this.items.filter((item) => item.id !== items[0].id);
         this.destroyInstance(items[0].id);
@@ -250,8 +243,6 @@ export default {
       });
 
       this.createLayout();
-      //this.grid.load(this.items);
-
       this.setupDrag();
       this.onResize();
 
@@ -367,19 +358,14 @@ export default {
       this.showWidgetsNavi = this.windowWidth() < 768;
 
       if (this.grid) {
-        //const itemsCopy = [...this.items];
-
         if (this.windowWidth() < 576 && this.grid.getColumn() !== 1) {
+          this.grid.margin('10px 0px 10px 0px');
           this.grid.column(1).cellHeight(100).compact().disable();
         } else if (this.windowWidth() >= 576 && this.windowWidth() < 768 && this.grid.getColumn() !== 2) {
+          this.grid.margin('10px 5px 10px 5px');
           this.grid.column(2).cellHeight(75).compact().disable();
-
-          /*if (this.locked) {
-            this.grid.disable();
-          } else {
-            this.grid.enableResize(false).enableMove(true);
-          }*/
         } else if (this.windowWidth() >= 768 && this.grid.getColumn() !== 12) {
+          this.grid.margin('10px 10px 10px 10px');
           this.grid.column(12).cellHeight(this.cellHeight());
 
           if (this.locked) {
@@ -387,22 +373,6 @@ export default {
           } else {
             this.grid.enable();
           }
-
-          /*const gridItems = this.grid.getGridItems();
-
-          itemsCopy.forEach((item) => {
-            const el = gridItems.find((el) => el.gridstackNode.id === item.id);
-
-            el.setAttribute('gs-x', item.x);
-            el.setAttribute('gs-y', item.y);
-            el.setAttribute('gs-w', item.w);
-            el.setAttribute('gs-h', item.h);
-
-            this.grid.batchUpdate();
-          });
-
-          this.grid.commit();
-          this.items = itemsCopy;*/
         }
       }
     },
@@ -443,9 +413,6 @@ export default {
       return document.getElementById('dashboard')?.offsetHeight;
     },
     widgetData(widget) {
-      console.log('RECEIVED WIDGET DATA');
-      console.log(widget);
-
       this.items = this.items.map((item) => {
         if (item.id === widget.id) {
           return {

@@ -4,11 +4,13 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 
 const { LoggerService } = require('../../../services/logger/logger.service');
+const { ConfigService } = require('../../../services/config/config.service');
 
 const { log } = LoggerService;
 
 class MediaService {
   #camera;
+  #videoProcessor = ConfigService.ui.options.videoProcessor;
 
   constructor(camera) {
     //log.debug('Initializing camera probe', camera.name);
@@ -33,11 +35,11 @@ class MediaService {
   async probe() {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
-      log.debug(`Probe stream: ${this.ffmpegInput}`, this.cameraName);
+      log.debug(`Probe stream: ${this.#videoProcessor} ${this.ffmpegInput}`, this.cameraName);
 
       const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.ffmpegInput.split(' ')];
 
-      let cp = spawn('ffmpeg', arguments_, {
+      let cp = spawn(this.#videoProcessor, arguments_, {
         env: process.env,
       });
 
