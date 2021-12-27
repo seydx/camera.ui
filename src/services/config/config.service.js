@@ -24,6 +24,10 @@ const smtpDefaults = {
   speace_replace: '+',
 };
 
+const ftpDefaults = {
+  port: 5050,
+};
+
 const mqttDefault = {
   tls: false,
   port: 1883,
@@ -159,6 +163,10 @@ class ConfigService {
       this.#configSMTP(uiConfig.smtp);
     }
 
+    if (uiConfig.ftp) {
+      this.#configFTP(uiConfig.ftp);
+    }
+
     if (uiConfig.mqtt) {
       this.#configMQTT(uiConfig.mqtt);
     }
@@ -262,6 +270,22 @@ class ConfigService {
     };
   }
 
+  #configFTP(ftp = {}) {
+    if (!ftp.active) {
+      return;
+    }
+
+    if (!ConfigService.ui.http) {
+      log.warn('Can not enable FTP server, HTTP server needs to be enabled too', 'Config', 'system');
+      return;
+    }
+
+    ConfigService.ui.ftp = {
+      port: ftp.port || ftpDefaults.port,
+      httpPort: ConfigService.ui.http?.port || httpDefaults.port,
+    };
+  }
+
   #configMQTT(mqtt = {}) {
     if (!mqtt.active || !mqtt.host) {
       return;
@@ -351,7 +375,7 @@ class ConfigService {
       })
       // exclude cameras with invalid videoConfig, source
       .filter((camera) => camera.videoConfig?.source)
-      // setup mqtt topics
+      // setup mqtt
       .map((camera) => {
         if (camera.mqtt) {
           //setup mqtt topics

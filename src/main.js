@@ -83,6 +83,7 @@ class Interface extends EventEmitter {
     this.motionController?.closeMqttClient();
     this.motionController?.closeSmtpServer();
     this.motionController?.closeHttpServer();
+    this.motionController?.closeFtpServer();
 
     if (this.cameraController) {
       for (const controller of this.cameraController.values()) {

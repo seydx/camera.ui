@@ -1,8 +1,11 @@
 const Bunyan = require('bunyan');
 const EscapeRegExp = require('lodash.escaperegexp');
+const { FileSystem, FtpSrv } = require('ftp-srv');
 const http = require('http');
+const ip = require('ip');
 const mqtt = require('mqtt');
 const { parse } = require('url');
+const path = require('path');
 const { SMTPServer } = require('smtp-server');
 const Stream = require('stream');
 
@@ -22,6 +25,7 @@ class MotionController {
   static httpServer = null;
   static mqttClient = null;
   static smtpServer = null;
+  static ftpServer = null;
 
   constructor(controller) {
     MotionController.#controller = controller;
@@ -36,6 +40,10 @@ class MotionController {
 
     if (ConfigService.ui.smtp) {
       MotionController.startSmtpServer();
+    }
+
+    if (ConfigService.ui.ftp) {
+      MotionController.startFtpServer();
     }
 
     //used for external events
@@ -61,6 +69,10 @@ class MotionController {
     this.smtpServer = MotionController.smtpServer;
     this.startSmtpServer = MotionController.startSmtpServer;
     this.closeSmtpServer = MotionController.closeSmtpServer;
+
+    this.ftpServer = MotionController.ftpServer;
+    this.startFtpServer = MotionController.startFtpServer;
+    this.closeFtpServer = MotionController.closeFtpServer;
   }
 
   static startHttpServer() {
@@ -141,7 +153,7 @@ class MotionController {
   }
 
   static startMqttClient() {
-    log.debug('Setting up MQTT connection for motion detection...');
+    log.debug('Setting up MQTT client for motion detection...');
 
     MotionController.mqttClient = mqtt.connect(
       (ConfigService.ui.mqtt.tls ? 'mqtts://' : 'mqtt://') +
@@ -226,7 +238,7 @@ class MotionController {
           stream: new Stream.Writable({
             write: (chunk, _encoding, callback) => {
               const data = JSON.parse(chunk);
-              log.debug(data.msg);
+              log.debug(data.msg, 'SMTP');
               callback();
             },
           }),
@@ -246,6 +258,8 @@ class MotionController {
         stream.on('data', () => {});
         stream.on('end', callback);
 
+        log.debug(session, 'SMTP');
+
         for (const rcptTo of session.envelope.rcptTo) {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
           log.debug(`Email received (${name}).`);
@@ -260,6 +274,157 @@ class MotionController {
     });
 
     MotionController.smtpServer.listen(ConfigService.ui.smtp.port);
+  }
+
+  static startFtpServer() {
+    log.debug('Setting up FTP server for motion detection...');
+
+    const ipAddr = ip.address('public', 'ipv4');
+
+    const bunyan = Bunyan.createLogger({
+      name: 'ftp',
+      streams: [
+        {
+          stream: new Stream.Writable({
+            write: (chunk, _encoding, callback) => {
+              const data = JSON.parse(chunk);
+
+              if (data.msg !== 'Listening') {
+                if (data.level >= 50) {
+                  if (data.err?.message !== 'Server is not running.') {
+                    log.error(data.msg, 'FTP', 'motion');
+                  }
+                } else if (data.level >= 40) {
+                  log.warn(data.msg, 'FTP', 'motion');
+                } else if (data.level >= 20) {
+                  log.debug(data.msg, 'FTP');
+                }
+              }
+
+              callback();
+            },
+          }),
+        },
+      ],
+    });
+
+    MotionController.ftpServer = new FtpSrv({
+      url: `ftp://${ipAddr}:${ConfigService.ui.ftp.port}`,
+      pasv_url: ipAddr,
+      anonymous: true,
+      blacklist: ['MKD', 'APPE', 'RETR', 'DELE', 'RNFR', 'RNTO', 'RMD'],
+      log: bunyan,
+    });
+
+    MotionController.ftpServer.on('login', (data, resolve) => {
+      resolve({
+        fs: new (class extends FileSystem {
+          constructor() {
+            super();
+            this.connection = data.connection;
+            this.realCwd = '/';
+          }
+
+          get(fileName) {
+            return {
+              name: fileName,
+              isDirectory: () => true,
+              size: 1,
+              atime: new Date(),
+              mtime: new Date(),
+              ctime: new Date(),
+              uid: 0,
+              gid: 0,
+            };
+          }
+
+          list(filePath = '.') {
+            filePath = path.resolve(this.realCwd, filePath);
+
+            const directories = [...this.get('.')];
+            const pathSplit = filePath.split('/').filter((value) => value.length > 0);
+
+            if (pathSplit.length === 0) {
+              for (const camera of ConfigService.ui.cameras) {
+                directories.push(this.get(camera.name));
+              }
+            } else {
+              directories.push(this.get('..'));
+            }
+
+            return directories;
+          }
+
+          chdir(filePath = '.') {
+            filePath = path.resolve('/', filePath);
+            this.realCwd = filePath;
+            return filePath;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          write(fileName, { append = false, start }) {
+            const filePath = path.resolve(this.realCwd, fileName);
+            const pathSplit = path
+              .dirname(filePath)
+              .split('/')
+              .filter((value) => value);
+
+            if (pathSplit.length > 0) {
+              const name = pathSplit[0];
+              log.debug(`Receiving file. (${name}).`);
+
+              try {
+                http.get(`http://127.0.0.1:${ConfigService.ui.ftp.httpPort}/motion?${name}`);
+              } catch (error) {
+                log.error(`Error making HTTP call (${name}): ${error}`, 'FTP Server', 'motion');
+              }
+            } else {
+              this.connection.reply(550, 'Permission denied.');
+            }
+
+            return new Stream.Writable({
+              write: (chunk, encoding, callback) => {
+                callback();
+              },
+            });
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          chmod(filePath, mode) {
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          mkdir(filePath) {
+            this.connection.reply(550, 'Permission denied.');
+            return this.realCwd;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          read(fileName, { start }) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          delete(filePath) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          rename(from, to) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+        })(),
+        cwd: '/',
+      });
+    });
+
+    MotionController.ftpServer.listen().then(() => {
+      log.debug(`FTP server for motion detection is listening on ${ipAddr}:${ConfigService.ui.ftp.port}`);
+    });
   }
 
   static closeHttpServer() {
@@ -277,6 +442,12 @@ class MotionController {
   static closeSmtpServer() {
     if (MotionController.smtpServer) {
       MotionController.smtpServer.close();
+    }
+  }
+
+  static closeFtpServer() {
+    if (MotionController.ftpServer) {
+      MotionController.ftpServer.close();
     }
   }
 
