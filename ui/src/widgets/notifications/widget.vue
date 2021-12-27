@@ -28,12 +28,8 @@ import { mdiChevronRight } from '@mdi/js';
 
 import { getNotifications } from '@/api/notifications.api';
 
-import NotificationCard from '@/components/notification-card.vue';
-
 export default {
   name: 'NotificationsWidget',
-
-  components: { NotificationCard },
 
   props: {
     item: Object,

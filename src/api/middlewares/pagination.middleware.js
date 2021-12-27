@@ -6,7 +6,8 @@ exports.pages = (req, res) => {
   let page = Number.parseInt(req.query.page) || 1;
   let pageSize = Number.parseInt(req.query.pageSize) || 25;
 
-  start = !Number.isNaN(start) ? start : null;
+  // eslint-disable-next-line unicorn/prefer-number-properties
+  start = !isNaN(start) ? start : null;
   const items = res.locals.items || [];
 
   let maxPageSize = 50;

@@ -5,7 +5,7 @@
     v-img.tw-mx-2.logo(src="@/assets/img/logo.svg" width="40px")
     span.error-title 4
   .subtitle oops..
-  span {{ $t('page_not_found') }}
+  span.text-muted {{ $t('page_not_found') }}
   v-btn.tw-mt-5(text color="var(--cui-primary)" @click="$router.go(-1)") {{ $t('back') }}
               
 </template>

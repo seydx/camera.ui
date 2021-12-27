@@ -16,14 +16,15 @@
 import { bus } from '@/main';
 
 import { CameraPlaceholder, CameraWidget } from '@/widgets/camera';
+import { ChartPlaceholder, ChartWidget } from '@/widgets/chart';
 import { ConsolePlaceholder, ConsoleWidget } from '@/widgets/console';
 import { NotificationsPlaceholder, NotificationsWidget } from '@/widgets/notifications';
-import { ChartPlaceholder, ChartWidget } from '@/widgets/chart';
+import { RssPlaceholder, RssWidget } from '@/widgets/rss';
 import { ShortcutsPlaceholder, ShortcutsWidget } from '@/widgets/shortcuts';
 import { StatusPlaceholder, StatusWidget } from '@/widgets/status';
 import { TimePlaceholder, TimeWidget } from '@/widgets/time';
-import { WeatherPlaceholder, WeatherWidget } from '@/widgets/weather';
 import { UptimePlaceholder, UptimeWidget } from '@/widgets/uptime';
+import { WeatherPlaceholder, WeatherWidget } from '@/widgets/weather';
 
 export default {
   name: 'SidebarWidgets',
@@ -138,6 +139,27 @@ export default {
           items: [
             {
               id: 'notifications',
+            },
+          ],
+        },
+        {
+          id: 'RSS',
+          name: this.$t('rss_feed'),
+          placeholderComponent: RssPlaceholder.default,
+          widgetComponent: RssWidget.default,
+          defaultWidgetData: {
+            w: 4,
+            h: 3,
+            minW: 3,
+            maxW: 6,
+            minH: 2,
+            maxH: 6,
+            disableDrag: false,
+            disableResize: false,
+          },
+          items: [
+            {
+              id: 'rss',
             },
           ],
         },

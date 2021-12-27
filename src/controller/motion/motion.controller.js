@@ -218,7 +218,7 @@ class MotionController {
         };
       }
 
-      log.debug(`Received a new MQTT message ${JSON.stringify(result)} (${cameraName})`);
+      log.debug(`Received a new message ${JSON.stringify(result)} (${cameraName})`, 'MQTT');
     });
 
     MotionController.mqttClient.on('end', () => {
@@ -262,7 +262,7 @@ class MotionController {
 
         for (const rcptTo of session.envelope.rcptTo) {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
-          log.debug(`Email received (${name}).`);
+          log.debug(`Email received (${name}).`, 'SMTP');
 
           try {
             http.get(`http://127.0.0.1:${ConfigService.ui.smtp.httpPort}/motion?${name}`);
@@ -371,7 +371,7 @@ class MotionController {
 
             if (pathSplit.length > 0) {
               const name = pathSplit[0];
-              log.debug(`Receiving file. (${name}).`);
+              log.debug(`Receiving file. (${name}).`, 'FTP');
 
               try {
                 http.get(`http://127.0.0.1:${ConfigService.ui.ftp.httpPort}/motion?${name}`);

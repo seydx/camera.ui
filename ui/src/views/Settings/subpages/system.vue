@@ -144,6 +144,20 @@
 
     v-divider.tw-mt-4.tw-mb-8
     
+    .page-subtitle.tw-mt-8 {{ $t('ftp') }}
+    .page-subtitle-info {{ $t('ftp_server_config') }}
+
+    .tw-flex.tw-justify-between.tw-items-center
+      label.form-input-label {{ $t('enabled') }}
+      v-switch(color="var(--cui-primary)" v-model="config.ftp.active")
+
+    label.form-input-label {{ $t('port') }}
+    v-text-field(v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiNumeric'] }}
+
+    v-divider.tw-mt-4.tw-mb-8
+    
     .page-subtitle.tw-mt-8 {{ $t('mqtt') }}
     .page-subtitle-info {{ $t('mqtt_config') }}
 
