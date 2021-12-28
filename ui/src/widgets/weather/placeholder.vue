@@ -1,6 +1,6 @@
 <template lang="pug">
 div
-  .grid-stack-item(v-for="placeholder in placeholders" :key="placeholder.id" :gs-id="placeholder.id" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
+  .grid-stack-item(v-for="placeholder in placeholders" :key="placeholder.id" :gs-id="placeholder.id" :gs-type="placeholder.type" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
     .grid-stack-item-content
       .content.tw-p-4.tw-relative.tw-flex.tw-flex-col.tw-items-start.tw-justify-center
         .weatherTitle {{ $t('sunny') }}
@@ -28,6 +28,7 @@ export default {
     items: Array,
     dataset: Object,
     widgets: Array,
+    type: String,
   },
 
   data: () => ({
@@ -49,6 +50,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
+              type: this.type,
               ...this.dataset,
             });
           }
@@ -67,6 +69,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
+          type: this.type,
           ...this.dataset,
         });
       }

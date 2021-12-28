@@ -273,6 +273,10 @@ export default {
       }
     },
     refreshStream(rejoin) {
+      if (!this.stream) {
+        return;
+      }
+
       if (this.streamTimeout) {
         clearTimeout(this.streamTimeout);
         this.streamTimeout = null;

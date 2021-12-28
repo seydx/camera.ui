@@ -9,7 +9,7 @@ v-carousel.carousel(v-model="camera" height="200" hide-delimiters)
       v-icon.tw-text-white {{ icons['mdiChevronRight'] }}
     span(v-else)
   v-carousel-item(v-for="(placeholder,i) in placeholders" :key="i" reverse-transition="fade-transition" transition="fade-transition")
-    .grid-stack-item(:gs-id="placeholder.id" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
+    .grid-stack-item(:gs-id="placeholder.id" :gs-type="placeholder.type" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
       .grid-stack-item-content
         .content.tw-overflow-hidden.tw-relative
           .widget
@@ -33,6 +33,7 @@ export default {
     items: Array,
     dataset: Object,
     widgets: Array,
+    type: String,
   },
 
   data: () => ({
@@ -57,6 +58,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
+              type: this.type,
               ...this.dataset,
             });
           }
@@ -75,6 +77,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
+          type: this.type,
           ...this.dataset,
         });
       }

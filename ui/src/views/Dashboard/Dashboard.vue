@@ -121,15 +121,15 @@ export default {
       await timeout(100);
 
       this.$refs.widgetBar.widgets.forEach((widget) => {
-        if (widget.id === 'Cameras') {
+        if (widget.type === 'CamerasWidget') {
           widget.items = cameras.data.result;
         }
       });
 
+      this.widgets = this.$refs.widgetBar.widgets;
+
       this.items = this.items.map((item) => {
-        const widget = this.$refs.widgetBar.widgets.find((widget) =>
-          widget.items.some((widgetItem) => widgetItem.id === item.id)
-        );
+        const widget = this.widgets.find((widget) => widget.items.some((widgetItem) => widgetItem.id === item.id));
 
         return {
           ...item,
@@ -141,8 +141,6 @@ export default {
           disableResize: widget.defaultWidgetData.disableResize,
         };
       });
-
-      this.widgets = this.$refs.widgetBar.widgets;
 
       this.grid = GridStack.init({
         alwaysShowResizeHandle: this.isMobile(),
@@ -180,6 +178,7 @@ export default {
 
           const item = {
             id: newWidget.id,
+            type: newWidget.el.getAttribute('gs-type'),
             x: newWidget.x,
             y: newWidget.y,
             w: newWidget.w,

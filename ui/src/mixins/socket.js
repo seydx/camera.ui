@@ -21,20 +21,34 @@ export default {
     connect() {
       console.log('Connected to socket');
 
-      if (this.connected && this.isPage(['Dashboard', 'Camview'])) {
-        if (this.cameras) {
-          for (const camera of this.cameras) {
-            if (camera.live) {
-              if (this.$refs[camera.name] && this.$refs[camera.name][0]) {
-                this.$refs[camera.name][0].refreshStream(true);
+      if (this.connected) {
+        if (this.isPage('Dashboard')) {
+          if (this.items && this.instances) {
+            const cameras = this.items.filter((item) => item.type === 'CamerasWidget');
+
+            for (const camera of cameras) {
+              const instance = this.instances[camera.id];
+
+              if (instance.$refs[camera.id]) {
+                instance.$refs[camera.id].refreshStream(true);
               }
             }
           }
-        }
-      } else if (this.isPage('Camera')) {
-        if (this.camera) {
-          if (this.$refs[this.camera.name]) {
-            this.$refs[this.camera.name].refreshStream(true);
+        } else if (this.isPage('Camview')) {
+          if (this.cameras) {
+            for (const camera of this.cameras) {
+              if (camera.live) {
+                if (this.$refs[camera.name] && this.$refs[camera.name][0]) {
+                  this.$refs[camera.name][0].refreshStream(true);
+                }
+              }
+            }
+          }
+        } else if (this.isPage('Camera')) {
+          if (this.camera) {
+            if (this.$refs[this.camera.name]) {
+              this.$refs[this.camera.name].refreshStream(true);
+            }
           }
         }
       }

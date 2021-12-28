@@ -1,6 +1,6 @@
 <template lang="pug">
 div
-  .grid-stack-item(v-for="(placeholder,i) in placeholders" :key="placeholder.id" :gs-id="placeholder.id" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
+  .grid-stack-item(v-for="(placeholder,i) in placeholders" :key="placeholder.id" :gs-id="placeholder.id" :gs-type="placeholder.type" :gs-w="placeholder.w" :gs-min-w="placeholder.minW" :gs-max-w="placeholder.maxW" :gs-h="placeholder.h" :gs-min-h="placeholder.minH" :gs-max-h="placeholder.maxH" :gs-no-resize="placeholder.disableResize" :gs-no-move="placeholder.disableDrag")
     .grid-stack-item-content
       .content.tw-relative.tw-overflow-hidden(:class="i !== placeholders.length - 1 ? 'tw-mb-3' : ''")
         .chart-badge.tw-flex.tw-justify-center.tw-items-center.text-default(v-if="placeholder.id === 'cpuLoad'") 8%
@@ -25,6 +25,7 @@ export default {
     items: Array,
     dataset: Object,
     widgets: Array,
+    type: String,
   },
 
   data() {
@@ -105,6 +106,7 @@ export default {
           if (!itemDropped) {
             placeholders.push({
               id: widget.id,
+              type: this.type,
               ...this.dataset,
             });
           }
@@ -142,6 +144,7 @@ export default {
       if (!itemDropped) {
         this.placeholders.push({
           id: widget.id,
+          type: this.type,
           ...this.dataset,
         });
       }

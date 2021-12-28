@@ -282,6 +282,10 @@ export default {
           port: 2525,
           space_replace: '+',
         },
+        ftp: config.data.ftp || {
+          active: false,
+          port: 5050,
+        },
         options: config.data.options || {
           videoProcessor: 'ffmpeg',
         },

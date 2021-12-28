@@ -378,7 +378,7 @@ class Database {
     }
 
     if (!Array.isArray(database?.settings.widgets.items)) {
-      database.settings.widgets.items = defaultDatabase.settings.widgets;
+      database.settings.widgets.items = defaultDatabase.settings.widgets.items;
     }
 
     await Database.interfaceDB.assign(database).write();
@@ -409,11 +409,23 @@ class Database {
   static async #writeConfigCamerasToDB() {
     await Database.interfaceDB.read();
 
+    // TODO: Remove later
+    await Database.interfaceDB
+      .get('settings')
+      .get('widgets')
+      .get('items')
+      .remove((x) => x && x.type === undefined)
+      .write();
+
     const Cameras = await Database.interfaceDB.get('cameras');
     const CamerasSettings = await Database.interfaceDB.get('settings').get('cameras');
+    const CamerasWidgets = await Database.interfaceDB.get('settings').get('widgets').get('items');
 
     await Cameras.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();
     await CamerasSettings.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();
+    await CamerasWidgets.remove(
+      (x) => x.type === 'CamerasWidget' && Database.#cameras.filter((y) => y && y.name === x.id).length === 0
+    ).write();
 
     for (const cam of Database.#cameras) {
       const camera = {

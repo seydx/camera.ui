@@ -7,7 +7,7 @@
       v-progress-circular.tw-mt-5(indeterminate color="var(--cui-primary)" size="20")
     .widget(v-for="(widget,i) in widgets" :key="widget.name" v-if="!loading && !widget.items.every((widgetItem) => items.some((item) => item.id === widgetItem.id))" :class="i !== widgets.length - 1 ? 'tw-mb-10' : ''")
       .widget-title.tw-mb-2.tw-ml-2 {{ widget.name }}
-      component(:is="widget.placeholderComponent" :items="items" :dataset="widget.defaultWidgetData" :widgets="widget.items" @refreshDrag="$emit('refreshDrag')")
+      component(:is="widget.placeholderComponent" :items="items" :dataset="widget.defaultWidgetData" :widgets="widget.items" :type="widget.type" @refreshDrag="$emit('refreshDrag')")
 
 </template>
 
@@ -42,7 +42,7 @@ export default {
 
       widgets: [
         {
-          id: 'Time',
+          type: 'TimeWidget',
           name: this.$t('time'),
           placeholderComponent: TimePlaceholder.default,
           widgetComponent: TimeWidget.default,
@@ -63,7 +63,7 @@ export default {
           ],
         },
         {
-          id: 'Weather',
+          type: 'WeatherWidget',
           name: this.$t('weather'),
           placeholderComponent: WeatherPlaceholder.default,
           widgetComponent: WeatherWidget.default,
@@ -84,7 +84,7 @@ export default {
           ],
         },
         {
-          id: 'Uptime',
+          type: 'UptimeWidget',
           name: this.$t('uptime'),
           placeholderComponent: UptimePlaceholder.default,
           widgetComponent: UptimeWidget.default,
@@ -105,7 +105,7 @@ export default {
           ],
         },
         {
-          id: 'Cameras',
+          type: 'CamerasWidget',
           name: this.$t('cameras'),
           placeholderComponent: CameraPlaceholder.default,
           widgetComponent: CameraWidget.default,
@@ -122,7 +122,7 @@ export default {
           items: [],
         },
         {
-          id: 'Notifications',
+          type: 'NotificationsWidget',
           name: this.$t('notifications'),
           placeholderComponent: NotificationsPlaceholder.default,
           widgetComponent: NotificationsWidget.default,
@@ -143,7 +143,7 @@ export default {
           ],
         },
         {
-          id: 'RSS',
+          type: 'RssWidget',
           name: this.$t('rss_feed'),
           placeholderComponent: RssPlaceholder.default,
           widgetComponent: RssWidget.default,
@@ -164,7 +164,7 @@ export default {
           ],
         },
         {
-          id: 'Status',
+          type: 'StatusWidget',
           name: this.$t('status'),
           placeholderComponent: StatusPlaceholder.default,
           widgetComponent: StatusWidget.default,
@@ -185,7 +185,7 @@ export default {
           ],
         },
         {
-          id: 'Shortcuts',
+          type: 'ShortcutsWidget',
           name: this.$t('shortcuts'),
           placeholderComponent: ShortcutsPlaceholder.default,
           widgetComponent: ShortcutsWidget.default,
@@ -206,7 +206,7 @@ export default {
           ],
         },
         {
-          id: 'Utilization',
+          type: 'UtilizationWidget',
           name: this.$t('utilization'),
           placeholderComponent: ChartPlaceholder.default,
           widgetComponent: ChartWidget.default,
@@ -233,7 +233,7 @@ export default {
           ],
         },
         {
-          id: 'Console',
+          type: 'ConsoleWidget',
           name: this.$t('console'),
           placeholderComponent: ConsolePlaceholder.default,
           widgetComponent: ConsoleWidget.default,
