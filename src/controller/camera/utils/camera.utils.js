@@ -1,6 +1,10 @@
+/* eslint-disable unicorn/number-literal-case */
 'use-strict';
-
 const { once } = require('events');
+
+function findSyncFrame(streamChunks) {
+  return streamChunks;
+}
 
 module.exports = {
   listenServer: async function (server) {
@@ -70,5 +74,148 @@ module.exports = {
         data,
       };
     }
+  },
+
+  createFragmentedMp4Parser: function (vcodec, acodec) {
+    // eslint-disable-next-line unicorn/no-this-assignment
+    const self = this;
+
+    return {
+      container: 'mp4',
+      outputArguments: [...vcodec, ...acodec, '-movflags', 'frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4'],
+      async *parse(socket) {
+        const parser = self.parseFragmentedMP4(socket);
+
+        let ftyp;
+        let moov;
+        let startStream;
+
+        for await (const atom of parser) {
+          if (!ftyp) {
+            ftyp = atom;
+          } else if (!moov) {
+            moov = atom;
+          }
+
+          yield {
+            startStream,
+            chunks: [atom.header, atom.data],
+            type: atom.type,
+          };
+
+          if (ftyp && moov && !startStream) {
+            startStream = Buffer.concat([ftyp.header, ftyp.data, moov.header, moov.data]);
+          }
+        }
+      },
+      findSyncFrame,
+    };
+  },
+
+  createLengthParser: function (length, verify) {
+    async function* parse(socket) {
+      let pending = [];
+      let pendingSize = 0;
+
+      while (true) {
+        const data = socket.read();
+
+        if (!data) {
+          await once(socket, 'readable');
+          continue;
+        }
+
+        pending.push(data);
+        pendingSize += data.length;
+
+        if (pendingSize < length) {
+          continue;
+        }
+
+        const concat = Buffer.concat(pending);
+
+        verify?.(concat);
+
+        const remaining = concat.length % length;
+        const left = concat.slice(0, concat.length - remaining);
+        const right = concat.slice(concat.length - remaining);
+
+        pending = [right];
+        pendingSize = right.length;
+
+        yield {
+          chunks: [left],
+        };
+      }
+    }
+
+    return parse;
+  },
+
+  createPCMParser: function () {
+    return {
+      container: 's16le',
+      outputArguments: ['-vn', '-acodec', 'pcm_s16le', '-f', 's16le'],
+      parse: this.createLengthParser(512),
+      findSyncFrame,
+    };
+  },
+
+  createMpegTsParser: function (vcodec, acodec) {
+    let pat;
+    let pmt;
+
+    return {
+      container: 'mpegts',
+      outputArguments: [...vcodec, ...acodec, '-f', 'mpegts'],
+      parse: this.createLengthParser(188, (concat) => {
+        if (concat[0] != 0x47) {
+          throw new Error('Invalid sync byte in mpeg-ts packet. Terminating stream.');
+        }
+
+        if (pat && pmt) {
+          return;
+        }
+
+        const pid = ((concat[1] & 0x1f) << 8) | concat[2];
+
+        if (pid === 0) {
+          const tableId = concat[5];
+          if (tableId === 0) {
+            pat = concat.slice(0, 188);
+          } else if (tableId === 2) {
+            pmt = concat.slice(0, 188);
+          }
+        }
+      }),
+      findSyncFrame(streamChunks) {
+        for (let prebufferIndex = 0; prebufferIndex < streamChunks.length; prebufferIndex++) {
+          const streamChunk = streamChunks[prebufferIndex];
+
+          for (let chunkIndex = 0; chunkIndex < streamChunk.chunks.length; chunkIndex++) {
+            const chunk = streamChunk.chunks[chunkIndex];
+            let offset = 0;
+
+            while (offset + 188 < chunk.length) {
+              const pkt = chunk.subarray(offset, offset + 188);
+              const pid = ((pkt[1] & 0x1f) << 8) | pkt[2];
+
+              if (
+                pid == 256 && // found video stream
+                pkt[3] & 0x20 &&
+                pkt[4] > 0 && // have AF
+                pkt[5] & 0x40
+              ) {
+                return streamChunks.slice(prebufferIndex);
+              }
+
+              offset += 188;
+            }
+          }
+        }
+
+        return findSyncFrame(streamChunks);
+      },
+    };
   },
 };

@@ -414,7 +414,10 @@ exports.handleFragmentsRequests = async function* (camera) {
       try {
         log.debug('Setting prebuffer stream as input', camera.name);
 
-        const input = await controller.prebuffer.getVideo(prebufferLength);
+        const input = await controller.prebuffer.getVideo({
+          container: 'mp4',
+          prebuffer: prebufferLength,
+        });
 
         ffmpegInput = [];
         ffmpegInput.push(...input);
