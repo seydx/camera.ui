@@ -10,7 +10,7 @@
   "dependencies": {
     "@mdi/js": "^6.5.95",
     "axios": "^0.24.0",
-    "chart.js": "2.8.0",
+    "chart.js": "2.9.4",
     "file-saver": "^2.0.5",
     "gridstack": "^4.4.1",
     "jsmpeg-fast-player": "^0.2.0",
