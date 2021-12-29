@@ -7,16 +7,15 @@
   .tw-h-full.tw-w-full.tw-p-4.tw-relative.tw-flex.tw-flex-row.tw-items-center.tw-justify-center(v-else)
     .time.tw-text-center
       span.time-title {{ time.system }}
-      p.text-muted {{ $t('system') }}
+      .text-muted {{ $t('system') }}
     .tw-mx-2
     .time.tw-text-center
       span.time-title {{ time.process }}
-      p.text-muted {{ $t('process') }}
+      .text-muted {{ $t('process') }}
 </template>
 
 <script>
 /* eslint-disable vue/require-default-prop */
-import { getUptime } from '@/api/system.api';
 
 export default {
   name: 'UptimeWidget',
@@ -27,49 +26,30 @@ export default {
 
   data: () => ({
     loading: true,
-    destroyed: false,
 
     time: {
-      system: '',
-      process: '',
-      timer: null,
+      system: '0m',
+      process: '0m',
     },
   }),
 
   async mounted() {
-    await this.getUptime();
+    this.$socket.client.on('uptime', this.uptime);
+    this.$socket.client.emit('getUptime');
+
     this.loading = false;
   },
 
   beforeDestroy() {
-    if (this.time.timer) {
-      clearTimeout(this.time.timer);
-      this.time.timer = null;
-    }
-
-    this.destroyed = true;
+    this.$socket.client.off('uptime', this.uptime);
   },
 
   methods: {
-    async getUptime() {
-      if (this.time.timer) {
-        clearTimeout(this.time.timer);
-        this.time.timer = null;
-      }
-
-      try {
-        const uptime = await getUptime();
-
-        this.time.system = uptime.data.systemTime;
-        this.time.process = uptime.data.processTime;
-      } catch {
-        this.time.system = this.time.system ? this.time.system : '??d';
-        this.time.process = this.time.process ? this.time.process : '??d';
-      } finally {
-        if (!this.destroyed) {
-          this.time.timer = setTimeout(() => this.getUptime(), 60 * 1000);
-        }
-      }
+    uptime(data) {
+      this.time = {
+        system: data.systemTime,
+        process: data.processTime,
+      };
     },
   },
 };

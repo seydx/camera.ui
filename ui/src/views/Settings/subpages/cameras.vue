@@ -274,7 +274,7 @@
             .input-info.tw-italic {{ message }}
 
       label.form-input-label Motion Timeout
-      v-text-field(v-model.number="cam.videoConfig.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(v-model.number="cam.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiNumeric'] }}
         template(v-slot:message="{ key, message}")
@@ -501,7 +501,9 @@ export default {
       telegramTypes: [
         { value: 'Text', text: this.$t('text') },
         { value: 'Snapshot', text: this.$t('snapshot') },
+        { value: 'Text + Snapshot', text: `${this.$t('text')} + ${this.$t('snapshot')}` },
         { value: 'Video', text: this.$t('video') },
+        { value: 'Text + Video', text: `${this.$t('text')} + ${this.$t('video')}` },
         { value: 'Disabled', text: this.$t('disabled') },
       ],
     };

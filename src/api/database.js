@@ -409,14 +409,6 @@ class Database {
   static async #writeConfigCamerasToDB() {
     await Database.interfaceDB.read();
 
-    // TODO: Remove later
-    await Database.interfaceDB
-      .get('settings')
-      .get('widgets')
-      .get('items')
-      .remove((x) => x && x.type === undefined)
-      .write();
-
     const Cameras = await Database.interfaceDB.get('cameras');
     const CamerasSettings = await Database.interfaceDB.get('settings').get('cameras');
     const CamerasWidgets = await Database.interfaceDB.get('settings').get('widgets').get('items');

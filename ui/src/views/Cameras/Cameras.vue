@@ -8,6 +8,9 @@
       .tw-block
         h2 {{ $t($route.name.toLowerCase()) }}
 
+      //.tw-block.tw-ml-auto.tw-mr-1
+        AddCamera
+
     .tw-mt-10(v-for="room in rooms" :key="room" v-if="(room === 'Standard' && cameras.find((cam) => cam.settings.room === room)) || room !== 'Standard'")
       h3 {{ room === 'Standard' ? $t('standard') : room }}
       v-divider.tw-mt-3
@@ -37,10 +40,13 @@
 import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
 import CoolLightBox from 'vue-cool-lightbox';
 import InfiniteLoading from 'vue-infinite-loading';
+import { mdiPlus } from '@mdi/js';
+
 import { getSetting } from '@/api/settings.api';
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 
+//import AddCamera from '@/components/add-camera.vue';
 import FilterCard from '@/components/filter.vue';
 import VideoCard from '@/components/camera-card.vue';
 
@@ -50,6 +56,7 @@ export default {
   name: 'Cameras',
 
   components: {
+    //AddCamera,
     CoolLightBox,
     FilterCard,
     InfiniteLoading,
@@ -59,6 +66,10 @@ export default {
   mixins: [socket],
 
   data: () => ({
+    icons: {
+      mdiPlus,
+    },
+
     cameras: [],
     loading: false,
     infiniteId: Date.now(),

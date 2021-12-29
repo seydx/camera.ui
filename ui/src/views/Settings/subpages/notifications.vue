@@ -146,10 +146,6 @@ export default {
 
       alexaHost: window.location.hostname,
       alexaPing: false,
-      alexaOptions: [
-        { value: true, text: this.$t('enabled') },
-        { value: false, text: this.$t('disabled') },
-      ],
 
       removeAfterTimer: [
         { value: 1, text: '1' },
@@ -158,13 +154,6 @@ export default {
         { value: 12, text: '12' },
         { value: 24, text: '24' },
         { value: 0, text: this.$t('never') },
-      ],
-
-      telegramTypes: [
-        { value: 'Text', text: this.$t('text') },
-        { value: 'Snapshot', text: this.$t('snapshot') },
-        { value: 'Video', text: this.$t('video') },
-        { value: 'Disabled', text: this.$t('disabled') },
       ],
     };
   },

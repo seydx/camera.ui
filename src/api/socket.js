@@ -16,6 +16,10 @@ const { log } = LoggerService;
 class Socket {
   #streamTimeouts = new Map();
 
+  static #uptime = {
+    systemTime: '0m',
+    processTime: '0m',
+  };
   static #cpuLoadHistory = [];
   static #cpuTempHistory = [];
   static #memoryUsageHistory = [];
@@ -103,6 +107,10 @@ class Socket {
         }
       });
 
+      socket.on('getUptime', () => {
+        Socket.io.emit('uptime', Socket.#uptime);
+      });
+
       socket.on('getCpuLoad', () => {
         Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
       });
@@ -180,6 +188,7 @@ class Socket {
       }
     });
 
+    Socket.handleUptime();
     Socket.handleCpuLoad();
     Socket.handleCpuTemperature();
     Socket.handleMemoryUsage();
@@ -202,6 +211,39 @@ class Socket {
           controller.stream.restart();
           break;
       }
+    }
+  }
+
+  static async handleUptime() {
+    try {
+      const humaniseDuration = (seconds) => {
+        if (seconds < 50) {
+          return '0m';
+        }
+        if (seconds < 3600) {
+          return Math.round(seconds / 60) + 'm';
+        }
+        if (seconds < 86400) {
+          return Math.round(seconds / 60 / 60) + 'h';
+        }
+        return Math.floor(seconds / 60 / 60 / 24) + 'd';
+      };
+
+      const systemTime = await systeminformation.time();
+      const processUptime = process.uptime();
+
+      Socket.#uptime = {
+        systemTime: humaniseDuration(systemTime ? systemTime.uptime : 0),
+        processTime: humaniseDuration(processUptime),
+      };
+    } catch (error) {
+      log.error(error, 'Socket');
+    } finally {
+      Socket.io.emit('uptime', Socket.#uptime);
+
+      setTimeout(() => {
+        Socket.handleUptime();
+      }, 30000);
     }
   }
 

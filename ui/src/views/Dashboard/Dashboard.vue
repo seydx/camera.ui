@@ -20,8 +20,8 @@
         v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" @click="toggleWidgetsNavi")
           v-icon {{ icons['mdiWidgets'] }}
     
-    #dashboard.tw-mt-5.tw-relative.tw-max-w-10xl(:class="itemChange ? 'grid-stack-dragging-border' : ''")
-      //.drag-info(v-if="dragging") DROP HERE
+    #dashboard.tw-mt-5.tw-relative.tw-max-w-10xl(:class="itemChange || !items.length ? 'grid-stack-dragging-border' : ''")
+      .drag-info.tw-text-center(v-if="!items.length") {{ $t('drop_widgets_here') }}
       .grid-stack(ref="gridStack")
           
   CoolLightBox(
