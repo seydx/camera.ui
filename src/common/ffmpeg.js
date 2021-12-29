@@ -417,6 +417,7 @@ exports.handleFragmentsRequests = async function* (camera) {
         const input = await controller.prebuffer.getVideo({
           container: 'mp4',
           prebuffer: prebufferLength,
+          ffmpegInputArgs: ['-analyzeduration', '0', '-probesize', '500000'],
         });
 
         ffmpegInput = [];

@@ -299,7 +299,17 @@ class PrebufferService {
       const container = options?.container || 'mpegts';
       const url = `tcp://127.0.0.1:${await createContainerServer(container)}`;
 
-      return ['-analyzeduration', '0', '-probesize', '500000', '-f', container, '-i', url];
+      const arguments_ = ['-f', container, '-i', url];
+
+      if (options?.ffmpegInputArgs) {
+        arguments_.unshift(...options.ffmpegInputArgs);
+      }
+
+      if (options?.ffmpegOutputArgs) {
+        arguments_.push(...options.ffmpegOutputArgs);
+      }
+
+      return arguments_;
     } else {
       throw new Error('Prebuffer process not started!');
     }

@@ -15,7 +15,7 @@
     v-btn(fab small depressed @click="dialog = true" color="var(--cui-text-hint)")
       v-icon.text-default {{ icons['mdiPlusThick'] }}
   
-  .tw-w-full.tw-overflow-x-auto(v-else style="height: calc(100% - 24px - 0.25rem)")
+  .tw-w-full.tw-overflow-x-hidden(v-else style="height: calc(100% - 24px - 0.25rem)")
     .tw-py-4.tw-px-2(v-if="items.length")
       v-row.overflow-hidden
         v-col.tw-py-1(v-for="(item,i) in items" :key="item.title" cols="12")

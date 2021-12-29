@@ -474,25 +474,28 @@ class MotionController {
           message: 'Handled through extern controller',
         };
 
+        //if handled through EXTERN controller, motionTimeout should also be handled through EXTERN controller
         MotionController.#controller.emit('motion', cameraName, triggerType, state, event);
 
         if (camera.recordOnMovement) {
+          //if handled through INTERN controller, motionTimeout should also be handled through INTERN controller
+          result.message = 'Handled through intern controller';
+
           const timeout = MotionController.#motionTimers.get(camera.name);
           const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
 
           if (timeout) {
-            clearTimeout(timeout);
-            MotionController.#motionTimers.delete(camera.name);
-
             if (state) {
-              result.message = 'Skip motion event, timeout active!';
+              result.message += ' - Skip motion event, timeout active!';
             } else {
+              clearTimeout(timeout);
+              MotionController.#motionTimers.delete(camera.name);
               EventController.handle(triggerType, cameraName, state);
             }
           } else {
             if (state && timeoutConfig > 0) {
               const timer = setTimeout(() => {
-                log.info('Motion handler timeout.', camera.name);
+                log.info('Motion handler timeout. (ui)', camera.name);
                 MotionController.#motionTimers.delete(camera.name);
               }, timeoutConfig * 1000);
 
@@ -500,7 +503,6 @@ class MotionController {
             }
 
             EventController.handle(triggerType, cameraName, state);
-            result.message = 'Handled through extern controller';
           }
         }
       }
