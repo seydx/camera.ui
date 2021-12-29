@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     let authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    let authorization = authHeader ? req.headers['authorization'].split(' ') : false;
+    let authorization = authHeader ? req.headers['authorization'].split(/\s+/) : false;
 
     let token = authorization && authorization[0] === 'Bearer' ? authorization[1] : false;
 

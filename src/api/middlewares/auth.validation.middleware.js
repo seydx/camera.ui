@@ -48,7 +48,7 @@ exports.validJWTNeeded = async (req, res, next) => {
   if (req.headers['authorization'] || req.headers['Authorization']) {
     try {
       let authHeader = req.headers['authorization'] || req.headers['Authorization'];
-      let authorization = authHeader.split(' ');
+      let authorization = authHeader.split(/\s+/);
 
       if (authorization[0] !== 'Bearer') {
         return res.status(401).send({
@@ -94,7 +94,7 @@ exports.validJWTOptional = async (req, res, next) => {
   if (req.headers['authorization'] || req.headers['Authorization']) {
     try {
       let authHeader = req.headers['authorization'] || req.headers['Authorization'];
-      let authorization = authHeader.split(' ');
+      let authorization = authHeader.split(/\s+/);
 
       if (authorization[0] === 'Bearer') {
         //check if user/token exists in database and is still valid

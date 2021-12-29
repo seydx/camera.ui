@@ -205,7 +205,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegInput = [...camera.videoConfig.source.split(' ')];
+    const ffmpegInput = [...camera.videoConfig.source.split(/\s+/)];
 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
@@ -324,7 +324,7 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
 exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const ffmpegInput = [...camera.videoConfig.source.split(' ')];
+    const ffmpegInput = [...camera.videoConfig.source.split(/\s+/)];
     const videoName = `${recordingPath}/${fileName}.mp4`;
 
     const ffmpegArguments = [
@@ -405,7 +405,7 @@ exports.handleFragmentsRequests = async function* (camera) {
   const audioArguments = ['-acodec', 'copy'];
   const videoArguments = ['-vcodec', 'copy'];
 
-  let ffmpegInput = [...camera.videoConfig.source.split(' ')];
+  let ffmpegInput = [...camera.videoConfig.source.split(/\s+/)];
 
   if (camera.prebuffering) {
     const controller = CameraController.cameras.get(camera.name);

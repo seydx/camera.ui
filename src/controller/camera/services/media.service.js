@@ -37,7 +37,7 @@ class MediaService {
     return new Promise((resolve, reject) => {
       log.debug(`Probe stream: ${this.#videoProcessor} ${this.ffmpegInput}`, this.cameraName);
 
-      const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.ffmpegInput.split(' ')];
+      const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.ffmpegInput.split(/\s+/)];
 
       let cp = spawn(this.#videoProcessor, arguments_, {
         env: process.env,

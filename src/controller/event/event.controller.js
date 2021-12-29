@@ -198,7 +198,7 @@ class EventController {
                 }
 
                 // 5)
-                await EventController.#handleRecording(motionInfo, fileBuffer, recordingSettings.active);
+                await EventController.#handleRecording(cameraName, motionInfo, fileBuffer, recordingSettings.active);
 
                 // 6)
                 if (notificationsSettings.active && recordingSettings.active) {
@@ -351,9 +351,9 @@ class EventController {
     return await NotificationsModel.createNotification(motionInfo);
   }
 
-  static async #handleRecording(motionInfo, fileBuffer, recordingActive) {
+  static async #handleRecording(cameraName, motionInfo, fileBuffer, recordingActive) {
     if (!recordingActive) {
-      log.debug('Skip recording');
+      log.debug('Recording not enabled, skip recording', cameraName);
       return;
     }
 
@@ -416,7 +416,7 @@ class EventController {
 
         await Alexa.send(alexaSettings);
       } else {
-        log.debug('Skip alexa notification', cameraName);
+        log.debug('Alexa not enabled, skip alexa notification', cameraName);
       }
     } catch (error) {
       log.info('An error occured during sending notification to alexa', cameraName, 'events');
@@ -506,7 +506,7 @@ class EventController {
           // No default
         }
       } else {
-        log.debug('Skip Telegram notification', cameraName);
+        log.debug('Telegram not enabled, skip Telegram notification', cameraName);
 
         if (telegramSettings.type === 'Disabled') {
           log.debug('Telegram is disabled for this camera!', cameraName);
@@ -535,7 +535,7 @@ class EventController {
           log.debug(`Payload was sent successfully to ${webhookSettings.endpoint}`, cameraName);
         }
       } else {
-        log.debug('Skip Webhook notification', cameraName);
+        log.debug('Webhook not enabled, skip Webhook notification', cameraName);
       }
     } catch (error) {
       log.info('An error occured during sending webhook notification', cameraName, 'events');
@@ -565,7 +565,7 @@ class EventController {
           }
         });
       } else {
-        log.debug('Skip Webpush notification', cameraName);
+        log.debug('Notification not enabled, skip Webpush notification', cameraName);
       }
     } catch (error) {
       log.info('An error occured during sending webpush notification', cameraName, 'events');

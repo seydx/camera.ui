@@ -115,7 +115,7 @@ class PrebufferService {
     let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
     let probeTimedOut = this.#mediaService.codecs.timedout;
 
-    const ffmpegInput = ['-hide_banner', '-loglevel', 'error', '-fflags', '+genpts', ...this.ffmpegInput.split(' ')];
+    const ffmpegInput = ['-hide_banner', '-loglevel', 'error', '-fflags', '+genpts', ...this.ffmpegInput.split(/\s+/)];
 
     const audioArguments = [];
 

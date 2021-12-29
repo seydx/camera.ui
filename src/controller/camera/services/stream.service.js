@@ -129,7 +129,7 @@ class StreamService {
           '-hide_banner',
           '-loglevel',
           'error',
-          ...this.streamOptions.source.split(' '),
+          ...this.streamOptions.source.split(/\s+/),
           '-f',
           'mpegts',
           '-codec:v',
@@ -191,7 +191,7 @@ class StreamService {
 
   setStreamSource(source) {
     if (source.inludes('-i')) {
-      this.streamOptions.source = source.split(' ');
+      this.streamOptions.source = source.split(/\s+/);
     } else {
       log.warn(`Source ${source} is not valid, skipping`, this.cameraName, 'streams');
     }
