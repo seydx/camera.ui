@@ -34,8 +34,10 @@ const stringIsAValidUrl = (s) => {
 class EventController {
   static #movementHandler = {};
 
-  constructor() {
+  constructor(controller) {
     this.triggerEvent = EventController.handle;
+
+    controller.on('uiMotion', (event) => EventController.handle(event.triggerType, event.cameraName, event.state));
   }
 
   // eslint-disable-next-line no-unused-vars

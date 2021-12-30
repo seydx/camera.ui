@@ -124,6 +124,13 @@ body .v-application .v-stepper__step__step.primary {
   color: var(--cui-text-disabled) !important;
 }
 
+.v-btn.v-btn--disabled.v-btn--has-bg,
+.theme--light.v-btn.v-btn--disabled.v-btn--has-bg,
+.theme--dark.v-btn.v-btn--disabled.v-btn--has-bg {
+  color: #fff !important;
+  background-color: rgba(var(--cui-text-default-rgb), 0.2) !important;
+}
+
 .v-input:not(.v-input--switch).v-input--is-disabled:not(.v-input--checkbox) > .v-input__control > .v-input__slot {
   background: var(--cui-bg-disabled) !important;
 }

@@ -158,12 +158,27 @@ exports.getChangelog = async (req, res) => {
   }
 };
 
+exports.getFtpServerStatus = async (req, res) => {
+  try {
+    const status = MotionController.ftpServer.server.listening;
+
+    res.status(200).send({
+      status: status ? 'online' : 'offline',
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.getHttpServerStatus = async (req, res) => {
   try {
     const status = MotionController.httpServer.listening;
 
     res.status(200).send({
-      status: status ? 'running' : 'not running',
+      status: status ? 'online' : 'offline',
     });
   } catch (error) {
     res.status(500).send({
@@ -199,7 +214,7 @@ exports.getMqttClientStatus = async (req, res) => {
     const status = MotionController.mqttClient.connected;
 
     res.status(200).send({
-      status: status ? 'running' : 'not running',
+      status: status ? 'online' : 'offline',
     });
   } catch (error) {
     res.status(500).send({
@@ -214,22 +229,7 @@ exports.getSmtpServerStatus = async (req, res) => {
     const status = MotionController.smtpServer.server.listening;
 
     res.status(200).send({
-      status: status ? 'running' : 'not running',
-    });
-  } catch (error) {
-    res.status(500).send({
-      statusCode: 500,
-      message: error.message,
-    });
-  }
-};
-
-exports.getFtpServerStatus = async (req, res) => {
-  try {
-    const status = MotionController.ftpServer.server.listening;
-
-    res.status(200).send({
-      status: status ? 'running' : 'not running',
+      status: status ? 'online' : 'offline',
     });
   } catch (error) {
     res.status(500).send({

@@ -14,12 +14,11 @@ const { LoggerService } = require('../../services/logger/logger.service');
 
 const { Database } = require('../../api/database');
 
-const { EventController } = require('../event/event.controller');
-
 const { log } = LoggerService;
 
 class MotionController {
   static #controller;
+  static #socket;
   static #motionTimers = new Map();
 
   static httpServer = null;
@@ -27,8 +26,9 @@ class MotionController {
   static smtpServer = null;
   static ftpServer = null;
 
-  constructor(controller) {
+  constructor(controller, socket) {
     MotionController.#controller = controller;
+    MotionController.#socket = socket;
 
     if (ConfigService.ui.http) {
       MotionController.startHttpServer();
@@ -87,6 +87,10 @@ class MotionController {
       let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
 
       log.debug(`HTTP server for motion detection is listening on ${bind}`);
+
+      MotionController.#socket.emit('httpStatus', {
+        status: 'online',
+      });
     });
 
     MotionController.httpServer.on('error', (error) => {
@@ -110,6 +114,10 @@ class MotionController {
       }
 
       log.error(error_, 'HTTP Server', 'motion');
+
+      MotionController.#socket.emit('httpStatus', {
+        status: 'offline',
+      });
     });
 
     MotionController.httpServer.on('request', async (request, response) => {
@@ -147,6 +155,10 @@ class MotionController {
 
     MotionController.httpServer.on('close', () => {
       log.debug('HTTP Server closed');
+
+      MotionController.#socket.emit('httpStatus', {
+        status: 'offline',
+      });
     });
 
     MotionController.httpServer.listen(ConfigService.ui.http.port, hostname);
@@ -167,12 +179,16 @@ class MotionController {
     );
 
     MotionController.mqttClient.on('connect', () => {
-      log.debug('MQTT connected');
+      log.debug(`MQTT Client for motion detection connected to broker on port ${ConfigService.ui.mqtt.port}`);
 
       for (const [topic] of ConfigService.ui.topics) {
         log.debug(`Subscribing to MQTT topic: ${topic}`);
         MotionController.mqttClient.subscribe(topic + '/#');
       }
+
+      MotionController.#socket.emit('mqttStatus', {
+        status: 'online',
+      });
     });
 
     MotionController.mqttClient.on('message', async (topic, message) => {
@@ -223,6 +239,10 @@ class MotionController {
 
     MotionController.mqttClient.on('end', () => {
       log.debug('MQTT client disconnected');
+
+      MotionController.#socket.emit('mqttStatus', {
+        status: 'offline',
+      });
     });
   }
 
@@ -238,7 +258,13 @@ class MotionController {
           stream: new Stream.Writable({
             write: (chunk, _encoding, callback) => {
               const data = JSON.parse(chunk);
-              log.debug(data.msg, 'SMTP');
+
+              if (data.level >= 50) {
+                log.error(data.msg, 'SMTP', 'motion');
+              } else if (data.level >= 40) {
+                log.warn(data.msg, 'SMTP', 'motion');
+              }
+
               callback();
             },
           }),
@@ -254,7 +280,7 @@ class MotionController {
       onAuth(_auth, _session, callback) {
         callback(null, { user: true });
       },
-      onData(stream, session, callback) {
+      async onData(stream, session, callback) {
         stream.on('data', () => {});
         stream.on('end', callback);
 
@@ -264,13 +290,26 @@ class MotionController {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
           log.debug(`Email received (${name}).`, 'SMTP');
 
-          try {
-            http.get(`http://127.0.0.1:${ConfigService.ui.smtp.httpPort}/motion?${name}`);
-          } catch (error) {
-            log.error(`Error making HTTP call (${name}): ${error}`, 'SMTP Server', 'motion');
-          }
+          const result = await MotionController.#handleMotion('motion', name, true, 'smtp', {});
+          log.debug(`Received a new SMTP message ${JSON.stringify(result)} (${name})`);
         }
       },
+    });
+
+    MotionController.smtpServer.server.on('listening', () => {
+      log.debug(`SMTP server for motion detection is listening on port ${ConfigService.ui.smtp.port}`);
+
+      MotionController.#socket.emit('smtpStatus', {
+        status: 'online',
+      });
+    });
+
+    MotionController.smtpServer.server.on('close', () => {
+      log.debug('SMTP Server closed');
+
+      MotionController.#socket.emit('smtpStatus', {
+        status: 'offline',
+      });
     });
 
     MotionController.smtpServer.listen(ConfigService.ui.smtp.port);
@@ -289,16 +328,12 @@ class MotionController {
             write: (chunk, _encoding, callback) => {
               const data = JSON.parse(chunk);
 
-              if (data.msg !== 'Listening') {
-                if (data.level >= 50) {
-                  if (data.err?.message !== 'Server is not running.') {
-                    log.error(data.msg, 'FTP', 'motion');
-                  }
-                } else if (data.level >= 40) {
-                  log.warn(data.msg, 'FTP', 'motion');
-                } else if (data.level >= 20) {
-                  log.debug(data.msg, 'FTP');
+              if (data.level >= 50) {
+                if (data.err?.message !== 'Server is not running.') {
+                  log.error(data.msg, 'FTP', 'motion');
                 }
+              } else if (data.level >= 40) {
+                log.warn(data.msg, 'FTP', 'motion');
               }
 
               callback();
@@ -362,7 +397,7 @@ class MotionController {
           }
 
           // eslint-disable-next-line no-unused-vars
-          write(fileName, { append = false, start }) {
+          async write(fileName, { append = false, start }) {
             const filePath = path.resolve(this.realCwd, fileName);
             const pathSplit = path
               .dirname(filePath)
@@ -373,11 +408,8 @@ class MotionController {
               const name = pathSplit[0];
               log.debug(`Receiving file. (${name}).`, 'FTP');
 
-              try {
-                http.get(`http://127.0.0.1:${ConfigService.ui.ftp.httpPort}/motion?${name}`);
-              } catch (error) {
-                log.error(`Error making HTTP call (${name}): ${error}`, 'FTP Server', 'motion');
-              }
+              const result = await MotionController.#handleMotion('motion', name, true, 'ftp', {});
+              log.debug(`Received a new FTP message ${JSON.stringify(result)} (${name})`);
             } else {
               this.connection.reply(550, 'Permission denied.');
             }
@@ -422,9 +454,27 @@ class MotionController {
       });
     });
 
-    MotionController.ftpServer.listen().then(() => {
-      log.debug(`FTP server for motion detection is listening on ${ipAddr}:${ConfigService.ui.ftp.port}`);
+    MotionController.ftpServer.server.on('listening', () => {
+      log.debug(`FTP server for motion detection is listening on port ${ConfigService.ui.ftp.port}`);
+
+      MotionController.#socket.emit('ftpStatus', {
+        status: 'online',
+      });
     });
+
+    MotionController.ftpServer.server.on('close', () => {
+      if (!MotionController.ftpServer.server.alreadyClosed) {
+        MotionController.ftpServer.server.alreadyClosed = true;
+
+        log.debug('FTP Server closed');
+
+        MotionController.#socket.emit('ftpStatus', {
+          status: 'offline',
+        });
+      }
+    });
+
+    MotionController.ftpServer.listen();
   }
 
   static closeHttpServer() {
@@ -490,7 +540,12 @@ class MotionController {
             } else {
               clearTimeout(timeout);
               MotionController.#motionTimers.delete(camera.name);
-              EventController.handle(triggerType, cameraName, state);
+
+              MotionController.#controller.emit('uiMotion', {
+                triggerType: triggerType,
+                cameraName: cameraName,
+                state: state,
+              });
             }
           } else {
             if (state && timeoutConfig > 0) {
@@ -502,7 +557,11 @@ class MotionController {
               MotionController.#motionTimers.set(camera.name, timer);
             }
 
-            EventController.handle(triggerType, cameraName, state);
+            MotionController.#controller.emit('uiMotion', {
+              triggerType: triggerType,
+              cameraName: cameraName,
+              state: state,
+            });
           }
         }
       }

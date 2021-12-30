@@ -114,6 +114,10 @@
     .page-subtitle.tw-mt-8 {{ $t('http') }}
     .page-subtitle-info {{ $t('http_server_config') }}
 
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('status') }}
+      span.tw-text-right(:class="!httpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ httpStatus ? $t('online') : $t('offline') }}
+
     .tw-flex.tw-justify-between.tw-items-center
       label.form-input-label {{ $t('enabled') }}
       v-switch(color="var(--cui-primary)" v-model="config.http.active")
@@ -127,10 +131,16 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNumeric'] }}
 
+    v-btn.tw-text-white(:loading="loadingRestartHttp" block color="success" @click="onRestartHttp") {{ $t('restart') }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('smtp') }}
     .page-subtitle-info {{ $t('smtp_server_config') }}
+
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('status') }}
+      span.tw-text-right(:class="!smtpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ smtpStatus ? $t('online') : $t('offline') }}
 
     .tw-flex.tw-justify-between.tw-items-center
       label.form-input-label {{ $t('enabled') }}
@@ -146,10 +156,16 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiFindReplace'] }}
 
+    v-btn.tw-text-white(:loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp") {{ $t('restart') }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('ftp') }}
     .page-subtitle-info {{ $t('ftp_server_config') }}
+
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('status') }}
+      span.tw-text-right(:class="!ftpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ ftpStatus ? $t('online') : $t('offline') }}
 
     .tw-flex.tw-justify-between.tw-items-center
       label.form-input-label {{ $t('enabled') }}
@@ -160,10 +176,16 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNumeric'] }}
 
+    v-btn.tw-text-white(:loading="loadingRestartFtp" block color="success" @click="onRestartFtp") {{ $t('restart') }}
+
     v-divider.tw-mt-4.tw-mb-8
     
     .page-subtitle.tw-mt-8 {{ $t('mqtt') }}
     .page-subtitle-info {{ $t('mqtt_config') }}
+
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('status') }}
+      span.tw-text-right(:class="!mqttStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ mqttStatus ? $t('online') : $t('offline') }}
 
     .tw-flex.tw-justify-between.tw-items-center
       label.form-input-label {{ $t('enabled') }}
@@ -179,6 +201,8 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNumeric'] }}
 
+    v-btn.tw-text-white(:loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt") {{ $t('restart') }}
+
 </template>
 
 <script>
@@ -187,7 +211,18 @@ import VueMarkdown from 'vue-markdown';
 import { mdiAt, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
 import { changeConfig, getConfig } from '@/api/config.api';
-import { downloadDb, getChangelog, getDb, getPackage, restartSystem, updateSystem } from '@/api/system.api';
+import {
+  downloadDb,
+  getChangelog,
+  getDb,
+  getPackage,
+  restartFtp,
+  restartHttp,
+  restartMqtt,
+  restartSmtp,
+  restartSystem,
+  updateSystem,
+} from '@/api/system.api';
 import { resetSettings } from '@/api/settings.api';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -216,6 +251,10 @@ export default {
     loadingRestart: false,
     loadingUpdate: false,
     loadingDb: false,
+    loadingRestartFtp: false,
+    loadingRestartHttp: false,
+    loadingRestartMqtt: false,
+    loadingRestartSmtp: false,
 
     resetDialog: false,
     restartDialog: false,
@@ -232,6 +271,11 @@ export default {
     serviceMode: false,
     updateAvailable: false,
     npmPackageName: 'camera.ui',
+
+    ftpStatus: false,
+    httpStatus: false,
+    mqttStatus: false,
+    smtpStatus: false,
   }),
 
   beforeRouteLeave(to, from, next) {
@@ -241,6 +285,21 @@ export default {
   },
 
   async created() {
+    this.$socket.client.on('ftpStatus', this.getFtpStatus);
+    this.$socket.client.emit('getFtpStatus');
+
+    this.$socket.client.on('httpStatus', this.getHttpStatus);
+    this.$socket.client.emit('getHttpStatus');
+
+    this.$socket.client.on('mqttStatus', this.getMqttStatus);
+    this.$socket.client.emit('getMqttStatus');
+
+    this.$socket.client.on('smtpStatus', this.getSmtpStatus);
+    this.$socket.client.emit('getSmtpStatus');
+
+    this.$socket.client.on('motionServerStatus', this.getMotionServerStatus);
+    this.$socket.client.emit('getMotionServerStatus');
+
     try {
       this.env = process.env.NODE_ENV;
 
@@ -270,6 +329,7 @@ export default {
       this.config = {
         port: config.data.port || window.location.port || 80,
         debug: config.data.debug || false,
+        atHomeSwitch: config.data.atHomeSwitch || false,
         ssl: config.data.ssl || {
           key: '',
           cert: '',
@@ -372,6 +432,14 @@ export default {
     }
   },
 
+  beforeDestroy() {
+    this.$socket.client.off('ftpStatus', this.getFtpStatus);
+    this.$socket.client.off('httpStatus', this.getHttpStatus);
+    this.$socket.client.off('mqttStatus', this.getMqttStatus);
+    this.$socket.client.off('smtpStatus', this.getSmtpStatus);
+    this.$socket.client.off('motionServerStatus', this.getMotionServerStatus);
+  },
+
   methods: {
     closeUpdateDialog(e) {
       if (e && e.constructor.name === 'KeyboardEvent') {
@@ -408,6 +476,24 @@ export default {
         this.loadingProgress = false;
       }, 2000);
     },
+    getFtpStatus(data) {
+      this.ftpStatus = data.status === 'online';
+    },
+    getHttpStatus(data) {
+      this.httpStatus = data.status === 'online';
+    },
+    getMotionServerStatus(data) {
+      this.ftpStatus = data.ftpStatus === 'online';
+      this.httpStatus = data.httpStatus === 'online';
+      this.mqttStatus = data.mqttStatus === 'online';
+      this.smtpStatus = data.smtpStatus === 'online';
+    },
+    getMqttStatus(data) {
+      this.mqttStatus = data.status === 'online';
+    },
+    getSmtpStatus(data) {
+      this.smtpStatus = data.status === 'online';
+    },
     async onBeforeUpdate() {
       try {
         const response = await getChangelog(`?version=${this.currentVersion}`);
@@ -441,25 +527,6 @@ export default {
 
       this.loadingProgress = false;
       this.loadingDb = false;
-    },
-    async onSave() {
-      if (this.loadingSave) {
-        return;
-      }
-
-      this.loadingProgress = true;
-      this.loadingSave = true;
-
-      try {
-        await changeConfig(this.config);
-        this.$toast.success(this.$t('config_was_saved'));
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }
-
-      this.loadingSave = false;
-      this.loadingProgress = false;
     },
     async onReset() {
       this.resetDialog = false;
@@ -523,6 +590,89 @@ export default {
         this.loadingUpdate = false;
         this.loadingDb = false;
       }
+    },
+    async onRestartFtp() {
+      if (this.loadingRestartFtp) {
+        return;
+      }
+
+      this.loadingRestartFtp = true;
+
+      try {
+        await restartFtp();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingRestartFtp = false;
+    },
+    async onRestartHttp() {
+      if (this.loadingRestartHttp) {
+        return;
+      }
+
+      this.loadingRestartHttp = true;
+
+      try {
+        await restartHttp();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingRestartHttp = false;
+    },
+    async onRestartMqtt() {
+      if (this.loadingRestartMqtt) {
+        return;
+      }
+
+      this.loadingRestartMqtt = true;
+
+      try {
+        await restartMqtt();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingRestartMqtt = false;
+    },
+    async onRestartSmtp() {
+      if (this.loadingRestartSmtp) {
+        return;
+      }
+
+      this.loadingRestartSmtp = true;
+
+      try {
+        await restartSmtp();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingRestartSmtp = false;
+    },
+    async onSave() {
+      if (this.loadingSave) {
+        return;
+      }
+
+      this.loadingProgress = true;
+      this.loadingSave = true;
+
+      try {
+        await changeConfig(this.config);
+        this.$toast.success(this.$t('config_was_saved'));
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingSave = false;
+      this.loadingProgress = false;
     },
     async onUpdateRestart() {
       this.updateDialog = false;

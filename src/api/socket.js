@@ -10,6 +10,7 @@ const { ConfigService } = require('../services/config/config.service');
 const { Database } = require('./database');
 
 const { CameraController } = require('../controller/camera/camera.controller');
+const { MotionController } = require('../controller/motion/motion.controller');
 
 const { log } = LoggerService;
 
@@ -121,6 +122,52 @@ class Socket {
 
       socket.on('getMemory', () => {
         Socket.io.emit('memory', Socket.#memoryUsageHistory);
+      });
+
+      socket.on('getMotionServerStatus', () => {
+        const ftpStatus = MotionController.ftpServer?.server?.listening;
+        const httpStatus = MotionController.httpServer?.listening;
+        const mqttStatus = MotionController.mqttClient?.connected;
+        const smtpStatus = MotionController.smtpServer?.server?.listening;
+
+        Socket.io.emit('motionServerStatus', {
+          ftpStatus: ftpStatus ? 'online' : 'offline',
+          httpStatus: httpStatus ? 'online' : 'offline',
+          mqttStatus: mqttStatus ? 'online' : 'offline',
+          smtpStatus: smtpStatus ? 'online' : 'offline',
+        });
+
+        Socket.io.emit('ftpStatus', {
+          status: ftpStatus ? 'online' : 'offline',
+        });
+
+        Socket.io.emit('httpStatus', {
+          status: httpStatus ? 'online' : 'offline',
+        });
+
+        Socket.io.emit('mqttStatus', {
+          status: mqttStatus ? 'online' : 'offline',
+        });
+
+        Socket.io.emit('smtpStatus', {
+          status: smtpStatus ? 'online' : 'offline',
+        });
+      });
+
+      socket.on('getCameraPrebufferSatus', (cameras) => {
+        if (!Array.isArray(cameras)) {
+          cameras = [cameras];
+        }
+
+        for (const cameraName of cameras) {
+          const controller = CameraController.cameras.get(cameraName);
+          const state = controller?.prebuffer?.prebufferSession?.isActive();
+
+          socket.emit('prebufferStatus', {
+            camera: cameraName,
+            status: state ? 'active' : 'inactive',
+          });
+        }
       });
 
       socket.on('disconnect', () => {

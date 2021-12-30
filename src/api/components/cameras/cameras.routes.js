@@ -324,4 +324,48 @@ exports.routesConfig = (app) => {
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
     CamerasController.getStatusByName,
   ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/prebuffering/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart Camera Prebuffering
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/prebuffering/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.restartPrebuffering,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/prebuffering/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop Camera Prebuffering
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/prebuffering/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.stopPrebuffering,
+  ]);
 };

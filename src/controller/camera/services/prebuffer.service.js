@@ -17,6 +17,7 @@ const prebufferDurationMs = 10000;
 
 class PrebufferService {
   #camera;
+  #socket;
   #mediaService;
   #videoProcessor = ConfigService.ui.options.videoProcessor;
 
@@ -37,13 +38,14 @@ class PrebufferService {
 
   cameraState = true;
 
-  constructor(camera, mediaService) {
+  constructor(camera, mediaService, socket) {
     //log.debug('Initializing camera prebuffering', camera.name);
-    this.reconfigure(camera, mediaService);
+    this.reconfigure(camera, mediaService, socket);
   }
 
-  reconfigure(camera, mediaService) {
+  reconfigure(camera, mediaService, socket) {
     this.#camera = camera;
+    this.#socket = socket;
     this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
@@ -115,8 +117,8 @@ class PrebufferService {
     }
   }
 
-  restart() {
-    this.stop();
+  restart(killed) {
+    this.stop(killed);
     setTimeout(() => this.start(), 10000);
   }
 
@@ -381,6 +383,7 @@ class PrebufferService {
   async startRebroadcastSession(videoProcessor, ffmpegInput, options) {
     const events = new EventEmitter();
 
+    let isActive = true;
     let ffmpegTimeout;
     let resolve;
     let reject;
@@ -391,6 +394,8 @@ class PrebufferService {
     });
 
     const kill = () => {
+      isActive = false;
+
       cp?.kill('SIGKILL');
 
       for (const server of servers) {
@@ -455,6 +460,11 @@ class PrebufferService {
 
       kill();
 
+      this.#socket.emit('prebufferStatus', {
+        camera: this.cameraName,
+        status: 'inactive',
+      });
+
       if (!this.killed) {
         this.restart();
       }
@@ -463,7 +473,15 @@ class PrebufferService {
     await socketPromise;
     clearTimeout(ffmpegTimeout);
 
+    this.#socket.emit('prebufferStatus', {
+      camera: this.cameraName,
+      status: 'active',
+    });
+
     return {
+      isActive() {
+        return isActive;
+      },
       events,
       kill,
       servers,

@@ -197,12 +197,34 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/http/status:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get HTTP server status
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/http/status', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getHttpServerStatus,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/http/restart:
    *   put:
    *     tags: [System]
    *     security:
    *       - bearerAuth: []
-   *     summary: Restart http server
+   *     summary: Restart HTTP server
    *     responses:
    *       200:
    *         description: Successfull
@@ -219,12 +241,34 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/smtp/status:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get SMTP server status
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/smtp/status', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getSmtpServerStatus,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/smtp/restart:
    *   put:
    *     tags: [System]
    *     security:
    *       - bearerAuth: []
-   *     summary: Restart smtp server
+   *     summary: Restart SMTP server
    *     responses:
    *       200:
    *         description: Successfull
@@ -241,12 +285,34 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/ftp/status:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get FTP server status
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/ftp/status', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getFtpServerStatus,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/ftp/restart:
    *   put:
    *     tags: [System]
    *     security:
    *       - bearerAuth: []
-   *     summary: Restart ftp server
+   *     summary: Restart FTP server
    *     responses:
    *       200:
    *         description: Successfull
@@ -263,12 +329,12 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
-   * /api/system/mqtt/restart:
-   *   put:
+   * /api/system/mqtt/status:
+   *   get:
    *     tags: [System]
    *     security:
    *       - bearerAuth: []
-   *     summary: Restart mqtt client
+   *     summary: Get MQTT server status
    *     responses:
    *       200:
    *         description: Successfull
@@ -277,7 +343,29 @@ exports.routesConfig = (app) => {
    *       500:
    *         description: Internal server error
    */
-  app.put('/api/system/http/restart', [
+  app.get('/api/system/mqtt/status', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getMqttClientStatus,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/mqtt/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart MQTT client
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/mqtt/restart', [
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.onlyMasterCanDoThisAction,
     SystemController.restartMqttClient,

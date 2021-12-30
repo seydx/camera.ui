@@ -3,6 +3,10 @@
 
 const CamerasModel = require('./cameras.model');
 
+const { CameraController } = require('../../../controller/camera/camera.controller');
+
+const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
+
 exports.insert = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.body.name);
@@ -206,6 +210,70 @@ exports.removeByName = async (req, res) => {
 exports.removeAll = async (req, res) => {
   try {
     await CamerasModel.removeAll();
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restartPrebuffering = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.prebuffer)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    controller.prebuffer.restart(true);
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.stopPrebuffering = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.prebuffer)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    controller.prebuffer.stop(true);
+    await setTimeoutAsync(1000);
 
     res.status(204).send({});
   } catch (error) {

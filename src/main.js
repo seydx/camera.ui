@@ -63,17 +63,22 @@ class Interface extends EventEmitter {
     await Promise.all(
       [...this.cameraController.entries()].map(async (controller) => {
         log.info('Setting up camera, please be patient...', controller[0]);
+
         await controller[1].media.probe();
-        await controller[1].prebuffer?.start();
+
+        if (controller[1].options.prebuffering) {
+          await controller[1].prebuffer?.start();
+        }
+
         await controller[1].stream.configureStreamOptions();
       })
     );
 
     // configure event controller
-    this.eventController = new EventController();
+    this.eventController = new EventController(this);
 
     // configure motion controller
-    this.motionController = new MotionController(this);
+    this.motionController = new MotionController(this, this.#socket);
 
     // start
     this.#server.listen(config.port);

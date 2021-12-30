@@ -77,7 +77,7 @@ const defaultVideoProcess = ffmpegPath || 'ffmpeg';
 const minNodeVersion = '16.12.0';
 
 class ConfigService {
-  #secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
+  static #secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
 
   static name = 'camera.ui';
   static configJson = {};
@@ -134,41 +134,41 @@ class ConfigService {
     const uiConfig = fs.readJSONSync(ConfigService.configPath, { throws: false }) || {};
     ConfigService.configJson = JSON.parse(JSON.stringify(uiConfig));
 
-    this.parseConfig(uiConfig);
+    ConfigService.parseConfig(uiConfig);
 
     return ConfigService.ui;
   }
 
-  parseConfig(uiConfig) {
-    this.#config(uiConfig);
-    this.#configInterface();
+  static parseConfig(uiConfig) {
+    ConfigService.#config(uiConfig);
+    ConfigService.#configInterface();
 
     if (Array.isArray(uiConfig.cameras)) {
-      this.#configCameras(uiConfig.cameras);
+      ConfigService.#configCameras(uiConfig.cameras);
     }
 
     if (uiConfig.options) {
-      this.#configOptions(uiConfig.options);
+      ConfigService.#configOptions(uiConfig.options);
     }
 
     if (uiConfig.ssl) {
-      this.#configSSL(uiConfig.ssl);
+      ConfigService.#configSSL(uiConfig.ssl);
     }
 
     if (uiConfig.http) {
-      this.#configHTTP(uiConfig.http);
+      ConfigService.#configHTTP(uiConfig.http);
     }
 
     if (uiConfig.smtp) {
-      this.#configSMTP(uiConfig.smtp);
+      ConfigService.#configSMTP(uiConfig.smtp);
     }
 
     if (uiConfig.ftp) {
-      this.#configFTP(uiConfig.ftp);
+      ConfigService.#configFTP(uiConfig.ftp);
     }
 
     if (uiConfig.mqtt) {
-      this.#configMQTT(uiConfig.mqtt);
+      ConfigService.#configMQTT(uiConfig.mqtt);
     }
   }
 
@@ -186,15 +186,18 @@ class ConfigService {
     } else {
       log.warn('Can not save config, no config defined!', 'Config', 'system');
     }
+
+    const uiConfig = JSON.parse(JSON.stringify(ConfigService.configJson));
+    ConfigService.parseConfig(uiConfig);
   }
 
-  #config(uiConfig) {
+  static #config(uiConfig) {
     if (Number.parseInt(uiConfig.port)) {
       ConfigService.ui.port = uiConfig.port;
     }
   }
 
-  #configInterface() {
+  static #configInterface() {
     const generateJWT = () => {
       const secrets = {
         jwt_secret: crypto.randomBytes(32).toString('hex'),
@@ -202,13 +205,13 @@ class ConfigService {
 
       ConfigService.interface.jwt_secret = secrets.jwt_secret;
 
-      fs.ensureFileSync(this.#secretPath);
-      fs.writeJsonSync(this.#secretPath, secrets, { spaces: 2 });
+      fs.ensureFileSync(ConfigService.#secretPath);
+      fs.writeJsonSync(ConfigService.#secretPath, secrets, { spaces: 2 });
     };
 
-    if (fs.pathExistsSync(this.#secretPath)) {
+    if (fs.pathExistsSync(ConfigService.#secretPath)) {
       try {
-        const secrets = fs.readJsonSync(this.#secretPath);
+        const secrets = fs.readJsonSync(ConfigService.#secretPath);
 
         if (!secrets.jwt_secret) {
           generateJWT();
@@ -223,7 +226,7 @@ class ConfigService {
     }
   }
 
-  #configSSL(ssl = {}) {
+  static #configSSL(ssl = {}) {
     if (ssl.key && ssl.cert) {
       try {
         ConfigService.ui.ssl = {
@@ -236,13 +239,13 @@ class ConfigService {
     }
   }
 
-  #configOptions(options = {}) {
+  static #configOptions(options = {}) {
     if (options.videoProcessor) {
       ConfigService.ui.options.videoProcessor = options.videoProcessor;
     }
   }
 
-  #configHTTP(http = {}) {
+  static #configHTTP(http = {}) {
     if (!http.active) {
       return;
     }
@@ -253,40 +256,28 @@ class ConfigService {
     };
   }
 
-  #configSMTP(smtp = {}) {
+  static #configSMTP(smtp = {}) {
     if (!smtp.active) {
-      return;
-    }
-
-    if (!ConfigService.ui.http) {
-      log.warn('Can not enable SMTP server, HTTP server needs to be enabled too', 'Config', 'system');
       return;
     }
 
     ConfigService.ui.smtp = {
       port: smtp.port || smtpDefaults.port,
-      httpPort: ConfigService.ui.http?.port || httpDefaults.port,
       space_replace: smtp.space_replace || smtpDefaults.speace_replace,
     };
   }
 
-  #configFTP(ftp = {}) {
+  static #configFTP(ftp = {}) {
     if (!ftp.active) {
-      return;
-    }
-
-    if (!ConfigService.ui.http) {
-      log.warn('Can not enable FTP server, HTTP server needs to be enabled too', 'Config', 'system');
       return;
     }
 
     ConfigService.ui.ftp = {
       port: ftp.port || ftpDefaults.port,
-      httpPort: ConfigService.ui.http?.port || httpDefaults.port,
     };
   }
 
-  #configMQTT(mqtt = {}) {
+  static #configMQTT(mqtt = {}) {
     if (!mqtt.active || !mqtt.host) {
       return;
     }
@@ -300,7 +291,9 @@ class ConfigService {
     };
   }
 
-  #configCameras(cameras = []) {
+  static #configCameras(cameras = []) {
+    ConfigService.ui.topics.clear();
+
     ConfigService.ui.cameras = cameras
       // include only cameras with given name, videoConfig and source
       .filter((camera) => camera.name && camera.videoConfig?.source)
