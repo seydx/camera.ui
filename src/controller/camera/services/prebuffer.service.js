@@ -59,9 +59,7 @@ class PrebufferService {
       log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
       log.error(error, this.cameraName, 'prebuffer');
 
-      console.log(error);
-
-      setTimeout(() => this.restart(), 10000);
+      //setTimeout(() => this.restart(), 10000);
     }
   }
 
@@ -97,8 +95,8 @@ class PrebufferService {
   }
 
   restart() {
-    this.stop(false);
-    setTimeout(() => this.start(), 5000);
+    this.stop();
+    setTimeout(() => this.start(), 10000);
   }
 
   async startPrebufferSession() {
@@ -191,6 +189,7 @@ class PrebufferService {
       this.watchdog = setTimeout(() => {
         log.error('Watchdog for mp4 parser timed out... killing ffmpeg session', this.cameraName, 'prebuffer');
         session.kill();
+        //this.restart();
       }, 60000);
     };
 
@@ -361,87 +360,34 @@ class PrebufferService {
   async startRebroadcastSession(videoProcessor, ffmpegInput, options) {
     const events = new EventEmitter();
 
-    let clients = 0;
-    let dataTimeout;
-    let ffmpegIncomingConnectionTimeout;
-    let isActive = true;
-
+    let ffmpegTimeout;
     let resolve;
     let reject;
-
-    //events.on('error', (error) => log.error(error, this.cameraName));
 
     const socketPromise = new Promise((r, rj) => {
       resolve = r;
       reject = rj;
     });
 
-    function kill() {
-      if (isActive) {
-        events.emit('killed');
-        //events.emit('error', new Error('killed'));
-      }
-
-      isActive = false;
-      cp?.kill();
+    const kill = () => {
+      cp?.kill('SIGKILL');
 
       for (const server of servers) {
         server?.close();
       }
 
-      reject(new Error('FFmpeg was killed before connecting to the rebroadcast session'));
-      clearTimeout(dataTimeout);
-      clearTimeout(ffmpegIncomingConnectionTimeout);
-    }
-
-    function resetActivityTimer() {
-      if (!options.timeout) return;
-      clearTimeout(dataTimeout);
-      dataTimeout = setTimeout(kill, options.timeout);
-    }
-
-    resetActivityTimer();
+      reject('FFmpeg was killed before connecting to the rebroadcast session');
+      clearTimeout(ffmpegTimeout);
+    };
 
     const ffmpegInputs = {};
     const arguments_ = [...ffmpegInput];
     const servers = [];
 
-    ffmpegIncomingConnectionTimeout = setTimeout(kill, 30000);
+    ffmpegTimeout = setTimeout(kill, 30000);
 
     for (const container of Object.keys(options.parsers)) {
       const parser = options.parsers[container];
-      const eventName = container + '-data';
-
-      {
-        const { server: rebroadcast, port: rebroadcastPort } = await this.createRebroadcaster({
-          connect: (writeData, destroy) => {
-            clients++;
-            clearTimeout(dataTimeout);
-
-            const cleanup = () => {
-              events.removeListener(eventName, writeData);
-              events.removeListener('killed', destroy);
-              clients--;
-              if (clients === 0) {
-                resetActivityTimer();
-              }
-              destroy();
-            };
-            events.on(eventName, writeData);
-            events.once('killed', cleanup);
-
-            return cleanup;
-          },
-        });
-
-        servers.push(rebroadcast);
-
-        const url = `tcp://127.0.0.1:${rebroadcastPort}`;
-        ffmpegInputs[container] = {
-          url,
-          inputArguments: ['-f', container, '-i', url],
-        };
-      }
 
       const server = createServer(async (socket) => {
         server.close();
@@ -454,7 +400,6 @@ class PrebufferService {
             events.emit(eventName, chunk);
           }
         } catch (error) {
-          //log.info('Rebroadcast parse error');
           log.error(error, this.cameraName, 'prebuffer');
           kill();
         }
@@ -463,20 +408,15 @@ class PrebufferService {
       servers.push(server);
 
       const serverPort = await cameraUtils.listenServer(server);
-
       arguments_.push(...parser.outputArguments, `tcp://127.0.0.1:${serverPort}`);
     }
 
     log.debug(`Prebuffering command: ${this.#videoProcessor} ${arguments_.join(' ')}`, this.cameraName);
 
-    const cp = spawn(videoProcessor, arguments_);
-
     const errors = [];
-
-    /*if (this.debug) {
-      cp.stdout.on('data', (data) => log.debug(data.toString(), this.cameraName));
-    }
-    cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), this.cameraName, 'prebuffer'));*/
+    const cp = spawn(videoProcessor, arguments_, {
+      env: process.env,
+    });
 
     cp.stdout.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
@@ -490,9 +430,9 @@ class PrebufferService {
     });
 
     cp.on('close', () => {
-      kill();
-
       log.debug('Prebufferring process closed', this.cameraName);
+
+      kill();
 
       if (!this.killed) {
         this.restart();
@@ -500,14 +440,10 @@ class PrebufferService {
     });
 
     await socketPromise;
-
-    clearTimeout(ffmpegIncomingConnectionTimeout);
+    clearTimeout(ffmpegTimeout);
 
     return {
       events,
-      isActive() {
-        return isActive;
-      },
       kill,
       servers,
       cp,
