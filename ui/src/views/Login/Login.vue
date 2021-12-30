@@ -24,7 +24,7 @@
         
         v-btn.login-btn.tw-text-white.tw-mt-2(:loading="loading" block depressed color="var(--cui-primary)" height="48px" type="submit") {{ $t('signin') }}
               
-  span.tw-text-xs.text-muted camera.ui - v{{ version }}
+  span.tw-text-xs.text-muted {{ moduleName }} - v{{ version }}
 </template>
 
 <script>
@@ -59,7 +59,9 @@ export default {
       },
 
       valid: true,
-      version,
+
+      moduleName: 'camera.ui',
+      version: version,
     };
   },
 
@@ -70,10 +72,16 @@ export default {
     updated() {
       return Boolean(localStorage.getItem('updated') === 'true');
     },
+    uiConfig() {
+      return this.$store.state.config.ui;
+    },
   },
 
   created() {
     this.loadRestart = this.restarted;
+
+    this.moduleName = this.uiConfig?.env?.moduleName || 'camera.ui';
+    this.version = this.uiConfig.version || version;
   },
 
   mounted() {

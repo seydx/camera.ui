@@ -5,6 +5,7 @@ const { EventEmitter } = require('events');
 const { spawn } = require('child_process');
 
 const cameraUtils = require('../utils/camera.utils');
+const { Ping } = require('../../../common/ping');
 
 const { LoggerService } = require('../../../services/logger/logger.service');
 const { ConfigService } = require('../../../services/config/config.service');
@@ -34,6 +35,8 @@ class PrebufferService {
   watchdog = null;
   parsers = {};
 
+  cameraState = true;
+
   constructor(camera, mediaService) {
     //log.debug('Initializing camera prebuffering', camera.name);
     this.reconfigure(camera, mediaService);
@@ -54,10 +57,28 @@ class PrebufferService {
   async start() {
     try {
       this.resetPrebuffer();
+
+      this.cameraState = await this.#pingCamera();
+
+      if (!this.cameraState) {
+        log.warn(
+          'Can not start prebuffering, camera not reachable. Trying again in 60s..',
+          this.cameraName,
+          'prebuffer'
+        );
+
+        this.stop();
+        setTimeout(() => this.start(), 60000);
+
+        return;
+      }
+
       this.prebufferSession = await this.startPrebufferSession();
     } catch (error) {
-      log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
-      log.error(error, this.cameraName, 'prebuffer');
+      if (error) {
+        log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
+        log.error(error, this.cameraName, 'prebuffer');
+      }
 
       //setTimeout(() => this.restart(), 10000);
     }
@@ -376,7 +397,7 @@ class PrebufferService {
         server?.close();
       }
 
-      reject('FFmpeg was killed before connecting to the rebroadcast session');
+      reject();
       clearTimeout(ffmpegTimeout);
     };
 
@@ -418,7 +439,7 @@ class PrebufferService {
       env: process.env,
     });
 
-    cp.stdout.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    cp.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
     cp.on('exit', (code, signal) => {
       if (code === 1) {
@@ -449,6 +470,19 @@ class PrebufferService {
       cp,
       ffmpegInputs,
     };
+  }
+
+  async #pingCamera() {
+    let state = true;
+
+    try {
+      state = await Ping.status(this.#camera, 1);
+    } catch (error) {
+      this.log.info('An error occured during pinging camera, skipping..', this.accessory.displayName);
+      this.log.error(error, this.accessory.displayName);
+    }
+
+    return state;
   }
 }
 

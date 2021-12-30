@@ -24,7 +24,7 @@ class CameraController {
     const mediaService = new MediaService(camera);
     const prebufferService = camera.prebuffering ? new PrebufferService(camera, mediaService) : null;
     const sessionService = new SessionService(camera);
-    const streamService = new StreamService(camera, mediaService, sessionService, socket);
+    const streamService = new StreamService(camera, prebufferService, mediaService, sessionService, socket);
 
     const controller = {
       media: mediaService,

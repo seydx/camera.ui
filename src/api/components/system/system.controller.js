@@ -224,6 +224,21 @@ exports.getSmtpServerStatus = async (req, res) => {
   }
 };
 
+exports.getFtpServerStatus = async (req, res) => {
+  try {
+    const status = MotionController.ftpServer.server.listening;
+
+    res.status(200).send({
+      status: status ? 'running' : 'not running',
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.getUptime = async (req, res) => {
   try {
     const humaniseDuration = (seconds) => {
@@ -308,6 +323,23 @@ exports.restartSmtpServer = async (req, res) => {
     await setTimeoutAsync(1000);
 
     MotionController.startSmtpServer();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restartFtpServer = async (req, res) => {
+  try {
+    MotionController.closeFtpServer();
+    await setTimeoutAsync(1000);
+
+    MotionController.startFtpServer();
     await setTimeoutAsync(1000);
 
     res.status(204).send({});

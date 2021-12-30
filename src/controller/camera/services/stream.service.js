@@ -12,6 +12,7 @@ const { log } = LoggerService;
 class StreamService {
   #socket;
   #camera;
+  #prebufferService;
   #sessionService;
   #mediaService;
 
@@ -20,12 +21,12 @@ class StreamService {
 
   streamSession = null;
 
-  constructor(camera, mediaService, sessionService, socket) {
+  constructor(camera, prebufferService, mediaService, sessionService, socket) {
     //log.debug('Initializing camera stream', camera.name);
-    this.reconfigure(camera, mediaService, sessionService, socket);
+    this.reconfigure(camera, prebufferService, mediaService, sessionService, socket);
   }
 
-  reconfigure(camera, mediaService, sessionService, socket) {
+  reconfigure(camera, prebufferService, mediaService, sessionService, socket) {
     this.#camera = camera;
 
     if (socket) {
@@ -38,6 +39,10 @@ class StreamService {
 
     if (mediaService) {
       this.#mediaService = mediaService;
+    }
+
+    if (prebufferService) {
+      this.#prebufferService = prebufferService;
     }
 
     this.cameraName = camera.name;
@@ -112,7 +117,7 @@ class StreamService {
     }
   }
 
-  start() {
+  async start() {
     if (!this.streamSession) {
       const allowStream = this.#sessionService.requestSession();
 
@@ -125,11 +130,28 @@ class StreamService {
           }
         }
 
+        let input = this.streamOptions.source.split(/\s+/);
+
+        if (this.#prebufferService) {
+          try {
+            log.debug('Setting rebroadcast stream as input', this.cameraName);
+
+            const containerInput = await this.#prebufferService.getVideo({
+              container: 'mpegts',
+              ffmpegInputArgs: ['-analyzeduration', '0', '-probesize', '500000'],
+            });
+
+            input = containerInput;
+          } catch (error) {
+            log.warn(`Can not access rebroadcast stream, skipping: ${error}`, this.cameraName);
+          }
+        }
+
         const spawnOptions = [
           '-hide_banner',
           '-loglevel',
           'error',
-          ...this.streamOptions.source.split(/\s+/),
+          ...input,
           '-f',
           'mpegts',
           '-codec:v',

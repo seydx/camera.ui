@@ -416,10 +416,7 @@ export default {
     },
     toggleWidgetsNavi(state) {
       bus.$emit('showWidgetsNavi', state);
-
-      if (state === undefined) {
-        this.setupDrag();
-      }
+      this.setupDrag();
     },
     windowWidth() {
       return window.innerWidth && document.documentElement.clientWidth

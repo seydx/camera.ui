@@ -191,13 +191,17 @@ export default {
       showSidebar: false,
       showSidebarContent: false,
       showSidebarMinifiedNav: true,
-      version,
+
+      version: version,
     };
   },
 
   computed: {
     currentUser() {
       return this.$store.state.auth.user || {};
+    },
+    uiConfig() {
+      return this.$store.state.config.ui;
     },
   },
 
@@ -220,6 +224,8 @@ export default {
     } else {
       this.avatarSrc = require('../assets/img/no_user.png');
     }
+
+    this.version = this.uiConfig?.version || version;
   },
 
   mounted() {

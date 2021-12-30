@@ -121,6 +121,30 @@
                 span  {{ $t('press_enter_to_create').split('% ')[1] }} 
       
       v-divider.tw-mt-4.tw-mb-8
+
+      .page-subtitle-info.tw-mb-3 {{ $t('mqtt') }}
+
+      label.form-input-label Motion Topic
+      v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+      label.form-input-label Motion Message
+      v-text-field(v-model="cam.mqtt.motionMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+      label.form-input-label Motion Reset Topic
+      v-text-field(v-model="cam.mqtt.motionResetTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+      label.form-input-label Motion Reset Message
+      v-text-field(v-model="cam.mqtt.motionResetMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+      v-divider.tw-mt-4.tw-mb-8
       
       div(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
         .page-subtitle-info Homebridge
@@ -258,7 +282,7 @@
       label.form-input-label Video Source
       v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:prepend-inner)
-            v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
@@ -267,7 +291,7 @@
       label.form-input-label Still Image Source
       v-text-field(v-model="cam.videoConfig.stillImageSource" :hint="$t('still_image_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:prepend-inner)
-            v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+          v-icon.text-muted {{ icons['mdiAlphabetical'] }}
         template(v-slot:message="{ key, message}")
           .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
             v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
@@ -564,7 +588,13 @@ export default {
         options: config.data.options || {
           videoProcessor: 'ffmpeg',
         },
-        cameras: config.data.cameras || [],
+        cameras: (config.data.cameras || []).map((camera) => {
+          if (!camera.mqtt) {
+            camera.mqtt = {};
+          }
+
+          return camera;
+        }),
       };
 
       this.$watch('cameras', this.camerasWatcher, { deep: true });

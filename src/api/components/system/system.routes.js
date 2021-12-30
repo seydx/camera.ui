@@ -241,6 +241,28 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/ftp/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart ftp server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/ftp/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.restartFtpServer,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/mqtt/restart:
    *   put:
    *     tags: [System]
