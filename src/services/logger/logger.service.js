@@ -196,12 +196,12 @@ class LoggerService {
   }
 
   warn(message, name, subprefix) {
-    LoggerService.#logging(LogLevel.WARN, message, name, subprefix);
+    LoggerService.#logging(LogLevel.WARN, message, name);
     LoggerService.#db(LogLevel.WARN, message, name, subprefix);
   }
 
   error(message, name, subprefix) {
-    LoggerService.#logging(LogLevel.ERROR, message, name, subprefix);
+    LoggerService.#logging(LogLevel.ERROR, message, name);
     LoggerService.#db(LogLevel.ERROR, message, name, subprefix);
   }
 

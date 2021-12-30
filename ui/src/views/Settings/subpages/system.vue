@@ -75,6 +75,10 @@
       label.form-input-label {{ $t('debug') }}
       v-switch(color="var(--cui-primary)" v-model="config.debug")
 
+    .tw-flex.tw-justify-between.tw-items-center(v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
+      label.form-input-label {{ $t('at_home_switch') }}
+      v-switch(color="var(--cui-primary)" v-model="config.atHomeSwitch")
+
     label.form-input-label {{ $t('port') }}
     v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
       template(v-slot:prepend-inner)
@@ -223,6 +227,7 @@ export default {
     configTimeout: null,
     currentVersion: null,
     dbFile: {},
+    env: '',
     latestVersion: null,
     serviceMode: false,
     updateAvailable: false,
@@ -237,6 +242,8 @@ export default {
 
   async created() {
     try {
+      this.env = process.env.NODE_ENV;
+
       const config = await getConfig('?target=config');
       const dbFile = await getDb();
 
