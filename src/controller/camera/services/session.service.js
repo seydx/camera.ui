@@ -54,6 +54,11 @@ class SessionService {
       log.debug(`Currently active streams: ${this.session.activeStreams}`, this.cameraName);
     }
   }
+
+  clearSession() {
+    this.session.activeStreams = 0;
+    log.debug('Session cleared', this.cameraName);
+  }
 }
 
 exports.SessionService = SessionService;

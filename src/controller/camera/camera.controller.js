@@ -45,6 +45,19 @@ class CameraController {
     CameraController.cameras.set(camera.name, controller);
   }
 
+  static async removeController(cameraName) {
+    const controller = CameraController.cameras.get(cameraName);
+
+    if (!controller) {
+      throw new Error(`Camera controller for ${cameraName} not found!`);
+    }
+
+    controller.prebuffer.stop(true);
+    controller.session.clearSession();
+
+    CameraController.cameras.delete(cameraName);
+  }
+
   static async startController(cameraName) {
     const controller = CameraController.cameras.get(cameraName);
 

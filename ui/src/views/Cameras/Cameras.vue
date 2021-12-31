@@ -8,9 +8,6 @@
       .tw-block
         h2 {{ $t($route.name.toLowerCase()) }}
 
-      .tw-block.tw-ml-auto.tw-mr-1
-        AddCamera(@add="addCamera")
-
     .tw-mt-10(v-for="room in rooms" :key="room" v-if="(room === 'Standard' && cameras.find((cam) => cam.settings.room === room)) || room !== 'Standard'")
       h3 {{ room === 'Standard' ? $t('standard') : room }}
       v-divider.tw-mt-3
@@ -46,7 +43,6 @@ import { getSetting } from '@/api/settings.api';
 import { getCameras, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 
-import AddCamera from '@/components/add-camera.vue';
 import FilterCard from '@/components/filter.vue';
 import VideoCard from '@/components/camera-card.vue';
 
@@ -56,7 +52,6 @@ export default {
   name: 'Cameras',
 
   components: {
-    AddCamera,
     CoolLightBox,
     FilterCard,
     InfiniteLoading,
@@ -117,12 +112,6 @@ export default {
       this.query = filterQuery;
       this.infiniteId = Date.now();
       this.loading = false;
-    },
-    addCamera() {
-      this.query = '';
-      this.page = 1;
-      this.cameras = [];
-      this.infiniteId = Date.now();
     },
     async infiniteHandler($state) {
       try {

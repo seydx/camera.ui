@@ -1,7 +1,5 @@
 'use-strict';
 
-const _ = require('lodash');
-
 const { getAndStoreSnapshot } = require('../../../common/ffmpeg');
 const { Ping } = require('../../../common/ping');
 
@@ -63,9 +61,16 @@ exports.patchCamera = async (name, cameraData) => {
 
   await Database.interfaceDB.read();
 
-  //let cameraConfig = _.find(ConfigService.ui.cameras, { name: name });
-  _.assign(_.find(ConfigService.ui.cameras, { name: name }), cameraData);
+  ConfigService.ui.cameras = ConfigService.ui.cameras.map((camera) => {
+    if (camera.name === cameraData.name) {
+      camera = {
+        ...camera,
+        ...cameraData,
+      };
+    }
 
+    return camera;
+  });
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
   await Database.writeConfigCamerasToDB();
 
@@ -84,23 +89,46 @@ exports.requestSnapshot = async (camera) => {
 exports.removeByName = async (name) => {
   await Database.interfaceDB.read();
 
-  _.remove(ConfigService.ui.cameras, (cam) => cam.name === name);
+  ConfigService.ui.cameras = ConfigService.ui.cameras.filter((camera) => camera.name !== name);
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+  CameraController.removeController(name);
 
-  return await Database.interfaceDB
+  await Database.writeConfigCamerasToDB();
+  Database.controller.emit('removeCamera', name);
+
+  /*return await Database.interfaceDB
     .get('cameras')
     .remove((cam) => cam.name === name)
-    .write();
+    .get('settings')
+    .get('cameras')
+    .remove((cam) => cam.name === name)
+    .write();*/
+
+  return;
 };
 
 exports.removeAll = async () => {
   await Database.interfaceDB.read();
 
+  const cameras = ConfigService.ui.cameras.map((camera) => camera.name);
+
   ConfigService.ui.cameras = [];
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 
-  return await Database.interfaceDB
+  for (const cameraName of cameras) {
+    await CameraController.removeController(cameraName);
+  }
+
+  await Database.writeConfigCamerasToDB();
+  Database.controller.emit('removeCameras');
+
+  /*return await Database.interfaceDB
     .get('cameras')
     .remove(() => true)
-    .write();
+    .get('settings')
+    .get('cameras')
+    .remove(() => true)
+    .write();*/
+
+  return;
 };

@@ -4,11 +4,15 @@
 
   .tw-mb-7(v-if="!loading")
     label.form-input-label {{ $t('selected_camera') }}
-    v-select(v-model="camera" :items="cameras" item-text="name" prepend-inner-icon="mdi-cctv" background-color="var(--cui-bg-card)" return-object solo)
+    v-select(v-model="camera" :items="cameras" item-text="name" prepend-inner-icon="mdi-cctv" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" return-object solo)
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiCctv'] }}
+      template(v-slot:append-outer)
+        v-icon.tw-cursor-pointer(@click="onRemoveCamera" color="error") {{ icons['mdiCloseThick'] }}
 
-    v-divider.tw-mt-4.tw-mb-8
+    AddCamera(@add="cameraAdded")
+
+    v-divider.tw-my-8
 
     .tw-mt-8(v-for="cam in config.cameras" v-if="camera.name && camera.name === cam.name")
 
@@ -492,6 +496,7 @@ import {
   mdiAlert,
   mdiAlphabetical,
   mdiCctv,
+  mdiCloseThick,
   mdiDoor,
   mdiInformationOutline,
   mdiLabel,
@@ -503,12 +508,18 @@ import {
   mdiVideoImage,
 } from '@mdi/js';
 
-import { restartPrebuffering, stopPrebuffering } from '@/api/cameras.api';
+import { removeCamera, restartPrebuffering, stopPrebuffering } from '@/api/cameras.api';
 import { changeConfig, getConfig } from '@/api/config.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
+import AddCamera from '@/components/add-camera.vue';
+
 export default {
   name: 'CamerasSettings',
+
+  components: {
+    AddCamera,
+  },
 
   data() {
     return {
@@ -519,6 +530,7 @@ export default {
         mdiAlert,
         mdiAlphabetical,
         mdiCctv,
+        mdiCloseThick,
         mdiDoor,
         mdiInformationOutline,
         mdiLabel,
@@ -659,6 +671,9 @@ export default {
   },
 
   methods: {
+    cameraAdded() {
+      window.location.reload(true);
+    },
     async camerasWatcher(newValue) {
       this.loadingProgress = true;
 
@@ -717,8 +732,26 @@ export default {
 
       this.prebufferingStates[cameraName].loading = false;
     },
+    async onRemoveCamera() {
+      if (!this.camera) {
+        return this.$toast.error(this.$t('no_camera_selected'));
+      }
+
+      try {
+        await removeCamera(this.camera.name);
+        this.cameras = this.cameras.filter((camera) => camera.name !== this.camera.name);
+        this.camera = this.cameras[0];
+
+        this.$toast.success(`${this.$t('successfully_removed')}`);
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+    },
     prebufferStatus(data) {
-      this.prebufferingStates[data.camera].state = data.status === 'active';
+      if (this.prebufferingStates[data.camera]) {
+        this.prebufferingStates[data.camera].state = data.status === 'active';
+      }
     },
   },
 };

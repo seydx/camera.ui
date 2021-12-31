@@ -15,7 +15,7 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNpm'] }}
       template(v-slot:append-outer)
-        v-dialog(v-model="updateDialog" width="500" scrollable @click:outside="closeUpdateDialog" @keydown="closeUpdateDialog")
+        v-dialog(v-model="updateDialog" width="600" scrollable @click:outside="closeUpdateDialog" @keydown="closeUpdateDialog")
           template(v-slot:activator='{ on, attrs }')
             v-btn.tw-text-white(:loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
               v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") {{ icons['mdiUpdate'] }}
@@ -253,6 +253,8 @@ export default {
   },
 
   data: () => ({
+    panel: [],
+
     icons: {
       mdiAt,
       mdiFindReplace,
