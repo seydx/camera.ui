@@ -283,6 +283,23 @@ exports.lastModifiedDb = async (req, res) => {
   }
 };
 
+exports.restartFtpServer = async (req, res) => {
+  try {
+    MotionController.closeFtpServer();
+    await setTimeoutAsync(1000);
+
+    MotionController.startFtpServer();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.restarHttpServer = async (req, res) => {
   try {
     MotionController.closeHttpServer();
@@ -334,12 +351,21 @@ exports.restartSmtpServer = async (req, res) => {
   }
 };
 
-exports.restartFtpServer = async (req, res) => {
+exports.restartSystem = async (req, res) => {
+  try {
+    Database.controller.emit('restart');
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.stopFtpServer = async (req, res) => {
   try {
     MotionController.closeFtpServer();
-    await setTimeoutAsync(1000);
-
-    MotionController.startFtpServer();
     await setTimeoutAsync(1000);
 
     res.status(204).send({});
@@ -351,9 +377,39 @@ exports.restartFtpServer = async (req, res) => {
   }
 };
 
-exports.restartSystem = async (req, res) => {
+exports.stopHttpServer = async (req, res) => {
   try {
-    Database.controller.emit('restart');
+    MotionController.closeHttpServer();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.stopMqttClient = async (req, res) => {
+  try {
+    MotionController.closeMqttClient();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.stopSmtpServer = async (req, res) => {
+  try {
+    MotionController.closeSmtpServer();
+    await setTimeoutAsync(1000);
+
     res.status(204).send({});
   } catch (error) {
     res.status(500).send({

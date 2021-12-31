@@ -1,5 +1,5 @@
 <template lang="pug">
-v-dialog(v-model="dialog" width="500" scrollable @click:outside="closeDialog")
+v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
   template(v-slot:activator='{ on, attrs }')
     v-btn.tw-text-white.tw-mr-1(fab height="38px" width="38px" color="var(--cui-primary)" v-bind='attrs' v-on='on')
       v-icon {{ icons['mdiPlus'] }}
@@ -38,7 +38,7 @@ v-dialog(v-model="dialog" width="500" scrollable @click:outside="closeDialog")
               v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
               .input-info.tw-italic {{ message }}
 
-        .tw-flex.tw-justify-between.tw-items-center.tw-mb-3
+        .tw-flex.tw-justify-between.tw-items-center.tw-mt-3
           .tw-block.tw-w-full.tw-pr-2
             label.form-input-label {{ $t('record_on_movement') }}
             .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
@@ -73,7 +73,7 @@ v-dialog(v-model="dialog" width="500" scrollable @click:outside="closeDialog")
     v-divider
     v-card-actions.tw-flex.tw-justify-end
       v-btn.text-default(text @click='closeDialog') {{ $t('cancel') }}
-      v-btn(color='var(--cui-primary)' text @click='addCamera') {{ $t('add') }}
+      v-btn(color='var(--cui-primary)' text @click='createCamera') {{ $t('add') }}
 
 </template>
 
@@ -118,14 +118,16 @@ export default {
   },
 
   methods: {
-    async addCamera() {
+    async createCamera() {
       this.loading = true;
 
       try {
         await addCamera(this.cam);
 
-        this.$toast.success(`${this.$t('successfully_added_camera')} - ${this.$t('restart_cameraui')}`);
+        this.$toast.success(`${this.$t('successfully_added_camera')}`);
         this.closeDialog();
+
+        this.$emit('add', this.cam);
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -150,5 +152,9 @@ export default {
   color: var(--cui-text-hint) !important;
   max-width: 90%;
   margin-top: 4px;
+}
+
+div >>> .v-text-field__details {
+  padding-left: 0 !important;
 }
 </style>

@@ -72,5 +72,7 @@ exports.patchConfig = async (configJson) => {
   }*/
 
   ConfigService.writeToConfig(false, configJson);
+  await Database.writeConfigCamerasToDB();
+
   //ConfigService.configJson = configJson;
 };

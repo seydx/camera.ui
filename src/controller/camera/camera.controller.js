@@ -8,23 +8,31 @@ const { SessionService } = require('./services/session.service');
 const { StreamService } = require('./services/stream.service');
 
 class CameraController {
-  #cameras = ConfigService.ui.cameras;
+  static #socket;
 
   static cameras = new Map([]);
 
   constructor(socket) {
-    for (const camera of this.#cameras) {
-      this.#createController(camera, socket);
+    CameraController.#socket = socket;
+
+    for (const camera of ConfigService.ui.cameras) {
+      CameraController.createController(camera, socket);
     }
 
     return CameraController.cameras;
   }
 
-  #createController(camera, socket) {
+  static createController(camera) {
     const mediaService = new MediaService(camera);
-    const prebufferService = new PrebufferService(camera, mediaService, socket);
+    const prebufferService = new PrebufferService(camera, mediaService, CameraController.#socket);
     const sessionService = new SessionService(camera);
-    const streamService = new StreamService(camera, prebufferService, mediaService, sessionService, socket);
+    const streamService = new StreamService(
+      camera,
+      prebufferService,
+      mediaService,
+      sessionService,
+      CameraController.#socket
+    );
 
     const controller = {
       options: camera,
@@ -35,6 +43,22 @@ class CameraController {
     };
 
     CameraController.cameras.set(camera.name, controller);
+  }
+
+  static async startController(cameraName) {
+    const controller = CameraController.cameras.get(cameraName);
+
+    if (!controller) {
+      throw new Error(`Camera controller for ${cameraName} not found!`);
+    }
+
+    await controller.media.probe();
+
+    if (controller.options.prebuffering) {
+      await controller.prebuffer?.start();
+    }
+
+    await controller.stream.configureStreamOptions();
   }
 }
 

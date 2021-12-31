@@ -241,6 +241,28 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/http/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop HTTP server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/http/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.stopHttpServer,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/smtp/status:
    *   get:
    *     tags: [System]
@@ -281,6 +303,28 @@ exports.routesConfig = (app) => {
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.onlyMasterCanDoThisAction,
     SystemController.restartSmtpServer,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/smtp/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop SMTP server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/smtp/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.stopSmtpServer,
   ]);
 
   /**
@@ -329,6 +373,28 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/ftp/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop FTP server
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/ftp/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.stopFtpServer,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/mqtt/status:
    *   get:
    *     tags: [System]
@@ -369,6 +435,28 @@ exports.routesConfig = (app) => {
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.onlyMasterCanDoThisAction,
     SystemController.restartMqttClient,
+  ]);
+
+  /**
+   * @swagger
+   * /api/system/mqtt/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop MQTT client
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/system/mqtt/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.stopMqttClient,
   ]);
 
   /**

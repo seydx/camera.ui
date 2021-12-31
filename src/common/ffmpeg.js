@@ -47,6 +47,9 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
+    const videoWidth = camera.videoConfig.maxWidth || 1280;
+    const videoHeight = camera.videoConfig.maxHeight || 720;
+
     const ffmpegArguments = [
       '-hide_banner',
       '-loglevel',
@@ -59,7 +62,7 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
       '-i',
       '-',
       '-s',
-      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
+      `${videoWidth}x${videoHeight}`,
       /*'-vcodec',
       `${camera.videoConfig.vcodec || 'libx264'}`,
       '-pix_fmt',
@@ -206,6 +209,8 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
     const ffmpegInput = [...camera.videoConfig.source.split(/\s+/)];
+    const videoWidth = camera.videoConfig.maxWidth || 1280;
+    const videoHeight = camera.videoConfig.maxHeight || 720;
 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
@@ -216,7 +221,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
       '-y',
       ...ffmpegInput,
       '-s',
-      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
+      `${videoWidth}x${videoHeight}`,
       '-frames:v',
       '2',
       '-r',
@@ -326,6 +331,9 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const ffmpegInput = [...camera.videoConfig.source.split(/\s+/)];
     const videoName = `${recordingPath}/${fileName}.mp4`;
+    const videoWidth = camera.videoConfig.maxWidth || 1280;
+    const videoHeight = camera.videoConfig.maxHeight || 720;
+    const vcodec = camera.videoConfig.vcodec || 'libx264';
 
     const ffmpegArguments = [
       '-hide_banner',
@@ -341,9 +349,9 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
       '-threads',
       '0',
       '-s',
-      `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
+      `${videoWidth}x${videoHeight}`,
       '-vcodec',
-      `${camera.videoConfig.vcodec || 'libx264'}`,
+      `${vcodec}`,
       '-pix_fmt',
       'yuv420p',
       '-movflags',

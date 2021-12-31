@@ -4,7 +4,7 @@ const resource = '/backup';
 const download_resource = 'download';
 const restore_resource = 'restore';
 
-const downloadBackup = async (userStorage) =>
+export const downloadBackup = async (userStorage) =>
   await api.get(`${resource}/${download_resource}`, {
     params: {
       localStorage: userStorage,
@@ -12,6 +12,4 @@ const downloadBackup = async (userStorage) =>
     responseType: 'arraybuffer',
   });
 
-const restoreBackup = async (backupData) => await api.post(`${resource}/${restore_resource}`, backupData);
-
-export { downloadBackup, restoreBackup };
+export const restoreBackup = async (backupData) => await api.post(`${resource}/${restore_resource}`, backupData);

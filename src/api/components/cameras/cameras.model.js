@@ -9,6 +9,8 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { Database } = require('../../database');
 
+const { CameraController } = require('../../../controller/camera/camera.controller');
+
 exports.list = async () => {
   await Database.interfaceDB.read();
   return await Database.interfaceDB.get('cameras').value();
@@ -36,13 +38,20 @@ exports.createCamera = async (cameraData) => {
 
     ConfigService.ui.cameras.push(cameraData);
     ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+    CameraController.createController(cameraData);
+    CameraController.startController(cameraData.name);
 
-    return await Database.interfaceDB.get('cameras').push(cameraData).write();
+    await Database.writeConfigCamerasToDB();
+
+    Database.controller.emit('addCamera', cameraData);
+
+    return cameraData;
   } else {
     throw new Error('Camera already exists in config.json');
   }
 };
 
+// todo: not used, handled through system/config
 exports.patchCamera = async (name, cameraData) => {
   if (
     cameraData.name &&
@@ -58,6 +67,7 @@ exports.patchCamera = async (name, cameraData) => {
   _.assign(_.find(ConfigService.ui.cameras, { name: name }), cameraData);
 
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+  await Database.writeConfigCamerasToDB();
 
   return await Database.interfaceDB.get('cameras').find({ name: name }).assign(cameraData).write();
 };

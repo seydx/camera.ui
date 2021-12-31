@@ -175,16 +175,30 @@ class ConfigService {
   static writeToConfig(target, config) {
     if (config) {
       if (ConfigService.configJson[target]) {
+        if (target === 'cameras') {
+          config = config.map((camera) => {
+            camera.videoConfig.source = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
+            return camera;
+          });
+        }
+
         ConfigService.configJson[target] = config;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else if (!target) {
+        if (config.cameras) {
+          config.cameras = config.cameras.map((camera) => {
+            camera.videoConfig.source = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
+            return camera;
+          });
+        }
+
         ConfigService.configJson = config;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else {
-        log.warn(`Can not save config, target ${target} not found in config!`, 'Config', 'system');
+        throw new Error(`Can not save config, target ${target} not found in config!`, 'Config', 'system');
       }
     } else {
-      log.warn('Can not save config, no config defined!', 'Config', 'system');
+      throw new Error('Can not save config, no config defined!', 'Config', 'system');
     }
 
     const uiConfig = JSON.parse(JSON.stringify(ConfigService.configJson));

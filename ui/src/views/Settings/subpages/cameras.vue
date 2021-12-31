@@ -17,7 +17,7 @@
           v-expansion-panel-header
             div
               .page-subtitle {{ $t('interface') }}
-              .input-info Camera interface settings
+              .page-header-info.tw-mt-1 Camera interface settings
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
@@ -62,7 +62,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('interface_player') }}
-              .input-info Parameters for the Interface Video Player
+              .page-header-info.tw-mt-1 Parameters for the Interface Video Player
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('audio') }}
@@ -87,7 +87,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('notification') }}
-              .input-info Camera notification settings when motion is detected
+              .page-header-info.tw-mt-1 Camera notification settings when motion is detected
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('alexa') }}
@@ -107,7 +107,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('rekognition') }}
-              .input-info Image analysis in the detection of movement
+              .page-header-info.tw-mt-1 Image analysis in the detection of movement
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('amazon_rekognition') }}
@@ -136,7 +136,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('mqtt') }}
-              .input-info MQTT Topic Settings for the MQTT Client
+              .page-header-info.tw-mt-1 MQTT Topic Settings for the MQTT Client
           v-expansion-panel-content
             label.form-input-label Motion Topic
             v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
@@ -162,7 +162,7 @@
           v-expansion-panel-header
             div
               .page-subtitle Homebridge
-              .input-info Changing the parameters marked with (*) requires a restart of camera.ui for the changes to take effect
+              .page-header-info.tw-mt-1 Changing the parameters marked with (*) requires a restart
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
@@ -261,7 +261,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle Prebuffering
-              .input-info For Camera Video Prebuffering
+              .page-header-info.tw-mt-1 Camera Video Prebuffering
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('status') }}
@@ -279,7 +279,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('ffmpeg_and_stream') }}
-              .input-info If prebuffering is enabled for the camera, you have to restart the prebuffering process after changing the streaming parameters
+              .page-header-info.tw-mt-1 Changing the parameters requires a restart of prebuffering
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
@@ -727,6 +727,12 @@ export default {
 <style scoped>
 .page-subtitle-info {
   color: var(--cui-text-default);
+}
+
+.page-header-info {
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: var(--cui-text-hint);
 }
 
 div >>> .v-chip .v-chip__content {

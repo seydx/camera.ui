@@ -112,10 +112,34 @@ const defaultRecordingsDatabase = {
   recordings: [],
 };
 
-class Database {
-  static #cameras = ConfigService.ui.cameras;
-  static #videoProcessor = ConfigService.ui.options.videoProcessor;
+const defaultCameraSettingsEntry = {
+  name: '',
+  room: 'Standard',
+  resolution: '1280x720',
+  pingTimeout: 1,
+  streamTimeout: 60,
+  audio: false,
+  telegramType: 'Snapshot',
+  alexa: false,
+  webhookUrl: '',
+  privacyMode: false,
+  camview: {
+    favourite: true,
+    live: true,
+    snapshotTimer: 60,
+  },
+  dashboard: {
+    live: true,
+    snapshotTimer: 60,
+  },
+  rekognition: {
+    active: false,
+    confidence: 90,
+    labels: [],
+  },
+};
 
+class Database {
   static interfaceDB;
   static notificationsDB;
   static recordingsDB;
@@ -151,7 +175,7 @@ class Database {
 
     await Database.#ensureDatabaseValues();
     await Database.#initializeUser();
-    await Database.#writeConfigCamerasToDB();
+    await Database.writeConfigCamerasToDB();
     await Database.refreshRecordingsDatabase();
 
     await Database.interfaceDB.set('version', version).write();
@@ -406,20 +430,34 @@ class Database {
     }
   }
 
-  static async #writeConfigCamerasToDB() {
+  static async addCameraToDB(camera) {
+    await Database.interfaceDB.read();
+
+    const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
+    cameraSettingsEntry.name = camera.name;
+
+    await Database.interfaceDB.get('cameras').push(camera).write();
+    await Database.interfaceDB.get('settings').get('cameras').push(cameraSettingsEntry).write();
+
+    return camera;
+  }
+
+  static async writeConfigCamerasToDB() {
     await Database.interfaceDB.read();
 
     const Cameras = await Database.interfaceDB.get('cameras');
     const CamerasSettings = await Database.interfaceDB.get('settings').get('cameras');
     const CamerasWidgets = await Database.interfaceDB.get('settings').get('widgets').get('items');
 
-    await Cameras.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();
-    await CamerasSettings.remove((x) => Database.#cameras.filter((y) => y && y.name === x.name).length === 0).write();
+    await Cameras.remove((x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0).write();
+    await CamerasSettings.remove(
+      (x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0
+    ).write();
     await CamerasWidgets.remove(
-      (x) => x.type === 'CamerasWidget' && Database.#cameras.filter((y) => y && y.name === x.id).length === 0
+      (x) => x.type === 'CamerasWidget' && ConfigService.ui.cameras.filter((y) => y && y.name === x.id).length === 0
     ).write();
 
-    for (const cam of Database.#cameras) {
+    for (const cam of ConfigService.ui.cameras) {
       const camera = {
         name: cam.name,
         recordOnMovement: cam.recordOnMovement,
@@ -428,39 +466,17 @@ class Database {
         videoConfig: cam.videoConfig,
       };
 
+      camera.videoConfig.source = `-i ${camera.videoConfig?.source.split('-i ')[1]}`;
+
       const cameraExists = await CamerasSettings.find({ name: cam.name }).value();
 
       await (cameraExists ? Cameras.find({ name: cam.name }).assign(camera).write() : Cameras.push(camera).write());
 
       if (!cameraExists) {
-        const cameraraSettingsEntry = {
-          name: cam.name,
-          room: 'Standard',
-          resolution: '1280x720',
-          pingTimeout: 1,
-          streamTimeout: 60,
-          audio: false,
-          telegramType: 'Snapshot',
-          alexa: false,
-          webhookUrl: '',
-          privacyMode: false,
-          camview: {
-            favourite: true,
-            live: true,
-            snapshotTimer: 60,
-          },
-          dashboard: {
-            live: true,
-            snapshotTimer: 60,
-          },
-          rekognition: {
-            active: false,
-            confidence: 90,
-            labels: [],
-          },
-        };
+        const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
+        cameraSettingsEntry.name = cam.name;
 
-        await CamerasSettings.push(cameraraSettingsEntry).write();
+        await CamerasSettings.push(cameraSettingsEntry).write();
       }
     }
   }

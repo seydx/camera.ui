@@ -33,7 +33,7 @@
 
     v-dialog(v-model="restartDialog" width="500" scrollable)
       template(v-slot:activator='{ on, attrs }')
-        v-btn.tw-text-white(:loading="loadingRestart" block color="red" v-bind='attrs' v-on='on') {{ $t('restart') }}
+        v-btn.tw-text-white(:loading="loadingRestart" block color="success" v-bind='attrs' v-on='on') {{ $t('restart') }}
       v-card
         v-card-title {{ $t('restart') }}
         v-divider
@@ -45,7 +45,7 @@
 
     v-dialog(v-model="resetDialog" width="500" scrollable)
       template(v-slot:activator='{ on, attrs }')
-        v-btn.tw-text-white.tw-mt-2(:loading="loadingReset" block color="red" v-bind='attrs' v-on='on') {{ $t('reset') }}
+        v-btn.tw-text-white.tw-mt-2(:loading="loadingReset" block color="error" v-bind='attrs' v-on='on') {{ $t('reset') }}
       v-card
         v-card-title {{ $t('reset') }}
         v-divider
@@ -67,141 +67,155 @@
     v-btn.tw-text-white(:loading="loadingDb" block color="success" @click="onDownloadDb") {{ $t('download') }}
 
     v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('interface') }}
-    .page-subtitle-info {{ $t('interface_config') }}
 
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('debug') }}
-      v-switch(color="var(--cui-primary)" v-model="config.debug")
+    v-expansion-panels(v-model="panel" multiple)
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('interface') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('interface_config') }}
+        v-expansion-panel-content
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('debug') }}
+            v-switch(color="var(--cui-primary)" v-model="config.debug")
 
-    .tw-flex.tw-justify-between.tw-items-center(v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
-      label.form-input-label {{ $t('at_home_switch') }}
-      v-switch(color="var(--cui-primary)" v-model="config.atHomeSwitch")
+          .tw-flex.tw-justify-between.tw-items-center(v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
+            label.form-input-label {{ $t('at_home_switch') }}
+            v-switch(color="var(--cui-primary)" v-model="config.atHomeSwitch")
 
-    label.form-input-label {{ $t('port') }}
-    v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiNumeric'] }}
+          label.form-input-label {{ $t('port') }}
+          v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('ssl') }}
-    .page-subtitle-info.tw-mb-5 {{ $t('ssl_config') }}
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('ssl') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('ssl_config') }}
+        v-expansion-panel-content
+          label.form-input-label {{ $t('path_to_certificate') }}
+          v-text-field(v-model="config.ssl.cert" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiAt'] }}
 
-    label.form-input-label {{ $t('path_to_certificate') }}
-    v-text-field(v-model="config.ssl.cert" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiAt'] }}
+          label.form-input-label {{ $t('path_to_key') }}
+          v-text-field(v-model="config.ssl.key" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiAt'] }}
 
-    label.form-input-label {{ $t('path_to_key') }}
-    v-text-field(v-model="config.ssl.key" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiAt'] }}
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('options') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('video_processor_config') }}
+        v-expansion-panel-content
+          label.form-input-label {{ $t('video_processor_path') }}
+          v-text-field(v-model="config.options.videoProcessor" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiAt'] }}
+              
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('http') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('http_server_config') }}
+        v-expansion-panel-content
+          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+            label.form-input-label {{ $t('status') }}
+            span.tw-text-right(:class="!httpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ httpStatus ? $t('online') : $t('offline') }}
 
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('options') }}
-    .page-subtitle-info.tw-mb-5 {{ $t('video_processor_config') }}
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('enabled') }}
+            v-switch(color="var(--cui-primary)" v-model="config.http.active")
 
-    label.form-input-label {{ $t('video_processor_path') }}
-    v-text-field(v-model="config.options.videoProcessor" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiAt'] }}
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('localhost') }}
+            v-switch(color="var(--cui-primary)" v-model="config.http.localHttp")
 
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('http') }}
-    .page-subtitle-info {{ $t('http_server_config') }}
+          label.form-input-label {{ $t('port') }}
+          v-text-field(v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
-      label.form-input-label {{ $t('status') }}
-      span.tw-text-right(:class="!httpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ httpStatus ? $t('online') : $t('offline') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!httpStatus" block color="error" @click="onRestartHttp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.http.active || !config.http.port" :loading="loadingRestartHttp" block color="success" @click="onRestartHttp(true)") {{ $t('restart') }}
 
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('enabled') }}
-      v-switch(color="var(--cui-primary)" v-model="config.http.active")
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('smtp') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('smtp_server_config') }}
+        v-expansion-panel-content
+          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+            label.form-input-label {{ $t('status') }}
+            span.tw-text-right(:class="!smtpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ smtpStatus ? $t('online') : $t('offline') }}
 
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('localhost') }}
-      v-switch(color="var(--cui-primary)" v-model="config.http.localHttp")
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('enabled') }}
+            v-switch(color="var(--cui-primary)" v-model="config.smtp.active")
 
-    label.form-input-label {{ $t('port') }}
-    v-text-field(v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiNumeric'] }}
+          label.form-input-label {{ $t('port') }}
+          v-text-field(v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    v-btn.tw-text-white(:loading="loadingRestartHttp" block color="success" @click="onRestartHttp") {{ $t('restart') }}
+          label.form-input-label {{ $t('space_replace') }}
+          v-text-field(v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiFindReplace'] }}
 
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('smtp') }}
-    .page-subtitle-info {{ $t('smtp_server_config') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!smtpStatus" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
 
-    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
-      label.form-input-label {{ $t('status') }}
-      span.tw-text-right(:class="!smtpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ smtpStatus ? $t('online') : $t('offline') }}
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('ftp') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('ftp_server_config') }}
+        v-expansion-panel-content
+          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+            label.form-input-label {{ $t('status') }}
+            span.tw-text-right(:class="!ftpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ ftpStatus ? $t('online') : $t('offline') }}
 
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('enabled') }}
-      v-switch(color="var(--cui-primary)" v-model="config.smtp.active")
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('enabled') }}
+            v-switch(color="var(--cui-primary)" v-model="config.ftp.active")
 
-    label.form-input-label {{ $t('port') }}
-    v-text-field(v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiNumeric'] }}
+          label.form-input-label {{ $t('port') }}
+          v-text-field(v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    label.form-input-label {{ $t('space_replace') }}
-    v-text-field(v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiFindReplace'] }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!ftpStatus" block color="error" @click="onRestartFtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.ftp.active || !config.ftp.port" :loading="loadingRestartFtp" block color="success" @click="onRestartFtp(true)") {{ $t('restart') }}
 
-    v-btn.tw-text-white(:loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp") {{ $t('restart') }}
+      v-expansion-panel
+        v-expansion-panel-header
+          div
+            .page-subtitle {{ $t('mqtt') }}
+            .page-subtitle-info.tw-mt-1 {{ $t('mqtt_config') }}
+        v-expansion-panel-content
+          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+            label.form-input-label {{ $t('status') }}
+            span.tw-text-right(:class="!mqttStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ mqttStatus ? $t('online') : $t('offline') }}
 
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('ftp') }}
-    .page-subtitle-info {{ $t('ftp_server_config') }}
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label {{ $t('enabled') }}
+            v-switch(color="var(--cui-primary)" v-model="config.mqtt.active")
 
-    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
-      label.form-input-label {{ $t('status') }}
-      span.tw-text-right(:class="!ftpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ ftpStatus ? $t('online') : $t('offline') }}
+          label.form-input-label {{ $t('host') }}
+          v-text-field(v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiWeb'] }}
 
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('enabled') }}
-      v-switch(color="var(--cui-primary)" v-model="config.ftp.active")
+          label.form-input-label {{ $t('port') }}
+          v-text-field(v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-    label.form-input-label {{ $t('port') }}
-    v-text-field(v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiNumeric'] }}
-
-    v-btn.tw-text-white(:loading="loadingRestartFtp" block color="success" @click="onRestartFtp") {{ $t('restart') }}
-
-    v-divider.tw-mt-4.tw-mb-8
-    
-    .page-subtitle.tw-mt-8 {{ $t('mqtt') }}
-    .page-subtitle-info {{ $t('mqtt_config') }}
-
-    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
-      label.form-input-label {{ $t('status') }}
-      span.tw-text-right(:class="!mqttStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ mqttStatus ? $t('online') : $t('offline') }}
-
-    .tw-flex.tw-justify-between.tw-items-center
-      label.form-input-label {{ $t('enabled') }}
-      v-switch(color="var(--cui-primary)" v-model="config.mqtt.active")
-
-    label.form-input-label {{ $t('host') }}
-    v-text-field(v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiWeb'] }}
-
-    label.form-input-label {{ $t('port') }}
-    v-text-field(v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-      template(v-slot:prepend-inner)
-        v-icon.text-muted {{ icons['mdiNumeric'] }}
-
-    v-btn.tw-text-white(:loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt") {{ $t('restart') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!mqttStatus" block color="error" @click="onRestartMqtt(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.mqtt.active || !config.mqtt.host || !config.mqtt.port" :loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt(true)") {{ $t('restart') }}
 
 </template>
 
@@ -221,6 +235,10 @@ import {
   restartMqtt,
   restartSmtp,
   restartSystem,
+  stopFtp,
+  stopHttp,
+  stopMqtt,
+  stopSmtp,
   updateSystem,
 } from '@/api/system.api';
 import { resetSettings } from '@/api/settings.api';
@@ -591,7 +609,7 @@ export default {
         this.loadingDb = false;
       }
     },
-    async onRestartFtp() {
+    async onRestartFtp(restart) {
       if (this.loadingRestartFtp) {
         return;
       }
@@ -599,7 +617,11 @@ export default {
       this.loadingRestartFtp = true;
 
       try {
-        await restartFtp();
+        if (restart) {
+          await restartFtp();
+        } else {
+          await stopFtp();
+        }
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -607,7 +629,7 @@ export default {
 
       this.loadingRestartFtp = false;
     },
-    async onRestartHttp() {
+    async onRestartHttp(restart) {
       if (this.loadingRestartHttp) {
         return;
       }
@@ -615,7 +637,11 @@ export default {
       this.loadingRestartHttp = true;
 
       try {
-        await restartHttp();
+        if (restart) {
+          await restartHttp();
+        } else {
+          await stopHttp();
+        }
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -623,7 +649,7 @@ export default {
 
       this.loadingRestartHttp = false;
     },
-    async onRestartMqtt() {
+    async onRestartMqtt(restart) {
       if (this.loadingRestartMqtt) {
         return;
       }
@@ -631,7 +657,11 @@ export default {
       this.loadingRestartMqtt = true;
 
       try {
-        await restartMqtt();
+        if (restart) {
+          await restartMqtt();
+        } else {
+          await stopMqtt();
+        }
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -639,7 +669,7 @@ export default {
 
       this.loadingRestartMqtt = false;
     },
-    async onRestartSmtp() {
+    async onRestartSmtp(restart) {
       if (this.loadingRestartSmtp) {
         return;
       }
@@ -647,7 +677,11 @@ export default {
       this.loadingRestartSmtp = true;
 
       try {
-        await restartSmtp();
+        if (restart) {
+          await restartSmtp();
+        } else {
+          await stopSmtp();
+        }
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
@@ -746,5 +780,39 @@ export default {
 
 .changelog >>> ul {
   margin-bottom: 16px;
+}
+
+div >>> .v-expansion-panels .v-expansion-panel {
+  background: none;
+  color: var(--cui-text-default);
+  border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.12);
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+div >>> .v-expansion-panel-header {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+div >>> .v-expansion-panel-content__wrap {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+div >>> .v-expansion-panel::before {
+  box-shadow: unset;
+}
+
+div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
+  color: rgba(var(--cui-text-default-rgb), 0.4);
+}
+
+div >>> .v-expansion-panel:not(:first-child)::after {
+  border: none;
+}
+
+div >>> .v-expansion-panels > *:last-child {
+  border: none !important;
 }
 </style>
