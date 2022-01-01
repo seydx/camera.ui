@@ -92,6 +92,7 @@ export const routes = [
         requiredLevel: ['cameras:access'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -112,6 +113,7 @@ export const routes = [
         requiredLevel: ['cameras:access'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -128,6 +130,7 @@ export const routes = [
         requiredLevel: ['recordings:access'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -148,6 +151,7 @@ export const routes = [
         requiredLevel: ['notifications:access'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -189,6 +193,7 @@ export const routes = [
         requiredLevel: ['admin'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -209,6 +214,7 @@ export const routes = [
         requiredLevel: ['admin'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,
@@ -229,6 +235,7 @@ export const routes = [
         requiredLevel: ['admin'],
       },
       config: {
+        fixedNavbar: true,
         showFooter: true,
         showNavbar: true,
         showSidebar: true,

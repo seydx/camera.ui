@@ -483,7 +483,7 @@ export default {
   transform: translate(-50%, -50%);
   color: rgba(var(--cui-text-default-rgb), 0.03);
   font-weight: bolder;
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .grid-stack {

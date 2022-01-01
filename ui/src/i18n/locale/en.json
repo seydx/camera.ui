@@ -304,6 +304,8 @@
     "remove_all_confirm": "Confirm remove all",
     "remove_all_confirm_text": "After clicking 'Remove all' all stored @ will be irrevocably deleted. Are you sure?",
     "remove_camera": "Remove Camera",
+    "remove_camera_confirm_text": "Do you really want to delete the camera '@'?",
+    "remove_camera_confirm_text_homebridge": "Do you really want to delete the camera '@'? This will also remove the camera from Homebridge!",
     "removed": "removed",
     "reorder_queue_size": "Reorder Queue Size",
     "reorder_queue_size_info": "Packets may be received out of order, so before they can be passed onwards, they need to be reordered. Default jitter buffer size is 500. This option allows you to specify it manually. Higher values will lead to greater latency. Only applicable for reception over UDP (-reorder_queue_size).",

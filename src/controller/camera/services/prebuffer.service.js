@@ -37,6 +37,7 @@ class PrebufferService {
   parsers = {};
 
   cameraState = true;
+  restartTimer = null;
 
   constructor(camera, mediaService, socket) {
     //log.debug('Initializing camera prebuffering', camera.name);
@@ -50,7 +51,7 @@ class PrebufferService {
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
-    this.ffmpegInput = camera.videoConfig.source;
+    this.ffmpegInput = cameraUtils.generateInputSource(camera.videoConfig);
 
     //todo: for reconfiguring during runtime
     //this.restart();
@@ -75,7 +76,17 @@ class PrebufferService {
         return;
       }
 
-      this.prebufferSession = await this.startPrebufferSession();
+      this.prebufferSession = await this.#startPrebufferSession();
+
+      const midnight = this.#millisUntilMidnight();
+      const timer = midnight + 2 * 60 * 60 * 1000;
+
+      log.info(`Prebuffering scheduled for restart at 2AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
+
+      this.restartTimer = setTimeout(() => {
+        log.info('Sheduled restart of prebuffering is executed...', this.cameraName);
+        this.restart();
+      }, timer);
     } catch (error) {
       if (error) {
         log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
@@ -101,6 +112,8 @@ class PrebufferService {
     this.events.removeAllListeners();
     this.watchdog = null;
     this.parsers = {};
+    this.cameraState = true;
+    this.restartTimer = null;
   }
 
   stop(killed) {
@@ -113,16 +126,22 @@ class PrebufferService {
         clearTimeout(this.watchdog);
       }
 
+      if (this.restartTimer) {
+        clearTimeout(this.restartTimer);
+        this.restartTimer = null;
+      }
+
       this.prebufferSession.kill();
     }
   }
 
   restart(killed) {
+    log.info('Restart prebuffering..', this.cameraName);
     this.stop(killed);
     setTimeout(() => this.start(), 10000);
   }
 
-  async startPrebufferSession() {
+  async #startPrebufferSession() {
     if (this.prebufferSession) {
       return this.prebufferSession;
     }
@@ -137,6 +156,18 @@ class PrebufferService {
     let probeTimedOut = this.#mediaService.codecs.timedout;
 
     const ffmpegInput = ['-hide_banner', '-loglevel', 'error', '-fflags', '+genpts', ...this.ffmpegInput.split(/\s+/)];
+
+    if (this.#camera.videoConfig.mapvideo) {
+      ffmpegInput.push('-map', this.#camera.videoConfig.mapvideo);
+    }
+
+    if (this.#camera.videoConfig.videoFilter) {
+      ffmpegInput.push('-filter:v', this.#camera.videoConfig.videoFilter);
+    }
+
+    if (this.#camera.videoConfig.mapaudio) {
+      ffmpegInput.push('-map', this.#camera.videoConfig.mapaudio);
+    }
 
     const audioArguments = [];
 
@@ -203,7 +234,7 @@ class PrebufferService {
       mpegts: cameraUtils.createMpegTsParser(videoArguments, audioArguments),
     };
 
-    const session = await this.startRebroadcastSession(this.#videoProcessor, ffmpegInput, {
+    const session = await this.#startRebroadcastSession(this.#videoProcessor, ffmpegInput, {
       parsers: this.parsers,
     });
 
@@ -274,7 +305,7 @@ class PrebufferService {
         const eventName = container + '-data';
         const prebufferContainer = this.prebuffers[container];
 
-        const { server, port } = await this.createRebroadcaster({
+        const { server, port } = await this.#createRebroadcaster({
           connect: (writeData, destroy) => {
             server.close();
             const now = Date.now();
@@ -321,7 +352,21 @@ class PrebufferService {
       const container = options?.container || 'mpegts';
       const url = `tcp://127.0.0.1:${await createContainerServer(container)}`;
 
-      const arguments_ = ['-f', container, '-i', url];
+      let available = 0;
+      const now = Date.now();
+
+      for (const prebuffer of this.prebuffers[container]) {
+        if (prebuffer.time < now - requestedPrebuffer) {
+          continue;
+        }
+
+        for (const chunk of prebuffer.chunk.chunks) {
+          available += chunk.length;
+        }
+      }
+
+      const length = Math.max(500000, available).toString();
+      const arguments_ = ['-analyzeduration', '0', '-probesize', length, '-f', container, '-i', url];
 
       if (options?.ffmpegInputArgs) {
         arguments_.unshift(...options.ffmpegInputArgs);
@@ -337,7 +382,7 @@ class PrebufferService {
     }
   }
 
-  async createRebroadcaster(options) {
+  async #createRebroadcaster(options) {
     const server = createServer((socket) => {
       let first = true;
 
@@ -380,7 +425,7 @@ class PrebufferService {
     };
   }
 
-  async startRebroadcastSession(videoProcessor, ffmpegInput, options) {
+  async #startRebroadcastSession(videoProcessor, ffmpegInput, options) {
     const events = new EventEmitter();
 
     let isActive = true;
@@ -488,6 +533,15 @@ class PrebufferService {
       cp,
       ffmpegInputs,
     };
+  }
+
+  #millisUntilMidnight() {
+    const midnight = new Date();
+    midnight.setHours(24);
+    midnight.setMinutes(0);
+    midnight.setSeconds(0);
+    midnight.setMilliseconds(0);
+    return midnight.getTime() - Date.now();
   }
 
   async #pingCamera() {

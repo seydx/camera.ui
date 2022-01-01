@@ -305,6 +305,8 @@
     "remove_all_confirm": "Alles löschen bestätigen",
     "remove_all_confirm_text": "Nach dem Klicken auf 'Alles löschen' werden alle @ unwiederruflich gelöscht. Sind Sie sicher?",
     "remove_camera": "Kamera löschen",
+    "remove_camera_confirm_text": "Wollen Sie die Kamera '@' wirklich löschen?",
+    "remove_camera_confirm_text_homebridge": "Wollen Sie die Kamera '@' wirklich löschen? Dadurch wird die Kamera auch aus Homebridge entfernt!",
     "removed": "gelöscht",
     "reorder_queue_size": "Größe der Warteschlange",
     "reorder_queue_size_info": "Packets may be received out of order, so before they can be passed onwards, they need to be reordered. Default jitter buffer size is 500. This option allows you to specify it manually. Higher values will lead to greater latency. Only applicable for reception over UDP (-reorder_queue_size).",

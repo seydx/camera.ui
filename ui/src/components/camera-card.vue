@@ -8,7 +8,7 @@
     v-card.video-card.card.tw-flex.tw-flex-col.fill-height.tw-relative(ref="videoPlayer" :class="(blank ? 'no-radius ' : ' ') + (fullscreen ? 'tw-h-full' : '')")
 
       // Video Title (top)
-      .tw-z-10(v-if="title && titlePosition === 'top' && !fullscreen")
+      .tw-z-10(v-if="title && titlePosition === 'top' && !fullscreen" @click="$router.push(`cameras/${camera.name}`)")
         v-card-title.video-card-top-title.tw-flex.tw-justify-between.tw-items-center
           span.font-weight-bold.text-truncate {{ camera.name }}
           v-badge(dot inline v-if="status" :color="loading || offline ? 'red' : 'green'")

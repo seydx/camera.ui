@@ -8,7 +8,18 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiCctv'] }}
       template(v-slot:append-outer)
-        v-icon.tw-cursor-pointer(@click="onRemoveCamera" color="error") {{ icons['mdiCloseThick'] }}
+        v-dialog(v-model="removeCameraDialog" width="500" scrollable)
+          template(v-slot:activator='{ on, attrs }')
+            v-btn(icon v-bind='attrs' v-on='on' style="margin-top: -6px;")
+              v-icon.tw-cursor-pointer(color="error") {{ icons['mdiCloseThick'] }}
+          v-card
+            v-card-title {{ $t('remove_camera') }}
+            v-divider
+            v-card-text.tw-p-7.text-default.tw-text-center {{ moduleName === 'homebridge-camera-ui' ? $t('remove_camera_confirm_text_homebridge').replace('@', camera.name) : $t('remove_camera_confirm_text').replace('@', camera.name) }}
+            v-divider
+            v-card-actions.tw-flex.tw-justify-end
+              v-btn.text-default(text @click='removeCameraDialog = false') {{ $t('cancel') }}
+              v-btn(color='var(--cui-primary)' text @click='onRemoveCamera') {{ $t('remove') }}
 
     AddCamera(@add="cameraAdded")
 
@@ -525,6 +536,8 @@ export default {
     return {
       env: '',
       panel: {},
+
+      removeCameraDialog: false,
 
       icons: {
         mdiAlert,

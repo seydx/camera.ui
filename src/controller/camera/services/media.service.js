@@ -22,7 +22,7 @@ class MediaService {
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
-    this.ffmpegInput = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
+    this.ffmpegInput = camera.videoConfig.source;
 
     this.codecs = {
       probe: false,

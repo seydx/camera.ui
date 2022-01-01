@@ -466,8 +466,6 @@ class Database {
         videoConfig: cam.videoConfig,
       };
 
-      camera.videoConfig.source = `-i ${camera.videoConfig?.source.split('-i ')[1]}`;
-
       const cameraExists = await CamerasSettings.find({ name: cam.name }).value();
 
       await (cameraExists ? Cameras.find({ name: cam.name }).assign(camera).write() : Cameras.push(camera).write());

@@ -1,5 +1,6 @@
 'use-strict';
 
+const cameraUtils = require('../utils/camera.utils');
 const { spawn } = require('child_process');
 
 const { ConfigService } = require('../../../services/config/config.service');
@@ -28,28 +29,16 @@ class StreamService {
 
   reconfigure(camera, prebufferService, mediaService, sessionService, socket) {
     this.#camera = camera;
-
-    if (socket) {
-      this.#socket = socket;
-    }
-
-    if (sessionService) {
-      this.#sessionService = sessionService;
-    }
-
-    if (mediaService) {
-      this.#mediaService = mediaService;
-    }
-
-    if (prebufferService) {
-      this.#prebufferService = prebufferService;
-    }
+    this.#socket = socket;
+    this.#sessionService = sessionService;
+    this.#mediaService = mediaService;
+    this.#prebufferService = prebufferService;
 
     this.cameraName = camera.name;
     this.debug = camera.videoConfig.debug;
 
     this.streamOptions = {
-      source: camera.videoConfig.source,
+      source: cameraUtils.generateInputSource(camera.videoConfig),
       ffmpegOptions: {
         '-s': `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
         '-b:v': `${camera.videoConfig.maxBitrate}k`,
@@ -78,10 +67,6 @@ class StreamService {
         '-ac': '1',
         '-b:a': '128k',
       };
-
-      if (camera.videoConfig.mapaudio) {
-        this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapaudio;
-      }
     }
   }
 
@@ -122,14 +107,6 @@ class StreamService {
       const allowStream = this.#sessionService.requestSession();
 
       if (allowStream) {
-        const additionalFlags = [];
-
-        if (this.streamOptions.ffmpegOptions) {
-          for (const key of Object.keys(this.streamOptions.ffmpegOptions)) {
-            additionalFlags.push(key, this.streamOptions.ffmpegOptions[key]);
-          }
-        }
-
         let input = this.streamOptions.source.split(/\s+/);
 
         if (this.#prebufferService) {
@@ -138,13 +115,27 @@ class StreamService {
 
             const containerInput = await this.#prebufferService.getVideo({
               container: 'mpegts',
-              ffmpegInputArgs: ['-analyzeduration', '0', '-probesize', '500000'],
             });
 
             input = containerInput;
+
+            delete this.streamOptions.ffmpegOptions['-map'];
+            delete this.streamOptions.ffmpegOptions['-filter:v'];
           } catch (error) {
             log.warn(`Can not access rebroadcast stream, skipping: ${error}`, this.cameraName);
           }
+        }
+
+        const additionalFlags = [];
+
+        if (this.streamOptions.ffmpegOptions) {
+          for (const key of Object.keys(this.streamOptions.ffmpegOptions)) {
+            additionalFlags.push(key, this.streamOptions.ffmpegOptions[key]);
+          }
+        }
+
+        if (this.#camera.videoConfig.mapaudio) {
+          additionalFlags.push('-map', this.#camera.videoConfig.mapaudio);
         }
 
         const spawnOptions = [

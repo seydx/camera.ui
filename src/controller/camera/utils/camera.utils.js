@@ -162,30 +162,12 @@ module.exports = {
   },
 
   createMpegTsParser: function (vcodec, acodec) {
-    let pat;
-    let pmt;
-
     return {
       container: 'mpegts',
       outputArguments: [...vcodec, ...acodec, '-f', 'mpegts'],
       parse: this.createLengthParser(188, (concat) => {
         if (concat[0] != 0x47) {
           throw new Error('Invalid sync byte in mpeg-ts packet. Terminating stream.');
-        }
-
-        if (pat && pmt) {
-          return;
-        }
-
-        const pid = ((concat[1] & 0x1f) << 8) | concat[2];
-
-        if (pid === 0) {
-          const tableId = concat[5];
-          if (tableId === 0) {
-            pat = concat.slice(0, 188);
-          } else if (tableId === 2) {
-            pmt = concat.slice(0, 188);
-          }
         }
       }),
       findSyncFrame(streamChunks) {
@@ -217,5 +199,41 @@ module.exports = {
         return findSyncFrame(streamChunks);
       },
     };
+  },
+
+  generateInputSource: function (videoConfig) {
+    let source = videoConfig.source;
+
+    if (source) {
+      if (videoConfig.readRate) {
+        source = `-re ${source}`;
+      }
+
+      if (videoConfig.stimeout > 0) {
+        source = `-stimeout ${videoConfig.stimeout * 10000000} ${source}`;
+      }
+
+      if (videoConfig.maxDelay >= 0) {
+        source = `-max_delay ${videoConfig.maxDelay} ${source}`;
+      }
+
+      if (videoConfig.reorderQueueSize >= 0) {
+        source = `-reorder_queue_size ${videoConfig.reorderQueueSize} ${source}`;
+      }
+
+      if (videoConfig.probeSize >= 32) {
+        source = `-probesize ${videoConfig.probeSize} ${source}`;
+      }
+
+      if (videoConfig.analyzeDuration >= 0) {
+        source = `-analyzeduration ${videoConfig.analyzeDuration} ${source}`;
+      }
+
+      if (videoConfig.rtspTransport) {
+        source = `-rtsp_transport ${videoConfig.rtspTransport} ${source}`;
+      }
+    }
+
+    return source;
   },
 };

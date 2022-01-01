@@ -175,23 +175,9 @@ class ConfigService {
   static writeToConfig(target, config) {
     if (config) {
       if (ConfigService.configJson[target]) {
-        if (target === 'cameras') {
-          config = config.map((camera) => {
-            camera.videoConfig.source = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
-            return camera;
-          });
-        }
-
         ConfigService.configJson[target] = config;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else if (!target) {
-        if (config.cameras) {
-          config.cameras = config.cameras.map((camera) => {
-            camera.videoConfig.source = `-i ${camera.videoConfig.source.split('-i ')[1]}`;
-            return camera;
-          });
-        }
-
         ConfigService.configJson = config;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else {
@@ -332,38 +318,6 @@ class ConfigService {
           }
         } else {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
-        }
-
-        if (camera.videoConfig.source) {
-          if (camera.videoConfig.readRate) {
-            camera.videoConfig.source = `-re ${camera.videoConfig.source}`;
-          }
-
-          if (camera.videoConfig.stimeout > 0) {
-            camera.videoConfig.source = `-stimeout ${camera.videoConfig.stimeout * 10000000} ${
-              camera.videoConfig.source
-            }`;
-          }
-
-          if (camera.videoConfig.maxDelay >= 0) {
-            camera.videoConfig.source = `-max_delay ${camera.videoConfig.maxDelay} ${camera.videoConfig.source}`;
-          }
-
-          if (camera.videoConfig.reorderQueueSize >= 0) {
-            camera.videoConfig.source = `-reorder_queue_size ${camera.videoConfig.reorderQueueSize} ${camera.videoConfig.source}`;
-          }
-
-          if (camera.videoConfig.probeSize >= 32) {
-            camera.videoConfig.source = `-probesize ${camera.videoConfig.probeSize} ${camera.videoConfig.source}`;
-          }
-
-          if (camera.videoConfig.analyzeDuration >= 0) {
-            camera.videoConfig.source = `-analyzeduration ${camera.videoConfig.analyzeDuration} ${camera.videoConfig.source}`;
-          }
-
-          if (camera.videoConfig.rtspTransport) {
-            camera.videoConfig.source = `-rtsp_transport ${camera.videoConfig.rtspTransport} ${camera.videoConfig.source}`;
-          }
         }
 
         //validate some required parameter
