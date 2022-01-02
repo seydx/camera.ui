@@ -298,12 +298,9 @@ class Socket {
     try {
       const cpuLoad = await systeminformation.currentLoad();
 
-      let time = new Date();
-      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
-
       Socket.#cpuLoadHistory = Socket.#cpuLoadHistory.slice(-60);
       Socket.#cpuLoadHistory.push({
-        time: time,
+        time: new Date(),
         value: cpuLoad ? cpuLoad.currentLoad : 0,
       });
     } catch (error) {
@@ -321,12 +318,9 @@ class Socket {
     try {
       const cpuTemperatureData = await systeminformation.cpuTemperature();
 
-      let time = new Date();
-      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
-
       Socket.#cpuTempHistory = Socket.#cpuTempHistory.slice(-60);
       Socket.#cpuTempHistory.push({
-        time: time,
+        time: new Date(),
         value: cpuTemperatureData ? cpuTemperatureData.main : 0,
       });
     } catch (error) {
@@ -345,12 +339,9 @@ class Socket {
       const mem = await systeminformation.mem();
       const memoryFreePercent = mem ? ((mem.total - mem.available) / mem.total) * 100 : 50;
 
-      let time = new Date();
-      time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
-
       Socket.#memoryUsageHistory = Socket.#memoryUsageHistory.slice(-60);
       Socket.#memoryUsageHistory.push({
-        time: time,
+        time: new Date(),
         value: memoryFreePercent,
         available: mem ? (mem.available / 1024 / 1024 / 1024).toFixed(2) : 4,
         total: mem ? (mem.total / 1024 / 1024 / 1024).toFixed(2) : 8,

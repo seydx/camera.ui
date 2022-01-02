@@ -424,7 +424,7 @@ exports.handleFragmentsRequests = async function* (camera) {
       ffmpegInput = [];
       ffmpegInput.push(...input);
     } catch (error) {
-      log.warn(`Can not access prebuffered video, skipping: ${error}`, camera.name, 'ffmpeg');
+      log.warn(`Can not access prebuffer stream, skipping: ${error}`, camera.name, 'ffmpeg');
     }
   }
 

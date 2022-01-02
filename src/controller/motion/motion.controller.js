@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const Bunyan = require('bunyan');
 const EscapeRegExp = require('lodash.escaperegexp');
 const { FileSystem, FtpSrv } = require('ftp-srv');
@@ -15,6 +16,20 @@ const { LoggerService } = require('../../services/logger/logger.service');
 const { Database } = require('../../api/database');
 
 const { log } = LoggerService;
+
+const toDotNot = (input, parentKey) =>
+  // eslint-disable-next-line unicorn/no-array-reduce, unicorn/prefer-object-from-entries
+  Object.keys(input || {}).reduce((accumulator, key) => {
+    const value = input[key];
+    const outputKey = parentKey ? `${parentKey}.${key}` : `${key}`;
+
+    // NOTE: remove `&& (!Array.isArray(value) || value.length)` to exclude empty arrays from the output
+    if (value && typeof value === 'object' && (!Array.isArray(value) || value.length > 0)) {
+      return { ...accumulator, ...toDotNot(value, outputKey) };
+    }
+
+    return { ...accumulator, [outputKey]: value };
+  }, {});
 
 class MotionController {
   static #controller;
@@ -191,10 +206,10 @@ class MotionController {
       });
     });
 
-    MotionController.mqttClient.on('message', async (topic, message) => {
+    MotionController.mqttClient.on('message', async (topic, data) => {
       let result = {
         error: true,
-        message: `Malformed MQTT message ${message.toString()} (${topic})`,
+        message: `Malformed MQTT message ${data.toString()} (${topic})`,
       };
 
       let cameraName;
@@ -202,30 +217,72 @@ class MotionController {
       const cameraMqttConfig = ConfigService.ui.topics.get(topic);
 
       if (cameraMqttConfig) {
-        message = message.toString();
-
+        data = data.toString();
         cameraName = cameraMqttConfig.camera;
-        let triggerType = cameraMqttConfig.motion ? 'motion' : 'doorbell';
 
-        let state =
-          triggerType === 'doorbell'
-            ? true
-            : cameraMqttConfig.reset
-            ? message === cameraMqttConfig.motionResetMessage
-              ? false
-              : undefined
-            : message === cameraMqttConfig.motionMessage
-            ? true
-            : message === cameraMqttConfig.motionResetMessage
-            ? false
-            : undefined;
+        let message;
+        let state;
+        let triggerType;
+
+        const triggerState = (type) => {
+          let value;
+
+          switch (type) {
+            case 'reset': {
+              value = false;
+              break;
+            }
+            case 'motion': {
+              value = true;
+              break;
+            }
+            case 'doorbell': {
+              value = true;
+              break;
+            }
+            // No default
+          }
+
+          return value;
+        };
+
+        if (cameraMqttConfig.reset) {
+          triggerType = 'reset';
+          message = cameraMqttConfig.motionResetMessage;
+        } else if (cameraMqttConfig.motion) {
+          triggerType = 'motion';
+          message = cameraMqttConfig.motionMessage;
+        } else {
+          triggerType = 'doorbell';
+          message = cameraMqttConfig.doorbellMessage;
+        }
+
+        try {
+          const dataObject = JSON.parse(data);
+
+          if (typeof dataObject === typeof message) {
+            const dotNotMessage = toDotNot(message);
+            const dotNotMessagePath = Object.keys(dotNotMessage)[0];
+            const dotNotMessageResult = Object.values(dotNotMessage)[0];
+            const pathExist = _.has(dataObject, dotNotMessagePath);
+            const sameValue = _.get(dataObject, dotNotMessagePath) === dotNotMessageResult;
+
+            if (pathExist && sameValue) {
+              state = triggerState(triggerType);
+            }
+          }
+        } catch {
+          if (message === data) {
+            state = triggerState(triggerType);
+          }
+        }
 
         result =
           state !== undefined
             ? await MotionController.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
             : {
                 error: true,
-                message: `The incoming MQTT message (${message}) for the topic (${topic}) was not the same as set in config.json. Skip...`,
+                message: `The incoming MQTT message (${data.toString()}) for the topic (${topic}) was not the same as set in config.json (${message.toString()}). Skip...`,
               };
       } else {
         result = {

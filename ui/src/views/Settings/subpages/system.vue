@@ -17,7 +17,7 @@
       template(v-slot:append-outer)
         v-dialog(v-model="updateDialog" width="600" scrollable @click:outside="closeUpdateDialog" @keydown="closeUpdateDialog")
           template(v-slot:activator='{ on, attrs }')
-            v-btn.tw-text-white(:loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
+            v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingSave" :loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
               v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") {{ icons['mdiUpdate'] }}
           v-card
             v-card-title {{ $t('release_notes') }}
@@ -33,7 +33,7 @@
 
     v-dialog(v-model="restartDialog" width="500" scrollable)
       template(v-slot:activator='{ on, attrs }')
-        v-btn.tw-text-white(:loading="loadingRestart" block color="success" v-bind='attrs' v-on='on') {{ $t('restart') }}
+        v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingUpdate" block color="success" v-bind='attrs' v-on='on') {{ $t('restart') }}
       v-card
         v-card-title {{ $t('restart') }}
         v-divider
@@ -45,7 +45,7 @@
 
     v-dialog(v-model="resetDialog" width="500" scrollable)
       template(v-slot:activator='{ on, attrs }')
-        v-btn.tw-text-white.tw-mt-2(:loading="loadingReset" block color="error" v-bind='attrs' v-on='on') {{ $t('reset') }}
+        v-btn.tw-text-white.tw-mt-2(:disabled="loadingRestart || loadingUpdate || loadingSave" :loading="loadingReset" block color="error" v-bind='attrs' v-on='on') {{ $t('reset') }}
       v-card
         v-card-title {{ $t('reset') }}
         v-divider
@@ -64,7 +64,7 @@
       label.form-input-label {{ $t('last_updated') }}
       span.tw-text-right.tw-text-green-500 {{ dbFile.mtime }}
 
-    v-btn.tw-text-white(:loading="loadingDb" block color="success" @click="onDownloadDb") {{ $t('download') }}
+    v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingSave" :loading="loadingDb" block color="success" @click="onDownloadDb") {{ $t('download') }}
 
     v-divider.tw-mt-4.tw-mb-8
 
@@ -138,8 +138,8 @@
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!httpStatus" block color="error" @click="onRestartHttp(false)") {{ $t('stop') }}
-          v-btn.tw-text-white(:disabled="!config.http.active || !config.http.port" :loading="loadingRestartHttp" block color="success" @click="onRestartHttp(true)") {{ $t('restart') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!httpStatus || loadingRestart" block color="error" @click="onRestartHttp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.http.active || !config.http.port || loadingRestart || loadingSave" :loading="loadingRestartHttp" block color="success" @click="onRestartHttp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
@@ -165,8 +165,8 @@
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiFindReplace'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!smtpStatus" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
-          v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!smtpStatus || loadingRestart" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port || loadingRestart | loadingSave" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
@@ -187,8 +187,8 @@
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!ftpStatus" block color="error" @click="onRestartFtp(false)") {{ $t('stop') }}
-          v-btn.tw-text-white(:disabled="!config.ftp.active || !config.ftp.port" :loading="loadingRestartFtp" block color="success" @click="onRestartFtp(true)") {{ $t('restart') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!ftpStatus || loadingRestart" block color="error" @click="onRestartFtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.ftp.active || !config.ftp.port || loadingRestart || loadingSave" :loading="loadingRestartFtp" block color="success" @click="onRestartFtp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
@@ -214,8 +214,8 @@
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!mqttStatus" block color="error" @click="onRestartMqtt(false)") {{ $t('stop') }}
-          v-btn.tw-text-white(:disabled="!config.mqtt.active || !config.mqtt.host || !config.mqtt.port" :loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt(true)") {{ $t('restart') }}
+          v-btn.tw-text-white.tw-mb-3(:disabled="!mqttStatus || loadingRestart" block color="error" @click="onRestartMqtt(false)") {{ $t('stop') }}
+          v-btn.tw-text-white(:disabled="!config.mqtt.active || !config.mqtt.host || !config.mqtt.port || loadingRestart || loadingSave" :loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt(true)") {{ $t('restart') }}
 
 </template>
 
@@ -299,6 +299,10 @@ export default {
   }),
 
   beforeRouteLeave(to, from, next) {
+    if (this.loadingRestart || this.loadingUpdate || this.losdingReset) {
+      return next(false);
+    }
+
     this.loading = true;
     this.loadingProgress = true;
     next();
@@ -472,7 +476,7 @@ export default {
       this.changelog = '';
     },
     async configWatcher() {
-      if (this.loadingRestart || this.loadingReset || this.loadingUpdate) {
+      if (this.loadingSave) {
         return;
       }
 
@@ -557,10 +561,6 @@ export default {
 
       this.loadingProgress = true;
       this.loadingReset = true;
-      this.lodingSave = true;
-      this.loadingUpdate = true;
-      this.loadingRestart = true;
-      this.loadingDb = true;
 
       try {
         await resetSettings();
@@ -574,10 +574,6 @@ export default {
 
         this.loadingReset = false;
         this.loadingProgress = false;
-        this.lodingSave = false;
-        this.loadingUpdate = false;
-        this.loadingRestart = false;
-        this.loadingDb = false;
       }
     },
     async onRestart() {
@@ -589,10 +585,6 @@ export default {
 
       this.loadingProgress = true;
       this.loadingRestart = true;
-      this.loadingSave = true;
-      this.loadingReset = true;
-      this.loadingUpdate = true;
-      this.loadingDb = true;
 
       //this.$toast.success(this.$t('system_restart_initiated'));
 
@@ -605,10 +597,6 @@ export default {
 
         this.loadingRestart = false;
         this.loadingProgress = false;
-        this.loadingSave = false;
-        this.loadingReset = false;
-        this.loadingUpdate = false;
-        this.loadingDb = false;
       }
     },
     async onRestartFtp(restart) {
@@ -616,6 +604,7 @@ export default {
         return;
       }
 
+      this.loadingProgress = true;
       this.loadingRestartFtp = true;
 
       try {
@@ -630,12 +619,14 @@ export default {
       }
 
       this.loadingRestartFtp = false;
+      this.loadingProgress = false;
     },
     async onRestartHttp(restart) {
       if (this.loadingRestartHttp) {
         return;
       }
 
+      this.loadingProgress = true;
       this.loadingRestartHttp = true;
 
       try {
@@ -649,6 +640,7 @@ export default {
         this.$toast.error(err.message);
       }
 
+      this.loadingProgress = false;
       this.loadingRestartHttp = false;
     },
     async onRestartMqtt(restart) {
@@ -656,6 +648,7 @@ export default {
         return;
       }
 
+      this.loadingProgress = true;
       this.loadingRestartMqtt = true;
 
       try {
@@ -669,6 +662,7 @@ export default {
         this.$toast.error(err.message);
       }
 
+      this.loadingProgress = false;
       this.loadingRestartMqtt = false;
     },
     async onRestartSmtp(restart) {
@@ -676,6 +670,7 @@ export default {
         return;
       }
 
+      this.loadingProgress = true;
       this.loadingRestartSmtp = true;
 
       try {
@@ -689,6 +684,7 @@ export default {
         this.$toast.error(err.message);
       }
 
+      this.loadingProgress = false;
       this.loadingRestartSmtp = false;
     },
     async onSave() {
@@ -713,16 +709,12 @@ export default {
     async onUpdateRestart() {
       this.updateDialog = false;
 
-      if (this.loadingUpdate || this.loadingRestart) {
+      if (this.loadingUpdate) {
         return;
       }
 
       this.loadingProgress = true;
       this.loadingUpdate = true;
-      this.loadingRestart = true;
-      this.loadingSave = true;
-      this.loadingReset = true;
-      this.loadingDb = true;
 
       try {
         this.$toast.success(this.$t('system_update_initiated'));
@@ -733,6 +725,7 @@ export default {
         await timeout(500);
 
         this.$toast.success(this.$t('system_restart_initiated'));
+        this.loadingRestart = true;
         await restartSystem();
         localStorage.setItem('restarted', true);
         //this.$toast.success(this.$t('system_successfully_restarted'));
@@ -747,9 +740,6 @@ export default {
         this.loadingProgress = false;
         this.loadingUpdate = false;
         this.loadingRestart = false;
-        this.loadingSave = false;
-        this.loadingReset = false;
-        this.loadingDb = false;
       }
     },
   },

@@ -92,7 +92,9 @@ export default {
           mode: 'single',
           callbacks: {
             title: (tooltipItems) => {
-              const time = new Date(tooltipItems[0].xLabel).toISOString().split('T');
+              let time = new Date(tooltipItems[0].xLabel);
+              time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+              time = time.toISOString().split('T');
               return `${time[0]} - ${time[1].split('.')[0]}`;
             },
             label: (tooltipItems) => {
@@ -159,7 +161,9 @@ export default {
           mode: 'single',
           callbacks: {
             title: (tooltipItems) => {
-              const time = new Date(tooltipItems[0].xLabel).toISOString().split('T');
+              let time = new Date(tooltipItems[0].xLabel);
+              time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+              time = time.toISOString().split('T');
               return `${time[0]} - ${time[1].split('.')[0]}`;
             },
             label: (tooltipItems) => {
@@ -226,7 +230,9 @@ export default {
           mode: 'single',
           callbacks: {
             title: (tooltipItems) => {
-              const time = new Date(tooltipItems[0].xLabel).toISOString().split('T');
+              let time = new Date(tooltipItems[0].xLabel);
+              time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+              time = time.toISOString().split('T');
               return `${time[0]} - ${time[1].split('.')[0]}`;
             },
             label: (tooltipItems) => {

@@ -89,9 +89,9 @@ class StreamService {
 
         let input = this.streamOptions.source.split(/\s+/);
 
-        if (this.#prebufferService) {
+        if (this.#camera.prebuffering && this.#prebufferService) {
           try {
-            log.debug('Setting rebroadcast stream as input', this.cameraName);
+            log.debug('Setting prebuffer stream as input', this.cameraName);
 
             const containerInput = await this.#prebufferService.getVideo({
               container: 'mpegts',
@@ -102,7 +102,7 @@ class StreamService {
             delete this.streamOptions.ffmpegOptions['-map'];
             delete this.streamOptions.ffmpegOptions['-filter:v'];
           } catch (error) {
-            log.warn(`Can not access rebroadcast stream, skipping: ${error}`, this.cameraName);
+            log.warn(`Can not access prebuffer stream, skipping: ${error}`, this.cameraName);
           }
         }
 
