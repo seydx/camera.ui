@@ -20,6 +20,14 @@
     v-file-input.tw-mt-4(id="backup-file" ref="file-input-backup" chips accept="application/gzip, .tar, .tar.gz" :label="$t('backup_file')" solo)
     v-btn.tw-text-white(:loading="loadingBackupUl" color="var(--cui-primary)" @click="restoreBackup") {{ $t('upload_backup_archive') }}
 
+    v-divider.tw-mt-4.tw-mb-8
+
+    .page-subtitle.tw-mt-8 {{ $t('backup_shedule') }}
+    .page-subtitle-info {{ $t('automated_backup') }}
+
+    p.tw-mt-4.tw-mb-8 {{ $t('backup_info_shedule') }}
+
+    span.text-muted.tw-italic coming soon
 </template>
 
 <script>

@@ -10,19 +10,12 @@ const { log } = LoggerService;
 
 class MediaService {
   #camera;
-  #videoProcessor = ConfigService.ui.options.videoProcessor;
 
   constructor(camera) {
     //log.debug('Initializing camera probe', camera.name);
-    this.reconfigure(camera);
-  }
 
-  reconfigure(camera) {
     this.#camera = camera;
-
     this.cameraName = camera.name;
-    this.debug = camera.videoConfig.debug;
-    this.ffmpegInput = camera.videoConfig.source;
 
     this.codecs = {
       probe: false,
@@ -35,11 +28,14 @@ class MediaService {
   async probe() {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
-      log.debug(`Probe stream: ${this.#videoProcessor} ${this.ffmpegInput}`, this.cameraName);
+      log.debug(
+        `Probe stream: ${ConfigService.ui.options.videoProcessor} ${this.#camera.videoConfig.source}`,
+        this.cameraName
+      );
 
-      const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.ffmpegInput.split(/\s+/)];
+      const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.#camera.videoConfig.source.split(/\s+/)];
 
-      let cp = spawn(this.#videoProcessor, arguments_, {
+      let cp = spawn(ConfigService.ui.options.videoProcessor, arguments_, {
         env: process.env,
       });
 

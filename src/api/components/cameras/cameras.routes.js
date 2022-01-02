@@ -368,4 +368,48 @@ exports.routesConfig = (app) => {
     PermissionMiddleware.onlyMasterCanDoThisAction,
     CamerasController.stopPrebuffering,
   ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/motion/start:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Trigger motion
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/motion/start', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.startMotion,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/motion/reset:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Reset motion
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/motion/reset', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.resetMotion,
+  ]);
 };

@@ -150,9 +150,37 @@
         v-expansion-panel
           v-expansion-panel-header 
             div
-              .page-subtitle {{ $t('mqtt') }}
-              .page-header-info.tw-mt-1 MQTT Topic Settings for the MQTT Client
+              .page-subtitle Alarm
+              .page-header-info.tw-mt-1 Motion detection settings
           v-expansion-panel-content
+            h4.tw-my-3 Email
+
+            label.form-input-label Send Email to
+            v-text-field(:value="`${camera.name.replace(/ /g, '+')}@camera.ui`" persistent-hint hint="SMTP server must be enabled to trigger a movement via email!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            h4.tw-my-3 HTTP
+
+            label.form-input-label Motion
+            v-text-field(:value="`http://${hostname}:${config.http.port}/motion?${encodeURIComponent(camera.name)}`" persistent-hint hint="HTTP server must be enabled to trigger a movement via HTTP call!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            label.form-input-label Motion Reset
+            v-text-field(:value="`http://${hostname}:${config.http.port}/reset?${encodeURIComponent(camera.name)}`" persistent-hint hint="HTTP server must be enabled to reset a movement via HTTP call!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            h4.tw-my-3 FTP
+
+            label.form-input-label FTP Absolute Path
+            v-text-field(:value="camera.name" persistent-hint hint="FTP server must be enabled to trigger a movement via file upload!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            h4.tw-my-3 {{ $t('mqtt') }}
+
             label.form-input-label Motion Topic
             v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
@@ -172,6 +200,9 @@
             v-text-field(v-model="cam.mqtt.motionResetMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            v-btn.tw-text-white(:loading="prebufferingStates[cam.name].motionLoading" block color="success" @click="triggerMotion(true)") Trigger Motion
+            v-btn.tw-text-white.tw-mt-3(:loading="prebufferingStates[cam.name].motionLoading" block color="error" @click="triggerMotion(false)") Reset Motion
 
         v-expansion-panel(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
           v-expansion-panel-header
@@ -519,7 +550,7 @@ import {
   mdiVideoImage,
 } from '@mdi/js';
 
-import { removeCamera, restartPrebuffering, stopPrebuffering } from '@/api/cameras.api';
+import { removeCamera, restartPrebuffering, startMotion, stopPrebuffering, resetMotion } from '@/api/cameras.api';
 import { changeConfig, getConfig } from '@/api/config.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
@@ -571,6 +602,7 @@ export default {
       },
 
       moduleName: 'camera.ui',
+      hostname: window.location.hostname,
 
       search: null,
       labels: ['Human', 'Face', 'Person', 'Body'],
@@ -654,6 +686,7 @@ export default {
           this.$set(this.prebufferingStates, camera.name, {
             state: false,
             loading: false,
+            motionLoading: false,
           });
 
           return camera;
@@ -766,21 +799,36 @@ export default {
         this.prebufferingStates[data.camera].state = data.status === 'active';
       }
     },
+    async triggerMotion(state) {
+      if (!this.camera) {
+        return this.$toast.error(this.$t('no_camera_selected'));
+      }
+
+      if (this.prebufferingStates[this.camera.name].motionLoading) {
+        return;
+      }
+
+      this.prebufferingStates[this.camera.name].motionLoading = true;
+
+      try {
+        if (state) {
+          await startMotion(this.camera.name);
+        } else {
+          await resetMotion(this.camera.name);
+        }
+        this.$toast.success(this.$t('successfull'));
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.prebufferingStates[this.camera.name].motionLoading = false;
+    },
   },
 };
 </script>
 
 <style scoped>
-.page-subtitle-info {
-  color: var(--cui-text-default);
-}
-
-.page-header-info {
-  font-size: 0.9rem !important;
-  font-weight: 500 !important;
-  color: var(--cui-text-hint);
-}
-
 div >>> .v-chip .v-chip__content {
   color: #fff !important;
 }

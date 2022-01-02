@@ -57,12 +57,14 @@
           .tw-flex.tw-content-end.tw-items-center.tw-justify-between.video-card-control(v-if="!loading && !offline")
             .tw-block.tw-p-2
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleStartStop") {{ !play ? icons['mdiPlay'] : icons['mdiPause'] }}
-            .tw-block.tw-p-2.tw-pr-0.tw-ml-auto
+            .tw-ml-auto
+            .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorReload")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
-            .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio")
+            .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio && !hideIndicatorAudio")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleVolume") {{ audio ? icons['mdiVolumeHigh'] : icons['mdiVolumeOff'] }}
-            .tw-block.tw-p-2
+            .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorFullscreen")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="toggleFullscreen") {{ !fullscreen ? icons['mdiArrowExpand'] : icons['mdiArrowCollapse'] }}
+            .tw-pr-3
 
       // Video Title (bottom)
       .tw-z-10(v-if="title && titlePosition === 'bottom' && !fullscreen")
@@ -110,6 +112,9 @@ export default {
     camera: Object,
     hideController: Boolean,
     hideNotifications: Boolean,
+    hideIndicatorAudio: Boolean,
+    hideIndicatorFullscreen: Boolean,
+    hideIndicatorReload: Boolean,
     noLink: Boolean,
     notifications: Boolean,
     refreshSnapshot: Boolean,

@@ -1,10 +1,13 @@
 <template lang="pug">
 .content.tw-h-full.tw-overflow-x-hidden
-  .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
+  .tw-flex.tw-justify-between.tw-mt-1.tw-relative.tw-z-5(style="height: 25px;")
+    .tw-ml-2.tw-text-xs.tw-font-bold.text-muted {{ $t('notifications') }}
+
+  .tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading" style="height: calc(100% - 24px - 0.25rem)")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
-  .tw-h-full(v-else)
-    .tw-text-xs.tw-pl-3.tw-pt-1.tw-font-bold.text-muted {{ $t('notifications') }}
-    .tw-py-4.tw-px-2(v-if="notifications.length")
+
+  .tw-w-full.tw-overflow-x-hidden(v-else style="height: calc(100% - 25px - 0.25rem)")
+    .tw-py-4.tw-pt-2.tw-px-2(v-if="notifications.length")
       v-row.overflow-hidden
         v-col.tw-py-1(v-for="(notification,i) in notifications" :key="notification.id" cols="12")
           v-card.tw-p-2.tw-relative(elevation="1")

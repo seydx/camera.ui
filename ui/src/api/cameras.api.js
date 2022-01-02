@@ -1,6 +1,8 @@
 import api from './index';
 
 const resource = '/cameras';
+const motion_start_resource = 'motion/start';
+const motion_reset_resource = 'motion/reset';
 const prebuffering_restart_resource = 'prebuffering/restart';
 const prebuffering_stop_resource = 'prebuffering/stop';
 const settings_resource = 'settings';
@@ -30,5 +32,9 @@ export const removeCameras = async () => await api.delete(resource);
 export const restartPrebuffering = async (cameraName) =>
   await api.put(`${resource}/${cameraName}/${prebuffering_restart_resource}`);
 
+export const startMotion = async (cameraName) => await api.put(`${resource}/${cameraName}/${motion_start_resource}`);
+
 export const stopPrebuffering = async (cameraName) =>
   await api.put(`${resource}/${cameraName}/${prebuffering_stop_resource}`);
+
+export const resetMotion = async (cameraName) => await api.put(`${resource}/${cameraName}/${motion_reset_resource}`);

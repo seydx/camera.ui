@@ -47,7 +47,7 @@ class MotionController {
     }
 
     //used for external events
-    this.triggerMotion = async (cameraName, state) => {
+    this.triggerMotion = MotionController.triggerMotion = async (cameraName, state) => {
       let result = {
         error: true,
         message: 'Custom event could not be handled',

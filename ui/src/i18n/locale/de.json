@@ -368,6 +368,7 @@
     "still_image_source_info": "If your camera also provides a URL for a still image, that can be defined here with the same syntax as 'source'. If not set, camera.ui will grab one frame from 'source'.",
     "stop": "Stoppen",
     "stream_timeout": "Stream Zeitüberschreitung",
+    "successfull": "Erfolgreich",
     "successfully_added_camera": "Kamera wurde erfolgreich hinzugefügt",
     "successfully_changed": "Erfolgreich geändert",
     "successfully_created": "Erfolgreich erstellt",

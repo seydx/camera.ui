@@ -17,17 +17,11 @@ class StreamService {
   #sessionService;
   #mediaService;
 
-  #videoProcessor = ConfigService.ui.options.videoProcessor;
-  #interfaceDB = Database.interfaceDB;
-
   streamSession = null;
 
   constructor(camera, prebufferService, mediaService, sessionService, socket) {
     //log.debug('Initializing camera stream', camera.name);
-    this.reconfigure(camera, prebufferService, mediaService, sessionService, socket);
-  }
 
-  reconfigure(camera, prebufferService, mediaService, sessionService, socket) {
     this.#camera = camera;
     this.#socket = socket;
     this.#sessionService = sessionService;
@@ -35,29 +29,38 @@ class StreamService {
     this.#prebufferService = prebufferService;
 
     this.cameraName = camera.name;
-    this.debug = camera.videoConfig.debug;
+    this.streamOptions = {};
+  }
+
+  async configureStreamOptions() {
+    await Database.interfaceDB.read();
+
+    const Settings = await Database.interfaceDB.get('settings').get('cameras').value();
+    const cameraSetting = Settings.find((camera) => camera && camera.name === this.cameraName);
 
     this.streamOptions = {
-      source: cameraUtils.generateInputSource(camera.videoConfig),
+      source: cameraUtils.generateInputSource(this.#camera.videoConfig),
       ffmpegOptions: {
-        '-s': `${camera.videoConfig.maxWidth}x${camera.videoConfig.maxHeight}`,
-        '-b:v': `${camera.videoConfig.maxBitrate}k`,
-        '-r': camera.videoConfig.maxFPS,
+        '-s': cameraSetting?.resolution
+          ? cameraSetting.resolution
+          : `${this.#camera.videoConfig.maxWidth}x${this.#camera.videoConfig.maxHeight}`,
+        '-b:v': `${this.#camera.videoConfig.maxBitrate}k`,
+        '-r': this.#camera.videoConfig.maxFPS,
         '-bf': 0,
         '-preset:v': 'ultrafast',
         '-threads': '1',
       },
     };
 
-    if (camera.videoConfig.mapvideo) {
-      this.streamOptions.ffmpegOptions['-map'] = camera.videoConfig.mapvideo;
+    if (this.#camera.videoConfig.mapvideo) {
+      this.streamOptions.ffmpegOptions['-map'] = this.#camera.videoConfig.mapvideo;
     }
 
-    if (camera.videoConfig.videoFilter) {
-      this.streamOptions.ffmpegOptions['-filter:v'] = camera.videoConfig.videoFilter;
+    if (this.#camera.videoConfig.videoFilter) {
+      this.streamOptions.ffmpegOptions['-filter:v'] = this.#camera.videoConfig.videoFilter;
     }
 
-    if (camera.videoConfig.audio) {
+    if (cameraSetting?.audio && this.#mediaService.codecs.audio.length > 0) {
       delete this.streamOptions.ffmpegOptions['-an'];
 
       this.streamOptions.ffmpegOptions = {
@@ -67,38 +70,13 @@ class StreamService {
         '-ac': '1',
         '-b:a': '128k',
       };
-    }
-  }
+    } else {
+      delete this.streamOptions.ffmpegOptions['-codec:a'];
+      delete this.streamOptions.ffmpegOptions['-ar'];
+      delete this.streamOptions.ffmpegOptions['-ac'];
+      delete this.streamOptions.ffmpegOptions['-b:a'];
 
-  async configureStreamOptions() {
-    await this.#interfaceDB.read();
-
-    const cameraSettings = await this.#interfaceDB.get('settings').get('cameras').value();
-    const cameraSetting = cameraSettings.find((camera) => camera && camera.name === this.cameraName);
-
-    if (cameraSetting) {
-      if (cameraSetting.resolution) {
-        this.streamOptions.ffmpegOptions['-s'] = cameraSetting.resolution;
-      }
-
-      if (cameraSetting.audio) {
-        delete this.streamOptions.ffmpegOptions['-an'];
-
-        this.streamOptions.ffmpegOptions = {
-          ...this.streamOptions.ffmpegOptions,
-          '-codec:a': 'mp2',
-          '-ar': '44100',
-          '-ac': '1',
-          '-b:a': '128k',
-        };
-      } else {
-        delete this.streamOptions.ffmpegOptions['-codec:a'];
-        delete this.streamOptions.ffmpegOptions['-ar'];
-        delete this.streamOptions.ffmpegOptions['-ac'];
-        delete this.streamOptions.ffmpegOptions['-b:a'];
-
-        this.streamOptions.ffmpegOptions['-an'] = '';
-      }
+      this.streamOptions.ffmpegOptions['-an'] = '';
     }
   }
 
@@ -107,6 +85,8 @@ class StreamService {
       const allowStream = this.#sessionService.requestSession();
 
       if (allowStream) {
+        await this.configureStreamOptions();
+
         let input = this.streamOptions.source.split(/\s+/);
 
         if (this.#prebufferService) {
@@ -155,9 +135,12 @@ class StreamService {
           '-',
         ].filter((key) => key !== '');
 
-        log.debug(`Stream command: ${this.#videoProcessor} ${spawnOptions.join(' ')}`, this.cameraName);
+        log.debug(
+          `Stream command: ${ConfigService.ui.options.videoProcessor} ${spawnOptions.join(' ')}`,
+          this.cameraName
+        );
 
-        this.streamSession = spawn(this.#videoProcessor, spawnOptions, {
+        this.streamSession = spawn(ConfigService.ui.options.videoProcessor, spawnOptions, {
           env: process.env,
         });
 

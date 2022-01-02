@@ -13,13 +13,12 @@ const { ConfigService } = require('../../../services/config/config.service');
 const { log } = LoggerService;
 
 const compatibleAudio = /(aac|mp3|mp2)/;
-const prebufferDurationMs = 10000;
+const prebufferDurationMs = 15000;
 
 class PrebufferService {
   #camera;
   #socket;
   #mediaService;
-  #videoProcessor = ConfigService.ui.options.videoProcessor;
 
   prebuffers = {
     mp4: [],
@@ -41,20 +40,12 @@ class PrebufferService {
 
   constructor(camera, mediaService, socket) {
     //log.debug('Initializing camera prebuffering', camera.name);
-    this.reconfigure(camera, mediaService, socket);
-  }
 
-  reconfigure(camera, mediaService, socket) {
     this.#camera = camera;
     this.#socket = socket;
     this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
-    this.debug = camera.videoConfig.debug;
-    this.ffmpegInput = cameraUtils.generateInputSource(camera.videoConfig);
-
-    //todo: for reconfiguring during runtime
-    //this.restart();
   }
 
   async start() {
@@ -155,7 +146,14 @@ class PrebufferService {
     let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
     let probeTimedOut = this.#mediaService.codecs.timedout;
 
-    const ffmpegInput = ['-hide_banner', '-loglevel', 'error', '-fflags', '+genpts', ...this.ffmpegInput.split(/\s+/)];
+    const ffmpegInput = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-fflags',
+      '+genpts',
+      ...cameraUtils.generateInputSource(this.#camera.videoConfig).split(/\s+/),
+    ];
 
     if (this.#camera.videoConfig.mapvideo) {
       ffmpegInput.push('-map', this.#camera.videoConfig.mapvideo);
@@ -163,10 +161,6 @@ class PrebufferService {
 
     if (this.#camera.videoConfig.videoFilter) {
       ffmpegInput.push('-filter:v', this.#camera.videoConfig.videoFilter);
-    }
-
-    if (this.#camera.videoConfig.mapaudio) {
-      ffmpegInput.push('-map', this.#camera.videoConfig.mapaudio);
     }
 
     const audioArguments = [];
@@ -191,6 +185,10 @@ class PrebufferService {
     }
 
     if (audioEnabled) {
+      if (this.#camera.videoConfig.mapaudio) {
+        ffmpegInput.push('-map', this.#camera.videoConfig.mapaudio);
+      }
+
       if (incompatibleAudio && acodec !== 'libfdk_aac') {
         log.warn(
           `Incompatible audio stream detected ${probeAudio}, transcoding with "libfdk_aac"..`,
@@ -234,7 +232,7 @@ class PrebufferService {
       mpegts: cameraUtils.createMpegTsParser(videoArguments, audioArguments),
     };
 
-    const session = await this.#startRebroadcastSession(this.#videoProcessor, ffmpegInput, {
+    const session = await this.#startRebroadcastSession(ConfigService.ui.options.videoProcessor, ffmpegInput, {
       parsers: this.parsers,
     });
 
@@ -299,7 +297,9 @@ class PrebufferService {
     if (this.prebufferSession) {
       const requestedPrebuffer = options?.prebuffer || Math.max(4000, this.idrInterval || 4000) * 1.5;
 
-      log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
+      if (options?.prebuffer) {
+        log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);
+      }
 
       const createContainerServer = async (container) => {
         const eventName = container + '-data';
@@ -482,7 +482,10 @@ class PrebufferService {
       arguments_.push(...parser.outputArguments, `tcp://127.0.0.1:${serverPort}`);
     }
 
-    log.debug(`Prebuffering command: ${this.#videoProcessor} ${arguments_.join(' ')}`, this.cameraName);
+    log.debug(
+      `Prebuffering command: ${ConfigService.ui.options.videoProcessor} ${arguments_.join(' ')}`,
+      this.cameraName
+    );
 
     const errors = [];
     const cp = spawn(videoProcessor, arguments_, {

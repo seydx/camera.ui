@@ -121,7 +121,7 @@
             .page-subtitle {{ $t('http') }}
             .page-subtitle-info.tw-mt-1 {{ $t('http_server_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+          .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
             span.tw-text-right(:class="!httpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ httpStatus ? $t('online') : $t('offline') }}
 
@@ -147,7 +147,7 @@
             .page-subtitle {{ $t('smtp') }}
             .page-subtitle-info.tw-mt-1 {{ $t('smtp_server_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+          .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
             span.tw-text-right(:class="!smtpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ smtpStatus ? $t('online') : $t('offline') }}
 
@@ -174,7 +174,7 @@
             .page-subtitle {{ $t('ftp') }}
             .page-subtitle-info.tw-mt-1 {{ $t('ftp_server_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+          .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
             span.tw-text-right(:class="!ftpStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ ftpStatus ? $t('online') : $t('offline') }}
 
@@ -196,7 +196,7 @@
             .page-subtitle {{ $t('mqtt') }}
             .page-subtitle-info.tw-mt-1 {{ $t('mqtt_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center.tw-mb-5
+          .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
             span.tw-text-right(:class="!mqttStatus ? 'tw-text-red-500' : 'tw-text-green-500'") {{ mqttStatus ? $t('online') : $t('offline') }}
 

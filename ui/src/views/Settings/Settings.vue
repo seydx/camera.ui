@@ -107,8 +107,8 @@ export default {
 }
 
 .page-subtitle {
-  font-size: 1.2rem !important;
-  font-weight: 500 !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
 }
 
 .page-item-title {
@@ -118,6 +118,12 @@ export default {
 
 .page-subtitle-info {
   font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: var(--cui-text-hint);
+}
+
+.page-header-info {
+  font-size: 0.8rem !important;
   font-weight: 500 !important;
   color: var(--cui-text-hint);
 }

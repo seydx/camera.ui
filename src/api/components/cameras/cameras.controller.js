@@ -4,6 +4,7 @@
 const CamerasModel = require('./cameras.model');
 
 const { CameraController } = require('../../../controller/camera/camera.controller');
+const { MotionController } = require('../../../controller/motion/motion.controller');
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -220,6 +221,28 @@ exports.removeAll = async (req, res) => {
   }
 };
 
+exports.resetMotion = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    MotionController.triggerMotion(camera.name, false);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 exports.restartPrebuffering = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
@@ -242,6 +265,28 @@ exports.restartPrebuffering = async (req, res) => {
 
     controller.prebuffer.restart(true);
     await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.startMotion = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    MotionController.triggerMotion(camera.name, true);
 
     res.status(204).send({});
   } catch (error) {

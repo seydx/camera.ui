@@ -3,7 +3,7 @@
   .tw-h-full.tw-w-full.tw-flex.tw-items-center.tw-justify-center(v-if="loading")
     v-progress-circular(indeterminate color="var(--cui-primary)" size="20")
   .widget.tw-h-full(v-else)
-    VideoCard(:ref="item.name" :camera="item" title titlePosition="top" status :stream="item.live" :refreshSnapshot="!item.live" hideNotifications hideController)
+    VideoCard(:ref="item.name" :camera="item" title titlePosition="top" status :stream="item.live" :refreshSnapshot="!item.live" hideNotifications hideIndicatorFullscreen)
 </template>
 
 <script>
