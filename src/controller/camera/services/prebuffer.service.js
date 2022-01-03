@@ -567,8 +567,8 @@ class PrebufferService {
     try {
       state = await Ping.status(this.#camera, 1);
     } catch (error) {
-      log.info('An error occured during pinging camera, skipping..', this.accessory.displayName);
-      log.error(error, this.accessory.displayName);
+      log.info('An error occured during pinging camera, skipping..', this.cameraName);
+      log.error(error, this.cameraName);
     }
 
     return state;
