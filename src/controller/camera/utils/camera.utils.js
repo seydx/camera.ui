@@ -1,6 +1,10 @@
 /* eslint-disable unicorn/number-literal-case */
 'use-strict';
+const { createServer } = require('net');
 const { once } = require('events');
+const { spawn } = require('child_process');
+
+const { LoggerService } = require('../../../services/logger/logger.service');
 
 function findSyncFrame(streamChunks) {
   return streamChunks;
@@ -201,35 +205,95 @@ module.exports = {
     };
   },
 
+  startFFMPegFragmetedMP4Session: async function (
+    cameraName,
+    cameraDebug,
+    videoProcessor,
+    ffmpegInput,
+    audioOutputArguments,
+    videoOutputArguments
+  ) {
+    const { log } = LoggerService;
+
+    log.debug('Start recording...', cameraName);
+
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise(async (resolve) => {
+      const server = createServer((socket) => {
+        server.close();
+
+        resolve({
+          socket,
+          cp,
+          generator: this.parseFragmentedMP4(socket),
+        });
+      });
+
+      const serverPort = await this.listenServer(server);
+      const arguments_ = [
+        '-hide_banner',
+        //'-fflags',
+        //'+genpts+igndts',
+        ...ffmpegInput,
+        '-f',
+        'mp4',
+        ...videoOutputArguments,
+        ...audioOutputArguments,
+        '-movflags',
+        'frag_keyframe+empty_moov+default_base_moof',
+        '-max_muxing_queue_size',
+        '1024',
+        'tcp://127.0.0.1:' + serverPort,
+      ];
+
+      log.debug(`Recording command: ${videoProcessor} ${arguments_.join(' ')}`, cameraName);
+
+      const cp = spawn(videoProcessor, arguments_, { env: process.env });
+
+      cp.on('exit', (code, signal) => {
+        if (code === 1) {
+          log.error(`FFmpeg recording process exited with error! (${signal})`, cameraName, 'Homebridge');
+        } else {
+          log.debug('FFmpeg recording process exited (expected)', cameraName);
+        }
+      });
+
+      if (cameraDebug) {
+        cp.stdout.on('data', (data) => log.debug(data.toString(), cameraName));
+        cp.stderr.on('data', (data) => log.debug(data.toString(), cameraName));
+      }
+    });
+  },
+
   generateInputSource: function (videoConfig) {
     let source = videoConfig.source;
 
     if (source) {
-      if (videoConfig.readRate) {
+      if (videoConfig.readRate && !source.includes('-re')) {
         source = `-re ${source}`;
       }
 
-      if (videoConfig.stimeout > 0) {
+      if (videoConfig.stimeout > 0 && !source.includes('-stimeout')) {
         source = `-stimeout ${videoConfig.stimeout * 10000000} ${source}`;
       }
 
-      if (videoConfig.maxDelay >= 0) {
+      if (videoConfig.maxDelay >= 0 && !source.includes('-max_delay')) {
         source = `-max_delay ${videoConfig.maxDelay} ${source}`;
       }
 
-      if (videoConfig.reorderQueueSize >= 0) {
+      if (videoConfig.reorderQueueSize >= 0 && !source.includes('-reorder_queue_size')) {
         source = `-reorder_queue_size ${videoConfig.reorderQueueSize} ${source}`;
       }
 
-      if (videoConfig.probeSize >= 32) {
+      if (videoConfig.probeSize >= 32 && !source.includes('-probesize')) {
         source = `-probesize ${videoConfig.probeSize} ${source}`;
       }
 
-      if (videoConfig.analyzeDuration >= 0) {
+      if (videoConfig.analyzeDuration >= 0 && !source.includes('-analyzeduration')) {
         source = `-analyzeduration ${videoConfig.analyzeDuration} ${source}`;
       }
 
-      if (videoConfig.rtspTransport) {
+      if (videoConfig.rtspTransport && !source.includes('-rtsp_transport')) {
         source = `-rtsp_transport ${videoConfig.rtspTransport} ${source}`;
       }
     }

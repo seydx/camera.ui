@@ -1,6 +1,5 @@
 'use-strict';
 
-const { createServer } = require('net');
 const fs = require('fs-extra');
 const piexif = require('piexifjs');
 const { spawn } = require('child_process');
@@ -97,81 +96,6 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
 
     ffmpeg.stdin.write(fileBuffer);
     ffmpeg.stdin.destroy();
-  });
-};
-
-const startFFMPegFragmetedMP4Session = async function (camera, ffmpegInput, audioOutArguments, videoOutArguments) {
-  log.debug('Start recording...', camera.name);
-
-  const videoProcessor = ConfigService.ui.options.videoProcessor;
-
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (resolve) => {
-    const server = createServer((socket) => {
-      server.close();
-
-      async function* generator() {
-        while (true) {
-          const header = await cameraUtils.readLength(socket, 8);
-          const length = header.readInt32BE(0) - 8;
-          const type = header.slice(4).toString();
-          const data = await cameraUtils.readLength(socket, length);
-
-          yield {
-            header,
-            length,
-            type,
-            data,
-          };
-        }
-      }
-
-      resolve({
-        socket,
-        cp,
-        generator: generator(),
-      });
-    });
-
-    const serverPort = await cameraUtils.listenServer(server);
-    const ffmpegArguments = [];
-
-    ffmpegArguments.push(
-      //'-loglevel',
-      //'error',
-      '-hide_banner',
-      ...ffmpegInput,
-      '-f',
-      'mp4',
-      ...videoOutArguments,
-      ...audioOutArguments,
-      '-fflags',
-      '+genpts',
-      '-reset_timestamps',
-      '1',
-      '-movflags',
-      'frag_keyframe+empty_moov+default_base_moof',
-      'tcp://127.0.0.1:' + serverPort
-    );
-
-    log.debug(`Recording command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
-
-    const cp = spawn(videoProcessor, ffmpegArguments, { env: process.env });
-
-    cp.on('exit', (code, signal) => {
-      if (code === 1) {
-        log.error(`FFmpeg recording process exited with error! (${signal})`, camera.name, 'ffmpeg');
-      } else {
-        log.debug('FFmpeg recording process exited (expected)', camera.name, 'ffmpeg');
-      }
-    });
-
-    if (camera.videoConfig.debug) {
-      cp.stdout.on('data', (data) => log.debug(data.toString(), camera.name));
-      cp.stderr.on('data', (data) => log.debug(data.toString(), camera.name));
-    }
-
-    //cp.stderr.on('data', (data) => log.error(data.toString().replace(/(\r\n|\n|\r)/gm, ''), camera.name, 'ffmpeg'));
   });
 };
 
@@ -428,7 +352,14 @@ exports.handleFragmentsRequests = async function* (camera) {
     }
   }
 
-  const session = await startFFMPegFragmetedMP4Session(camera, ffmpegInput, audioArguments, videoArguments);
+  const session = await cameraUtils.startFFMPegFragmetedMP4Session(
+    camera.name,
+    camera.videoConfig.debug,
+    ConfigService.ui.options.videoProcessor,
+    ffmpegInput,
+    audioArguments,
+    videoArguments
+  );
 
   log.debug('Recording started', camera.name);
 
