@@ -29,7 +29,7 @@
     "ffmpeg-for-homebridge": "^0.0.9",
     "fs-extra": "10.0.0",
     "ftp-srv": "^4.5.0",
-    "got": "11.8.3",
+    "got": "12.0.0",
     "helmet": "4.6.0",
     "ip": "^1.1.5",
     "jsonwebtoken": "^8.5.1",
