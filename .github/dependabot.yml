@@ -10,6 +10,8 @@ updates:
       - dependency-name: 'chalk'
       - dependency-name: 'chart.js'
       - dependency-name: 'compare-versions'
+      - dependency-name: 'concurrently'
       - dependency-name: 'got'
+      - dependency-name: 'helmet'
       - dependency-name: 'swagger-ui-express'
       - dependency-name: 'swiper'
