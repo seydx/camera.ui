@@ -19,6 +19,11 @@ class SessionService {
     };
   }
 
+  reconfigure(camera) {
+    this.#camera = camera;
+    this.cameraName = camera.name;
+  }
+
   requestSession() {
     if (this.session.activeStreams < this.session.maxStreams) {
       log.debug('New stream added to active sessions', this.cameraName);

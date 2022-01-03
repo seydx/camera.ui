@@ -1,5 +1,6 @@
 'use-strict';
 
+const _ = require('lodash');
 const { createServer } = require('net');
 const { EventEmitter } = require('events');
 const { spawn } = require('child_process');
@@ -48,6 +49,19 @@ class PrebufferService {
     this.cameraName = camera.name;
   }
 
+  reconfigure(camera) {
+    const oldVideoConfig = this.#camera.videoConfig;
+    const newVideoConfig = camera.videoConfig;
+
+    this.#camera = camera;
+    this.cameraName = camera.name;
+
+    if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.prebufferSession) {
+      log.info('Prebuffer: Video Config changed!', this.cameraName);
+      this.restart(true);
+    }
+  }
+
   async start() {
     try {
       this.resetPrebuffer();
@@ -61,7 +75,7 @@ class PrebufferService {
           'prebuffer'
         );
 
-        this.stop();
+        this.stop(true);
         setTimeout(() => this.start(), 60000);
 
         return;
@@ -76,7 +90,7 @@ class PrebufferService {
 
       this.restartTimer = setTimeout(() => {
         log.info('Sheduled restart of prebuffering is executed...', this.cameraName);
-        this.restart();
+        this.restart(true);
       }, timer);
     } catch (error) {
       if (error) {
@@ -127,7 +141,7 @@ class PrebufferService {
   }
 
   restart(killed) {
-    log.info('Restart prebuffering..', this.cameraName);
+    log.info('Restart prebuffer session..', this.cameraName);
     this.stop(killed);
     setTimeout(() => this.start(), 10000);
   }

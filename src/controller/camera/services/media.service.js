@@ -25,6 +25,11 @@ class MediaService {
     };
   }
 
+  reconfigure(camera) {
+    this.#camera = camera;
+    this.cameraName = camera.name;
+  }
+
   async probe() {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {

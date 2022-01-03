@@ -466,14 +466,14 @@ class Database {
         videoConfig: cam.videoConfig,
       };
 
-      const cameraExists = await CamerasSettings.find({ name: cam.name }).value();
+      const cameraExists = await Cameras.find({ name: cam.name }).value();
+      const cameraSettingsExists = await CamerasSettings.find({ name: cam.name }).value();
 
       await (cameraExists ? Cameras.find({ name: cam.name }).assign(camera).write() : Cameras.push(camera).write());
 
-      if (!cameraExists) {
+      if (!cameraSettingsExists) {
         const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
         cameraSettingsEntry.name = cam.name;
-
         await CamerasSettings.push(cameraSettingsEntry).write();
       }
     }

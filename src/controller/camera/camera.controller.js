@@ -49,7 +49,7 @@ class CameraController {
     const controller = CameraController.cameras.get(cameraName);
 
     if (!controller) {
-      throw new Error(`Camera controller for ${cameraName} not found!`);
+      throw new Error(`Can not remove controller, controller for ${cameraName} not found!`);
     }
 
     controller.prebuffer.stop(true);
@@ -62,7 +62,7 @@ class CameraController {
     const controller = CameraController.cameras.get(cameraName);
 
     if (!controller) {
-      throw new Error(`Camera controller for ${cameraName} not found!`);
+      throw new Error(`Can not start controller, controller for ${cameraName} not found!`);
     }
 
     await controller.media.probe();
@@ -72,6 +72,28 @@ class CameraController {
     }
 
     await controller.stream.configureStreamOptions();
+  }
+
+  static reconfigureController(cameraName) {
+    const controller = CameraController.cameras.get(cameraName);
+
+    if (!controller) {
+      throw new Error(`Can not reconfigure controller, controller for ${cameraName} not found!`);
+    }
+
+    const camera = ConfigService.ui.cameras.find((camera) => camera.name === cameraName);
+
+    if (!camera) {
+      throw new Error(`Unexpected error occured during reconfiguring controller for ${cameraName}`);
+    }
+
+    controller.options = camera;
+    controller.media.reconfigure(camera);
+    controller.prebuffer.reconfigure(camera);
+    controller.session.reconfigure(camera);
+    controller.stream.reconfigure(camera);
+
+    CameraController.cameras.set(camera.name, controller);
   }
 }
 

@@ -1,5 +1,6 @@
 'use-strict';
 
+const _ = require('lodash');
 const cameraUtils = require('../utils/camera.utils');
 const { spawn } = require('child_process');
 
@@ -30,6 +31,19 @@ class StreamService {
 
     this.cameraName = camera.name;
     this.streamOptions = {};
+  }
+
+  reconfigure(camera) {
+    const oldVideoConfig = this.#camera.videoConfig;
+    const newVideoConfig = camera.videoConfig;
+
+    this.#camera = camera;
+    this.cameraName = camera.name;
+
+    if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.streamSession) {
+      log.info('Stream: Video Config changed!', this.cameraName);
+      this.restart();
+    }
   }
 
   async configureStreamOptions() {
@@ -177,6 +191,8 @@ class StreamService {
   }
 
   restart() {
+    log.info('Restart stream session..', this.cameraName);
+
     if (this.streamSession) {
       this.stop();
       setTimeout(() => this.start(), 1500);

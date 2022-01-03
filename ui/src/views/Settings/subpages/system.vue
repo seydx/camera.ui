@@ -166,7 +166,7 @@
               v-icon.text-muted {{ icons['mdiFindReplace'] }}
 
           v-btn.tw-text-white.tw-mb-3(:disabled="!smtpStatus || loadingRestart" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
-          v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port || loadingRestart | loadingSave" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
+          v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port || loadingRestart || loadingSave" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header

@@ -7,6 +7,8 @@ const { ConfigService } = require('../../../services/config/config.service');
 
 const { Database } = require('../../database');
 
+const { CameraController } = require('../../../controller/camera/camera.controller');
+
 exports.show = async (user, target) => {
   await Database.interfaceDB.read();
 
@@ -67,12 +69,14 @@ exports.show = async (user, target) => {
 exports.patchConfig = async (configJson) => {
   if (process.env.CUI_SERVICE_MODE === '2') {
     Database.controller.emit('config', configJson);
-  } /*else {
-    await fs.writeJson(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
-  }*/
+  }
 
   ConfigService.writeToConfig(false, configJson);
   await Database.writeConfigCamerasToDB();
 
-  //ConfigService.configJson = configJson;
+  if (configJson?.cameras) {
+    for (const camera of configJson.cameras) {
+      CameraController.reconfigureController(camera.name);
+    }
+  }
 };

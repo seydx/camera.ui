@@ -32,7 +32,7 @@
           v-expansion-panel-header
             div
               .page-subtitle {{ $t('interface') }}
-              .page-header-info.tw-mt-1 Camera interface settings
+              .page-header-info.tw-mt-1 {{ $t('camera_interface_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
@@ -77,7 +77,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('interface_player') }}
-              .page-header-info.tw-mt-1 Parameters for the Interface Video Player
+              .page-header-info.tw-mt-1 {{ $t('camera_player_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('audio') }}
@@ -102,7 +102,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('notification') }}
-              .page-header-info.tw-mt-1 Camera notification settings when motion is detected
+              .page-header-info.tw-mt-1 {{ $t('camera_notification_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('alexa') }}
@@ -122,7 +122,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('rekognition') }}
-              .page-header-info.tw-mt-1 Image analysis in the detection of movement
+              .page-header-info.tw-mt-1 {{ $t('camera_rekognition_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('amazon_rekognition') }}
@@ -150,32 +150,32 @@
         v-expansion-panel
           v-expansion-panel-header 
             div
-              .page-subtitle Alarm
-              .page-header-info.tw-mt-1 Motion detection settings
+              .page-subtitle {{ $t('alarm') }}
+              .page-header-info.tw-mt-1 {{ $t('camera_alarm_info') }}
           v-expansion-panel-content
-            h4.tw-my-3 Email
+            h4.tw-my-3 {{ $t('email') }}
 
-            label.form-input-label Send Email to
-            v-text-field(:value="`${camera.name.replace(/ /g, '+')}@camera.ui`" persistent-hint hint="SMTP server must be enabled to trigger a movement via email!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            label.form-input-label {{ $t('send_email_to') }}
+            v-text-field(:value="`${camera.name.replace(/ /g, '+')}@camera.ui`" persistent-hint :hint="$t('alarm_smtp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
-            h4.tw-my-3 HTTP
+            h4.tw-my-3 {{ $t('http') }}
 
-            label.form-input-label Motion
-            v-text-field(:value="`http://${hostname}:${config.http.port}/motion?${encodeURIComponent(camera.name)}`" persistent-hint hint="HTTP server must be enabled to trigger a movement via HTTP call!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            label.form-input-label {{ $t('motion') }}
+            v-text-field(:value="`http://${hostname}:${config.http.port}/motion?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
-            label.form-input-label Motion Reset
-            v-text-field(:value="`http://${hostname}:${config.http.port}/reset?${encodeURIComponent(camera.name)}`" persistent-hint hint="HTTP server must be enabled to reset a movement via HTTP call!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            label.form-input-label {{ $t('motion_reset') }}
+            v-text-field(:value="`http://${hostname}:${config.http.port}/reset?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_reset_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
-            h4.tw-my-3 FTP
+            h4.tw-my-3 {{ $t('ftp') }}
 
-            label.form-input-label FTP Absolute Path
-            v-text-field(:value="camera.name" persistent-hint hint="FTP server must be enabled to trigger a movement via file upload!" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            label.form-input-label {{ $t('ftp_absolute_path') }}
+            v-text-field(:value="camera.name" persistent-hint :hint="$t('alarm_ftp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
@@ -208,8 +208,11 @@
           v-expansion-panel-header
             div
               .page-subtitle Homebridge
-              .page-header-info.tw-mt-1 Changing the parameters marked with (*) requires a restart
+              .page-header-info.tw-mt-1 {{ $t('camera_homebridge_info') }}
           v-expansion-panel-content
+            v-sheet.tw-p-3.tw-mb-5.mx-auto.tw-text-sm(rounded width="100%" color="rgba(var(--cui-text-default-rgb), 0.1)")
+              span.text-default {{ $t('homebridge_restart_info') }}
+
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
                 label.form-input-label Privacy Mode
@@ -306,8 +309,8 @@
         v-expansion-panel
           v-expansion-panel-header 
             div
-              .page-subtitle Prebuffering
-              .page-header-info.tw-mt-1 Camera Video Prebuffering
+              .page-subtitle {{ $t('prebuffering') }}
+              .page-header-info.tw-mt-1 {{ $t('camera_prebuffering_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('status') }}
@@ -325,7 +328,7 @@
           v-expansion-panel-header 
             div
               .page-subtitle {{ $t('ffmpeg_and_stream') }}
-              .page-header-info.tw-mt-1 Changing the parameters requires a restart of prebuffering
+              .page-header-info.tw-mt-1 {{ $t('camera_ffmpeg_stream_info') }}
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
