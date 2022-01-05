@@ -36,6 +36,12 @@ const defaultDatabase = {
       last_rekognition: '',
     },
     cameras: [],
+    camview: {
+      refreshTimer: 60,
+    },
+    dashboard: {
+      refreshTimer: 60,
+    },
     general: {
       atHome: false,
       exclude: [],
@@ -359,6 +365,14 @@ class Database {
 
     if (!Array.isArray(database?.settings.cameras)) {
       database.settings.cameras = defaultDatabase.settings.cameras;
+    }
+
+    if (typeof database?.settings.camview !== 'object') {
+      database.settings.camview = defaultDatabase.settings.camview;
+    }
+
+    if (typeof database?.settings.dashboard !== 'object') {
+      database.settings.dashboard = defaultDatabase.settings.dashboard;
     }
 
     if (typeof database?.settings.general !== 'object') {

@@ -26,50 +26,60 @@ module.exports = {
     }
   },
 
-  readLength: function (readable, length) {
+  readLength: function (socket, length) {
+    if (!socket) {
+      throw new Error('FFMPEG tried reading from closed socket!');
+    }
+
     if (!length) {
       return Buffer.alloc(0);
     }
 
-    {
-      const returnValue = readable.read(length);
-      if (returnValue) {
-        return returnValue;
-      }
+    const value = socket.read(length);
+    if (value) {
+      return value;
     }
 
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
-      const r = () => {
-        const returnValue = readable.read(length);
+      const readHandler = () => {
+        const value = socket.read(length);
 
-        if (returnValue) {
+        if (value) {
           cleanup();
-          resolve(returnValue);
+          resolve(value);
         }
       };
 
-      const error = () => {
+      const endHandler = () => {
         cleanup();
-        reject(`Stream ended during read for minimum ${length} bytes`);
+        reject(new Error(`FFMPEG socket closed during read for ${length} bytes!`));
       };
 
       const cleanup = () => {
-        readable.removeListener('readable', r);
-        readable.removeListener('end', error);
+        socket.removeListener('readable', readHandler);
+        socket.removeListener('close', endHandler);
       };
 
-      readable.on('readable', r);
-      readable.on('end', error);
+      if (!socket) {
+        throw new Error('FFMPEG socket is closed now!');
+      }
+
+      socket.on('readable', readHandler);
+      socket.on('close', endHandler);
     });
   },
 
-  parseFragmentedMP4: async function* (readable) {
+  parseFragmentedMP4: async function* (socket) {
+    if (!socket) {
+      throw new Error('Unexpected state!');
+    }
+
     while (true) {
-      const header = await this.readLength(readable, 8);
+      const header = await this.readLength(socket, 8);
       const length = header.readInt32BE(0) - 8;
       const type = header.slice(4).toString();
-      const data = await this.readLength(readable, length);
+      const data = await this.readLength(socket, length);
 
       yield {
         header,

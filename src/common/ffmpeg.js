@@ -379,8 +379,8 @@ exports.handleFragmentsRequests = async function* (camera) {
         yield fileBuffer;
       }
     }
-  } catch (error) {
-    log.debug(`Recording completed. (${error})`, camera.name);
+  } catch {
+    log.debug('Recording completed. (UI)', camera.name);
   } finally {
     socket.destroy();
     cp.kill();

@@ -298,6 +298,7 @@ export default {
 
 <style scoped>
 .alexaConnect {
-  color: red;
+  color: #ff5252;
+  text-decoration: none;
 }
 </style>

@@ -163,7 +163,7 @@ exports.createRecording = async (data, fileBuffer) => {
 
         setTimeout(async () => {
           if (generator) {
-            generator.throw('dataSend close (ui)');
+            generator.throw();
           }
         }, recordingsSettings.timer * 1000);
 

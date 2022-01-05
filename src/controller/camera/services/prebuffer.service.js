@@ -485,7 +485,12 @@ class PrebufferService {
             events.emit(eventName, chunk);
           }
         } catch (error) {
-          log.error(error, this.cameraName, 'prebuffer');
+          if (!error.message?.startsWith('FFMPEG')) {
+            log.error(error.message || error, this.cameraName, 'prebuffer');
+          } else {
+            log.debug(error.message || error, this.cameraName);
+          }
+
           kill();
         }
       });
