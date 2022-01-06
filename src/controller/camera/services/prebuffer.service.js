@@ -66,6 +66,21 @@ class PrebufferService {
     try {
       this.resetPrebuffer();
 
+      const probeTimedout = this.#mediaService.codecs.timedout;
+      const videoCodecProbe = this.#mediaService.codecs.video[0];
+
+      if (!probeTimedout && videoCodecProbe && !videoCodecProbe.includes('h264')) {
+        log.warn(
+          `Can not start Prebuffer, camera does not support H264 stream (${this.#mediaService.codecs.video.join(
+            ', '
+          )})`,
+          this.cameraName,
+          'prebuffer'
+        );
+
+        return this.stop(true);
+      }
+
       this.cameraState = await this.#pingCamera();
 
       if (!this.cameraState) {
@@ -139,6 +154,7 @@ class PrebufferService {
       }
 
       this.prebufferSession.kill();
+      this.prebufferSession = undefined;
     }
   }
 

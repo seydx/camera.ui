@@ -38,7 +38,16 @@ class MediaService {
         this.cameraName
       );
 
-      const arguments_ = ['-hide_banner', '-loglevel', 'info', ...this.#camera.videoConfig.source.split(/\s+/)];
+      const arguments_ = [
+        '-hide_banner',
+        '-loglevel',
+        'info',
+        '-analyzeduration',
+        '0',
+        '-probesize',
+        '5000',
+        ...this.#camera.videoConfig.source.split(/\s+/),
+      ];
 
       let cp = spawn(ConfigService.ui.options.videoProcessor, arguments_, {
         env: process.env,
@@ -77,7 +86,7 @@ class MediaService {
           log.warn('Can not determine stream codecs, probe timed out', this.cameraName, 'ffmpeg');
 
           this.codecs.timedout = true;
-          cp.kill();
+          cp.kill('SIGKILL');
         }
       }, 8000);
     });
