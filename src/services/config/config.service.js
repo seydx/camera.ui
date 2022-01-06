@@ -320,7 +320,7 @@ class ConfigService {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
         }
 
-        //validate some required parameter
+        // validate some required parameter
         camera.videoConfig.maxWidth = camera.videoConfig.maxWidth || 1280;
         camera.videoConfig.maxHeight = camera.videoConfig.maxHeight || 720;
         camera.videoConfig.maxFPS = camera.videoConfig.maxFPS >= 20 ? camera.videoConfig.maxFPS : 20;
@@ -332,14 +332,8 @@ class ConfigService {
         // min motionTimeout
         camera.motionTimeout = camera.motionTimeout >= 15 ? camera.motionTimeout : 15;
 
-        return camera;
-      })
-      // exclude cameras with invalid videoConfig, source
-      .filter((camera) => camera.videoConfig?.source)
-      // setup mqtt
-      .map((camera) => {
+        // setup mqtt
         if (camera.mqtt) {
-          //setup mqtt topics
           if (camera.mqtt.motionTopic) {
             const mqttOptions = {
               motionTopic: camera.mqtt.motionTopic,
@@ -380,8 +374,15 @@ class ConfigService {
           }
         }
 
+        // setup video analysis
+        camera.videoanalysis = {
+          active: camera.videoanalysis?.active || false,
+        };
+
         return camera;
-      });
+      })
+      // exclude cameras with invalid videoConfig, source
+      .filter((camera) => camera.videoConfig?.source);
   }
 }
 
