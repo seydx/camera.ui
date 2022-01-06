@@ -155,3 +155,4 @@ stream
 writeStream.js
 mp4
 ui/node_modules
+parseFFmpeg.js
