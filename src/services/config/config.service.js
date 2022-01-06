@@ -314,7 +314,7 @@ class ConfigService {
 
           if (!stillArguments.includes('-i')) {
             log.warn(`${camera.name}: The stillImageSource for this camera is missing "-i" !`, 'Config', 'system');
-            camera.videoConfig.stillImageSource = camera.videoConfig.source || false;
+            camera.videoConfig.stillImageSource = camera.videoConfig.source;
           }
         } else {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;

@@ -103,9 +103,11 @@ class PrebufferService {
   }
 
   resetPrebuffer() {
+    this.stop(true);
+
     this.prebufferSession = null;
     this.killed = false;
-    this.prebufferFmp4 = {
+    this.prebuffers = {
       mp4: [],
       mpegts: [],
     };

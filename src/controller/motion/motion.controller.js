@@ -1,3 +1,5 @@
+'use-strict';
+
 const _ = require('lodash');
 const Bunyan = require('bunyan');
 const EscapeRegExp = require('lodash.escaperegexp');

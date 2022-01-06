@@ -1,3 +1,5 @@
+'use-strict';
+
 const { App } = require('../../src/api/app');
 const { Database } = require('../../src/api/database');
 

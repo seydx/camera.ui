@@ -186,7 +186,7 @@ class StreamService {
   stop() {
     if (this.streamSession) {
       log.debug('Stopping stream..', this.cameraName);
-      this.streamSession.kill();
+      this.streamSession.kill('SIGKILL');
     }
   }
 
