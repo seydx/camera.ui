@@ -275,8 +275,8 @@ module.exports = {
     });
   },
 
-  generateInputSource: function (videoConfig) {
-    let source = videoConfig.source;
+  generateInputSource: function (videoConfig, source) {
+    source = source || videoConfig.source;
 
     if (source) {
       if (videoConfig.readRate && !source.includes('-re')) {

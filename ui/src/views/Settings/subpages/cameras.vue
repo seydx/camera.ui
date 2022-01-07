@@ -561,6 +561,8 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}   
 
+    v-btn(block color="success" @click="onSave" :loading="loadingProgress") Save
+
 </template>
 
 <script>
@@ -589,7 +591,9 @@ import {
   stopVideoanalysis,
   resetMotion,
 } from '@/api/cameras.api';
+// eslint-disable-next-line no-unused-vars
 import { changeConfig, getConfig } from '@/api/config.api';
+// eslint-disable-next-line no-unused-vars
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 import AddCamera from '@/components/add-camera.vue';
@@ -633,6 +637,9 @@ export default {
       cameras: [],
       camerasTimeout: null,
       configTimeout: null,
+
+      camerasChanged: false,
+      configChanged: false,
 
       general: {
         exclude: [],
@@ -770,43 +777,33 @@ export default {
     cameraAdded() {
       window.location.reload(true);
     },
-    async camerasWatcher(newValue) {
+
+    async onSave() {
       this.loadingProgress = true;
 
-      if (this.camerasTimeout) {
-        clearTimeout(this.camerasTimeout);
-        this.camerasTimeout = null;
-      }
-
-      this.camerasTimeout = setTimeout(async () => {
-        try {
-          await changeSetting('cameras', newValue, '?stopStream=true');
-        } catch (err) {
-          console.log(err);
-          this.$toast.error(err.message);
+      try {
+        if (this.camerasChanged) {
+          await changeSetting('cameras', this.cameras, '?stopStream=true');
         }
 
-        this.loadingProgress = false;
-      }, 2000);
+        if (this.configChanged) {
+          await changeConfig(this.config);
+        }
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.camerasChanged = false;
+      this.configChanged = false;
+      this.loadingProgress = false;
+    },
+
+    async camerasWatcher() {
+      this.camerasChanged = true;
     },
     async configWatcher() {
-      this.loadingProgress = true;
-
-      if (this.configTimeout) {
-        clearTimeout(this.configTimeout);
-        this.configTimeout = null;
-      }
-
-      this.configTimeout = setTimeout(async () => {
-        try {
-          await changeConfig(this.config);
-        } catch (err) {
-          console.log(err);
-          this.$toast.error(err.message);
-        }
-
-        this.loadingProgress = false;
-      }, 2000);
+      this.configChanged = true;
     },
     async onHandlePrebuffering(cameraName, restart) {
       if (this.prebufferingStates[cameraName].loading) {
@@ -938,7 +935,7 @@ div >>> .v-expansion-panel:not(:first-child)::after {
   border: none;
 }
 
-div >>> .v-expansion-panels > *:last-child {
+/*div >>> .v-expansion-panels > *:last-child {
   border: none !important;
-}
+}*/
 </style>

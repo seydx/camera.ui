@@ -86,7 +86,7 @@ exports.patchTarget = async (req, res) => {
         }
       }*/
 
-      log.info('Camera settings changed. The changes take effect when the camera stream is restarted.');
+      log.debug('Camera settings changed. The changes take effect when the camera stream is restarted.');
 
       const cameraSettings = req.body;
 

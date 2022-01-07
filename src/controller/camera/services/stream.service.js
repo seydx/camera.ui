@@ -41,8 +41,12 @@ class StreamService {
     this.cameraName = camera.name;
 
     if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.streamSession) {
-      log.info('Stream: Video Config changed!', this.cameraName);
-      this.restart();
+      log.info(
+        'Stream: Video configuration changed! Please restart Stream for the changes to take effect',
+        this.cameraName
+      );
+
+      //this.restart();
     }
   }
 

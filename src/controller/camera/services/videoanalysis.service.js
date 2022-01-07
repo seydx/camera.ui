@@ -5,6 +5,7 @@ const P2P = require('pipe2pam');
 const PamDiff = require('pam-diff');
 const { spawn } = require('child_process');
 
+const cameraUtils = require('../utils/camera.utils');
 const { Ping } = require('../../../common/ping');
 
 const { LoggerService } = require('../../../services/logger/logger.service');
@@ -45,8 +46,12 @@ class VideoAnalysisService {
     this.cameraName = camera.name;
 
     if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.videoanalysisSession) {
-      log.info('Motion: Video Config changed!', this.cameraName);
-      this.restart();
+      log.info(
+        'Videoanalysis: Video configuration changed! Please restart Videoanalysis for the changes to take effect',
+        this.cameraName
+      );
+
+      //this.restart();
     }
   }
 
@@ -134,24 +139,30 @@ class VideoAnalysisService {
 
     log.debug('Start videoanalysis...', this.cameraName);
 
-    let input = this.#camera.videoConfig.subSource.split(/\s+/);
+    let input = cameraUtils
+      .generateInputSource(this.#camera.videoConfig, this.#camera.videoConfig.subSource)
+      .split(/\s+/);
+    let prebufferInput = false;
+    let invalidSubstream = this.#camera.videoConfig.subSource === this.#camera.videoConfig.source;
 
-    if (this.#camera.prebuffering) {
+    if (this.#camera.prebuffering && invalidSubstream) {
       try {
-        input = await this.#prebufferService.getVideo();
+        input = prebufferInput = await this.#prebufferService.getVideo();
       } catch {
         // ignore
-
-        if (this.#camera.videoConfig.mapvideo) {
-          input.push('-map', this.#camera.videoConfig.mapvideo);
-        }
       }
+    }
+
+    if (!prebufferInput && this.#camera.videoConfig.mapvideo) {
+      input.push('-map', this.#camera.videoConfig.mapvideo);
     }
 
     const ffmpegArguments = [
       '-hide_banner',
       '-loglevel',
       'error',
+      '-hwaccel',
+      'auto',
       ...input,
       '-an',
       '-vcodec',
