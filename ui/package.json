@@ -51,7 +51,7 @@
     "eslint-plugin-prettier": "3.3.1",
     "eslint-plugin-vue": "6.2.2",
     "minify-css-string": "^1.0.0",
-    "postcss": "7.0.39",
+    "postcss": "8.2.13",
     "prettier": "^2.5.1",
     "pug": "^3.0.2",
     "pug-plain-loader": "^1.1.0",
