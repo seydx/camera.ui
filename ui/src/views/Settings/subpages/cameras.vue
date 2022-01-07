@@ -327,6 +327,24 @@
         v-expansion-panel
           v-expansion-panel-header 
             div
+              .page-subtitle {{ $t('videoanalysis') }}
+              .page-header-info.tw-mt-1 {{ $t('camera_videoanalysis_info') }}
+          v-expansion-panel-content
+            .tw-flex.tw-justify-between.tw-items-center
+              label.form-input-label {{ $t('status') }}
+              span.tw-text-right(:class="!videoanalysisStates[cam.name].state ? 'tw-text-red-500' : 'tw-text-green-500'") {{ videoanalysisStates[cam.name].state ? $t('active') : $t('inactive') }}
+
+            .tw-flex.tw-justify-between.tw-items-center
+              .tw-block.tw-w-full.tw-pr-2
+                label.form-input-label {{ $t('enabled') }}
+              v-switch(color="var(--cui-primary)" v-model="cam.videoanalysis.active")
+
+            v-btn.tw-text-white.tw-mt-3(:disabled="!videoanalysisStates[cam.name].state" :loading="videoanalysisStates[cam.name].loading" block color="error" @click="onHandleVideoanalysis(cam.name, false)") {{ $t('stop') }}
+            v-btn.tw-text-white.tw-mt-5(:disabled="!cam.videoanalysis" :loading="videoanalysisStates[cam.name].loading" block color="success" @click="onHandleVideoanalysis(cam.name, true)") {{ $t('restart') }}
+
+        v-expansion-panel
+          v-expansion-panel-header 
+            div
               .page-subtitle {{ $t('ffmpeg_and_stream') }}
               .page-header-info.tw-mt-1 {{ $t('camera_ffmpeg_stream_info') }}
           v-expansion-panel-content
@@ -356,6 +374,15 @@
 
             label.form-input-label Video Source
             v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            label.form-input-label Video Subtream Source
+            v-text-field(v-model="cam.videoConfig.subSource" :hint="$t('sub_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
               template(v-slot:message="{ key, message}")
@@ -553,7 +580,15 @@ import {
   mdiVideoImage,
 } from '@mdi/js';
 
-import { removeCamera, restartPrebuffering, startMotion, stopPrebuffering, resetMotion } from '@/api/cameras.api';
+import {
+  removeCamera,
+  restartPrebuffering,
+  restartVideoanalysis,
+  startMotion,
+  stopPrebuffering,
+  stopVideoanalysis,
+  resetMotion,
+} from '@/api/cameras.api';
 import { changeConfig, getConfig } from '@/api/config.api';
 import { getSetting, changeSetting } from '@/api/settings.api';
 
@@ -621,6 +656,7 @@ export default {
       ],
 
       prebufferingStates: {},
+      videoanalysisStates: {},
     };
   },
 
@@ -692,6 +728,11 @@ export default {
             motionLoading: false,
           });
 
+          this.$set(this.videoanalysisStates, camera.name, {
+            state: false,
+            loading: false,
+          });
+
           return camera;
         }),
       };
@@ -699,6 +740,12 @@ export default {
       this.$socket.client.on('prebufferStatus', this.prebufferStatus);
       this.$socket.client.emit(
         'getCameraPrebufferSatus',
+        this.cameras.map((camera) => camera.name)
+      );
+
+      this.$socket.client.on('videoanalysisStatus', this.videoanalysisStatus);
+      this.$socket.client.emit(
+        'getCameraVideoanalysisSatus',
         this.cameras.map((camera) => camera.name)
       );
 
@@ -781,6 +828,26 @@ export default {
 
       this.prebufferingStates[cameraName].loading = false;
     },
+    async onHandleVideoanalysis(cameraName, restart) {
+      if (this.videoanalysisStates[cameraName].loading) {
+        return;
+      }
+
+      this.videoanalysisStates[cameraName].loading = true;
+
+      try {
+        if (restart) {
+          await restartVideoanalysis(cameraName);
+        } else {
+          await stopVideoanalysis(cameraName);
+        }
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.videoanalysisStates[cameraName].loading = false;
+    },
     async onRemoveCamera() {
       if (!this.camera) {
         return this.$toast.error(this.$t('no_camera_selected'));
@@ -826,6 +893,11 @@ export default {
       }
 
       this.prebufferingStates[this.camera.name].motionLoading = false;
+    },
+    videoanalysisStatus(data) {
+      if (this.videoanalysisStates[data.camera]) {
+        this.videoanalysisStates[data.camera].state = data.status === 'active';
+      }
     },
   },
 };

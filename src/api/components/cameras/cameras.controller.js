@@ -263,7 +263,39 @@ exports.restartPrebuffering = async (req, res) => {
       });
     }
 
-    controller.prebuffer.restart(true);
+    controller.prebuffer.restart();
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.restartVideoanalysis = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.videoanalysis)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    controller.videoanalysis.restart();
     await setTimeoutAsync(1000);
 
     res.status(204).send({});
@@ -318,6 +350,38 @@ exports.stopPrebuffering = async (req, res) => {
     }
 
     controller.prebuffer.stop(true);
+    await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+exports.stopVideoanalysis = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.prebuffer)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    controller.videoanalysis.stop(true);
     await setTimeoutAsync(1000);
 
     res.status(204).send({});

@@ -34,7 +34,7 @@ class MediaService {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
       log.debug(
-        `Probe stream: ${ConfigService.ui.options.videoProcessor} ${this.#camera.videoConfig.source}`,
+        `Probe stream: ${ConfigService.ui.options.videoProcessor} ${this.#camera.videoConfig.subSource}`,
         this.cameraName
       );
 

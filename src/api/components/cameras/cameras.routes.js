@@ -371,6 +371,50 @@ exports.routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/cameras/{name}/videoanalysis/restart:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Restart Camera Videoanalysis
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/videoanalysis/restart', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.restartVideoanalysis,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/videoanalysis/stop:
+   *   put:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Stop Camera Videoanalysis
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/videoanalysis/stop', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.stopVideoanalysis,
+  ]);
+
+  /**
+   * @swagger
    * /api/cameras/{name}/motion/start:
    *   put:
    *     tags: [System]

@@ -329,7 +329,6 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
-  const prebufferLength = 4000;
   const audioArguments = ['-acodec', 'copy'];
   const videoArguments = ['-vcodec', 'copy'];
 
@@ -342,7 +341,7 @@ exports.handleFragmentsRequests = async function* (camera) {
 
       const input = await controller.prebuffer.getVideo({
         container: 'mp4',
-        prebuffer: prebufferLength,
+        prebuffer: camera.prebufferLength,
       });
 
       ffmpegInput = [];

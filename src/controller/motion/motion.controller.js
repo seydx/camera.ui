@@ -70,7 +70,7 @@ class MotionController {
         message: 'Custom event could not be handled',
       };
 
-      result = await MotionController.#handleMotion('custom', cameraName, state, 'extern', result);
+      result = await MotionController.handleMotion('custom', cameraName, state, 'extern', result);
 
       log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
     };
@@ -159,7 +159,7 @@ class MotionController {
           let state = triggerType === 'dorbell' ? true : triggerType === 'reset' ? false : true;
           triggerType = triggerType === 'reset' ? 'motion' : triggerType;
 
-          result = await MotionController.#handleMotion(triggerType, cameraName, state, 'http', result);
+          result = await MotionController.handleMotion(triggerType, cameraName, state, 'http', result);
         }
       }
 
@@ -226,10 +226,21 @@ class MotionController {
         let state;
         let triggerType;
 
-        const triggerState = (type) => {
+        if (cameraMqttConfig.reset) {
+          triggerType = 'reset';
+          message = cameraMqttConfig.motionResetMessage;
+        } else if (cameraMqttConfig.motion) {
+          triggerType = 'motion';
+          message = cameraMqttConfig.motionMessage;
+        } else {
+          triggerType = 'doorbell';
+          message = cameraMqttConfig.doorbellMessage;
+        }
+
+        const triggerState = () => {
           let value;
 
-          switch (type) {
+          switch (triggerType) {
             case 'reset': {
               value = false;
               break;
@@ -248,40 +259,42 @@ class MotionController {
           return value;
         };
 
-        if (cameraMqttConfig.reset) {
-          triggerType = 'reset';
-          message = cameraMqttConfig.motionResetMessage;
-        } else if (cameraMqttConfig.motion) {
-          triggerType = 'motion';
-          message = cameraMqttConfig.motionMessage;
-        } else {
-          triggerType = 'doorbell';
-          message = cameraMqttConfig.doorbellMessage;
-        }
+        const check = (message_) => {
+          let state_;
+          message_ = message_ || message;
 
-        try {
-          const dataObject = JSON.parse(data);
+          try {
+            const dataObject = JSON.parse(data);
 
-          if (typeof dataObject === typeof message) {
-            const dotNotMessage = toDotNot(message);
-            const dotNotMessagePath = Object.keys(dotNotMessage)[0];
-            const dotNotMessageResult = Object.values(dotNotMessage)[0];
-            const pathExist = _.has(dataObject, dotNotMessagePath);
-            const sameValue = _.get(dataObject, dotNotMessagePath) === dotNotMessageResult;
+            if (typeof dataObject === typeof message_) {
+              const dotNotMessage = toDotNot(message_);
+              const dotNotMessagePath = Object.keys(dotNotMessage)[0];
+              const dotNotMessageResult = Object.values(dotNotMessage)[0];
+              const pathExist = _.has(dataObject, dotNotMessagePath);
+              const sameValue = _.get(dataObject, dotNotMessagePath) === dotNotMessageResult;
 
-            if (pathExist && sameValue) {
-              state = triggerState(triggerType);
+              if (pathExist && sameValue) {
+                state_ = triggerState();
+              }
+            }
+          } catch {
+            if (message_ === data) {
+              state_ = triggerState();
             }
           }
-        } catch {
-          if (message === data) {
-            state = triggerState(triggerType);
-          }
+
+          return state_;
+        };
+
+        state = check();
+
+        if (state === undefined && triggerType === 'motion') {
+          state = check(cameraMqttConfig.motionResetMessage);
         }
 
         result =
           state !== undefined
-            ? await MotionController.#handleMotion(triggerType, cameraName, state, 'mqtt', result)
+            ? await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt', result)
             : {
                 error: true,
                 message: `The incoming MQTT message (${data.toString()}) for the topic (${topic}) was not the same as set in config.json (${message.toString()}). Skip...`,
@@ -349,7 +362,7 @@ class MotionController {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
           log.debug(`Email received (${name}).`, 'SMTP');
 
-          const result = await MotionController.#handleMotion('motion', name, true, 'smtp', {});
+          const result = await MotionController.handleMotion('motion', name, true, 'smtp', {});
           log.debug(`Received a new SMTP message ${JSON.stringify(result)} (${name})`);
         }
       },
@@ -467,7 +480,7 @@ class MotionController {
               const name = pathSplit[0];
               log.debug(`Receiving file. (${name}).`, 'FTP');
 
-              const result = await MotionController.#handleMotion('motion', name, true, 'ftp', {});
+              const result = await MotionController.handleMotion('motion', name, true, 'ftp', {});
               log.debug(`Received a new FTP message ${JSON.stringify(result)} (${name})`);
             } else {
               this.connection.reply(550, 'Permission denied.');
@@ -564,7 +577,7 @@ class MotionController {
     return ConfigService.ui.cameras.find((camera) => camera && camera.name === cameraName);
   }
 
-  static async #handleMotion(triggerType, cameraName, state, event, result) {
+  static async handleMotion(triggerType, cameraName, state, event, result) {
     const camera = MotionController.#getCamera(cameraName);
 
     if (camera) {

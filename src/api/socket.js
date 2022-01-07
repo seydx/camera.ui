@@ -170,6 +170,22 @@ class Socket {
         }
       });
 
+      socket.on('getCameraVideoanalysisSatus', (cameras) => {
+        if (!Array.isArray(cameras)) {
+          cameras = [cameras];
+        }
+
+        for (const cameraName of cameras) {
+          const controller = CameraController.cameras.get(cameraName);
+          const state = controller?.videoanalysis?.videoanalysisSession?.isActive();
+
+          socket.emit('videoanalysisStatus', {
+            camera: cameraName,
+            status: state ? 'active' : 'inactive',
+          });
+        }
+      });
+
       socket.on('disconnect', () => {
         log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) disconnected from socket`);
       });

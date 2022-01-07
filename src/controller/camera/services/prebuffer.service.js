@@ -58,7 +58,7 @@ class PrebufferService {
 
     if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.prebufferSession) {
       log.info('Prebuffer: Video Config changed!', this.cameraName);
-      this.restart(true);
+      this.restart();
     }
   }
 
@@ -105,15 +105,13 @@ class PrebufferService {
 
       this.restartTimer = setTimeout(() => {
         log.info('Sheduled restart of prebuffering is executed...', this.cameraName);
-        this.restart(true);
+        this.restart();
       }, timer);
     } catch (error) {
       if (error) {
         log.info('An error occured during starting camera prebuffer!', this.cameraName, 'prebuffer');
         log.error(error, this.cameraName, 'prebuffer');
       }
-
-      //setTimeout(() => this.restart(), 10000);
     }
   }
 
@@ -158,9 +156,9 @@ class PrebufferService {
     }
   }
 
-  restart(killed) {
+  restart() {
     log.info('Restart prebuffer session..', this.cameraName);
-    this.stop(killed);
+    this.stop(true);
     setTimeout(() => this.start(), 10000);
   }
 
@@ -187,14 +185,6 @@ class PrebufferService {
       ...cameraUtils.generateInputSource(this.#camera.videoConfig).split(/\s+/),
     ];
 
-    if (this.#camera.videoConfig.mapvideo) {
-      ffmpegInput.push('-map', this.#camera.videoConfig.mapvideo);
-    }
-
-    if (this.#camera.videoConfig.videoFilter) {
-      ffmpegInput.push('-filter:v', this.#camera.videoConfig.videoFilter);
-    }
-
     const audioArguments = [];
 
     /*if (audioEnabled && incompatibleAudio) {
@@ -217,10 +207,6 @@ class PrebufferService {
     }
 
     if (audioEnabled) {
-      if (this.#camera.videoConfig.mapaudio) {
-        ffmpegInput.push('-map', this.#camera.videoConfig.mapaudio);
-      }
-
       if (incompatibleAudio && acodec !== 'libfdk_aac') {
         log.warn(
           `Incompatible audio stream detected ${probeAudio}, transcoding with "libfdk_aac"..`,
@@ -253,18 +239,30 @@ class PrebufferService {
       } else {
         audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'copy');
       }
+
+      if (this.#camera.videoConfig.mapaudio) {
+        audioArguments.unshift('-map', this.#camera.videoConfig.mapaudio);
+      }
     } else {
       audioArguments.push('-an');
     }
 
     const videoArguments = ['-vcodec', 'copy'];
 
+    if (this.#camera.videoConfig.mapvideo) {
+      videoArguments.unshift('-map', this.#camera.videoConfig.mapvideo);
+    }
+
+    /*if (this.#camera.videoConfig.videoFilter) {
+      videoArguments.push('-filter:v', this.#camera.videoConfig.videoFilter);
+    }*/
+
     this.parsers = {
       mp4: cameraUtils.createFragmentedMp4Parser(videoArguments, audioArguments),
       mpegts: cameraUtils.createMpegTsParser(videoArguments, audioArguments),
     };
 
-    const session = await this.#startRebroadcastSession(ConfigService.ui.options.videoProcessor, ffmpegInput, {
+    const session = await this.#startRebroadcastSession(ffmpegInput, {
       parsers: this.parsers,
     });
 
@@ -273,7 +271,6 @@ class PrebufferService {
       this.watchdog = setTimeout(() => {
         log.error('Watchdog for mp4 parser timed out... killing ffmpeg session', this.cameraName, 'prebuffer');
         session.kill();
-        //this.restart();
       }, 60000);
     };
 
@@ -357,7 +354,7 @@ class PrebufferService {
               destroy();
               log.debug('Prebuffer request ended', this.cameraName);
               this.events.removeListener(eventName, safeWriteData);
-              this.prebufferSession.events.removeListener('killed', cleanup);
+              this.prebufferSession?.events.removeListener('killed', cleanup);
             };
 
             this.events.on(eventName, safeWriteData);
@@ -457,7 +454,7 @@ class PrebufferService {
     };
   }
 
-  async #startRebroadcastSession(videoProcessor, ffmpegInput, options) {
+  async #startRebroadcastSession(ffmpegInput, options) {
     const events = new EventEmitter();
 
     let isActive = true;
@@ -473,6 +470,7 @@ class PrebufferService {
     const kill = () => {
       isActive = false;
 
+      events.emit('killed');
       cp?.kill('SIGKILL');
 
       for (const server of servers) {
@@ -525,7 +523,8 @@ class PrebufferService {
     );
 
     const errors = [];
-    const cp = spawn(videoProcessor, arguments_, {
+
+    const cp = spawn(ConfigService.ui.options.videoProcessor, arguments_, {
       env: process.env,
     });
 

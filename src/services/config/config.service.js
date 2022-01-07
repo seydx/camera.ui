@@ -309,6 +309,17 @@ class ConfigService {
           camera.videoConfig.source = false;
         }
 
+        if (camera.videoConfig.subSource) {
+          const stillArguments = camera.videoConfig.subSource.split(/\s+/);
+
+          if (!stillArguments.includes('-i')) {
+            log.warn(`${camera.name}: The subSource for this camera is missing "-i" !`, 'Config', 'system');
+            camera.videoConfig.subSource = camera.videoConfig.source;
+          }
+        } else {
+          camera.videoConfig.subSource = camera.videoConfig.source;
+        }
+
         if (camera.videoConfig.stillImageSource) {
           const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
 
@@ -331,6 +342,10 @@ class ConfigService {
 
         // min motionTimeout
         camera.motionTimeout = camera.motionTimeout >= 15 ? camera.motionTimeout : 15;
+
+        // validate prebufferLength
+        camera.prebufferLength =
+          (camera.prebufferLength >= 4 && camera.prebufferLength <= 8 ? camera.prebufferLength : 4) * 1000;
 
         // setup mqtt
         if (camera.mqtt) {

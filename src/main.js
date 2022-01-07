@@ -67,7 +67,11 @@ class Interface extends EventEmitter {
         await controller[1].media.probe();
 
         if (controller[1].options.prebuffering) {
-          await controller[1].prebuffer?.start();
+          await controller[1].prebuffer.start();
+        }
+
+        if (controller[1].options.videoanalysis.active) {
+          await controller[1].videoanalysis.start();
         }
 
         await controller[1].stream.configureStreamOptions();
@@ -92,7 +96,8 @@ class Interface extends EventEmitter {
 
     if (this.cameraController) {
       for (const controller of this.cameraController.values()) {
-        controller.prebuffer?.stop(true);
+        controller.prebuffer.stop(true);
+        controller.videoanalysis.stop(true);
         controller.stream.stop();
       }
     }
