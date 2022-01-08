@@ -16,6 +16,8 @@ const { log } = LoggerService;
 const compatibleAudio = /(aac|mp3|mp2)/;
 const prebufferDurationMs = 15000;
 
+const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class PrebufferService {
   #camera;
   #socket;
@@ -62,28 +64,13 @@ class PrebufferService {
         this.cameraName
       );
 
-      //this.restart();
+      this.restart();
     }
   }
 
   async start() {
     try {
       this.resetPrebuffer();
-
-      const probeTimedout = this.#mediaService.codecs.timedout;
-      const videoCodecProbe = this.#mediaService.codecs.video[0];
-
-      if (!probeTimedout && videoCodecProbe && !videoCodecProbe.includes('h264')) {
-        log.warn(
-          `Can not start Prebuffer, camera does not support H264 stream (${this.#mediaService.codecs.video.join(
-            ', '
-          )})`,
-          this.cameraName,
-          'prebuffer'
-        );
-
-        return this.stop(true);
-      }
 
       this.cameraState = await this.#pingCamera();
 
@@ -160,10 +147,12 @@ class PrebufferService {
     }
   }
 
-  restart() {
+  async restart() {
     log.info('Restart prebuffer session..', this.cameraName);
+
     this.stop(true);
-    setTimeout(() => this.start(), 10000);
+    await timeout(10000);
+    await this.start();
   }
 
   async #startPrebufferSession() {
@@ -251,7 +240,29 @@ class PrebufferService {
       audioArguments.push('-an');
     }
 
-    const videoArguments = ['-vcodec', 'copy'];
+    let vcodec = 'copy';
+
+    //todo change
+    const probeTimedout = this.#mediaService.codecs.timedout;
+    const videoCodecProbe = this.#mediaService.codecs.video[0];
+    const forcePrebuffering = this.#camera.forcePrebuffering;
+
+    if (!probeTimedout && videoCodecProbe && !videoCodecProbe.includes('h264')) {
+      if (!forcePrebuffering) {
+        log.warn(
+          `Camera does not support H264 stream (${this.#mediaService.codecs.video.join(
+            ', '
+          )}). To use prebuffering anyway, enable "forcePrebuffering" in config. Caution: This can lead to a higher CPU load!`,
+          this.cameraName,
+          'prebuffer'
+        );
+      } else {
+        log.info('Prebuffering with reencoding enabled! Please pay attention to the CPU load', this.cameraName);
+        vcodec = this.#camera.videoConfig.vcodec === 'copy' ? 'libx264' : this.#camera.videoConfig.vcodec;
+      }
+    }
+
+    const videoArguments = ['-vcodec', vcodec];
 
     if (this.#camera.videoConfig.mapvideo) {
       videoArguments.unshift('-map', this.#camera.videoConfig.mapvideo);
@@ -262,11 +273,11 @@ class PrebufferService {
     }*/
 
     this.parsers = {
-      mp4: cameraUtils.createFragmentedMp4Parser(videoArguments, audioArguments),
-      mpegts: cameraUtils.createMpegTsParser(videoArguments, audioArguments),
+      mp4: cameraUtils.createFragmentedMp4Parser(),
+      mpegts: cameraUtils.createMpegTsParser(),
     };
 
-    const session = await this.#startRebroadcastSession(ffmpegInput, {
+    const session = await this.#startRebroadcastSession(ffmpegInput, videoArguments, audioArguments, {
       parsers: this.parsers,
     });
 
@@ -458,7 +469,7 @@ class PrebufferService {
     };
   }
 
-  async #startRebroadcastSession(ffmpegInput, options) {
+  async #startRebroadcastSession(ffmpegInput, videoArguments, audioArguments, options) {
     const events = new EventEmitter();
 
     let isActive = true;
@@ -485,9 +496,10 @@ class PrebufferService {
       clearTimeout(ffmpegTimeout);
     };
 
-    const ffmpegInputs = {};
-    const arguments_ = [...ffmpegInput];
     const servers = [];
+
+    let mp4Arguments = '';
+    let mpegtsArguments = '';
 
     ffmpegTimeout = setTimeout(kill, 30000);
 
@@ -518,8 +530,27 @@ class PrebufferService {
       servers.push(server);
 
       const serverPort = await cameraUtils.listenServer(server);
-      arguments_.push(...parser.outputArguments, `tcp://127.0.0.1:${serverPort}`);
+      const containerArguments = `${parser.outputArguments}tcp://127.0.0.1:${serverPort}`;
+
+      if (container === 'mp4') {
+        mp4Arguments = containerArguments;
+      } else {
+        mpegtsArguments = containerArguments;
+      }
     }
+
+    const arguments_ = [
+      ...ffmpegInput,
+      ...videoArguments,
+      ...audioArguments,
+      '-f',
+      'tee',
+      '-map',
+      '0:v?',
+      '-map',
+      '0:a?',
+      `${mp4Arguments}|${mpegtsArguments}`,
+    ];
 
     log.debug(
       `Prebuffering command: ${ConfigService.ui.options.videoProcessor} ${arguments_.join(' ')}`,
@@ -574,7 +605,6 @@ class PrebufferService {
       kill,
       servers,
       cp,
-      ffmpegInputs,
     };
   }
 

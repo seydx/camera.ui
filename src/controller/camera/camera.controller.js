@@ -83,7 +83,7 @@ class CameraController {
     await controller.stream.configureStreamOptions();
   }
 
-  static reconfigureController(cameraName) {
+  static async reconfigureController(cameraName) {
     const controller = CameraController.cameras.get(cameraName);
 
     if (!controller) {
@@ -97,10 +97,11 @@ class CameraController {
     }
 
     controller.options = camera;
-    controller.media.reconfigure(camera);
-    controller.videoanalysis.reconfigure(camera);
-    controller.prebuffer.reconfigure(camera);
+
     controller.session.reconfigure(camera);
+    await controller.media.reconfigure(camera);
+    await controller.prebuffer.reconfigure(camera);
+    controller.videoanalysis.reconfigure(camera);
     controller.stream.reconfigure(camera);
 
     CameraController.cameras.set(camera.name, controller);

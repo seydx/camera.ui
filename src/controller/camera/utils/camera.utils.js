@@ -90,13 +90,13 @@ module.exports = {
     }
   },
 
-  createFragmentedMp4Parser: function (vcodec, acodec) {
+  createFragmentedMp4Parser: function () {
     // eslint-disable-next-line unicorn/no-this-assignment
     const self = this;
 
     return {
       container: 'mp4',
-      outputArguments: [...vcodec, ...acodec, '-movflags', 'frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4'],
+      outputArguments: '[movflags=frag_keyframe+empty_moov+default_base_moof:f=mp4]',
       async *parse(socket) {
         const parser = self.parseFragmentedMP4(socket);
 
@@ -175,10 +175,10 @@ module.exports = {
     };
   },
 
-  createMpegTsParser: function (vcodec, acodec) {
+  createMpegTsParser: function () {
     return {
       container: 'mpegts',
-      outputArguments: [...vcodec, ...acodec, '-f', 'mpegts'],
+      outputArguments: '[f=mpegts]',
       parse: this.createLengthParser(188, (concat) => {
         if (concat[0] != 0x47) {
           throw new Error('Invalid sync byte in mpeg-ts packet. Terminating stream.');

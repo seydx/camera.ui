@@ -46,7 +46,7 @@ class StreamService {
         this.cameraName
       );
 
-      //this.restart();
+      this.restart();
     }
   }
 

@@ -25,9 +25,17 @@ class MediaService {
     };
   }
 
-  reconfigure(camera) {
+  async reconfigure(camera) {
+    const oldVideoConfigSubSource = this.#camera.videoConfig.subSource;
+    const newVideoConfigSubSource = camera.videoConfig.subSource;
+
     this.#camera = camera;
     this.cameraName = camera.name;
+
+    if (oldVideoConfigSubSource !== newVideoConfigSubSource) {
+      log.info('Probe: Video source changed! Probe stream...', this.cameraName);
+      await this.probe();
+    }
   }
 
   async probe() {

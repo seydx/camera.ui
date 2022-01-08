@@ -51,7 +51,7 @@ class VideoAnalysisService {
         this.cameraName
       );
 
-      //this.restart();
+      this.restart();
     }
   }
 

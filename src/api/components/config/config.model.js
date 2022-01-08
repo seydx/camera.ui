@@ -74,8 +74,8 @@ exports.patchConfig = async (configJson) => {
   ConfigService.writeToConfig(false, configJson);
   await Database.writeConfigCamerasToDB();
 
-  if (configJson?.cameras) {
-    for (const camera of configJson.cameras) {
+  if (ConfigService.ui.cameras) {
+    for (const camera of ConfigService.ui.cameras) {
       CameraController.reconfigureController(camera.name);
     }
   }
