@@ -1,64 +1,41 @@
 'use-strict';
 
 const ping = require('ping');
+const { URL } = require('url');
 
 const { LoggerService } = require('../services/logger/logger.service');
 
 const { log } = LoggerService;
 
 class Ping {
-  static getHost(videoConfig) {
-    let protocol = videoConfig.source.split('-i ')[1].split('://')[0] + '://';
-    let host = videoConfig.source.split(protocol)[1];
-    let port;
-
-    host = host.includes('@') ? host.split('@')[1].split('/')[0] : host.split('/')[0];
-
-    if (host.includes(':')) {
-      port = host.split(':')[1];
-      port = port.includes('/') ? port.split('/')[0] : port;
-      host = host.split(':')[0];
-    }
-
-    return {
-      protocol: protocol,
-      host: host,
-      port: port,
-    };
-  }
-
   static async status(camera, timeout = 1) {
-    const cameraSource = camera.videoConfig.source;
+    let cameraSource = camera.videoConfig.source.split('-i ')[1];
 
-    if (!cameraSource.split('-i ')[1]) {
+    if (!cameraSource) {
+      log.warn(`Can not ping camera source, no source found (${camera.videoConfig.source})`, camera.name);
       return false;
     }
 
-    log.debug(`Incoming ping request for: ${cameraSource.split('-i ')[1]} - Timeout: ${timeout}s`, camera.name);
+    log.debug(`Incoming ping request for: ${cameraSource} - Timeout: ${timeout}s`, camera.name);
 
     //for local cameras eg "-i /dev/video0"
-    if (cameraSource.split('-i ')[1].startsWith('/')) {
+    if (cameraSource.startsWith('/')) {
+      log.debug(`Pinging ${cameraSource} - successfull`, camera.name);
       return true;
     }
 
-    const addresse = Ping.getHost(camera.videoConfig);
-    const protocol = addresse.protocol;
-    const host = addresse.host;
-    const port = addresse.port;
+    const url = new URL(cameraSource);
 
-    log.debug(`Pinging ${protocol}${host}${port ? ':' + port : ''}`, camera.name);
+    log.debug(`Pinging ${url.hostname}`, camera.name);
 
-    const response = await ping.promise.probe(host, {
+    const response = await ping.promise.probe(url.hostname, {
       timeout: timeout || 1,
       extra: ['-i', '2'],
     });
 
     let available = response && response.alive;
 
-    log.debug(
-      `Pinging ${protocol}${host}${port ? ':' + port : ''} - ${available ? 'successful' : 'failed'}`,
-      camera.name
-    );
+    log.debug(`Pinging ${url.hostname} - ${available ? 'successful' : 'failed'}`, camera.name);
 
     return available;
   }

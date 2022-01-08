@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-beta.55",
+  "version": "1.0.0-beta.56",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -16,7 +16,7 @@
   },
   "main": "src/index.js",
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.45.0",
+    "@aws-sdk/client-rekognition": "^3.46.0",
     "alexa-remote2": "^4.1.1",
     "axios": "^0.24.0",
     "bunyan": "^1.8.15",

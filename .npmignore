@@ -74,3 +74,4 @@ interface/report.html
 src
 ui
 parseFFmpeg.js
+parseUrl.js
