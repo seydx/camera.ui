@@ -256,6 +256,8 @@ class PrebufferService {
           this.cameraName,
           'prebuffer'
         );
+
+        return this.stop(true);
       } else {
         log.info('Prebuffering with reencoding enabled! Please pay attention to the CPU load', this.cameraName);
         vcodec = this.#camera.videoConfig.vcodec === 'copy' ? 'libx264' : this.#camera.videoConfig.vcodec;
