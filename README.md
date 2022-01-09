@@ -70,11 +70,11 @@ The default username is ``master`` and the default password is ``master``. When 
 
 ### Cameras
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/cameras.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/cameras.png" align="center" alt="camera.ui">
 
 ### Camera
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/camera.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/camera.png" align="center" alt="camera.ui">
 
 ### Recordings
 
@@ -86,19 +86,19 @@ The default username is ``master`` and the default password is ``master``. When 
 
 ### Camview
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/camview.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/camview.png" align="center" alt="camera.ui">
 
 ### Log
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/console.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/console.png" align="center" alt="camera.ui">
 
 ### Config
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/config.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/config.png" align="center" alt="camera.ui">
 
 ### Utilization
 
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/utilization.png" align="center" alt="camera.ui">
+<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/utilization.png" align="center" alt="camera.ui">
 
 ### Settings
 
