@@ -27,7 +27,7 @@
 
     .tw-mt-8(v-for="cam in config.cameras" v-if="camera.name && camera.name === cam.name")
 
-      v-expansion-panels(v-model="panel[cam.name]" multiple)
+      v-expansion-panels(v-model="panel[cam.name]")
         v-expansion-panel
           v-expansion-panel-header
             div
@@ -347,7 +347,7 @@
                 )
 
             label.form-input-label {{ $t('sensibility') }}
-            v-slider(hide-details hint="Im a hint" min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensibility")
+            v-slider(hide-details min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensibility")
 
             .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-mt-10.tw-mb-10
               v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}

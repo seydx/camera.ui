@@ -420,6 +420,109 @@ class Database {
     await Database.interfaceDB.assign(database).write();
   }
 
+  static async #ensureCameraDatabaseValues(settings) {
+    // old
+    delete settings.regions;
+
+    if (!settings.name) {
+      settings.name = defaultCameraSettingsEntry.name;
+    }
+
+    if (!settings.room) {
+      settings.room = defaultCameraSettingsEntry.room;
+    }
+
+    if (!settings.resolution) {
+      settings.resolution = defaultCameraSettingsEntry.resolution;
+    }
+
+    if (typeof settings.pingTimeout !== 'number') {
+      settings.pingTimeout = defaultCameraSettingsEntry.pingTimeout;
+    }
+
+    if (typeof settings.streamTimeout !== 'number') {
+      settings.streamTimeout = defaultCameraSettingsEntry.streamTimeout;
+    }
+
+    if (typeof settings.audio !== 'boolean') {
+      settings.audio = defaultCameraSettingsEntry.audio;
+    }
+
+    if (!settings.telegramType) {
+      settings.telegramType = defaultCameraSettingsEntry.telegramType;
+    }
+
+    if (typeof settings.alexa !== 'boolean') {
+      settings.alexa = defaultCameraSettingsEntry.alexa;
+    }
+
+    if (!settings.webhookUrl) {
+      settings.webhookUrl = defaultCameraSettingsEntry.webhookUrl;
+    }
+
+    if (typeof settings.privacyMode !== 'boolean') {
+      settings.privacyMode = defaultCameraSettingsEntry.privacyMode;
+    }
+
+    if (typeof settings.camview !== 'object') {
+      settings.camview = {};
+    }
+
+    if (typeof settings.camview.favourite !== 'boolean') {
+      settings.camview.favourite = defaultCameraSettingsEntry.camview.favourite;
+    }
+
+    if (typeof settings.camview.live !== 'boolean') {
+      settings.camview.live = defaultCameraSettingsEntry.camview.live;
+    }
+
+    if (typeof settings.camview.snapshotTimer !== 'number') {
+      settings.camview.snapshotTimer = defaultCameraSettingsEntry.camview.snapshotTimer;
+    }
+
+    if (typeof settings.dashboard !== 'object') {
+      settings.dashboard = {};
+    }
+
+    if (typeof settings.dashboard.live !== 'boolean') {
+      settings.dashboard.live = defaultCameraSettingsEntry.dashboard.live;
+    }
+
+    if (typeof settings.dashboard.snapshotTimer !== 'number') {
+      settings.dashboard.snapshotTimer = defaultCameraSettingsEntry.dashboard.snapshotTimer;
+    }
+
+    if (typeof settings.rekognition !== 'object') {
+      settings.rekognition = {};
+    }
+
+    if (typeof settings.rekognition.active !== 'boolean') {
+      settings.rekognition.active = defaultCameraSettingsEntry.rekognition.active;
+    }
+
+    if (!(settings.rekognition.confidence >= 0 && settings.rekognition.confidence <= 100)) {
+      settings.rekognition.confidence = defaultCameraSettingsEntry.rekognition.confidence;
+    }
+
+    if (!Array.isArray(settings.rekognition.labels)) {
+      settings.rekognition.labels = defaultCameraSettingsEntry.rekognition.labels;
+    }
+
+    if (typeof settings.videoanalysis !== 'object') {
+      settings.videoanalysis = {};
+    }
+
+    if (!(settings.videoanalysis.sensibility >= 0 && settings.videoanalysis.sensibility <= 100)) {
+      settings.videoanalysis.sensibility = defaultCameraSettingsEntry.videoanalysis.sensibility;
+    }
+
+    if (!Array.isArray(settings.videoanalysis.regions)) {
+      settings.videoanalysis.regions = defaultCameraSettingsEntry.videoanalysis.regions;
+    }
+
+    return settings;
+  }
+
   static async #initializeUser() {
     await Database.interfaceDB.read();
 
@@ -488,42 +591,7 @@ class Database {
         cameraSettingsEntry.name = cam.name;
         await CamerasSettings.push(cameraSettingsEntry).write();
       } else {
-        let camSetting = { ...cameraSettingsExists };
-
-        // old
-        delete camSetting.regions;
-
-        camSetting = {
-          name: camSetting.name || defaultCameraSettingsEntry.name,
-          room: camSetting.room || defaultCameraSettingsEntry.room,
-          resolution: camSetting.resolution || defaultCameraSettingsEntry.resolution,
-          pingTimeout: camSetting.pingTimeout || defaultCameraSettingsEntry.pingTimeout,
-          streamTimeout: camSetting.streamTimeout || defaultCameraSettingsEntry.streamTimeout,
-          audio: camSetting.audio || defaultCameraSettingsEntry.audio,
-          telegramType: camSetting.telegramType || defaultCameraSettingsEntry.telegramType,
-          alexa: camSetting.alexa || defaultCameraSettingsEntry.alexa,
-          webhookUrl: camSetting.webhookUrl || defaultCameraSettingsEntry.webhookUrl,
-          privacyMode: camSetting.privacyMode || defaultCameraSettingsEntry.privacyMode,
-          camview: {
-            favourite: camSetting.camview?.favourite || defaultCameraSettingsEntry.camview.favourite,
-            live: camSetting.camview?.live || defaultCameraSettingsEntry.camview.live,
-            snapshotTimer: camSetting.camview?.snapshotTimer || defaultCameraSettingsEntry.camview.snapshotTimer,
-          },
-          dashboard: {
-            live: camSetting.dashboard?.live || defaultCameraSettingsEntry.dashboard.live,
-            snapshotTimer: camSetting.dashboard?.snapshotTimer || defaultCameraSettingsEntry.dashboard.snapshotTimer,
-          },
-          rekognition: {
-            active: camSetting.rekognition?.active || defaultCameraSettingsEntry.rekognition.active,
-            confidence: camSetting.rekognition?.confidence || defaultCameraSettingsEntry.rekognition.confidence,
-            labels: camSetting.rekognition?.labels || defaultCameraSettingsEntry.rekognition.labels,
-          },
-          videoanalysis: {
-            sensibility: camSetting.videoanalysis?.sensibility || defaultCameraSettingsEntry.videoanalysis.sensibility,
-            regions: camSetting.videoanalysis?.regions || defaultCameraSettingsEntry.videoanalysis.regions,
-          },
-        };
-
+        let camSetting = this.#ensureCameraDatabaseValues(cameraSettingsExists);
         await CamerasSettings.find({ name: cam.name }).assign(camSetting).write();
       }
     }

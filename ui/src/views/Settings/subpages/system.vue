@@ -68,7 +68,7 @@
 
     v-divider.tw-mt-4.tw-mb-8
 
-    v-expansion-panels(v-model="panel" multiple)
+    v-expansion-panels(v-model="panel")
       v-expansion-panel
         v-expansion-panel-header
           div
