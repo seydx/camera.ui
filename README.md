@@ -149,7 +149,9 @@ To do this, please install [homebridge-config-ui-x](https://github.com/oznu/home
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/homebridge/homebridge_search.png" align="center" alt="camera.ui">
 
-Your database, if you have not changed the path, will remain the same. However you have to copy the content of `config.json` and paste it via homebridge-config-ui-x into the config.json block of homebridge-camera-ui.
+If you run camera.ui via Homebridge, then the interface will also be started automatically on every startup. An additional `Service Mode` is no longer needed.
+
+If you have used camera.ui before WITHOUT Homebridge and then use it with Homebridge, then the database must be recreated and also the config is taken over by Homebridge. You have to add the cameras again to Homebridge. After restarting Homebridge, the cameras will be also available on camera.ui
 
 Homebridge-config-ui-x offers some more config parameter to eg. enable HSV, motion sensors, motion switches and more. Please take a look at the `example-config.json`
 

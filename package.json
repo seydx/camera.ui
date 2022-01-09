@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.0-beta.60",
+  "version": "1.0.0-beta.61",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -48,7 +48,7 @@
     "smtp-server": "^3.9.0",
     "socket.io": "4.4.1",
     "socketio-jwt": "^4.6.2",
-    "systeminformation": "^5.9.17",
+    "systeminformation": "^5.10.0",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "4.1.6",
     "tar": "^6.1.11",

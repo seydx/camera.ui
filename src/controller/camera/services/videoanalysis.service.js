@@ -17,6 +17,8 @@ const { MotionController } = require('../../motion/motion.controller');
 
 const { log } = LoggerService;
 
+const isUINT = (value) => Number.isInteger(value) && value >= 0;
+
 class VideoAnalysisService {
   #camera;
   #socket;
@@ -63,10 +65,10 @@ class VideoAnalysisService {
       const value = 100 - sensibility;
 
       // 0: MAX - 100: MIN
-      const difference = Math.round(value / 3);
+      const difference = Math.round(value / 3) || 10;
 
       // 0: MAX - 100: MIN
-      const percentage = value;
+      const percentage = value || 50;
 
       this.videoanalysisSession.pamDiff.setDifference(difference);
       this.videoanalysisSession.pamDiff.setPercent(percentage);
@@ -333,16 +335,20 @@ class VideoAnalysisService {
             name: `region${index}`,
             difference: Math.round(sensibility / 3),
             percent: sensibility,
-            polygon: region.coords?.map((coord) => {
-              return {
-                x: coord[0],
-                y: coord[1],
-              };
-            }),
+            polygon: region.coords
+              ?.map((coord) => {
+                if (isUINT(coord[0]) && isUINT(coord[1])) {
+                  return {
+                    x: coord[0],
+                    y: coord[1],
+                  };
+                }
+              })
+              .filter((coord) => coord?.length > 2),
           };
         }
       })
-      .filter((zone) => zone);
+      .filter((zone) => zone?.polygon?.length > 2);
 
     log.debug(`Videoanalysis: Currently active zones: ${JSON.stringify(zones)}`, this.cameraName);
 
