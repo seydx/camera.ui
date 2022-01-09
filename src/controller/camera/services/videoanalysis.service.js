@@ -8,6 +8,8 @@ const { spawn } = require('child_process');
 const cameraUtils = require('../utils/camera.utils');
 const { Ping } = require('../../../common/ping');
 
+const { Database } = require('../../../api/database');
+
 const { LoggerService } = require('../../../services/logger/logger.service');
 const { ConfigService } = require('../../../services/config/config.service');
 
@@ -20,8 +22,8 @@ class VideoAnalysisService {
   #socket;
   #prebufferService;
 
+  videoanalysisSession = null;
   killed = false;
-
   cameraState = true;
   restartTimer = null;
   watchdog = null;
@@ -52,6 +54,13 @@ class VideoAnalysisService {
       );
 
       this.restart();
+    }
+  }
+
+  changeZone(regions) {
+    if (regions && regions.length > 0 && this.videoanalysisSession?.pamDiff) {
+      const zones = this.#createRegions(regions);
+      this.videoanalysisSession.pamDiff.regions = zones.length > 0 ? zones : null;
     }
   }
 
@@ -181,10 +190,18 @@ class VideoAnalysisService {
       this.cameraName
     );
 
+    const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
+
     const errors = [];
+    const regions = this.#createRegions(settings?.regions);
 
     const p2p = new P2P();
-    const pamDiff = new PamDiff({ difference: 10, percent: 10, response: 'blobs', draw: true });
+    const pamDiff = new PamDiff({
+      difference: 10,
+      percent: 30,
+    });
+
+    pamDiff.regions = regions.length > 0 ? regions : null;
 
     const restartWatchdog = () => {
       clearTimeout(this.watchdog);
@@ -210,6 +227,8 @@ class VideoAnalysisService {
     // eslint-disable-next-line no-unused-vars
     pamDiff.on('diff', async (data) => {
       if (!this.motionTriggered) {
+        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger)}`, this.cameraName);
+
         this.motionTriggered = true;
 
         const result = await MotionController.handleMotion('motion', this.cameraName, true, 'videoanalysis', {});
@@ -217,7 +236,7 @@ class VideoAnalysisService {
 
         setTimeout(() => {
           this.motionTriggered = false;
-        }, 30000);
+        }, 45000);
       }
     });
 
@@ -262,6 +281,7 @@ class VideoAnalysisService {
         return isActive;
       },
       cp,
+      pamDiff,
     };
   }
 
@@ -285,6 +305,30 @@ class VideoAnalysisService {
     }
 
     return state;
+  }
+
+  #createRegions(regions) {
+    const zones = regions
+      ?.map((region, index) => {
+        if (region.coords?.length > 2) {
+          return {
+            name: `region${index}`,
+            difference: 10,
+            percent: 30,
+            polygon: region.coords?.map((coord) => {
+              return {
+                x: coord[0],
+                y: coord[1],
+              };
+            }),
+          };
+        }
+      })
+      .filter((zone) => zone);
+
+    log.debug(`Videoanalysis: Currently active zones: ${JSON.stringify(zones)}`, this.cameraName);
+
+    return zones;
   }
 }
 

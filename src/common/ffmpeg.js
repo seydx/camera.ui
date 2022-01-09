@@ -13,6 +13,8 @@ const { CameraController } = require('../controller/camera/camera.controller');
 
 const { log } = LoggerService;
 
+const snapshotCache = {};
+
 const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
   let jpeg;
 
@@ -121,14 +123,32 @@ exports.storeBuffer = async function (
 };
 
 exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, isPlaceholder, storeSnapshot) {
-  return new Promise((resolve, reject) => {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    if (!storeSnapshot && snapshotCache[camera.name]) {
+      const now = Date.now();
+      if ((now - snapshotCache[camera.name].time) / 1000 <= 30) {
+        log.debug('Snapshot requested (cache)', camera.name);
+        return resolve(snapshotCache[camera.name].buffer);
+      }
+    }
+
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    const ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
+    let ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
     const videoWidth = camera.videoConfig.maxWidth || 1280;
     const videoHeight = camera.videoConfig.maxHeight || 720;
 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
+
+    const controller = CameraController.cameras.get(camera.name);
+    if (camera.prebuffering && controller?.prebuffer) {
+      try {
+        ffmpegInput = await controller.prebuffer.getVideo();
+      } catch {
+        // ignore
+      }
+    }
 
     const ffmpegArguments = [
       '-hide_banner',
@@ -188,6 +208,11 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
           replaceJpegWithExifJPEG(camera.name, destination, label);
         }
 
+        snapshotCache[camera.name] = {
+          time: Date.now(),
+          buffer: imageBuffer,
+        };
+
         resolve(imageBuffer);
       }
     });
@@ -239,13 +264,23 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
 
 // eslint-disable-next-line no-unused-vars
 exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
-  return new Promise((resolve, reject) => {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    let ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
     const videoName = `${recordingPath}/${fileName}.mp4`;
     const videoWidth = camera.videoConfig.maxWidth || 1280;
     const videoHeight = camera.videoConfig.maxHeight || 720;
     const vcodec = camera.videoConfig.vcodec || 'libx264';
+
+    const controller = CameraController.cameras.get(camera.name);
+    if (camera.prebuffering && controller?.prebuffer) {
+      try {
+        ffmpegInput = await controller.prebuffer.getVideo();
+      } catch {
+        // ignore
+      }
+    }
 
     const ffmpegArguments = [
       '-hide_banner',

@@ -1,8 +1,8 @@
 <template lang="pug">
 .tw-w-full.tw-mt-8
-  v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
+  v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)" style="z-index: 3;")
 
-  .tw-mb-7(v-if="!loading")
+  .tw-mb-7(v-if="!loading" ref="innerContainer")
     label.form-input-label {{ $t('selected_camera') }}
     v-select(v-model="camera" :items="cameras" item-text="name" prepend-inner-icon="mdi-cctv" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" return-object solo)
       template(v-slot:prepend-inner)
@@ -330,6 +330,27 @@
               .page-subtitle {{ $t('videoanalysis') }}
               .page-header-info.tw-mt-1 {{ $t('camera_videoanalysis_info') }}
           v-expansion-panel-content
+            .tw-w-full.tw-mt-3.tw-mb-8.tw-relative(v-resize="adjustPlayground" style="background: #000; border-radius: 10px;")
+              .tw-w-full.tw-h-full.tw-flex.tw-justify-center.tw-items-center(v-if="options[cam.name].loading")
+                v-progress-circular(indeterminate color="var(--cui-primary)" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);")
+                v-img.tw-w-full(src="#" :width="playgroundWidth" :height="playgroundHeight")
+
+              .tw-w-full(v-else)
+                playground(
+                  :width="playgroundWidth",
+                  :height="playgroundHeight",
+                  :options="options[cam.name]"
+                  :regions="camera.regions",
+                  :customizing="customizing"
+                  @addHandle="addHandle"
+                  @updateHandle="updateHandle"
+                )
+
+            .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-my-3
+              v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}
+              v-btn.tw-mx-2(@click="undo") {{ $t('undo') }}
+              v-btn(@click="clear") {{ $t('clear') }}
+            
             .tw-flex.tw-justify-between.tw-items-center
               label.form-input-label {{ $t('status') }}
               span.tw-text-right(:class="!videoanalysisStates[cam.name].state ? 'tw-text-red-500' : 'tw-text-green-500'") {{ videoanalysisStates[cam.name].state ? $t('active') : $t('inactive') }}
@@ -581,8 +602,8 @@ import {
   mdiVideoHighDefinition,
   mdiVideoImage,
 } from '@mdi/js';
-
 import {
+  getCameraSnapshot,
   removeCamera,
   restartPrebuffering,
   restartVideoanalysis,
@@ -591,18 +612,20 @@ import {
   stopVideoanalysis,
   resetMotion,
 } from '@/api/cameras.api';
-// eslint-disable-next-line no-unused-vars
 import { changeConfig, getConfig } from '@/api/config.api';
-// eslint-disable-next-line no-unused-vars
 import { getSetting, changeSetting } from '@/api/settings.api';
 
 import AddCamera from '@/components/add-camera.vue';
+import playground from '@/components/playground.vue';
+
+import { bus } from '@/main';
 
 export default {
   name: 'CamerasSettings',
 
   components: {
     AddCamera,
+    playground: playground,
   },
 
   data() {
@@ -638,8 +661,13 @@ export default {
       camerasTimeout: null,
       configTimeout: null,
 
-      camerasChanged: false,
       configChanged: false,
+
+      options: {},
+
+      customizing: false,
+      playgroundWidth: 0,
+      playgroundHeight: 0,
 
       general: {
         exclude: [],
@@ -665,6 +693,27 @@ export default {
       prebufferingStates: {},
       videoanalysisStates: {},
     };
+  },
+
+  watch: {
+    panel: {
+      async handler() {
+        const isVideoAnalysisPanelOpen = this.panel[this.camera.name]?.some((index) => index === 7);
+        if (isVideoAnalysisPanelOpen && !this.options[this.camera.name].background) {
+          this.adjustPlayground();
+
+          try {
+            const snapshot = await getCameraSnapshot(this.camera.name, '?buffer=true');
+            this.options[this.camera.name].background = `data:image/png;base64,${snapshot.data}`;
+            this.options[this.camera.name].loading = false;
+          } catch (err) {
+            console.log(err);
+            this.$toast.error(err.message);
+          }
+        }
+      },
+      deep: true,
+    },
   },
 
   beforeRouteLeave(to, from, next) {
@@ -740,6 +789,11 @@ export default {
             loading: false,
           });
 
+          this.$set(this.options, camera.name, {
+            loading: true,
+            background: '',
+          });
+
           return camera;
         }),
       };
@@ -757,12 +811,18 @@ export default {
       );
 
       this.$watch('cameras', this.camerasWatcher, { deep: true });
+      this.$watch('camera', this.cameraWatcher, { deep: true });
       this.$watch('config', this.configWatcher, { deep: true });
 
       this.camera = this.cameras[0];
 
       this.loading = false;
       this.loadingProgress = false;
+
+      window.addEventListener('resize', this.adjustPlayground);
+      window.addEventListener('orientationchange', this.adjustPlayground);
+
+      this.adjustPlayground();
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
@@ -771,21 +831,18 @@ export default {
 
   beforeDestroy() {
     this.$socket.client.off('prebufferStatus', this.prebufferStatus);
+    window.removeEventListener('resize', this.adjustPlayground);
+    window.removeEventListener('orientationchange', this.adjustPlayground);
   },
 
   methods: {
     cameraAdded() {
       window.location.reload(true);
     },
-
     async onSave() {
       this.loadingProgress = true;
 
       try {
-        if (this.camerasChanged) {
-          await changeSetting('cameras', this.cameras, '?stopStream=true');
-        }
-
         if (this.configChanged) {
           await changeConfig(this.config);
         }
@@ -794,13 +851,35 @@ export default {
         this.$toast.error(err.message);
       }
 
-      this.camerasChanged = false;
       this.configChanged = false;
       this.loadingProgress = false;
     },
-
+    async cameraWatcher() {
+      this.cameras = this.cameras.map((camera) => {
+        if (camera.name === this.camera.name) {
+          camera = this.camera;
+        }
+        return camera;
+      });
+    },
     async camerasWatcher() {
-      this.camerasChanged = true;
+      this.loadingProgress = true;
+
+      if (this.camerasTimeout) {
+        clearTimeout(this.camerasTimeout);
+        this.camerasTimeout = null;
+      }
+
+      this.camerasTimeout = setTimeout(async () => {
+        try {
+          await changeSetting('cameras', this.cameras, '?stopStream=true');
+        } catch (err) {
+          console.log(err);
+          this.$toast.error(err.message);
+        }
+
+        this.loadingProgress = false;
+      }, 2000);
     },
     async configWatcher() {
       this.configChanged = true;
@@ -896,6 +975,83 @@ export default {
         this.videoanalysisStates[data.camera].state = data.status === 'active';
       }
     },
+    addHandle(e) {
+      let x = Math.round(((e.offsetX - 10) / this.playgroundWidth) * 100);
+      let y = Math.round(((e.offsetY - 10) / this.playgroundHeight) * 100);
+
+      const regionIndex = this.camera.regions?.length
+        ? this.camera.regions[this.camera.regions.length - 1].finished
+          ? this.camera.regions.length
+          : this.camera.regions.length - 1
+        : 0;
+
+      if (!this.camera.regions[regionIndex]) {
+        this.camera.regions.push({
+          finished: false,
+          coords: [],
+        });
+      }
+
+      this.camera.regions[regionIndex].coords.push([x, y]);
+
+      bus.$emit('handleAdded', {
+        cIndex: this.camera.regions[regionIndex].coords.length - 1,
+        rIndex: regionIndex,
+        coord: [x, y],
+      });
+    },
+    updateHandle(payload) {
+      let x = Math.round((payload.x / this.playgroundWidth) * 100);
+      let y = Math.round((payload.y / this.playgroundHeight) * 100);
+
+      this.$set(this.camera.regions[payload.regionIndex].coords, payload.coordIndex, [x, y]);
+    },
+    undo() {
+      if (!this.camera.regions?.length) {
+        return;
+      }
+
+      const rIndex = this.camera.regions.length - 1;
+      this.camera.regions[rIndex]?.coords?.pop();
+
+      if (!this.camera.regions[rIndex].coords?.length) {
+        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
+      } else if (!this.customizing && this.camera.regions[rIndex].coords?.length < 3) {
+        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
+      }
+    },
+    clear() {
+      this.camera.regions = [];
+      bus.$emit('clearDraggs');
+    },
+    startCustom() {
+      this.customizing = true;
+    },
+    finishCustom() {
+      this.customizing = false;
+
+      if (!this.camera.regions?.length) {
+        return;
+      }
+
+      const rIndex = this.camera.regions.length - 1;
+
+      if (this.camera.regions[this.camera.regions.length - 1].coords.length < 3) {
+        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
+      } else {
+        this.camera.regions[rIndex].finished = true;
+        bus.$emit('customizingFinished');
+      }
+    },
+    adjustPlayground() {
+      if (this.$refs.innerContainer && this.camera.name) {
+        const width = this.$refs.innerContainer.offsetWidth;
+        const height = width / (16 / 9);
+
+        this.playgroundWidth = width - 20;
+        this.playgroundHeight = height;
+      }
+    },
   },
 };
 </script>
@@ -938,4 +1094,44 @@ div >>> .v-expansion-panel:not(:first-child)::after {
 /*div >>> .v-expansion-panels > *:last-child {
   border: none !important;
 }*/
+</style>
+
+<style scoped lang="scss">
+main {
+  display: flex;
+  flex-direction: column;
+
+  @media (min-width: 800px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    right: 23.625rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+    touch-action: none;
+
+    .panel.dark {
+      display: none;
+    }
+  }
+
+  header {
+    justify-content: space-between;
+    background: rgba(251, 252, 247, 0.75);
+    box-shadow: inset 0 -1px rgba(211, 208, 201, 0.25);
+    padding: 0.75rem 1rem;
+
+    @media (min-width: 800px) {
+      font-size: larger;
+      padding: 0.75rem 1rem;
+      border-radius: 2px 2px 0 0;
+    }
+
+    h1 {
+      padding: 0.25rem;
+      font-size: 1rem;
+      font-weight: 400;
+    }
+  }
+}
 </style>

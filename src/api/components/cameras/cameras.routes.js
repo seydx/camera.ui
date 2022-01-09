@@ -241,7 +241,7 @@ exports.routesConfig = (app) => {
    *         name: buffer
    *         schema:
    *           type: boolean
-   *         description: Returns a buffer of the snapshot
+   *         description: Returns camera settings
    *     responses:
    *       200:
    *         description: Successfull

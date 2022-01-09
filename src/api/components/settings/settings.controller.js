@@ -7,12 +7,12 @@ const { Cleartimer } = require('../../../common/cleartimer');
 const { CameraController } = require('../../../controller/camera/camera.controller');
 const { Database } = require('../../database');
 
-const { LoggerService } = require('../../../services/logger/logger.service');
+//const { LoggerService } = require('../../../services/logger/logger.service');
 
 const SettingsModel = require('./settings.model');
 
 const { cameras } = CameraController;
-const { log } = LoggerService;
+//const { log } = LoggerService;
 
 const setTimeoutAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -86,7 +86,7 @@ exports.patchTarget = async (req, res) => {
         }
       }*/
 
-      log.debug('Camera settings changed. The changes take effect when the camera stream is restarted.');
+      //log.debug('Camera settings changed. The changes take effect when the camera stream is restarted.');
 
       const cameraSettings = req.body;
 
@@ -112,7 +112,8 @@ exports.patchTarget = async (req, res) => {
           setting['-an'] = '';
         }
 
-        controller?.stream?.setStreamOptions(setting);
+        controller?.stream.setStreamOptions(setting);
+        controller?.videoanalysis.changeZone(camera.regions);
       }
     }
 

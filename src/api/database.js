@@ -36,12 +36,6 @@ const defaultDatabase = {
       last_rekognition: '',
     },
     cameras: [],
-    camview: {
-      refreshTimer: 60,
-    },
-    dashboard: {
-      refreshTimer: 60,
-    },
     general: {
       atHome: false,
       exclude: [],
@@ -143,6 +137,7 @@ const defaultCameraSettingsEntry = {
     confidence: 90,
     labels: [],
   },
+  regions: [],
 };
 
 class Database {
@@ -489,6 +484,38 @@ class Database {
         const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
         cameraSettingsEntry.name = cam.name;
         await CamerasSettings.push(cameraSettingsEntry).write();
+      } else {
+        let camSetting = { ...cameraSettingsExists };
+
+        camSetting = {
+          name: camSetting.name || defaultCameraSettingsEntry.name,
+          room: camSetting.room || defaultCameraSettingsEntry.room,
+          resolution: camSetting.resolution || defaultCameraSettingsEntry.resolution,
+          pingTimeout: camSetting.pingTimeout || defaultCameraSettingsEntry.pingTimeout,
+          streamTimeout: camSetting.streamTimeout || defaultCameraSettingsEntry.streamTimeout,
+          audio: camSetting.audio || defaultCameraSettingsEntry.audio,
+          telegramType: camSetting.telegramType || defaultCameraSettingsEntry.telegramType,
+          alexa: camSetting.alexa || defaultCameraSettingsEntry.alexa,
+          webhookUrl: camSetting.webhookUrl || defaultCameraSettingsEntry.webhookUrl,
+          privacyMode: camSetting.privacyMode || defaultCameraSettingsEntry.privacyMode,
+          camview: {
+            favourite: camSetting.camview?.favourite || defaultCameraSettingsEntry.camview.favourite,
+            live: camSetting.camview?.live || defaultCameraSettingsEntry.camview.live,
+            snapshotTimer: camSetting.camview?.snapshotTimer || defaultCameraSettingsEntry.camview.snapshotTimer,
+          },
+          dashboard: {
+            live: camSetting.dashboard?.live || defaultCameraSettingsEntry.dashboard.live,
+            snapshotTimer: camSetting.dashboard?.snapshotTimer || defaultCameraSettingsEntry.dashboard.snapshotTimer,
+          },
+          rekognition: {
+            active: camSetting.rekognition?.active || defaultCameraSettingsEntry.rekognition.active,
+            confidence: camSetting.rekognition?.confidence || defaultCameraSettingsEntry.rekognition.confidence,
+            labels: camSetting.rekognition?.labels || defaultCameraSettingsEntry.rekognition.labels,
+          },
+          regions: camSetting.regions || defaultCameraSettingsEntry.regions,
+        };
+
+        await CamerasSettings.find({ name: cam.name }).assign(camSetting).write();
       }
     }
   }
