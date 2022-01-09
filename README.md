@@ -29,6 +29,38 @@ and much mure...
 
 :de: | :gb: | :netherlands:
 
+
+## Documentation
+
+- [Installation](https://github.com/seydx/camera.ui#installation)
+- [Configuration](https://github.com/seydx/camera.ui#configuration)
+- [Defaults](https://github.com/seydx/camera.ui#defaults)
+- [Usage](https://github.com/seydx/camera.ui#usage)
+    * [Login](https://github.com/seydx/camera.ui#login)
+    * [Dashboard](https://github.com/seydx/camera.ui#dashboard)
+    * [Cameras](https://github.com/seydx/camera.ui#cameras)
+    * [Camera](https://github.com/seydx/camera.ui#camer)
+    * [Recordings](https://github.com/seydx/camera.ui#recordings)
+    * [Notifications](https://github.com/seydx/camera.ui#notifications)
+    * [Camview](https://github.com/seydx/camera.ui#camview)
+    * [Log](https://github.com/seydx/camera.ui#log)
+    * [Config](https://github.com/seydx/camera.ui#config)
+    * [Utilization](https://github.com/seydx/camera.ui#utilization)
+    * [Settings](https://github.com/seydx/camera.ui#settings)
+- [HomeKit](https://github.com/seydx/camera.ui#homekit)
+- [Motion Detection](https://github.com/seydx/camera.ui#motion-detection)
+    * [Videoanalysis](https://github.com/seydx/camera.ui#videoanalysis)
+    * [HTTP / MQTT / SMTP / FTP](https://github.com/seydx/camera.ui#http--mqtt--smtp--ftp)
+- [Image Rekognition](https://github.com/seydx/camera.ui#image-rekognition)
+- [PWA](https://github.com/seydx/camera.ui#pwa)
+- [Service Mode](https://github.com/seydx/camera.ui#service-mode)
+- [Supported Clients](https://github.com/seydx/camera.ui#supported-clients)
+- [Supported Cameras](https://github.com/seydx/camera.ui#supported-cameras)
+- [FAQ](https://github.com/seydx/camera.ui#faq)
+- [Contributing](https://github.com/seydx/camera.ui#contributing)
+- [Troubleshooting](https://github.com/seydx/camera.ui#troubleshooting)
+
+
 ## Installation
 
 ```
@@ -58,7 +90,7 @@ Once you have installed and configured it you can access the interface via http:
 
 The default username is ``master`` and the default password is ``master``. When you log in for the first time, camera.ui will ask you to change your username and password.
 
-# Usage
+## Usage
 
 ### Login
 
@@ -104,7 +136,7 @@ The default username is ``master`` and the default password is ``master``. When 
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/settings.png" align="center" alt="camera.ui">
 
-# HomeKit
+## HomeKit
 
 The cameras that are included in camera.ui can easily be exposed to Apple Home via Homebridge.
 
@@ -119,7 +151,7 @@ Homebridge-config-ui-x offers some more config parameter to eg. enable HSV, moti
 
 *Note:* homebridge-camera-ui >= v5.0.0 is compatible with camera.ui. Version 5 is still in beta phase and will be released very soon. [v5.0.0](https://github.com/seydx/homebridge-camera-ui/pull/255)
 
-# Motion detection
+## Motion detection
 
 camera.ui offers a variety of options to detect and process motion.
 
@@ -133,7 +165,7 @@ With this option camera.ui connects to the stream and compares frame by frame if
 
 If your camera is able to send an email when motion is detected, or send a command vie MQTT or upload an image vie FTP, then you can easily configure camera.ui to act as a destination. With this camera.ui interprets a movement and processes it (takes a picture/video, sends a notification etc)
 
-# Image Rekognition
+## Image Rekognition
 
 camera.ui also uses image rekognition with Amazon Web Services to analyse, detect, remember and recognize objects, scenes, and faces in images. You can enable for each camera the image rekogniton and you can even set labels for each camera. For each object, scene, and concept the API returns one or more labels. Each label provides the object name. For example, suppose the input image has a lighthouse, the sea, and a rock. The response includes all three labels, one for each object.
 
@@ -141,13 +173,13 @@ This makes it possible to analyze every movement before this is stored or sent a
 
 To use image rekognition, you need to set up a AWS account with an IAM user. More Infos: [AWS Image Rekognition](https://aws.amazon.com/rekognition/?nc1=h_ls&blog-cards.sort-by=item.additionalFields.createdDate&blog-cards.sort-order=desc)
 
-# PWA
+## PWA
 
 camera.ui is a full-featured PWA (Progressive Web Application). The PWA offers several advantages over a normal web page. Via Windows/macOS/Android the browser can directly send you push notifications natively. The handling of the page becomes much faster and much more.
 
 To "enable" PWA you need to run the page over HTTPS. In the config.json you can provide your own SSL key and certificate to run camera.ui over HTTPS.
 
-# Service Mode
+## Service Mode
 
 To let camera.ui run permanently in the background, you can use it in `Service Mode`.
 
@@ -180,7 +212,7 @@ KillMode=process
 WantedBy=multi-user.target
 ```
 
-# Supported clients
+## Supported clients
 
 This plugin has been verified to work with the following apps/systems:
 
@@ -201,15 +233,15 @@ The following browsers are supported by this plugin:
 
 _MS Internet Explorer (any version) is not supported!_
 
-# Supported Cameras
+## Supported Cameras
 
 Every camera with an active RTSP stream!
 
-# FAQ
+## FAQ
 
 Please check our [FAQ](https://github.com/SeydX/camera.ui/wiki/FAQ) before you open an issue.
 
-# Contributing
+## Contributing
 
 You can contribute to this in following ways:
 
@@ -221,12 +253,13 @@ You can contribute to this in following ways:
 
 See [CONTRIBUTING](https://github.com/SeydX/camera.ui/blob/master/CONTRIBUTING.md)
 
-# Troubleshooting
+## Troubleshooting
+
 If you have any issues then you can run camera.ui in debug mode, which will provide some additional information. This might be useful for debugging issues. Open the interface > settings > system > 
 
 https://github.com/SeydX/camera.ui/wiki/Debug
 
-# License
+## License
 
 ### MIT License
 
