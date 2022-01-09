@@ -108,11 +108,16 @@ The default username is ``master`` and the default password is ``master``. When 
 
 The cameras that are included in camera.ui can easily be exposed to Apple Home via Homebridge.
 
-To do this, please install `homebridge-config-ui-x` and search for the plugin `homebridge-camera-ui` and install it.
+To do this, please install [homebridge-config-ui-x](https://github.com/oznu/homebridge-config-ui-x) and search for the plugin [homebridge-camera-u](https://github.com/seydx/homebridge-camera-ui) and install it.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/homebridge/homebridge_search.png" align="center" alt="camera.ui">
 
 Your database, if you have not changed the path, will remain the same. However you have to copy the content of `config.json` and paste it via homebridge-config-ui-x into the config.json block of homebridge-camera-ui.
+
+Homebridge-config-ui-x offers some more config parameter to eg. enable HSV, motion sensors, motion switches and more. Please take a look at the `example-config.json`
+
+
+*Note:* homebridge-camera-ui >= v5.0.0 is compatible with camera.ui. Version 5 is still in beta phase and will be released very soon. [v5.0.0](https://github.com/seydx/homebridge-camera-ui/pull/255)
 
 # Motion detection
 
@@ -141,6 +146,39 @@ To use image rekognition, you need to set up a AWS account with an IAM user. Mor
 camera.ui is a full-featured PWA (Progressive Web Application). The PWA offers several advantages over a normal web page. Via Windows/macOS/Android the browser can directly send you push notifications natively. The handling of the page becomes much faster and much more.
 
 To "enable" PWA you need to run the page over HTTPS. In the config.json you can provide your own SSL key and certificate to run camera.ui over HTTPS.
+
+# Service Mode
+
+To let camera.ui run permanently in the background, you can use it in `Service Mode`.
+
+Create a new file named `camera.ui.default` and paste the following into it:
+
+```
+CAMERA_UI_OPTS=-D -C -T -S "/home/pi/Desktop/.camera.ui/"
+CUI_STORAGE_PATH="/home/pi/Desktop/.camera.ui/"
+
+DISABLE_OPENCOLLECTIVE=true
+```
+
+Please make sure to change the path if necessary. Then create another file named `camera.ui.service` and add the following:
+
+```
+[Unit]
+Description=camera.ui
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+User=pi
+EnvironmentFile=/etc/default/camera.ui
+ExecStart=/home/pi/Desktop/camera.ui/bin/camera.ui.js $CAMERA_UI_OPTS
+Restart=always
+RestartSec=5
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+```
 
 # Supported clients
 

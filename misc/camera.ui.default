@@ -1,2 +1,0 @@
-CAMERA_UI_OPTS=-D -C -T -S "/var/lib/camera.ui"
-DISABLE_OPENCOLLECTIVE=true
