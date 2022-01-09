@@ -2,14 +2,17 @@
 
 Pull requests are welcome from everyone.
 
-This project uses Express for the server and VUE for the client UI.
+This project uses Express for the server and VUE for the client interface.
 
 **Credits goes also to:**
 
 - [@oznu](https://github.com/oznu): I could learn a lot from homebridge-config-ui-x
-- [@Sunoo](https://github.com/Sunoo): For the HTTP/MQTT/SMTP implementation
-- [@phoboslab](https://github.com/phoboslab/jsmpeg) for the decoder. Without it it would not be possible to display the cameras via an interface
+- [@Sunoo](https://github.com/Sunoo): For the HTTP/MQTT/SMTP/FTP implementation
+- [@phoboslab](https://github.com/phoboslab/jsmpeg): For the awesome decoder to show camera streams within browser
+- [@koush](https://github.com/koush): For the prebuffering process
+- [@adumesny](https://github.com/gridstack/gridstack.js): Without Gridstack the dashboard would not be so nice and functional
 
+And also many thanks to the other developers who are not mentioned by name! You rock!
 
 ## Translations
 

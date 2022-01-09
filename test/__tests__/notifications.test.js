@@ -83,7 +83,7 @@ describe('POST /api/notifications', () => {
       .send(notification);
     expect(response.statusCode).toBe(201);
 
-    notificationId = response.body.id;
+    notificationId = response.body.notification.id;
   });
 });
 

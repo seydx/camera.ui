@@ -72,11 +72,11 @@ class CameraController {
 
     await controller.media.probe();
 
-    if (controller.options.prebuffering) {
+    if (controller.options?.prebuffering) {
       await controller.prebuffer.start();
     }
 
-    if (controller.options.videoanalysis.active) {
+    if (controller.options.videoanalysis?.active) {
       await controller.videoanalysis.start();
     }
 

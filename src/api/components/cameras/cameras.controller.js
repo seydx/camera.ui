@@ -21,6 +21,13 @@ exports.insert = async (req, res) => {
 
     const result = await CamerasModel.createCamera(req.body);
 
+    if (!result) {
+      return res.status(409).send({
+        statusCode: 409,
+        message: 'Camera already exists',
+      });
+    }
+
     res.status(201).send({
       name: result.name,
     });

@@ -148,6 +148,9 @@ describe('DELETE /api/cameras/:name', () => {
     const response = await request
       .delete('/api/cameras/Test Camera 3')
       .auth(auth.body.access_token, { type: 'bearer' });
+
+    console.log(response.error);
+
     expect(response.statusCode).toBe(204);
   });
 });

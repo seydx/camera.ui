@@ -36,16 +36,16 @@ exports.createCamera = async (cameraData) => {
 
     ConfigService.ui.cameras.push(cameraData);
     ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+
     CameraController.createController(cameraData);
-    CameraController.startController(cameraData.name);
+    await CameraController.startController(cameraData.name);
 
     await Database.writeConfigCamerasToDB();
-
-    Database.controller.emit('addCamera', cameraData);
+    Database.controller?.emit('addCamera', cameraData);
 
     return cameraData;
   } else {
-    throw new Error('Camera already exists in config.json');
+    return false;
   }
 };
 
@@ -91,18 +91,11 @@ exports.removeByName = async (name) => {
 
   ConfigService.ui.cameras = ConfigService.ui.cameras.filter((camera) => camera.name !== name);
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
-  CameraController.removeController(name);
+
+  await CameraController.removeController(name);
 
   await Database.writeConfigCamerasToDB();
-  Database.controller.emit('removeCamera', name);
-
-  /*return await Database.interfaceDB
-    .get('cameras')
-    .remove((cam) => cam.name === name)
-    .get('settings')
-    .get('cameras')
-    .remove((cam) => cam.name === name)
-    .write();*/
+  Database.controller?.emit('removeCamera', name);
 
   return;
 };
@@ -120,15 +113,7 @@ exports.removeAll = async () => {
   }
 
   await Database.writeConfigCamerasToDB();
-  Database.controller.emit('removeCameras');
-
-  /*return await Database.interfaceDB
-    .get('cameras')
-    .remove(() => true)
-    .get('settings')
-    .get('cameras')
-    .remove(() => true)
-    .write();*/
+  Database.controller?.emit('removeCameras');
 
   return;
 };
