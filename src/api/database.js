@@ -137,7 +137,10 @@ const defaultCameraSettingsEntry = {
     confidence: 90,
     labels: [],
   },
-  regions: [],
+  videoanalysis: {
+    sensibility: 50,
+    regions: [],
+  },
 };
 
 class Database {
@@ -487,6 +490,9 @@ class Database {
       } else {
         let camSetting = { ...cameraSettingsExists };
 
+        // old
+        delete camSetting.regions;
+
         camSetting = {
           name: camSetting.name || defaultCameraSettingsEntry.name,
           room: camSetting.room || defaultCameraSettingsEntry.room,
@@ -512,7 +518,10 @@ class Database {
             confidence: camSetting.rekognition?.confidence || defaultCameraSettingsEntry.rekognition.confidence,
             labels: camSetting.rekognition?.labels || defaultCameraSettingsEntry.rekognition.labels,
           },
-          regions: camSetting.regions || defaultCameraSettingsEntry.regions,
+          videoanalysis: {
+            sensibility: camSetting.videoanalysis?.sensibility || defaultCameraSettingsEntry.videoanalysis.sensibility,
+            regions: camSetting.videoanalysis?.regions || defaultCameraSettingsEntry.videoanalysis.regions,
+          },
         };
 
         await CamerasSettings.find({ name: cam.name }).assign(camSetting).write();

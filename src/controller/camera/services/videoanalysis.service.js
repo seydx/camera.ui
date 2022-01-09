@@ -57,10 +57,28 @@ class VideoAnalysisService {
     }
   }
 
-  changeZone(regions) {
+  // 0 - 100
+  changeSensibility(sensibility) {
+    if (sensibility >= 0 && this.videoanalysisSession?.pamDiff) {
+      const value = 100 - sensibility;
+
+      // 0: MAX - 100: MIN
+      const difference = Math.round(value / 3);
+
+      // 0: MAX - 100: MIN
+      const percentage = value;
+
+      this.videoanalysisSession.pamDiff.setDifference(difference);
+      this.videoanalysisSession.pamDiff.setPercent(percentage);
+    }
+  }
+
+  changeZone(regions, sensibility) {
     if (regions && regions.length > 0 && this.videoanalysisSession?.pamDiff) {
-      const zones = this.#createRegions(regions);
+      const zones = this.#createRegions(regions, sensibility);
       this.videoanalysisSession.pamDiff.regions = zones.length > 0 ? zones : null;
+
+      this.changeSensibility(sensibility);
     }
   }
 
@@ -193,12 +211,12 @@ class VideoAnalysisService {
     const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
 
     const errors = [];
-    const regions = this.#createRegions(settings?.regions);
+    const regions = this.#createRegions(settings?.videoanalysis?.regions, settings?.videoanalysis?.sensibility);
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
-      difference: 10,
-      percent: 30,
+      difference: settings?.videoanalysis?.difference || 10,
+      percent: settings?.videoanalysis?.percentage || 30,
     });
 
     pamDiff.regions = regions.length > 0 ? regions : null;
@@ -307,14 +325,14 @@ class VideoAnalysisService {
     return state;
   }
 
-  #createRegions(regions) {
+  #createRegions(regions, sensibility) {
     const zones = regions
       ?.map((region, index) => {
         if (region.coords?.length > 2) {
           return {
             name: `region${index}`,
-            difference: 10,
-            percent: 30,
+            difference: Math.round(sensibility / 3),
+            percent: sensibility,
             polygon: region.coords?.map((coord) => {
               return {
                 x: coord[0],

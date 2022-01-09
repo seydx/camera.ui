@@ -12,14 +12,15 @@
       h3 {{ $t('cpu_load') }}
       .chart-badge-loading.tw-flex.tw-justify-center.tw-items-center(v-if="!cpuData.data.length")
         v-progress-circular(indeterminate color="var(--cui-primary)")
-      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ cpuData.data.length ? `${Math.round(cpuData.data[cpuData.data.length-1].value)}%` : '' }}
+      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ cpuData.data.length ? `${Math.round(cpuData.data[cpuData.data.length-1].value)}%` : '0%' }}
+      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white(style="top: 130px; background: rgb(56, 56, 56)") {{ cpuData.data.length ? `${Math.round(cpuData.data[cpuData.data.length-1].value2)}%` : '0%' }}
       Chart.tw-mt-5(:dataset="cpuData" :options="areacpuLoadOptions")
     
     .tw-mt-10.tw-relative
       h3 {{ $t('cpu_temperature') }}
       .chart-badge-loading.tw-flex.tw-justify-center.tw-items-center(v-if="!tempData.data.length")
         v-progress-circular(indeterminate color="var(--cui-primary)")
-      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ tempData.data.length ? `${Math.round(tempData.data[tempData.data.length-1].value)}°` : '' }}
+      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ tempData.data.length ? `${Math.round(tempData.data[tempData.data.length-1].value)}°` : '0°' }}
       Chart.tw-mt-5(:dataset="tempData" :options="areaCpuTempOptions")
 
     .tw-mt-10.tw-mb-10.tw-relative
@@ -29,6 +30,7 @@
       .chart-badge.tw-flex.tw-flex-col.tw-justify-center.tw-items-center
         .tw-text-white(style="font-size: 0.8rem !important; font-weight: 100;") {{ memoryData.data.length ? memoryData.data[memoryData.data.length-1].available : '-' }} GB /
         .tw-text-white(style="font-size: 0.9rem !important; font-weight: bolder;") {{ memoryData.data.length ? memoryData.data[memoryData.data.length-1].total : '-' }} GB
+      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white(style="top: 130px; background: rgb(56, 56, 56)") {{ memoryData.data.length ? `${Math.round(memoryData.data[memoryData.data.length-1].value2)}%` : '0%' }}
       Chart.tw-mt-5(:dataset="memoryData" :options="areaMemoryOptions")
 
   CoolLightBox(

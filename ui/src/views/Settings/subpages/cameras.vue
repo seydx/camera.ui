@@ -340,18 +340,23 @@
                   :width="playgroundWidth",
                   :height="playgroundHeight",
                   :options="options[cam.name]"
-                  :regions="camera.regions",
+                  :regions="camera.videoanalysis.regions",
                   :customizing="customizing"
                   @addHandle="addHandle"
                   @updateHandle="updateHandle"
                 )
 
-            .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-my-3
+            label.form-input-label {{ $t('sensibility') }}
+            v-slider(hide-details hint="Im a hint" min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensibility")
+
+            .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-mt-10.tw-mb-10
               v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}
               v-btn.tw-mx-2(@click="undo") {{ $t('undo') }}
               v-btn(@click="clear") {{ $t('clear') }}
+
+            v-divider
             
-            .tw-flex.tw-justify-between.tw-items-center
+            .tw-flex.tw-justify-between.tw-items-center.tw-mt-10
               label.form-input-label {{ $t('status') }}
               span.tw-text-right(:class="!videoanalysisStates[cam.name].state ? 'tw-text-red-500' : 'tw-text-green-500'") {{ videoanalysisStates[cam.name].state ? $t('active') : $t('inactive') }}
 
@@ -582,7 +587,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}   
 
-    v-btn(block color="success" @click="onSave" :loading="loadingProgress") Save
+    v-btn.tw-mt-5.tw-text-white(block color="var(--cui-primary)" @click="onSave" :loading="loadingProgress") {{ $t('save') }}
 
 </template>
 
@@ -979,23 +984,23 @@ export default {
       let x = Math.round(((e.offsetX - 10) / this.playgroundWidth) * 100);
       let y = Math.round(((e.offsetY - 10) / this.playgroundHeight) * 100);
 
-      const regionIndex = this.camera.regions?.length
-        ? this.camera.regions[this.camera.regions.length - 1].finished
-          ? this.camera.regions.length
-          : this.camera.regions.length - 1
+      const regionIndex = this.camera.videoanalysis.regions?.length
+        ? this.camera.videoanalysis.regions[this.camera.videoanalysis.regions.length - 1].finished
+          ? this.camera.videoanalysis.regions.length
+          : this.camera.videoanalysis.regions.length - 1
         : 0;
 
-      if (!this.camera.regions[regionIndex]) {
-        this.camera.regions.push({
+      if (!this.camera.videoanalysis.regions[regionIndex]) {
+        this.camera.videoanalysis.regions.push({
           finished: false,
           coords: [],
         });
       }
 
-      this.camera.regions[regionIndex].coords.push([x, y]);
+      this.camera.videoanalysis.regions[regionIndex].coords.push([x, y]);
 
       bus.$emit('handleAdded', {
-        cIndex: this.camera.regions[regionIndex].coords.length - 1,
+        cIndex: this.camera.videoanalysis.regions[regionIndex].coords.length - 1,
         rIndex: regionIndex,
         coord: [x, y],
       });
@@ -1004,24 +1009,24 @@ export default {
       let x = Math.round((payload.x / this.playgroundWidth) * 100);
       let y = Math.round((payload.y / this.playgroundHeight) * 100);
 
-      this.$set(this.camera.regions[payload.regionIndex].coords, payload.coordIndex, [x, y]);
+      this.$set(this.camera.videoanalysis.regions[payload.regionIndex].coords, payload.coordIndex, [x, y]);
     },
     undo() {
-      if (!this.camera.regions?.length) {
+      if (!this.camera.videoanalysis.regions?.length) {
         return;
       }
 
-      const rIndex = this.camera.regions.length - 1;
-      this.camera.regions[rIndex]?.coords?.pop();
+      const rIndex = this.camera.videoanalysis.regions.length - 1;
+      this.camera.videoanalysis.regions[rIndex]?.coords?.pop();
 
-      if (!this.camera.regions[rIndex].coords?.length) {
-        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
-      } else if (!this.customizing && this.camera.regions[rIndex].coords?.length < 3) {
-        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
+      if (!this.camera.videoanalysis.regions[rIndex].coords?.length) {
+        this.camera.videoanalysis.regions = this.camera.videoanalysis.regions.filter((region, i) => i !== rIndex);
+      } else if (!this.customizing && this.camera.videoanalysis.regions[rIndex].coords?.length < 3) {
+        this.camera.videoanalysis.regions = this.camera.videoanalysis.regions.filter((region, i) => i !== rIndex);
       }
     },
     clear() {
-      this.camera.regions = [];
+      this.camera.videoanalysis.regions = [];
       bus.$emit('clearDraggs');
     },
     startCustom() {
@@ -1030,16 +1035,16 @@ export default {
     finishCustom() {
       this.customizing = false;
 
-      if (!this.camera.regions?.length) {
+      if (!this.camera.videoanalysis.regions?.length) {
         return;
       }
 
-      const rIndex = this.camera.regions.length - 1;
+      const rIndex = this.camera.videoanalysis.regions.length - 1;
 
-      if (this.camera.regions[this.camera.regions.length - 1].coords.length < 3) {
-        this.camera.regions = this.camera.regions.filter((region, i) => i !== rIndex);
+      if (this.camera.videoanalysis.regions[this.camera.videoanalysis.regions.length - 1].coords.length < 3) {
+        this.camera.videoanalysis.regions = this.camera.videoanalysis.regions.filter((region, i) => i !== rIndex);
       } else {
-        this.camera.regions[rIndex].finished = true;
+        this.camera.videoanalysis.regions[rIndex].finished = true;
         bus.$emit('customizingFinished');
       }
     },
@@ -1094,6 +1099,15 @@ div >>> .v-expansion-panel:not(:first-child)::after {
 /*div >>> .v-expansion-panels > *:last-child {
   border: none !important;
 }*/
+
+div >>> .v-slider__thumb-label {
+  color: #fff !important;
+}
+
+div >>> .v-slider__track-background.primary.lighten-3 {
+  background-color: #5a5a5a !important;
+  border-color: #5a5a5a !important;
+}
 </style>
 
 <style scoped lang="scss">
