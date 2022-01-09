@@ -703,8 +703,18 @@ export default {
   watch: {
     panel: {
       async handler() {
-        const isVideoAnalysisPanelOpen = this.panel[this.camera.name]?.some((index) => index === 7);
-        if (isVideoAnalysisPanelOpen && !this.options[this.camera.name].background) {
+        let panel = [];
+
+        if (this.panel[this.camera.name]) {
+          if (!Array.isArray(this.panel[this.camera.name])) {
+            panel.push(this.panel[this.camera.name]);
+          } else {
+            panel = this.panel[this.camera.name].map((i) => i);
+          }
+        }
+
+        const isVideoAnalysisPanelOpen = panel.some((index) => index === 7);
+        if (isVideoAnalysisPanelOpen && !this.options[this.camera.name]?.background) {
           this.adjustPlayground();
 
           try {

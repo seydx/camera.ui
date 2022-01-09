@@ -20,14 +20,14 @@ let storagePath = path.resolve(os.homedir(), '.camera.ui');
 
 commander
   .allowUnknownOption()
-  .option('-D, --debug', 'turn on debug level logging', () => (debugEnabled = '1'))
-  .option('-C, --no-color', 'disable color in logging', () => (logColourful = '0'))
-  .option('-T, --no-timestamp', 'do not issue timestamps in logging', () => (logTimestamps = '0'))
-  .option('--no-sudo', 'disable sudo for updating through ui', () => (sudoEnabled = '0'))
-  .option('--no-global', 'disable global (-g) prefix for updating through ui', () => (globalInstalled = '0'))
+  .option('-D, --debug', 'Turn on debug level logging', () => (debugEnabled = '1'))
+  .option('-C, --no-color', 'Disable color in logging', () => (logColourful = '0'))
+  .option('-T, --no-timestamp', 'Do not issue timestamps in logging', () => (logTimestamps = '0'))
+  .option('--no-sudo', 'Disable sudo for updating through ui', () => (sudoEnabled = '0'))
+  .option('--no-global', 'Disable global (-g) prefix for updating through ui', () => (globalInstalled = '0'))
   .option(
     '-S, --storage-path [path]',
-    'look for camera.ui files at [path] instead of the default location (~/.camera.ui)',
+    'Look for camera.ui files at [path] instead of the default location (~/.camera.ui)',
     (p) => (storagePath = p)
   )
   .parse(process.argv);
