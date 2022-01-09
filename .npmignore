@@ -75,3 +75,4 @@ src
 ui
 parseFFmpeg.js
 parseUrl.js
+systeminformation.js

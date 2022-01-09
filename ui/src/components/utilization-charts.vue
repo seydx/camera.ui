@@ -47,9 +47,37 @@ export default {
           return '209, 32, 73';
       }
     },
+    chartColorRGB2() {
+      const color = localStorage.getItem('theme-color') || 'pink';
+
+      switch (color) {
+        case 'blue':
+          return '4, 53, 102';
+        case 'blgray':
+          return '37, 49, 55';
+        case 'brown':
+          return '48, 34, 29';
+        case 'green':
+          return '41, 82, 41';
+        case 'gray':
+          return '39, 40, 40';
+        case 'orange':
+          return '102, 60, 0';
+        case 'pink':
+          return '133, 21, 47';
+        case 'purple':
+          return '50, 29, 78';
+        default:
+          return '133, 21, 47';
+      }
+    },
     chartPointerColorRGB() {
       const darkMode = localStorage.getItem('theme') === 'dark';
       return darkMode ? '#e2e2e2' : '#383838';
+    },
+    chartPointerColorRGBA() {
+      const darkMode = localStorage.getItem('theme') === 'dark';
+      return darkMode ? '226, 226, 226' : '56, 56, 56';
     },
   },
 
@@ -87,6 +115,25 @@ export default {
           },
         ],
       };
+
+      const value2 = this.dataset.data.map((data) => data.value2).filter((data) => data);
+
+      if (value2.length > 1) {
+        const gradient2 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+        gradient2.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
+        gradient2.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
+        gradient2.addColorStop(1, 'rgba(56, 56, 56, 0)');
+
+        this.datacollection.datasets.push({
+          label: 'camera.ui',
+          borderColor: '#383838',
+          pointBackgroundColor: '#383838',
+          borderWidth: 1,
+          pointBorderColor: '#383838',
+          backgroundColor: gradient2,
+          data: value2,
+        });
+      }
     },
   },
 };

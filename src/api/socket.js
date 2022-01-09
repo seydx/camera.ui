@@ -313,11 +313,13 @@ class Socket {
   static async handleCpuLoad() {
     try {
       const cpuLoad = await systeminformation.currentLoad();
+      const processLoad = await systeminformation.processLoad(process.title);
 
       Socket.#cpuLoadHistory = Socket.#cpuLoadHistory.slice(-60);
       Socket.#cpuLoadHistory.push({
         time: new Date(),
         value: cpuLoad ? cpuLoad.currentLoad : 0,
+        value2: processLoad?.length ? processLoad[0].cpu || 0 : 0,
       });
     } catch (error) {
       log.error(error, 'Socket');
@@ -354,11 +356,13 @@ class Socket {
     try {
       const mem = await systeminformation.mem();
       const memoryFreePercent = mem ? ((mem.total - mem.available) / mem.total) * 100 : 50;
+      const processLoad = await systeminformation.processLoad(process.title);
 
       Socket.#memoryUsageHistory = Socket.#memoryUsageHistory.slice(-60);
       Socket.#memoryUsageHistory.push({
         time: new Date(),
         value: memoryFreePercent,
+        value2: processLoad?.length ? processLoad[0].mem || 0 : 0,
         available: mem ? (mem.available / 1024 / 1024 / 1024).toFixed(2) : 4,
         total: mem ? (mem.total / 1024 / 1024 / 1024).toFixed(2) : 8,
       });

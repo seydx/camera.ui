@@ -157,3 +157,4 @@ mp4
 ui/node_modules
 parseFFmpeg.js
 parseUrl.js
+systeminformation.js

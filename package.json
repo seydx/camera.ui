@@ -72,6 +72,9 @@
     "prettier": "^2.5.1",
     "supertest": "^6.1.6"
   },
+  "optionalDependencies": {
+    "osx-temperature-sensor": "^1.0.7"
+  },
   "bin": {
     "camera.ui": "bin/camera.ui.js"
   },
