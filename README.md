@@ -35,7 +35,7 @@ and much mure...
 - [Installation](https://github.com/seydx/camera.ui#installation)
 - [Configuration](https://github.com/seydx/camera.ui#configuration)
 - [Defaults](https://github.com/seydx/camera.ui#defaults)
-- [Usage](https://github.com/seydx/camera.ui#usage)
+- [Usage](#usage)
     * [Login](https://github.com/seydx/camera.ui#login)
     * [Dashboard](https://github.com/seydx/camera.ui#dashboard)
     * [Cameras](https://github.com/seydx/camera.ui#cameras)
