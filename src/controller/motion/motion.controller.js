@@ -92,6 +92,12 @@ class MotionController {
     this.closeFtpServer = MotionController.closeFtpServer;
   }
 
+  /**
+   *
+   * @url https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/index.ts
+   * @author Sunoo <https://github.com/sunoo>
+   *
+   **/
   static startHttpServer() {
     log.debug('Setting up HTTP server for motion detection...');
 
@@ -181,6 +187,12 @@ class MotionController {
     MotionController.httpServer.listen(ConfigService.ui.http.port, hostname);
   }
 
+  /**
+   *
+   * @url https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/index.ts
+   * @author Sunoo <https://github.com/sunoo>
+   *
+   **/
   static startMqttClient() {
     log.debug('Setting up MQTT client for motion detection...');
 
@@ -318,6 +330,12 @@ class MotionController {
     });
   }
 
+  /**
+   *
+   * @url https://github.com/Sunoo/homebridge-smtp-motion
+   * @author Sunoo <https://github.com/sunoo>
+   *
+   **/
   static startSmtpServer() {
     log.debug('Setting up SMTP server for motion detection...');
 
@@ -387,6 +405,12 @@ class MotionController {
     MotionController.smtpServer.listen(ConfigService.ui.smtp.port);
   }
 
+  /**
+   *
+   * @url https://github.com/Sunoo/homebridge-ftp-motion
+   * @author Sunoo <https://github.com/sunoo>
+   *
+   **/
   static startFtpServer() {
     log.debug('Setting up FTP server for motion detection...');
 

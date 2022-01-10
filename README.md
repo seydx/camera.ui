@@ -59,6 +59,7 @@ and much mure...
   - [Supported clients](#supported-clients)
     - [Browser](#browser)
   - [Supported Cameras](#supported-cameras)
+    - [Camera Settings](#camera-settings)
   - [FAQ](#faq)
   - [Contributing](#contributing)
   - [Troubleshooting](#troubleshooting)
@@ -243,6 +244,17 @@ _MS Internet Explorer (any version) is not supported!_
 ## Supported Cameras
 
 Every camera with an active RTSP stream!
+
+### Camera Settings
+
+You should make the following configuration for your camera via the camera's own settings page. These settings work best.
+
+* Video: H264 (Others like mjpeg also work, but need to be reencoded and would be of limited use for prebuffering)
+* Audio: AAC (Other codecs could also work through reencoding)
+* Resolution: Freely selectable, but 1920x1080 works best with Apple HSV 
+* 2 Mbit variable bitrate (up to 6Mbit may work)
+* >= 25 FPS (30 FPS prefered). 
+* Keyframe interval is 4 seconds. Frame Interval = FPS * 4 => 30 * 4 = 120
 
 ## FAQ
 

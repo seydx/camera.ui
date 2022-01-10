@@ -50,10 +50,7 @@ class VideoAnalysisService {
     this.cameraName = camera.name;
 
     if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.videoanalysisSession) {
-      log.info(
-        'Videoanalysis: Video configuration changed! Please restart Videoanalysis for the changes to take effect',
-        this.cameraName
-      );
+      log.info('Videoanalysis: Video configuration changed! Restarting...', this.cameraName);
 
       this.restart();
     }

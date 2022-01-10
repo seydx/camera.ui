@@ -11,6 +11,11 @@ function findSyncFrame(streamChunks) {
 }
 
 module.exports = {
+  ignoredFfmpegError: function (line) {
+    const mutedErrors = ['no frame', 'decode_slice_header', 'non-existing PPS 0'];
+    return mutedErrors.some((key) => line.includes(key));
+  },
+
   listenServer: async function (server) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -90,6 +95,12 @@ module.exports = {
     }
   },
 
+  /**
+   *
+   * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L173
+   * @author koush <https://github.com/koush>
+   *
+   **/
   createFragmentedMp4Parser: function () {
     // eslint-disable-next-line unicorn/no-this-assignment
     const self = this;
@@ -126,6 +137,12 @@ module.exports = {
     };
   },
 
+  /**
+   *
+   * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L44
+   * @author koush <https://github.com/koush>
+   *
+   **/
   createLengthParser: function (length, verify) {
     async function* parse(socket) {
       let pending = [];
@@ -166,15 +183,12 @@ module.exports = {
     return parse;
   },
 
-  createPCMParser: function () {
-    return {
-      container: 's16le',
-      outputArguments: ['-vn', '-acodec', 'pcm_s16le', '-f', 's16le'],
-      parse: this.createLengthParser(512),
-      findSyncFrame,
-    };
-  },
-
+  /**
+   *
+   * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L92
+   * @author koush <https://github.com/koush>
+   *
+   **/
   createMpegTsParser: function () {
     return {
       container: 'mpegts',

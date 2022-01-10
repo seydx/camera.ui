@@ -59,10 +59,7 @@ class PrebufferService {
     this.cameraName = camera.name;
 
     if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.prebufferSession) {
-      log.info(
-        'Prebuffer: Video configuration changed! Please restart Stream for the changes to take effect',
-        this.cameraName
-      );
+      log.info('Prebuffer: Video configuration changed! Restarting...', this.cameraName);
 
       this.restart();
     }
