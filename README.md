@@ -38,7 +38,6 @@ and much mure...
   - [Configuration](#configuration)
   - [Defaults](#defaults)
   - [Usage](#usage)
-    - [Login](#login)
     - [Dashboard](#dashboard)
     - [Cameras](#cameras)
     - [Camera](#camera)
@@ -98,47 +97,63 @@ The default username is ``master`` and the default password is ``master``. When 
 
 ## Usage
 
-### Login
-
-<img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/login.png" align="center" alt="camera.ui">
-
 ### Dashboard
+
+The Dashboard is the main page of the interface and offers a variety of widgets to customize it as you like.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/dashboard.png" align="center" alt="camera.ui">
 
 ### Cameras
 
+Here are all cameras listed by room and show the current snapshot as a cover sheet
+
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/cameras.png" align="center" alt="camera.ui">
 
 ### Camera
+
+If you select a camera you can watch the livestream directly in the browser. With the camera.ui player you can pause the stream, turn audio on/off or reload the stream.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/camera.png" align="center" alt="camera.ui">
 
 ### Recordings
 
+All images or videos recorded by motion are listed here. If AWS Rekognition is used, the label for the recording is also displayed, as well as the date and time. Using the filter function, the recordings can be filtered as desired
+
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/recordings.png" align="center" alt="camera.ui">
 
 ### Notifications
+
+All motion events as well as system messages can be viewed here. Each notification has one or more labels to better catagorize them. The filter function can also be used to filter the notifications as desired.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/notifications.png" align="center" alt="camera.ui">
 
 ### Camview
 
+Camview displays all camera streams in tiles, hiding everything unnecessary. Camview is great for giving a direct insight into the cameras. Also here the streams can be paused by the camera.ui video player, audio can be switched on/off, streams can be reloaded or viewed in full mode.
+
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/camview.png" align="center" alt="camera.ui">
 
 ### Log
+
+All events that occur in the backend can be monitored via the built-in log. In addition, the log can be also be cleared or downloaded here.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/console.png" align="center" alt="camera.ui">
 
 ### Config
 
+Using the built-in editor you can easily edit your config.json. In addition, any errors are immediately displayed and thus avoided to save a faulty config.json
+
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/config.png" align="center" alt="camera.ui">
 
 ### Utilization
 
+"Utilization" shows you a graphical overview of the system utilization.  Here you can see in real time how high the CPU utilization is, how high the CPU temperature is and how much memory is still free.
+
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/utilization.png" align="center" alt="camera.ui">
 
 ### Settings
+
+On the settings page you can make ALL settings regarding your config.json and database. All parameters defined in config.json are directly configurable from this page. If camera.ui runs via "Homebridge" you can also set Homebridge relevant parameters here.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/settings.png" align="center" alt="camera.ui">
 
@@ -253,7 +268,7 @@ You should make the following configuration for your camera via the camera's own
 * Audio: AAC (Other codecs could also work through reencoding)
 * Resolution: Freely selectable, but 1920x1080 works best with Apple HSV 
 * 2 Mbit variable bitrate (up to 6Mbit may work)
-* >= 25 FPS (30 FPS prefered). 
+* 25 FPS (30 FPS prefered). 
 * Keyframe interval is 4 seconds. Frame Interval = FPS * 4 => 30 * 4 = 120
 
 ## FAQ
