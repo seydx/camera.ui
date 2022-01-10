@@ -206,7 +206,7 @@ class PrebufferService {
           'prebuffer'
         );
         acodec = 'libfdk_aac';
-      } else if (!incompatibleAudio && acodec !== 'copy') {
+      } else if (!incompatibleAudio && !acodec) {
         log.info('Compatible audio stream detected, copying..');
         acodec = 'copy';
       }
