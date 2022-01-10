@@ -31,10 +31,10 @@ and much mure...
 
 ## Installation
 
-camera.ui is still in the beta phase. The beta version can be installed as follows:
+camera.ui can be installed as follows:
 
 ```
-sudo npm install -g camera.ui@beta
+sudo npm install -g camera.ui@latest
 ```
 
 ## Documentation
@@ -183,7 +183,7 @@ If you have used camera.ui before WITHOUT Homebridge and then use it with Homebr
 Homebridge-config-ui-x offers some more config parameter to eg. enable HSV, motion sensors, motion switches and more. Please take a look at the `example-config.json`
 
 
-*Note:* homebridge-camera-ui >= v5.0.0 is compatible with camera.ui. Version 5 is still in beta phase and will be released very soon. [v5.0.0](https://github.com/seydx/homebridge-camera-ui/pull/255)
+*Note:* homebridge-camera-ui >= v5.0.0 is compatible with camera.ui.
 
 ## Motion detection
 
