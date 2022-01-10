@@ -443,7 +443,7 @@ export default {
       });
 
       this.npmPackageName = pkg.data.name;
-      this.latestVersion = relatedVersions[0];
+      this.latestVersion = relatedVersions[0].value || relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
       this.$watch('config', this.configWatcher, { deep: true });
@@ -451,7 +451,7 @@ export default {
       this.loading = false;
       this.loadingProgress = false;
     } catch (err) {
-      console.log(err.message);
+      console.log(err);
       this.$toast.error(err.message);
     }
   },

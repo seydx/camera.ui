@@ -114,7 +114,7 @@ export default {
       });
 
       this.npmPackageName = pkg.data.name;
-      this.latestVersion = relatedVersions[0];
+      this.latestVersion = relatedVersions[0].value || relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
       this.loading = false;
