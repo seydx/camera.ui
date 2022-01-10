@@ -56,6 +56,7 @@ and much mure...
     - [SMTP](#smtp)
     - [FTP](#ftp)
   - [Image Rekognition](#image-rekognition)
+  - [Notifications](#notifications-1)
   - [PWA](#pwa)
   - [Service Mode](#service-mode)
   - [Supported clients](#supported-clients)
@@ -111,7 +112,7 @@ The default username is ``master`` and the default password is ``master``. When 
 
 ### Dashboard
 
-The Dashboard is the main page of the interface and offers a variety of widgets to customize it as you like.
+The Dashboard is the main page of the interface and offers a variety of widgets to customize it as you like. The widgets will expand over time. At the moment the following widgets are available for the dashboard:  Time, Weather, Uptime, Camera, Notifications, RSS Feed, Status, Charts (CPU Load, CPU Temperature, Memory Load), Shortcuts and Log
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/dashboard.png" align="center" alt="camera.ui">
 
@@ -257,6 +258,21 @@ camera.ui also uses image rekognition with Amazon Web Services to analyse, detec
 This makes it possible to analyze every movement before this is stored or sent as a notification.
 
 To use image rekognition, you need to set up a AWS account with an IAM user. More Infos: [AWS Image Rekognition](https://aws.amazon.com/rekognition/?nc1=h_ls&blog-cards.sort-by=item.additionalFields.createdDate&blog-cards.sort-order=desc)
+
+## Notifications
+
+camera.ui supports numerous notification options. Each of them can be conveniently set via the interface.
+
+Since push notifications only work conditionally for websites (see PWA), you can easily work around this via third-party providers.
+
+These would be e.g.
+
+- Telegram
+- Webhook
+- Alexa
+- Third party providers that support Alexa
+
+Via Telegram, you even have the option to send picture or video along with text messages.
 
 ## PWA
 
