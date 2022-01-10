@@ -346,8 +346,8 @@
                   @updateHandle="updateHandle"
                 )
 
-            label.form-input-label {{ $t('sensibility') }}
-            v-slider(hide-details min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensibility")
+            label.form-input-label {{ $t('sensitivity') }}
+            v-slider(hide-details min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensitivity")
 
             .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-mt-10.tw-mb-10
               v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}

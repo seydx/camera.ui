@@ -57,9 +57,9 @@ class VideoAnalysisService {
   }
 
   // 0 - 100
-  changeSensibility(sensibility) {
-    if (sensibility >= 0 && this.videoanalysisSession?.pamDiff) {
-      const value = 100 - sensibility;
+  changeSensitivity(sensitivity) {
+    if (sensitivity >= 0 && this.videoanalysisSession?.pamDiff) {
+      const value = 100 - sensitivity;
 
       // 0: MAX - 100: MIN
       const difference = Math.round(value / 3) || 10;
@@ -72,12 +72,12 @@ class VideoAnalysisService {
     }
   }
 
-  changeZone(regions, sensibility) {
+  changeZone(regions, sensitivity) {
     if (regions && regions.length > 0 && this.videoanalysisSession?.pamDiff) {
-      const zones = this.#createRegions(regions, sensibility);
+      const zones = this.#createRegions(regions, sensitivity);
       this.videoanalysisSession.pamDiff.regions = zones.length > 0 ? zones : null;
 
-      this.changeSensibility(sensibility);
+      this.changeSensitivity(sensitivity);
     }
   }
 
@@ -210,7 +210,7 @@ class VideoAnalysisService {
     const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
 
     const errors = [];
-    const regions = this.#createRegions(settings?.videoanalysis?.regions, settings?.videoanalysis?.sensibility);
+    const regions = this.#createRegions(settings?.videoanalysis?.regions, settings?.videoanalysis?.sensitivity);
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
@@ -324,14 +324,14 @@ class VideoAnalysisService {
     return state;
   }
 
-  #createRegions(regions, sensibility) {
+  #createRegions(regions, sensitivity) {
     const zones = regions
       ?.map((region, index) => {
         if (region.coords?.length > 2) {
           return {
             name: `region${index}`,
-            difference: Math.round(sensibility / 3),
-            percent: sensibility,
+            difference: Math.round(sensitivity / 3),
+            percent: sensitivity,
             polygon: region.coords
               ?.map((coord) => {
                 if (isUINT(coord[0]) && isUINT(coord[1])) {

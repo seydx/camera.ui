@@ -113,7 +113,7 @@ exports.patchTarget = async (req, res) => {
         }
 
         controller?.stream.setStreamOptions(setting);
-        controller?.videoanalysis.changeZone(camera.videoanalysis.regions, camera.videoanalysis.sensibility);
+        controller?.videoanalysis.changeZone(camera.videoanalysis.regions, camera.videoanalysis.sensitivity);
       }
     }
 

@@ -71,8 +71,10 @@ and much mure...
 
 ## Installation
 
+camera.ui is still in the beta phase. The beta version can be installed as follows:
+
 ```
-sudo npm install -g camera.ui@latest
+sudo npm install -g camera.ui@beta
 ```
 
 ## Configuration
@@ -275,7 +277,10 @@ CUI_STORAGE_PATH="/home/pi/Desktop/.camera.ui/"
 DISABLE_OPENCOLLECTIVE=true
 ```
 
-Please make sure to change the path if necessary. Then create another file named `camera.ui.service` and add the following:
+Please make sure to change the path if necessary. Put the camera.ui.default file to `/etc/default/` folder
+
+
+Then create another file named `camera.ui.service` and add the following:
 
 ```
 [Unit]
@@ -294,6 +299,18 @@ KillMode=process
 [Install]
 WantedBy=multi-user.target
 ```
+
+Put the camera.ui.service file into `/etc/systemd/system/` folder.
+
+Type following commands to enable/start the service
+
+1) `sudo systemctl daemon-reload`
+2) `sudo systemctl enable camera.ui`
+3) `sudo systemctl start camera.ui`
+
+You can always watch the log with following command:
+
+`sudo journalctl -f -u camera.ui`
 
 ## Supported clients
 
