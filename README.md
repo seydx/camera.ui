@@ -80,13 +80,20 @@ The database, recordings as well as config.json are stored locally in this folde
 
 After the installation you can start camera.ui with the following command in the terminal
 
-``camera.ui``
+```
+camera.ui
+```
 
 `-D, --debug`: Turn on debug level logging
+
 `-C, --no-color`: Disable color in logging
+
 `-T, --no-timestamp`: Do not issue timestamps in logging
+
 `--no-sudo`: Disable sudo for updating through ui
+
 `--no-global`: Disable global (-g) prefix for updating through ui
+
 `-S, --storage-path`: Look for camera.ui files at [path] instead of the default location (~/.camera.ui)'
 
 ## Defaults
