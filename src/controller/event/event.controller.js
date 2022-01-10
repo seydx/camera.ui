@@ -122,25 +122,26 @@ class EventController {
             /*
              * Movement Event flow
              *
-             * 1) If recording not enabled, send ui notification banner
+             * 1) If recording not enabled, send ui notification banner and webpush
              * 2) If webhook enabled, send webhook notification
              * 3) If alexa enabled, send notification to alexa
              * 4) If telegram enabled and type = "Text" for the camera, send telegram notification
              * 5) Handle recording (Snapshot/Video)
-             * 6) If recording enabled, send ui notification banner with media
-             * 7) Send webpush (ui) notification
-             * 8) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
+             * 6) If recording enabled, send ui notification banner with media and webpush
+             * 7) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
              */
 
             log.debug(`New ${trigger} alert`, cameraName);
 
             const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
 
-            const allowStream =
-              controller && !fileBuffer && recordingSettings.active ? controller.session.requestSession() : true;
+            let allowStream = true;
+
+            if (controller && !fileBuffer && recordingSettings.active && !Camera.prebuffering) {
+              allowStream = controller.session.requestSession();
+            }
 
             if (fileBuffer) {
-              // "recordOnMovement" NOT active because we received fileBuffer from extern process
               motionInfo.label = 'Custom';
               motionInfo.type = type || 'Video';
             }
@@ -165,6 +166,13 @@ class EventController {
                 // 1)
                 if (notificationsSettings.active && !recordingSettings.active) {
                   log.notify(notify);
+
+                  await EventController.#sendWebpush(
+                    cameraName,
+                    notification,
+                    webpushSettings,
+                    notificationsSettings.active
+                  );
                 }
 
                 // 2)
@@ -197,17 +205,16 @@ class EventController {
                 // 6)
                 if (notificationsSettings.active && recordingSettings.active) {
                   log.notify(notify);
+
+                  await EventController.#sendWebpush(
+                    cameraName,
+                    notification,
+                    webpushSettings,
+                    notificationsSettings.active
+                  );
                 }
 
                 // 7)
-                await EventController.#sendWebpush(
-                  cameraName,
-                  notification,
-                  webpushSettings,
-                  notificationsSettings.active
-                );
-
-                // 8)
                 if (
                   (telegramSettings.type === 'Text + Snapshot' ||
                     telegramSettings.type === 'Snapshot' ||

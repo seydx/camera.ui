@@ -98,93 +98,97 @@ class StreamService {
 
   async start() {
     if (!this.streamSession) {
-      const allowStream = this.#sessionService.requestSession();
+      await this.configureStreamOptions();
 
-      if (allowStream) {
-        await this.configureStreamOptions();
+      const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
 
-        const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+      let input = this.streamOptions.source.split(/\s+/);
+      let prebuffer = null;
 
-        let input = this.streamOptions.source.split(/\s+/);
-        let prebuffer = null;
+      if (this.#camera.prebuffering && this.#prebufferService) {
+        try {
+          const containerInput = await this.#prebufferService.getVideo({
+            container: 'mpegts',
+          });
 
-        if (this.#camera.prebuffering && this.#prebufferService) {
-          try {
-            log.debug('Setting prebuffer stream as input', this.cameraName);
+          input = prebuffer = containerInput;
 
-            const containerInput = await this.#prebufferService.getVideo({
-              container: 'mpegts',
-            });
-
-            input = prebuffer = containerInput;
-
-            delete this.streamOptions.ffmpegOptions['-map'];
-            delete this.streamOptions.ffmpegOptions['-filter:v'];
-          } catch (error) {
-            log.warn(`Can not access prebuffer stream, skipping: ${error}`, this.cameraName);
-          }
+          delete this.streamOptions.ffmpegOptions['-map'];
+          delete this.streamOptions.ffmpegOptions['-filter:v'];
+        } catch {
+          //ignore
         }
-
-        const additionalFlags = [];
-
-        if (this.streamOptions.ffmpegOptions) {
-          for (const key of Object.keys(this.streamOptions.ffmpegOptions)) {
-            additionalFlags.push(key, this.streamOptions.ffmpegOptions[key]);
-          }
-        }
-
-        if (videoConfig.mapaudio && !prebuffer) {
-          additionalFlags.push('-map', videoConfig.mapaudio);
-        }
-
-        const spawnOptions = [
-          '-hide_banner',
-          '-loglevel',
-          'error',
-          ...input,
-          '-f',
-          'mpegts',
-          '-codec:v',
-          'mpeg1video',
-          ...additionalFlags,
-          '-q',
-          '1',
-          '-max_muxing_queue_size',
-          '1024',
-          '-',
-        ].filter((key) => key !== '');
-
-        log.debug(
-          `Stream command: ${ConfigService.ui.options.videoProcessor} ${spawnOptions.join(' ')}`,
-          this.cameraName
-        );
-
-        this.streamSession = spawn(ConfigService.ui.options.videoProcessor, spawnOptions, {
-          env: process.env,
-        });
-
-        const errors = [];
-
-        this.streamSession.stdout.on('data', (data) => {
-          this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
-        });
-
-        this.streamSession.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
-
-        this.streamSession.on('exit', (code, signal) => {
-          if (code === 1) {
-            errors.unshift(`Stream exited with error! (${signal})`);
-            log.error(errors.join(' - '), this.cameraName, 'streams');
-          } else {
-            log.debug('Stream exit (expected)', this.cameraName);
-          }
-
-          this.streamSession = null;
-          this.#sessionService.closeSession();
-        });
-      } else {
-        log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName, 'streams');
       }
+
+      if (!prebuffer) {
+        const allowStream = this.#sessionService.requestSession();
+
+        if (!allowStream) {
+          log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName, 'streams');
+          return;
+        }
+      }
+
+      const additionalFlags = [];
+
+      if (this.streamOptions.ffmpegOptions) {
+        for (const key of Object.keys(this.streamOptions.ffmpegOptions)) {
+          additionalFlags.push(key, this.streamOptions.ffmpegOptions[key]);
+        }
+      }
+
+      if (videoConfig.mapaudio && !prebuffer) {
+        additionalFlags.push('-map', videoConfig.mapaudio);
+      }
+
+      const spawnOptions = [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        ...input,
+        '-f',
+        'mpegts',
+        '-codec:v',
+        'mpeg1video',
+        ...additionalFlags,
+        '-q',
+        '1',
+        '-max_muxing_queue_size',
+        '1024',
+        '-',
+      ].filter((key) => key !== '');
+
+      log.debug(
+        `Stream command: ${ConfigService.ui.options.videoProcessor} ${spawnOptions.join(' ')}`,
+        this.cameraName
+      );
+
+      this.streamSession = spawn(ConfigService.ui.options.videoProcessor, spawnOptions, {
+        env: process.env,
+      });
+
+      const errors = [];
+
+      this.streamSession.stdout.on('data', (data) => {
+        this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
+      });
+
+      this.streamSession.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+
+      this.streamSession.on('exit', (code, signal) => {
+        if (code === 1) {
+          errors.unshift(`Stream exited with error! (${signal})`);
+          log.error(errors.join(' - '), this.cameraName, 'streams');
+        } else {
+          log.debug('Stream exit (expected)', this.cameraName);
+        }
+
+        this.streamSession = null;
+
+        if (!prebuffer) {
+          this.#sessionService.closeSession();
+        }
+      });
     }
   }
 
