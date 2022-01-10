@@ -53,26 +53,27 @@ class StreamService {
     const Settings = await Database.interfaceDB.get('settings').get('cameras').value();
     const cameraSetting = Settings.find((camera) => camera && camera.name === this.cameraName);
 
+    const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+    const source = cameraUtils.generateInputSource(videoConfig);
+
     this.streamOptions = {
-      source: cameraUtils.generateInputSource(this.#camera.videoConfig),
+      source: source,
       ffmpegOptions: {
-        '-s': cameraSetting?.resolution
-          ? cameraSetting.resolution
-          : `${this.#camera.videoConfig.maxWidth}x${this.#camera.videoConfig.maxHeight}`,
-        '-b:v': `${this.#camera.videoConfig.maxBitrate}k`,
-        '-r': this.#camera.videoConfig.maxFPS,
+        '-s': cameraSetting?.resolution ? cameraSetting.resolution : `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+        '-b:v': `${videoConfig.maxBitrate}k`,
+        '-r': videoConfig.maxFPS,
         '-bf': 0,
         '-preset:v': 'ultrafast',
         '-threads': '1',
       },
     };
 
-    if (this.#camera.videoConfig.mapvideo) {
-      this.streamOptions.ffmpegOptions['-map'] = this.#camera.videoConfig.mapvideo;
+    if (videoConfig.mapvideo) {
+      this.streamOptions.ffmpegOptions['-map'] = videoConfig.mapvideo;
     }
 
-    if (this.#camera.videoConfig.videoFilter) {
-      this.streamOptions.ffmpegOptions['-filter:v'] = this.#camera.videoConfig.videoFilter;
+    if (videoConfig.videoFilter) {
+      this.streamOptions.ffmpegOptions['-filter:v'] = videoConfig.videoFilter;
     }
 
     if (cameraSetting?.audio && this.#mediaService.codecs.audio.length > 0) {
@@ -102,7 +103,10 @@ class StreamService {
       if (allowStream) {
         await this.configureStreamOptions();
 
+        const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+
         let input = this.streamOptions.source.split(/\s+/);
+        let prebuffer = null;
 
         if (this.#camera.prebuffering && this.#prebufferService) {
           try {
@@ -112,7 +116,7 @@ class StreamService {
               container: 'mpegts',
             });
 
-            input = containerInput;
+            input = prebuffer = containerInput;
 
             delete this.streamOptions.ffmpegOptions['-map'];
             delete this.streamOptions.ffmpegOptions['-filter:v'];
@@ -129,8 +133,8 @@ class StreamService {
           }
         }
 
-        if (this.#camera.videoConfig.mapaudio) {
-          additionalFlags.push('-map', this.#camera.videoConfig.mapaudio);
+        if (videoConfig.mapaudio && !prebuffer) {
+          additionalFlags.push('-map', videoConfig.mapaudio);
         }
 
         const spawnOptions = [

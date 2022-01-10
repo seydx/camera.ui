@@ -159,8 +159,10 @@ class PrebufferService {
 
     log.debug('Start prebuffering...', this.cameraName);
 
-    let audioEnabled = this.#camera.videoConfig.audio;
-    let acodec = this.#camera.videoConfig.acodec || 'libfdk_aac';
+    const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+
+    let audioEnabled = videoConfig.audio;
+    let acodec = videoConfig.acodec;
     let audioSourceFound = this.#mediaService.codecs.audio.length;
     let probeAudio = this.#mediaService.codecs.audio;
     let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
@@ -172,7 +174,7 @@ class PrebufferService {
       'error',
       '-fflags',
       '+genpts',
-      ...cameraUtils.generateInputSource(this.#camera.videoConfig).split(/\s+/),
+      ...cameraUtils.generateInputSource(videoConfig).split(/\s+/),
     ];
 
     const audioArguments = [];
@@ -230,8 +232,8 @@ class PrebufferService {
         audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'copy');
       }
 
-      if (this.#camera.videoConfig.mapaudio) {
-        audioArguments.unshift('-map', this.#camera.videoConfig.mapaudio);
+      if (videoConfig.mapaudio) {
+        audioArguments.unshift('-map', videoConfig.mapaudio);
       }
     } else {
       audioArguments.push('-an');
@@ -257,18 +259,18 @@ class PrebufferService {
         return this.stop(true);
       } else {
         log.info('Prebuffering with reencoding enabled! Please pay attention to the CPU load', this.cameraName);
-        vcodec = this.#camera.videoConfig.vcodec === 'copy' ? 'libx264' : this.#camera.videoConfig.vcodec;
+        vcodec = videoConfig.vcodec === 'copy' ? 'libx264' : videoConfig.vcodec;
       }
     }
 
     const videoArguments = ['-vcodec', vcodec];
 
-    if (this.#camera.videoConfig.mapvideo) {
-      videoArguments.unshift('-map', this.#camera.videoConfig.mapvideo);
+    if (videoConfig.mapvideo) {
+      videoArguments.unshift('-map', videoConfig.mapvideo);
     }
 
-    /*if (this.#camera.videoConfig.videoFilter) {
-      videoArguments.push('-filter:v', this.#camera.videoConfig.videoFilter);
+    /*if (videoConfig.videoFilter) {
+      videoArguments.push('-filter:v', videoConfig.videoFilter);
     }*/
 
     this.parsers = {

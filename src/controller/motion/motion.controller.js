@@ -95,7 +95,7 @@ class MotionController {
   /**
    *
    * @url https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/index.ts
-   * @author Sunoo <https://github.com/sunoo>
+   * (c) Sunoo <https://github.com/sunoo>
    *
    **/
   static startHttpServer() {
@@ -190,7 +190,7 @@ class MotionController {
   /**
    *
    * @url https://github.com/Sunoo/homebridge-camera-ffmpeg/blob/master/src/index.ts
-   * @author Sunoo <https://github.com/sunoo>
+   * (c) Sunoo <https://github.com/sunoo>
    *
    **/
   static startMqttClient() {
@@ -333,7 +333,7 @@ class MotionController {
   /**
    *
    * @url https://github.com/Sunoo/homebridge-smtp-motion
-   * @author Sunoo <https://github.com/sunoo>
+   * (c) Sunoo <https://github.com/sunoo>
    *
    **/
   static startSmtpServer() {
@@ -408,7 +408,7 @@ class MotionController {
   /**
    *
    * @url https://github.com/Sunoo/homebridge-ftp-motion
-   * @author Sunoo <https://github.com/sunoo>
+   * (c) Sunoo <https://github.com/sunoo>
    *
    **/
   static startFtpServer() {

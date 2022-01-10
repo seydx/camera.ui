@@ -47,9 +47,10 @@ const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
 const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
+    const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
 
-    const videoWidth = camera.videoConfig.maxWidth || 1280;
-    const videoHeight = camera.videoConfig.maxHeight || 720;
+    const videoWidth = videoConfig.maxWidth;
+    const videoHeight = videoConfig.maxHeight;
 
     const ffmpegArguments = [
       '-hide_banner',
@@ -135,9 +136,11 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
 
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
-    let ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
-    const videoWidth = camera.videoConfig.maxWidth || 1280;
-    const videoHeight = camera.videoConfig.maxHeight || 720;
+    const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
+    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+
+    const videoWidth = videoConfig.maxWidth;
+    const videoHeight = videoConfig.maxHeight;
 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
@@ -168,8 +171,8 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
       'image2',
     ];
 
-    if (camera.videoConfig.videoFilter) {
-      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
     }
 
     ffmpegArguments.push(destination);
@@ -266,12 +269,15 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
 exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
-    let ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
     const videoProcessor = ConfigService.ui.options.videoProcessor;
+
+    const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
+    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+
     const videoName = `${recordingPath}/${fileName}.mp4`;
-    const videoWidth = camera.videoConfig.maxWidth || 1280;
-    const videoHeight = camera.videoConfig.maxHeight || 720;
-    const vcodec = camera.videoConfig.vcodec || 'libx264';
+    const videoWidth = videoConfig.maxWidth;
+    const videoHeight = videoConfig.maxHeight;
+    const vcodec = videoConfig.vcodec;
 
     const controller = CameraController.cameras.get(camera.name);
     if (camera.prebuffering && controller?.prebuffer) {
@@ -307,16 +313,16 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
       '23',
     ];
 
-    if (camera.videoConfig.mapvideo) {
-      ffmpegArguments.push('-map', camera.videoConfig.mapvideo);
+    if (videoConfig.mapvideo) {
+      ffmpegArguments.push('-map', videoConfig.mapvideo);
     }
 
-    if (camera.videoConfig.videoFilter) {
-      ffmpegArguments.push('-filter:v', camera.videoConfig.videoFilter);
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
     }
 
-    if (camera.videoConfig.mapaudio) {
-      ffmpegArguments.push('-map', camera.videoConfig.mapaudio);
+    if (videoConfig.mapaudio) {
+      ffmpegArguments.push('-map', videoConfig.mapaudio);
     }
 
     ffmpegArguments.push(videoName);
@@ -364,10 +370,12 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
 exports.handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
+  const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
+  let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+
   const audioArguments = ['-acodec', 'copy'];
   const videoArguments = ['-vcodec', 'copy'];
 
-  let ffmpegInput = [...cameraUtils.generateInputSource(camera.videoConfig).split(/\s+/)];
   const controller = CameraController.cameras.get(camera.name);
 
   if (camera.prebuffering && controller?.prebuffer) {
@@ -388,7 +396,7 @@ exports.handleFragmentsRequests = async function* (camera) {
 
   const session = await cameraUtils.startFFMPegFragmetedMP4Session(
     camera.name,
-    camera.videoConfig.debug,
+    videoConfig.debug,
     ConfigService.ui.options.videoProcessor,
     ffmpegInput,
     audioArguments,

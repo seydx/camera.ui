@@ -165,11 +165,10 @@ class VideoAnalysisService {
 
     log.debug('Start videoanalysis...', this.cameraName);
 
-    let input = cameraUtils
-      .generateInputSource(this.#camera.videoConfig, this.#camera.videoConfig.subSource)
-      .split(/\s+/);
+    const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+    let input = cameraUtils.generateInputSource(videoConfig, videoConfig.subSource).split(/\s+/);
     let prebufferInput = false;
-    let invalidSubstream = this.#camera.videoConfig.subSource === this.#camera.videoConfig.source;
+    let invalidSubstream = videoConfig.subSource === videoConfig.source;
 
     if (this.#camera.prebuffering && invalidSubstream) {
       try {
@@ -179,8 +178,8 @@ class VideoAnalysisService {
       }
     }
 
-    if (!prebufferInput && this.#camera.videoConfig.mapvideo) {
-      input.push('-map', this.#camera.videoConfig.mapvideo);
+    if (!prebufferInput && videoConfig.mapvideo) {
+      input.push('-map', videoConfig.mapvideo);
     }
 
     const ffmpegArguments = [

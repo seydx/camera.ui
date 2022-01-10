@@ -98,7 +98,7 @@ module.exports = {
   /**
    *
    * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L173
-   * @author koush <https://github.com/koush>
+   * (c) koush <https://github.com/koush>
    *
    **/
   createFragmentedMp4Parser: function () {
@@ -140,7 +140,7 @@ module.exports = {
   /**
    *
    * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L44
-   * @author koush <https://github.com/koush>
+   * (c) koush <https://github.com/koush>
    *
    **/
   createLengthParser: function (length, verify) {
@@ -186,7 +186,7 @@ module.exports = {
   /**
    *
    * @url https://github.com/koush/scrypted/blob/fcfdadc9849099134e3f6ee6002fa1203bccdc91/common/src/stream-parser.ts#L92
-   * @author koush <https://github.com/koush>
+   * (c) koush <https://github.com/koush>
    *
    **/
   createMpegTsParser: function () {
@@ -290,38 +290,54 @@ module.exports = {
   },
 
   generateInputSource: function (videoConfig, source) {
-    source = source || videoConfig.source;
+    let inputSource = source || videoConfig.source;
 
-    if (source) {
-      if (videoConfig.readRate && !source.includes('-re')) {
-        source = `-re ${source}`;
+    if (inputSource) {
+      if (videoConfig.readRate && !inputSource.includes('-re')) {
+        inputSource = `-re ${inputSource}`;
       }
 
-      if (videoConfig.stimeout > 0 && !source.includes('-stimeout')) {
-        source = `-stimeout ${videoConfig.stimeout * 10000000} ${source}`;
+      if (videoConfig.stimeout > 0 && !inputSource.includes('-stimeout')) {
+        inputSource = `-stimeout ${videoConfig.stimeout * 10000000} ${inputSource}`;
       }
 
-      if (videoConfig.maxDelay >= 0 && !source.includes('-max_delay')) {
-        source = `-max_delay ${videoConfig.maxDelay} ${source}`;
+      if (videoConfig.maxDelay >= 0 && !inputSource.includes('-max_delay')) {
+        inputSource = `-max_delay ${videoConfig.maxDelay} ${inputSource}`;
       }
 
-      if (videoConfig.reorderQueueSize >= 0 && !source.includes('-reorder_queue_size')) {
-        source = `-reorder_queue_size ${videoConfig.reorderQueueSize} ${source}`;
+      if (videoConfig.reorderQueueSize >= 0 && !inputSource.includes('-reorder_queue_size')) {
+        inputSource = `-reorder_queue_size ${videoConfig.reorderQueueSize} ${inputSource}`;
       }
 
-      if (videoConfig.probeSize >= 32 && !source.includes('-probesize')) {
-        source = `-probesize ${videoConfig.probeSize} ${source}`;
+      if (videoConfig.probeSize >= 32 && !inputSource.includes('-probesize')) {
+        inputSource = `-probesize ${videoConfig.probeSize} ${inputSource}`;
       }
 
-      if (videoConfig.analyzeDuration >= 0 && !source.includes('-analyzeduration')) {
-        source = `-analyzeduration ${videoConfig.analyzeDuration} ${source}`;
+      if (videoConfig.analyzeDuration >= 0 && !inputSource.includes('-analyzeduration')) {
+        inputSource = `-analyzeduration ${videoConfig.analyzeDuration} ${inputSource}`;
       }
 
-      if (videoConfig.rtspTransport && !source.includes('-rtsp_transport')) {
-        source = `-rtsp_transport ${videoConfig.rtspTransport} ${source}`;
+      if (videoConfig.rtspTransport && !inputSource.includes('-rtsp_transport')) {
+        inputSource = `-rtsp_transport ${videoConfig.rtspTransport} ${inputSource}`;
       }
     }
 
-    return source;
+    return inputSource;
+  },
+
+  generateVideoConfig: function (videoConfig) {
+    const config = { ...videoConfig };
+
+    config.maxWidth = config.maxWidth || 1280;
+    config.maxHeight = config.maxHeight || 720;
+    config.maxFPS = config.maxFPS >= 20 ? videoConfig.maxFPS : 20;
+    config.maxStreams = config.maxStreams >= 1 ? videoConfig.maxStreams : 4;
+    config.maxBitrate = config.maxBitrate || 299;
+    config.vcodec = config.vcodec || 'libx264';
+    config.acodec = config.acodec || 'libfdk_aac';
+    config.encoderOptions = config.encoderOptions || '-preset ultrafast -tune zerolatency';
+    config.packetSize = config.packetSize || 1318;
+
+    return config;
   },
 };
