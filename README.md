@@ -77,7 +77,7 @@ sudo npm install -g camera.ui@latest
 
 ## Configuration
 
-camera.ui installs itself in the user directory under `~/.camera.u`.
+camera.ui installs itself in the user directory under `~/.camera.ui`.
 
 The database, recordings as well as config.json are stored locally in this folder and are never accessible to others. The settings can be changed directly with the help of an editor, or directly via the interface.
 
