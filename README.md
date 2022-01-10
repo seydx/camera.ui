@@ -29,11 +29,19 @@ and much mure...
 
 :de: | :gb: | :netherlands:
 
+## Installation
+
+camera.ui is still in the beta phase. The beta version can be installed as follows:
+
+```
+sudo npm install -g camera.ui@beta
+```
+
 ## Documentation
 
 - [camera.ui](#cameraui)
-  - [Documentation](#documentation)
   - [Installation](#installation)
+  - [Documentation](#documentation)
   - [Configuration](#configuration)
   - [Defaults](#defaults)
   - [Usage](#usage)
@@ -67,15 +75,6 @@ and much mure...
   - [Troubleshooting](#troubleshooting)
   - [License](#license)
     - [MIT License](#mit-license)
-
-
-## Installation
-
-camera.ui is still in the beta phase. The beta version can be installed as follows:
-
-```
-sudo npm install -g camera.ui@beta
-```
 
 ## Configuration
 
