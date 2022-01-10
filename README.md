@@ -51,7 +51,10 @@ and much mure...
   - [HomeKit](#homekit)
   - [Motion detection](#motion-detection)
     - [Videoanalysis](#videoanalysis)
-    - [HTTP / MQTT / SMTP / FTP](#http--mqtt--smtp--ftp)
+    - [HTTP](#http)
+    - [MQTT](#mqtt)
+    - [SMTP](#smtp)
+    - [FTP](#ftp)
   - [Image Rekognition](#image-rekognition)
   - [PWA](#pwa)
   - [Service Mode](#service-mode)
@@ -168,7 +171,7 @@ On the settings page you can make ALL settings regarding your config.json and da
 
 The cameras that are included in camera.ui can easily be exposed to Apple Home via Homebridge.
 
-To do this, please install [homebridge-config-ui-x](https://github.com/oznu/homebridge-config-ui-x) and search for the plugin [homebridge-camera-u](https://github.com/seydx/homebridge-camera-ui) and install it.
+To do this, please install [homebridge-config-ui-x](https://github.com/oznu/homebridge-config-ui-x) and search for the plugin [homebridge-camera-ui](https://github.com/seydx/homebridge-camera-ui) and install it.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/homebridge/homebridge_search.png" align="center" alt="camera.ui">
 
@@ -191,9 +194,59 @@ camera.ui offers a variety of options to detect and process motion.
 
 With this option camera.ui connects to the stream and compares frame by frame if there are changes. The zones and sensitivity can be set in the interface.
 
-### HTTP / MQTT / SMTP / FTP
+### HTTP
 
-If your camera is able to send an email when motion is detected, or send a command vie MQTT or upload an image vie FTP, then you can easily configure camera.ui to act as a destination. With this camera.ui interprets a movement and processes it (takes a picture/video, sends a notification etc)
+If the HTTP server is enabled for motion detection, calling the link can easily trigger motion.
+
+Example:
+
+`http://localhost:8123/motion?My+Camera`
+
+
+### MQTT
+
+If you have set up the MQTT client (Settings > System > MQTT), you can set the required parameters such as "Motion Topic", "Message" etc. via the interface (Settings > Cameras > MQTT).
+
+**Motion Topic**: The MQTT topic to watch for motion alerts. The topic (prefix/suffix) should be unique, it will be used to assign the motion detected message to the desired camera.
+
+**Motion Message**: The message to watch for to trigger motion alerts.
+
+The message can be a simple "string" (e.g. "ON"/"OFF) or a JSON object. If the MQTT message is a JSON object like:
+
+```json
+{
+  "id": "test",
+  "event": {
+    "time": 1234567890,
+    "state": true,
+  }
+}
+```
+
+Then define the exact parameter under "Motion Message" so that camera.ui can read from it, eg:
+
+```json
+"motionMessage": {
+  "event": {
+    "state": true
+  }
+}
+```
+
+### SMTP
+
+If the SMTP server is turned on and your camera is able to send an email when motion is detected, you can easily trigger motion through it, eg:
+
+`From: My+Camera@camera.ui`
+`To: My+Camera@camera.ui`
+
+Please note that the camera.ui SMTP server is set in the camera settings (ip/port).
+
+### FTP
+
+If your camera is able to upload an image when motion is detected, then you can select the camera.ui FTP server as the destination. Very important here is. The path you enter via the camera's own settings page must be the camera name as defined in config.
+
+Every time the camera tries to connect to the server, the camera.ui detects and takes the entered path to determine the camera.
 
 ## Image Rekognition
 
