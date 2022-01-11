@@ -13,5 +13,6 @@ updates:
       - dependency-name: 'concurrently'
       - dependency-name: 'got'
       - dependency-name: 'helmet'
+      - dependency-name: 'supertest'
       - dependency-name: 'swagger-ui-express'
       - dependency-name: 'swiper'

@@ -1,18 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const config = require('../test/camera.ui/config.json');
 
-process.env.VUE_APP_SERVER_PORT = config.port || 8181;
+let configJson = {};
+
+try {
+  configJson = require('../test/camera.ui/config.json');
+} catch {
+  // ignore
+}
+
+process.env.VUE_APP_SERVER_PORT = configJson.port || 8081;
 
 module.exports = {
   transpileDependencies: ['vuetify'],
   devServer: {
     https:
-      config.ssl && config.ssl.key && config.ssl.cert
+      configJson.ssl && configJson.ssl.key && configJson.ssl.cert
         ? {
-            key: fs.readFileSync(config.ssl.key),
-            cert: fs.readFileSync(config.ssl.cert),
+            key: fs.readFileSync(configJson.ssl.key),
+            cert: fs.readFileSync(configJson.ssl.cert),
           }
         : false,
     port: 8081,

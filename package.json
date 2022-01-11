@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -70,7 +70,7 @@
     "jest-jasmine2": "^27.4.6",
     "nodemon": "^2.0.15",
     "prettier": "^2.5.1",
-    "supertest": "^6.1.6"
+    "supertest": "6.1.6"
   },
   "optionalDependencies": {
     "osx-temperature-sensor": "^1.0.7"
