@@ -76,3 +76,4 @@ ui
 parseFFmpeg.js
 parseUrl.js
 systeminformation.js
+parseRegions.js

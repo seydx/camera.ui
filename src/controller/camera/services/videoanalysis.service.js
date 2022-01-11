@@ -58,14 +58,14 @@ class VideoAnalysisService {
 
   // 0 - 100
   changeSensitivity(sensitivity) {
-    if (sensitivity >= 0 && this.videoanalysisSession?.pamDiff) {
+    if (sensitivity >= 0 && sensitivity <= 100 && this.videoanalysisSession?.pamDiff) {
       const value = 100 - sensitivity;
 
       // 0: MAX - 100: MIN
-      const difference = Math.round(value / 3) || 10;
+      const difference = Math.round(value / 3);
 
       // 0: MAX - 100: MIN
-      const percentage = value || 50;
+      const percentage = value;
 
       this.videoanalysisSession.pamDiff.setDifference(difference);
       this.videoanalysisSession.pamDiff.setPercent(percentage);
@@ -323,7 +323,9 @@ class VideoAnalysisService {
     return state;
   }
 
-  #createRegions(regions, sensitivity) {
+  #createRegions(regions = [], sensitivity) {
+    sensitivity = sensitivity >= 100 && sensitivity <= 100 ? sensitivity : 50;
+
     const zones = regions
       ?.map((region, index) => {
         if (region.coords?.length > 2) {
@@ -340,7 +342,7 @@ class VideoAnalysisService {
                   };
                 }
               })
-              .filter((coord) => coord?.length > 2),
+              .filter((coord) => coord),
           };
         }
       })

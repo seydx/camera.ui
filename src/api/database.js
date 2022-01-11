@@ -421,9 +421,6 @@ class Database {
   }
 
   static async #ensureCameraDatabaseValues(settings) {
-    // old
-    delete settings.regions;
-
     if (!settings.name) {
       settings.name = defaultCameraSettingsEntry.name;
     }
@@ -511,10 +508,6 @@ class Database {
     if (typeof settings.videoanalysis !== 'object') {
       settings.videoanalysis = {};
     }
-
-    // old
-    settings.videoanalysis.sensitivity = settings.videoanalysis.sensibility;
-    delete settings.videoanalysis.sensibility;
 
     if (!(settings.videoanalysis.sensitivity >= 0 && settings.videoanalysis.sensitivity <= 100)) {
       settings.videoanalysis.sensitivity = defaultCameraSettingsEntry.videoanalysis.sensitivity;
