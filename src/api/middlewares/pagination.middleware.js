@@ -4,13 +4,13 @@
 exports.pages = (req, res) => {
   let start = Number.parseInt(req.query.start); //for infinite scroll
   let page = Number.parseInt(req.query.page) || 1;
-  let pageSize = Number.parseInt(req.query.pageSize) || 25;
+  let pageSize = Number.parseInt(req.query.pageSize) || 6;
 
   // eslint-disable-next-line unicorn/prefer-number-properties
   start = !isNaN(start) ? start : null;
   const items = res.locals.items || [];
 
-  let maxPageSize = 50;
+  let maxPageSize = 6;
   let minPage = 1;
   let maxPage = Math.ceil(items.length / pageSize);
 
@@ -43,8 +43,8 @@ exports.pages = (req, res) => {
           startIndex: startIndex,
           endIndex: endIndex,
           totalItems: totalItems,
-          nextPage: page < items.length / pageSize ? `/api/recordings?page=${page + 1}` : null,
-          prevPage: page > 1 ? `/api/recordings?page=${page - 1}` : null,
+          nextPage: page < items.length / pageSize ? `${req.path}?page=${page + 1}` : null,
+          prevPage: page > 1 ? `${req.path}?page=${page - 1}` : null,
         };
 
   const result = items.slice(pagination.startIndex, pagination.endIndex + 1);

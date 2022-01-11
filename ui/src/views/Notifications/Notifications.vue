@@ -14,7 +14,7 @@
 
     v-row.tw-mt-5.overflow-hidden
       v-col(v-for="(notification,i) in notifications" :key="notification.id" cols="12")
-        NotificationCard(ref="notifications" :notification="notification" @remove="remove(notification, i)" @show="showNotification(notification)" @slideStart="closeNotifications(notification)")
+        NotificationCard(ref="notifications" :notification="notification" @remove="remove(notification, i)" @show="openGallery(notification)" @slideStart="closeNotifications(notification)")
 
     infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
       .tw-mt-10(slot="spinner")
@@ -22,29 +22,29 @@
       .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_notifications") }}
       .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_notifications") }}
           
-  CoolLightBox(
-    :items="images" 
-    :index="index"
-    @close="index = null"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightbox"
+    :media="images"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mdiDelete } from '@mdi/js';
 
@@ -59,7 +59,7 @@ export default {
   name: 'Notifications',
 
   components: {
-    CoolLightBox,
+    LightBox,
     FilterCard,
     InfiniteLoading,
     NotificationCard,
@@ -107,11 +107,11 @@ export default {
     },
     async infiniteHandler($state) {
       try {
-        const response = await getNotifications(`?page=${this.page || 1}` + this.query);
+        const response = await getNotifications(`?pageSize=5&page=${this.page || 1}` + this.query);
 
         if (response.data.result.length > 0) {
           this.page += 1;
-          this.notifications = [...this.notifications, ...response.data.result];
+          this.notifications.push(...response.data.result);
 
           this.notifications = this.notifications.map((not) => {
             if (!not.message) {
@@ -128,15 +128,34 @@ export default {
           this.images = this.notifications
             .map((notification) => {
               if (notification.recordStoring) {
-                return {
+                let mediaContainer = {
                   id: notification.id,
-                  title: `${notification.camera} - ${notification.time}`,
+                  type: 'image',
+                  caption: `${notification.camera} - ${notification.time}`,
                   src: `/files/${notification.fileName}`,
-                  thumb:
-                    notification.recordType === 'Video'
-                      ? `/files/${notification.name}@2.jpeg`
-                      : `/files/${notification.fileName}`,
+                  thumb: `/files/${notification.fileName}`,
                 };
+
+                if (notification.recordType === 'Video') {
+                  delete mediaContainer.src;
+
+                  mediaContainer = {
+                    ...mediaContainer,
+                    type: 'video',
+                    sources: [
+                      {
+                        src: `/files/${notification.fileName}`,
+                        type: 'video/mp4',
+                      },
+                    ],
+                    thumb: `/files/${notification.name}@2.jpeg`,
+                    width: '100%',
+                    height: 'auto',
+                    autoplay: false,
+                  };
+                }
+
+                return mediaContainer;
               }
             })
             .filter((notification) => notification);
@@ -150,9 +169,10 @@ export default {
         this.$toast.error(err.message);
       }
     },
-    showNotification(notification) {
+    openGallery(notification) {
       if (notification.recordStoring) {
-        this.index = this.images.findIndex((el) => el.id === notification.id);
+        const index = this.images.findIndex((el) => el.id === notification.id);
+        this.$refs.lightbox.showImage(index);
       }
     },
     async remove(notification, index) {
@@ -162,8 +182,9 @@ export default {
 
         this.notifications.splice(index, 1);
 
-        if (notification.src) {
-          const imgIndex = this.images.findIndex((el) => el.id === notification.id);
+        const imgIndex = this.images.findIndex((el) => el.id === notification.id);
+
+        if (imgIndex !== undefined) {
           this.images.splice(imgIndex, 1);
         }
 

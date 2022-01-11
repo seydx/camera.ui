@@ -313,7 +313,21 @@ class Socket {
   static async handleCpuLoad() {
     try {
       const cpuLoad = await systeminformation.currentLoad();
-      const processLoad = await systeminformation.processLoad(process.title);
+      let processLoad = await systeminformation.processLoad(process.title);
+
+      if (processLoad?.length && !processLoad[0].pid && !processLoad[0].cpu && !processLoad[0].mem) {
+        // can not find through process.title, try again with process.pid
+        const processes = await systeminformation.processes();
+        const processByPID = processes.list.find((p) => p.pid === process.pid);
+
+        if (processByPID) {
+          processLoad = [
+            {
+              cpu: processByPID.cpu,
+            },
+          ];
+        }
+      }
 
       Socket.#cpuLoadHistory = Socket.#cpuLoadHistory.slice(-60);
       Socket.#cpuLoadHistory.push({
@@ -356,7 +370,21 @@ class Socket {
     try {
       const mem = await systeminformation.mem();
       const memoryFreePercent = mem ? ((mem.total - mem.available) / mem.total) * 100 : 50;
-      const processLoad = await systeminformation.processLoad(process.title);
+      let processLoad = await systeminformation.processLoad(process.title);
+
+      if (!processLoad.pid && !processLoad.cpu && !processLoad.mem) {
+        // can not find through process.title, try again with process.pid
+        const processes = await systeminformation.processes();
+        const processByPID = processes.list.find((p) => p.pid === process.pid);
+
+        if (processByPID) {
+          processLoad = [
+            {
+              mem: processByPID.mem,
+            },
+          ];
+        }
+      }
 
       Socket.#memoryUsageHistory = Socket.#memoryUsageHistory.slice(-60);
       Socket.#memoryUsageHistory.push({

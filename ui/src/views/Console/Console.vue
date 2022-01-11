@@ -16,20 +16,20 @@
     
     my-terminal(:terminal="terminal" ref="xterm")
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiDeleteEmpty, mdiDownload, mdiShareVariant } from '@mdi/js';
 
 import { downloadLog, removeLog } from '@/api/system.api';
@@ -41,7 +41,7 @@ export default {
   name: 'Console',
 
   components: {
-    CoolLightBox,
+    LightBox,
     'my-terminal': Console,
   },
 

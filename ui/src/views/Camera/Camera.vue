@@ -33,7 +33,7 @@
                       v-list-item-title.text-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
                     v-list-item-action
-                      v-btn.text-muted(icon @click="index = i")
+                      v-btn.text-muted(icon @click="openGallery(notification)")
                         v-icon {{ icons['mdiPlusCircle'] }}
             .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
               v-list.tw-p-0(dense)
@@ -41,28 +41,29 @@
                   v-list-item-content
                     v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
-  CoolLightBox(
-    :items="images" 
-    :index="index"
-    @close="index = null",
-    :closeOnClickOutsideMobile="true",
-    :useZoomBar="true"
+  LightBox(
+    ref="lightbox"
+    :media="images"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiPlusCircle } from '@mdi/js';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
@@ -78,7 +79,7 @@ export default {
   name: 'Camera',
 
   components: {
-    CoolLightBox,
+    LightBox,
     VideoCard,
   },
 
@@ -87,9 +88,10 @@ export default {
   data: () => ({
     camera: {},
     cols: 12,
-    icons: [mdiPlusCircle],
+    icons: {
+      mdiPlusCircle,
+    },
     images: [],
-    index: null,
     loading: true,
     notifications: [],
     notificationsPanel: [0],
@@ -111,12 +113,37 @@ export default {
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
       this.notifications = lastNotifications.data.result;
 
-      this.images = lastNotifications.data.result.map((not) => {
-        return {
-          title: `${not.camera} - ${not.time}`,
-          src: `/files/${not.fileName}`,
-          thumb: not.recordType === 'Video' ? `/files/${not.name}@2.jpeg` : `/files/${not.fileName}`,
-        };
+      this.images = lastNotifications.data.result.map((notification) => {
+        if (notification.recordStoring) {
+          let mediaContainer = {
+            id: notification.id,
+            type: 'image',
+            caption: `${notification.camera} - ${notification.time}`,
+            src: `/files/${notification.fileName}`,
+            thumb: `/files/${notification.fileName}`,
+          };
+
+          if (notification.recordType === 'Video') {
+            delete mediaContainer.src;
+
+            mediaContainer = {
+              ...mediaContainer,
+              type: 'video',
+              sources: [
+                {
+                  src: `/files/${notification.fileName}`,
+                  type: 'video/mp4',
+                },
+              ],
+              thumb: `/files/${notification.name}@2.jpeg`,
+              width: '100%',
+              height: 'auto',
+              autoplay: false,
+            };
+          }
+
+          return mediaContainer;
+        }
       });
 
       this.camera = camera.data;
@@ -131,6 +158,12 @@ export default {
   },
 
   methods: {
+    openGallery(notification) {
+      if (notification.recordStoring) {
+        const index = this.images.findIndex((el) => el.id === notification.id);
+        this.$refs.lightbox.showImage(index);
+      }
+    },
     toggleNotificationsPanel() {
       this.showNotifications = !this.showNotifications;
 

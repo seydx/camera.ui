@@ -24,13 +24,13 @@
       .drag-info.tw-text-center(v-if="!items.length") {{ $t('drop_widgets_here') }}
       .grid-stack(ref="gridStack")
           
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true"
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
@@ -42,8 +42,8 @@ import vuetify from '@/plugins/vuetify';
 import router from '@/router';
 import store from '@/store';
 
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import 'gridstack/dist/jq/gridstack-dd-jqueryui';
 import 'gridstack/dist/gridstack.min.css';
 import 'gridstack/dist/gridstack-extra.min.css';
@@ -63,7 +63,7 @@ export default {
   name: 'Dashboard',
 
   components: {
-    CoolLightBox,
+    LightBox,
     Sidebar,
   },
 

@@ -32,20 +32,20 @@
     .tw-flex.tw-justify-center.tw-items-center.tw-h-full.tw-w-full(v-if="!cameras.length")
       span.text-muted {{ $t('no_cameras') }} :(
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import 'gridstack/dist/gridstack.min.css';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/jq/gridstack-dd-jqueryui';
@@ -65,7 +65,7 @@ export default {
   name: 'Camview',
 
   components: {
-    CoolLightBox,
+    LightBox,
     VideoCard,
   },
 

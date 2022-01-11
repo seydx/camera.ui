@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -39,7 +39,7 @@
     "morgan": "^1.10.0",
     "mqtt": "^4.3.4",
     "multer": "^1.4.4",
-    "nanoid": "^3.1.30",
+    "nanoid": "^3.1.31",
     "os": "^0.1.2",
     "pam-diff": "^1.1.0",
     "piexifjs": "^1.0.6",

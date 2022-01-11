@@ -18,20 +18,20 @@
       @input="onInput"
     )     
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import VJsoneditor from 'v-jsoneditor';
 import { mdiCheckBold } from '@mdi/js';
 
@@ -44,7 +44,7 @@ export default {
   name: 'Config',
 
   components: {
-    CoolLightBox,
+    LightBox,
     VJsoneditor,
   },
 

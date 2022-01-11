@@ -181,25 +181,38 @@ export default {
   z-index: 1;
 }
 
-div >>> .cool-lightbox-toolbar {
+div >>> .vib-hideable {
+  transition: opacity 0.1s ease;
+}
+
+div >>> .vib-hidden {
+  opacity: 10;
+}
+
+div >>> .vib-content {
+  width: 100%;
+  max-width: 800px;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+div >>> .vib-close {
   margin-top: env(safe-area-inset-top, 0px);
   margin-right: env(safe-area-inset-right, 0px);
 }
 
-div >>> .cool-lightbox-caption h6 {
-  margin-bottom: env(safe-area-inset-bottom, 6px);
-}
-
-div >>> .cool-lightbox-button--next {
+div >>> .vib-arrow-right {
   margin-right: env(safe-area-inset-right, 0px);
 }
 
-div >>> .cool-lightbox-button--prev {
+div >>> .vib-arrow-left {
   margin-left: env(safe-area-inset-left, 0px);
 }
 
-div >>> .cool-lightbox-thumbs {
-  background: rgba(var(--cui-bg-card-rgb));
+div >>> .vib-footer {
+  margin-bottom: env(safe-area-inset-bottom, 6px);
+  padding-right: clamp(10px, env(safe-area-inset-right, 10px), env(safe-area-inset-right, 10px));
+  padding-left: clamp(10px, env(safe-area-inset-right, 10px), env(safe-area-inset-right, 10px));
 }
 
 @media (max-width: 960px) {

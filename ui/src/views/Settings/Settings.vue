@@ -16,20 +16,20 @@
       transition(name='fade' mode='out-in')
         router-view.tw-px-2.tw-max-w-4xl
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
               
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiMenu } from '@mdi/js';
 
 import { bus } from '@/main';
@@ -42,7 +42,7 @@ export default {
   name: 'Settings',
 
   components: {
-    CoolLightBox,
+    LightBox,
     Sidebar,
   },
 

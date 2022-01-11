@@ -6,7 +6,6 @@ export default {
       notId: '',
       notIdInfo: '',
       notImages: [],
-      notIndex: null,
     };
   },
   computed: {
@@ -80,13 +79,30 @@ export default {
         this.notId = '_' + Math.random().toString(36).substr(2, 9);
 
         if (notification.mediaSource) {
-          this.notImages = [
-            {
-              title: notification.title,
-              src: notification.mediaSource,
-              thumb: notification.thumbnail || notification.mediaSource,
-            },
-          ];
+          let mediaContainer = {
+            type: 'image',
+            caption: notification.title,
+            src: notification.mediaSource,
+            thumb: notification.thumbnail || notification.mediaSource,
+          };
+
+          if (notification.recordType === 'Video') {
+            mediaContainer = {
+              ...mediaContainer,
+              type: 'video',
+              sources: [
+                {
+                  src: notification.mediaSource,
+                  type: 'video/mp4',
+                },
+              ],
+              width: '100%',
+              height: 'auto',
+              autoplay: false,
+            };
+          }
+
+          this.notImages = [mediaContainer];
         }
 
         let message = '';
@@ -111,7 +127,7 @@ export default {
           },
           listeners: {
             showNotification: () => {
-              this.notIndex = notification.recordStoring ? 0 : null;
+              this.$refs.lightboxBanner?.showImage(0);
             },
           },
         };
@@ -133,14 +149,35 @@ export default {
           });
 
           if (notification.recordStoring) {
+            let mediaContainer = {
+              type: 'image',
+              caption: `${notification.camera} - ${notification.time}`,
+              src: `/files/${notification.fileName}`,
+              thumb: `/files/${notification.fileName}`,
+            };
+
+            if (notification.recordType === 'Video') {
+              delete mediaContainer.src;
+
+              mediaContainer = {
+                ...mediaContainer,
+                type: 'video',
+                sources: [
+                  {
+                    src: `/files/${notification.fileName}`,
+                    type: 'video/mp4',
+                  },
+                ],
+                thumb: `/files/${notification.name}@2.jpeg`,
+                width: '100%',
+                height: 'auto',
+                autoplay: false,
+              };
+            }
+
             this.images?.unshift({
               id: notification.id,
-              title: `${notification.camera} - ${notification.time}`,
-              src: `/files/${notification.fileName}`,
-              thumb:
-                notification.recordType === 'Video'
-                  ? `/files/${notification.name}@2.jpeg`
-                  : `/files/${notification.fileName}`,
+              ...mediaContainer,
             });
           }
         }
@@ -150,11 +187,33 @@ export default {
       if (this.isPage('Recordings')) {
         this.recordings?.unshift(recording);
 
-        this.images?.unshift({
-          title: `${recording.camera} - ${recording.time}`,
+        let mediaContainer = {
+          type: 'image',
+          caption: `${recording.camera} - ${recording.time}`,
           src: `/files/${recording.fileName}`,
-          thumb: recording.recordType === 'Video' ? `/files/${recording.name}@2.jpeg` : `/files/${recording.fileName}`,
-        });
+          thumb: `/files/${recording.fileName}`,
+        };
+
+        if (recording.recordType === 'Video') {
+          delete mediaContainer.src;
+
+          mediaContainer = {
+            ...mediaContainer,
+            type: 'video',
+            sources: [
+              {
+                src: `/files/${recording.fileName}`,
+                type: 'video/mp4',
+              },
+            ],
+            thumb: `/files/${recording.name}@2.jpeg`,
+            width: '100%',
+            height: 'auto',
+            autoplay: false,
+          };
+        }
+
+        this.images?.unshift(mediaContainer);
       }
     },
     updated() {
@@ -170,7 +229,6 @@ export default {
   },
   methods: {
     closeHandler() {
-      this.notIndex = null;
       this.$toast.dismiss(this.notId);
       this.notId = '';
     },

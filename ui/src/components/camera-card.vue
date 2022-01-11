@@ -71,20 +71,22 @@
         v-card-title.video-card-bottom-title.tw-flex.tw-justify-between.tw-items-center.tw-absolute.tw-bottom-0.tw-left-0
           span.font-weight-bold.text-truncate.tw-text-white {{ camera.name }}
 
-  CoolLightBox(
+  LightBox(
     v-if="notifications && !hideNotifications"
-    :items="images" 
-    :index="index"
-    @close="index = null"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true"
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
+
 </template>
 
 <script>
 /* eslint-disable vue/require-default-prop */
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import JSMpeg from 'jsmpeg-fast-player';
 import JSMpegWritableSource from '@/common/jsmpeg-source.js';
 import {
@@ -105,7 +107,7 @@ const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
   components: {
-    CoolLightBox,
+    LightBox,
   },
   props: {
     blank: Boolean,

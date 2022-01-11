@@ -158,7 +158,8 @@ exports.createNotification = async (data) => {
     title: cameraName,
     message: `${data.trigger} - ${time}`,
     subtxt: room,
-    mediaSource: storing
+    mediaSource: storing ? `/files/${fileName}.${extension}` : false,
+    tumbnail: storing
       ? data.type === 'Video'
         ? `/files/${fileName}@2.jpeg`
         : `/files/${fileName}.${extension}`

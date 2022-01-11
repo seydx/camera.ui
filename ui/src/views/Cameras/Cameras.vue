@@ -22,20 +22,20 @@
       .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_cameras") }}
       .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_cameras") }} :(
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
   
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mdiPlus } from '@mdi/js';
 
@@ -52,7 +52,7 @@ export default {
   name: 'Cameras',
 
   components: {
-    CoolLightBox,
+    LightBox,
     FilterCard,
     InfiniteLoading,
     VideoCard,
@@ -115,7 +115,7 @@ export default {
     },
     async infiniteHandler($state) {
       try {
-        const response = await getCameras(`?refresh=true&page=${this.page || 1}` + this.query);
+        const response = await getCameras(`?pageSize=5&page=${this.page || 1}` + this.query);
 
         for (const camera of response.data.result) {
           const settings = await getCameraSettings(camera.name);

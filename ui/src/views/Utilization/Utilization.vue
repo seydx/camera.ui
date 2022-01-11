@@ -33,20 +33,20 @@
       .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white(style="top: 130px; background: rgb(56, 56, 56)") {{ memoryData.data.length ? `${Math.round(memoryData.data[memoryData.data.length-1].value2)}%` : '0%' }}
       Chart.tw-mt-5(:dataset="memoryData" :options="areaMemoryOptions")
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 
 import socket from '@/mixins/socket';
 
@@ -57,7 +57,7 @@ export default {
 
   components: {
     Chart,
-    CoolLightBox,
+    LightBox,
   },
 
   mixins: [socket],

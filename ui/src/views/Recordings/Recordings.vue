@@ -14,37 +14,37 @@
 
     v-layout.tw-mt-5(row wrap)
       v-flex.tw-mb-4.tw-px-2(xs12 sm6 md4 lg3 xl2 v-for="(recording, i) in recordings" :key="recording.id" :style="`height: ${height}px`")
-        RecordingCard(ref="recordings" :recording="recording" @show="index = i" @remove="remove(recording, i)")
+        RecordingCard(ref="recordings" :recording="recording" @show="openGallery(i)" @remove="remove(recording, i)")
 
     infinite-loading(:identifier="infiniteId" @infinite="infiniteHandler")
       .tw-mt-10(slot="spinner")
         v-progress-circular(indeterminate color="var(--cui-primary)")
       .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_recordings") }}
       .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_recordings") }}
-        
-  CoolLightBox(
-    :items="images" 
-    :index="index"
-    @close="index = null"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+
+  LightBox(
+    ref="lightbox"
+    :media="images"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
-  CoolLightBox(
-    :items="notImages" 
-    :index="notIndex"
-    @close="closeHandler"
-    :closeOnClickOutsideMobile="true"
-    :useZoomBar="true",
-    :zIndex=99999
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
   )
 
 </template>
 
 <script>
-import 'vue-cool-lightbox/dist/vue-cool-lightbox.min.css';
-import CoolLightBox from 'vue-cool-lightbox';
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mdiDelete } from '@mdi/js';
 
@@ -59,9 +59,9 @@ export default {
   name: 'Recordings',
 
   components: {
-    CoolLightBox,
     FilterCard,
     InfiniteLoading,
+    LightBox,
     RecordingCard,
   },
 
@@ -72,7 +72,6 @@ export default {
       mdiDelete,
     },
     images: [],
-    index: null,
     infiniteId: Date.now(),
     loading: false,
     page: 1,
@@ -119,18 +118,40 @@ export default {
     },
     async infiniteHandler($state) {
       try {
-        const response = await getRecordings(`?refresh=true&page=${this.page || 1}` + this.query);
+        const response = await getRecordings(`?refresh=true&pageSize=6&page=${this.page || 1}` + this.query);
 
         if (response.data.result.length > 0) {
           this.page += 1;
-          this.recordings = [...this.recordings, ...response.data.result];
+          this.recordings.push(...response.data.result);
 
           this.images = this.recordings.map((rec) => {
-            return {
-              title: `${rec.camera} - ${rec.time}`,
+            let mediaContainer = {
+              type: 'image',
+              caption: `${rec.camera} - ${rec.time}`,
               src: `/files/${rec.fileName}`,
-              thumb: rec.recordType === 'Video' ? `/files/${rec.name}@2.jpeg` : `/files/${rec.fileName}`,
+              thumb: `/files/${rec.fileName}`,
             };
+
+            if (rec.recordType === 'Video') {
+              delete mediaContainer.src;
+
+              mediaContainer = {
+                ...mediaContainer,
+                type: 'video',
+                sources: [
+                  {
+                    src: `/files/${rec.fileName}`,
+                    type: 'video/mp4',
+                  },
+                ],
+                thumb: `/files/${rec.name}@2.jpeg`,
+                width: '100%',
+                height: 'auto',
+                autoplay: false,
+              };
+            }
+
+            return mediaContainer;
           });
 
           $state.loaded();
@@ -141,6 +162,9 @@ export default {
         console.log(err);
         this.$toast.error(err.message);
       }
+    },
+    openGallery(index) {
+      this.$refs.lightbox.showImage(index);
     },
     async remove(recording, index) {
       this.recordings = this.recordings.filter((recording, i) => i !== index);
