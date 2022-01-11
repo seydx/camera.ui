@@ -5,7 +5,7 @@
   .cameras-dropdown
     v-menu.tw-z-30(v-if="checkLevel('settings:edit')" v-model="showCardsMenu" transition="slide-y-transition" min-width="200px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
       template(v-slot:activator="{ on, attrs }")
-        v-btn.text-muted.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
+        v-btn.text-muted.tw-mr-1(fab elevation="1" height="38px" width="38px" v-bind="attrs" v-on="on" color="rgba(0, 0, 0, 0.5)" retain-focus-on-click)
           v-icon {{ icons['mdiCog'] }}
 
       v-card.light-shadow.card-border.dropdown-content(max-width="360px")

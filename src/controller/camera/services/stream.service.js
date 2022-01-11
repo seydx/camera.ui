@@ -123,6 +123,11 @@ class StreamService {
       if (!prebuffer) {
         const allowStream = this.#sessionService.requestSession();
 
+        console.log('ALLOW???');
+        console.log(allowStream);
+
+        console.log(this.#sessionService);
+
         if (!allowStream) {
           log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName, 'streams');
           return;

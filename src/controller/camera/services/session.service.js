@@ -15,7 +15,7 @@ class SessionService {
 
     this.session = {
       activeStreams: 0,
-      maxStreams: camera.videoConfig.maxStreams,
+      maxStreams: camera.videoConfig.maxStreams || 4,
     };
   }
 

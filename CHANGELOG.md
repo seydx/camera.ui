@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# Next
+
+## Other Changes
+- Minor UI improvements
+
+## Bugfixes
+- Fixed an issue where the video analysis sensitivity does not work as desired
+
 # [1.0.4] - 2022-01-11
 
 ## Other Changes

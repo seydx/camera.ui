@@ -19,6 +19,12 @@ const { log } = LoggerService;
 
 const isUINT = (value) => Number.isInteger(value) && value >= 0;
 
+const FFMPEG_MODE = 'rgba'; // gray, rgba, rgb24
+const FFMPEG_RESOLUTION = '640:360';
+const FFMPEG_FPS = '2';
+const DIFFERENCE = 9;
+const GRAYSCALE = 'luminosity';
+
 class VideoAnalysisService {
   #camera;
   #socket;
@@ -56,28 +62,19 @@ class VideoAnalysisService {
     }
   }
 
-  // 0 - 100
   changeSensitivity(sensitivity) {
     if (sensitivity >= 0 && sensitivity <= 100 && this.videoanalysisSession?.pamDiff) {
-      const value = 100 - sensitivity;
-
-      // 0: MAX - 100: MIN
-      const difference = Math.round(value / 3);
-
-      // 0: MAX - 100: MIN
-      const percentage = value;
-
-      this.videoanalysisSession.pamDiff.setDifference(difference);
-      this.videoanalysisSession.pamDiff.setPercent(percentage);
+      this.videoanalysisSession.pamDiff.setDifference(DIFFERENCE);
+      this.videoanalysisSession.pamDiff.setPercent(100 - sensitivity);
     }
   }
 
-  changeZone(regions, sensitivity) {
-    if (regions && regions.length > 0 && this.videoanalysisSession?.pamDiff) {
-      const zones = this.#createRegions(regions, sensitivity);
-      this.videoanalysisSession.pamDiff.regions = zones.length > 0 ? zones : null;
-
+  changeZone(regions = [], sensitivity) {
+    if (this.videoanalysisSession?.pamDiff) {
+      this.videoanalysisSession.pamDiff.resetCache();
       this.changeSensitivity(sensitivity);
+      const zones = this.#createRegions(regions, sensitivity);
+      this.videoanalysisSession.pamDiff.setRegions(zones.length > 0 ? zones : null);
     }
   }
 
@@ -193,11 +190,11 @@ class VideoAnalysisService {
       '-vcodec',
       'pam',
       '-pix_fmt',
-      'gray',
+      FFMPEG_MODE,
       '-f',
       'image2pipe',
       '-vf',
-      'fps=2,scale=400:225',
+      `fps=${FFMPEG_FPS},scale=${FFMPEG_RESOLUTION}`,
       'pipe:1',
     ];
 
@@ -213,11 +210,15 @@ class VideoAnalysisService {
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
-      difference: settings?.videoanalysis?.difference || 10,
-      percent: settings?.videoanalysis?.percentage || 30,
+      //difference: settings?.videoanalysis?.difference || 9,
+      grayscale: GRAYSCALE,
+      difference: DIFFERENCE,
+      percent: settings?.videoanalysis?.percentage || 5,
+      regions: regions.length > 0 ? regions : null,
+      //response: 'percent',
+      response: 'bounds',
+      draw: true,
     });
-
-    pamDiff.regions = regions.length > 0 ? regions : null;
 
     const restartWatchdog = () => {
       clearTimeout(this.watchdog);
@@ -243,16 +244,16 @@ class VideoAnalysisService {
     // eslint-disable-next-line no-unused-vars
     pamDiff.on('diff', async (data) => {
       if (!this.motionTriggered) {
-        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger)}`, this.cameraName);
-
         this.motionTriggered = true;
+
+        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger)}`, this.cameraName);
 
         const result = await MotionController.handleMotion('motion', this.cameraName, true, 'videoanalysis', {});
         log.debug(`Received a new VIDEOANALYSIS message ${JSON.stringify(result)} (${this.cameraName})`);
 
         setTimeout(() => {
           this.motionTriggered = false;
-        }, 45000);
+        }, 60000);
       }
     });
 
@@ -331,14 +332,18 @@ class VideoAnalysisService {
         if (region.coords?.length > 2) {
           return {
             name: `region${index}`,
-            difference: Math.round(sensitivity / 3),
-            percent: sensitivity,
+            difference: 9,
+            percent: 100 - sensitivity,
             polygon: region.coords
               ?.map((coord) => {
-                if (isUINT(coord[0]) && isUINT(coord[1])) {
+                let x = coord[0] < 0 ? 0 : coord[0] > 100 ? 100 : coord[0];
+                let y = coord[1] < 0 ? 0 : coord[1] > 100 ? 100 : coord[1];
+                if (isUINT(x) && isUINT(y)) {
+                  //x: 0 - 100 %   => 0 - 640 px
+                  //y: 0 - 100 %   => 0 - 360 px
                   return {
-                    x: coord[0],
-                    y: coord[1],
+                    x: Math.round((640 / 100) * x),
+                    y: Math.round((360 / 100) * y),
                   };
                 }
               })
