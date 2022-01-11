@@ -324,7 +324,7 @@ class VideoAnalysisService {
   }
 
   #createRegions(regions = [], sensitivity) {
-    sensitivity = sensitivity >= 100 && sensitivity <= 100 ? sensitivity : 50;
+    sensitivity = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : 50;
 
     const zones = regions
       ?.map((region, index) => {
