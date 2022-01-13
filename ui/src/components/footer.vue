@@ -2,7 +2,7 @@
 v-footer.footer.tw-text-xs.tw-z-0(padless app absolute)
   .footer-wrapper.tw-flex.tw-items-center.tw-justify-end
     a.footer-link(href="https://github.com/SeydX" target="blank") {{ new Date().getFullYear() }} - 
-      strong seydx
+      strong (c) seydx
 </template>
 
 <script>

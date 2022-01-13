@@ -138,7 +138,7 @@ const defaultCameraSettingsEntry = {
     labels: [],
   },
   videoanalysis: {
-    sensitivity: 50,
+    sensitivity: 25,
     regions: [],
   },
 };

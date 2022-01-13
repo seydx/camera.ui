@@ -30,7 +30,6 @@ class StreamService {
     this.#prebufferService = prebufferService;
 
     this.cameraName = camera.name;
-    this.streamOptions = {};
   }
 
   reconfigure(camera) {
@@ -54,112 +53,86 @@ class StreamService {
     const cameraSetting = Settings.find((camera) => camera && camera.name === this.cameraName);
 
     const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
-    const source = cameraUtils.generateInputSource(videoConfig);
+    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+    let prebuffer = null;
 
-    this.streamOptions = {
-      source: source,
-      ffmpegOptions: {
-        '-s': cameraSetting?.resolution ? cameraSetting.resolution : `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
-        '-b:v': `${videoConfig.maxBitrate}k`,
-        '-r': videoConfig.maxFPS,
-        '-bf': 0,
-        '-preset:v': 'ultrafast',
-        '-threads': '1',
-      },
-    };
+    if (this.#camera.prebuffering && this.#prebufferService) {
+      try {
+        const containerInput = await this.#prebufferService.getVideo({
+          container: 'mpegts',
+        });
 
-    if (videoConfig.mapvideo) {
-      this.streamOptions.ffmpegOptions['-map'] = videoConfig.mapvideo;
+        ffmpegInput = prebuffer = containerInput;
+      } catch {
+        //ignore
+      }
     }
 
-    if (videoConfig.videoFilter) {
-      this.streamOptions.ffmpegOptions['-filter:v'] = videoConfig.videoFilter;
+    const videoArguments = ['-f', 'mpegts', '-vcodec', 'mpeg1video'];
+
+    if (videoConfig.mapvideo && !prebuffer) {
+      videoArguments.unshift('-map', videoConfig.mapvideo);
     }
+
+    const audioArguments = [];
 
     if (cameraSetting?.audio && this.#mediaService.codecs.audio.length > 0) {
-      delete this.streamOptions.ffmpegOptions['-an'];
-
-      this.streamOptions.ffmpegOptions = {
-        ...this.streamOptions.ffmpegOptions,
-        '-codec:a': 'mp2',
-        '-ar': '44100',
-        '-ac': '1',
-        '-b:a': '128k',
-      };
-    } else {
-      delete this.streamOptions.ffmpegOptions['-codec:a'];
-      delete this.streamOptions.ffmpegOptions['-ar'];
-      delete this.streamOptions.ffmpegOptions['-ac'];
-      delete this.streamOptions.ffmpegOptions['-b:a'];
-
-      this.streamOptions.ffmpegOptions['-an'] = '';
+      audioArguments.push('-acodec', 'mp2', '-ac', '1', '-b:a', '128k');
     }
+
+    if (videoConfig.mapaudio && !prebuffer) {
+      audioArguments.unshift('-map', videoConfig.mapaudio);
+    }
+
+    const additionalFlags = [
+      '-s',
+      cameraSetting?.resolution ? cameraSetting.resolution : `${videoConfig.maxWidth}x${videoConfig.maxHeight}`,
+      '-b:v',
+      `${videoConfig.maxBitrate}k`,
+      '-r',
+      videoConfig.maxFPS,
+      '-bf',
+      '0',
+      '-preset:v',
+      'ultrafast',
+      '-threads',
+      '1',
+      '-q',
+      '1',
+      '-max_muxing_queue_size',
+      '1024',
+    ];
+
+    return {
+      ffmpegInput,
+      prebuffer,
+      audioArguments,
+      videoArguments,
+      additionalFlags,
+    };
   }
 
   async start() {
     if (!this.streamSession) {
-      await this.configureStreamOptions();
+      let { ffmpegInput, prebuffer, audioArguments, videoArguments, additionalFlags } =
+        await this.configureStreamOptions();
 
-      const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
-
-      let input = this.streamOptions.source.split(/\s+/);
-      let prebuffer = null;
-
-      if (this.#camera.prebuffering && this.#prebufferService) {
-        try {
-          const containerInput = await this.#prebufferService.getVideo({
-            container: 'mpegts',
-          });
-
-          input = prebuffer = containerInput;
-
-          delete this.streamOptions.ffmpegOptions['-map'];
-          delete this.streamOptions.ffmpegOptions['-filter:v'];
-        } catch {
-          //ignore
-        }
-      }
-
-      if (!prebuffer) {
+      /*if (!prebuffer) {
         const allowStream = this.#sessionService.requestSession();
-
-        console.log('ALLOW???');
-        console.log(allowStream);
-
-        console.log(this.#sessionService);
-
         if (!allowStream) {
           log.error('Not allowed to start stream. Session limit exceeded!', this.cameraName, 'streams');
           return;
         }
-      }
-
-      const additionalFlags = [];
-
-      if (this.streamOptions.ffmpegOptions) {
-        for (const key of Object.keys(this.streamOptions.ffmpegOptions)) {
-          additionalFlags.push(key, this.streamOptions.ffmpegOptions[key]);
-        }
-      }
-
-      if (videoConfig.mapaudio && !prebuffer) {
-        additionalFlags.push('-map', videoConfig.mapaudio);
-      }
+      }*/
 
       const spawnOptions = [
         '-hide_banner',
         '-loglevel',
         'error',
-        ...input,
-        '-f',
-        'mpegts',
-        '-codec:v',
-        'mpeg1video',
+        ...ffmpegInput,
+        ...videoArguments,
+        ...audioArguments,
         ...additionalFlags,
-        '-q',
-        '1',
-        '-max_muxing_queue_size',
-        '1024',
         '-',
       ].filter((key) => key !== '');
 
@@ -212,26 +185,6 @@ class StreamService {
       setTimeout(() => this.start(), 1500);
     } else {
       this.start();
-    }
-  }
-
-  setStreamSource(source) {
-    if (source.inludes('-i')) {
-      this.streamOptions.source = source.split(/\s+/);
-    } else {
-      log.warn(`Source ${source} is not valid, skipping`, this.cameraName, 'streams');
-    }
-  }
-
-  setStreamOptions(options) {
-    for (const [key, value] of Object.entries(options)) {
-      this.streamOptions.ffmpegOptions[key] = value;
-    }
-  }
-
-  delStreamOptions(options) {
-    for (const property of options) {
-      delete this.streamOptions.ffmpegOptions[property];
     }
   }
 }

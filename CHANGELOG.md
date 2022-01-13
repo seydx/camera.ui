@@ -4,10 +4,19 @@ All notable changes to this project will be documented in this file.
 # Next
 
 ## Other Changes
+- Reduced default videoanalysis sensitivity to 25
+- Removed session control
+- Videoanalysis improvements
+- Refactored web stream
+- Improved camera pinging
+- Moved ENOENT messages to debug (eg. if recording not found)
 - Minor UI improvements
 
 ## Bugfixes
+- Fixed an issue where resetting motion via MQTT didnt work
 - Fixed an issue where the video analysis sensitivity does not work as desired
+- Fixed an issue where mapping video/audio stream didnt work (ffmpeg)
+- Minor Bugfixes
 
 # [1.0.4] - 2022-01-11
 

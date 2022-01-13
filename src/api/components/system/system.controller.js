@@ -83,13 +83,21 @@ exports.clearLog = async (req, res) => {
   }
 };
 
-exports.downloadDb = async (req, res) => {
+exports.downloadDb = async (req, res, next) => {
   try {
     const dbPath = ConfigService.databaseFilePath;
     //const dbJson = JSON.stringify((await fs.readJSON(dbPath, { throws: false })) || {});
 
     res.header('Content-Type', 'application/json');
-    res.sendFile(dbPath);
+    res.sendFile(dbPath, (err) => {
+      if (err) {
+        if (err?.status === 404 || err?.statusCode === 404) {
+          log.debug(err.message);
+        }
+
+        next();
+      }
+    });
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

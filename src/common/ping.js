@@ -1,5 +1,6 @@
 'use-strict';
 
+const nodejsTcpPing = require('nodejs-tcp-ping');
 const ping = require('ping');
 const { URL } = require('url');
 
@@ -26,16 +27,33 @@ class Ping {
 
     const url = new URL(cameraSource);
 
-    log.debug(`Pinging ${url.hostname}`, camera.name);
+    log.debug(`Pinging ${url.hostname}:${url.port || 80}`, camera.name);
 
-    const response = await ping.promise.probe(url.hostname, {
-      timeout: timeout || 1,
-      extra: ['-i', '2'],
-    });
+    let available = false;
 
-    let available = response && response.alive;
+    try {
+      const response = await nodejsTcpPing.tcpPing({
+        attempts: 5,
+        host: url.hostname,
+        port: Number.parseInt(url.port) || 80,
+        timeout: (timeout || 1) * 1000,
+      });
 
-    log.debug(`Pinging ${url.hostname} - ${available ? 'successful' : 'failed'}`, camera.name);
+      available = response.filter((result) => result.ping).length > 2;
+    } catch {
+      //ignore
+    }
+
+    if (!available) {
+      const response = await ping.promise.probe(url.hostname, {
+        timeout: timeout || 1,
+        extra: ['-i', '2'],
+      });
+
+      available = response && response.alive;
+    }
+
+    log.debug(`Pinging ${url.hostname}:${url.port || 80} - ${available ? 'successful' : 'failed'}`, camera.name);
 
     return available;
   }

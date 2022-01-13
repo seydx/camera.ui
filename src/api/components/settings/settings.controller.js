@@ -80,39 +80,10 @@ exports.patchTarget = async (req, res) => {
     await SettingsModel.patchByTarget(req.query.all, req.params.target, req.body);
 
     if (req.params.target === 'cameras') {
-      /*if (req.query.stopStream === 'true') {
-        for (const controller of cameras.values()) {
-          controller.stream?.stop();
-        }
-      }*/
-
-      //log.debug('Camera settings changed. The changes take effect when the camera stream is restarted.');
-
       const cameraSettings = req.body;
 
       for (const camera of cameraSettings) {
         const controller = cameras.get(camera.name);
-
-        let setting = {
-          '-s': camera.resolution,
-        };
-
-        if (camera.audio) {
-          controller?.stream?.delStreamOptions(['-an']);
-
-          setting = {
-            ...setting,
-            '-codec:a': 'mp2',
-            '-ar': '44100',
-            '-ac': '1',
-            '-b:a': '128k',
-          };
-        } else {
-          controller?.stream?.delStreamOptions(['-codec:a', '-ar', '-ac', '-b:a']);
-          setting['-an'] = '';
-        }
-
-        controller?.stream.setStreamOptions(setting);
         controller?.videoanalysis.changeZone(camera.videoanalysis.regions, camera.videoanalysis.sensitivity);
       }
     }

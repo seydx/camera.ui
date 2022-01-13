@@ -149,6 +149,8 @@ class MotionController {
         message: `Malformed URL ${request.url}`,
       };
 
+      log.debug(request.url, 'HTTP');
+
       let cameraName;
 
       if (request.url) {
@@ -226,6 +228,8 @@ class MotionController {
         message: `Malformed MQTT message ${data.toString()} (${topic})`,
       };
 
+      log.debug(`${data.toString()} (${topic})`, 'MQTT');
+
       let cameraName;
 
       const cameraMqttConfig = ConfigService.ui.topics.get(topic);
@@ -301,7 +305,11 @@ class MotionController {
         state = check();
 
         if (state === undefined && triggerType === 'motion') {
-          state = check(cameraMqttConfig.motionResetMessage);
+          const resetted = check(cameraMqttConfig.motionResetMessage);
+
+          if (resetted !== undefined) {
+            state = !resetted;
+          }
         }
 
         result =

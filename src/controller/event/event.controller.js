@@ -137,9 +137,9 @@ class EventController {
 
             let allowStream = true;
 
-            if (controller && !fileBuffer && recordingSettings.active && !Camera.prebuffering) {
+            /*if (controller && !fileBuffer && recordingSettings.active && !Camera.prebuffering) {
               allowStream = controller.session.requestSession();
-            }
+            }*/
 
             if (fileBuffer) {
               motionInfo.label = 'Custom';
