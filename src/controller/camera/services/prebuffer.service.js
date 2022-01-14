@@ -231,17 +231,12 @@ class PrebufferService {
       } else {
         audioArguments.push('-bsf:a', 'aac_adtstoasc', '-acodec', 'copy');
       }
-
-      if (videoConfig.mapaudio) {
-        audioArguments.unshift('-map', videoConfig.mapaudio);
-      }
     } else {
       audioArguments.push('-an');
     }
 
     let vcodec = 'copy';
 
-    //todo change
     const probeTimedout = this.#mediaService.codecs.timedout;
     const videoCodecProbe = this.#mediaService.codecs.video[0];
     const forcePrebuffering = this.#camera.forcePrebuffering;
@@ -265,20 +260,12 @@ class PrebufferService {
 
     const videoArguments = ['-vcodec', vcodec];
 
-    if (videoConfig.mapvideo) {
-      videoArguments.unshift('-map', videoConfig.mapvideo);
-    }
-
-    /*if (videoConfig.videoFilter) {
-      videoArguments.push('-filter:v', videoConfig.videoFilter);
-    }*/
-
     this.parsers = {
       mp4: cameraUtils.createFragmentedMp4Parser(),
       mpegts: cameraUtils.createMpegTsParser(),
     };
 
-    const session = await this.#startRebroadcastSession(ffmpegInput, videoArguments, audioArguments, {
+    const session = await this.#startRebroadcastSession(ffmpegInput, videoConfig, videoArguments, audioArguments, {
       parsers: this.parsers,
     });
 
@@ -470,7 +457,7 @@ class PrebufferService {
     };
   }
 
-  async #startRebroadcastSession(ffmpegInput, videoArguments, audioArguments, options) {
+  async #startRebroadcastSession(ffmpegInput, videoConfig, videoArguments, audioArguments, options) {
     const events = new EventEmitter();
 
     let isActive = true;
@@ -540,6 +527,9 @@ class PrebufferService {
       }
     }
 
+    let audioMap = `${videoConfig.mapaudio ? videoConfig.mapaudio : '0:a'}?`;
+    let videoMap = `${videoConfig.mapvideo ? videoConfig.mapvideo : '0:v'}?`;
+
     const arguments_ = [
       ...ffmpegInput,
       ...videoArguments,
@@ -547,9 +537,9 @@ class PrebufferService {
       '-f',
       'tee',
       '-map',
-      '0:v?',
+      videoMap,
       '-map',
-      '0:a?',
+      audioMap,
       `${mp4Arguments}|${mpegtsArguments}`,
     ];
 

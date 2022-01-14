@@ -1,7 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-# Next
+# v1.0.6 - 2022-01-14
+
+## Other Changes
+- Videoanalysis: Reduced dwell time from 120s to 90s
+- Videoanalysis: Minor improvements
+- Refactored log output for better understanding of the flow of events
+
+## Bugfixes
+- Fixed an issue where prebuffering/videoanalysis didnt work on cameras with mapping video/audio
+- Minor bugfixes
+
+# v1.0.5 - 2022-01-13
 
 ## Other Changes
 - Reduced default videoanalysis sensitivity to 25

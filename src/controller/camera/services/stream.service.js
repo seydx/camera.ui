@@ -78,6 +78,8 @@ class StreamService {
 
     if (cameraSetting?.audio && this.#mediaService.codecs.audio.length > 0) {
       audioArguments.push('-acodec', 'mp2', '-ac', '1', '-b:a', '128k');
+    } else {
+      audioArguments.push('-an');
     }
 
     if (videoConfig.mapaudio && !prebuffer) {
@@ -114,6 +116,7 @@ class StreamService {
 
   async start() {
     if (!this.streamSession) {
+      // eslint-disable-next-line no-unused-vars
       let { ffmpegInput, prebuffer, audioArguments, videoArguments, additionalFlags } =
         await this.configureStreamOptions();
 
@@ -163,9 +166,9 @@ class StreamService {
 
         this.streamSession = null;
 
-        if (!prebuffer) {
+        /*if (!prebuffer) {
           this.#sessionService.closeSession();
-        }
+        }*/
       });
     }
   }

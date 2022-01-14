@@ -19,12 +19,12 @@ const { log } = LoggerService;
 
 const isUINT = (value) => Number.isInteger(value) && value >= 0;
 
-const FFMPEG_MODE = 'rgba'; // gray, rgba, rgb24
+const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
 const FFMPEG_RESOLUTION = '640:360';
 const FFMPEG_FPS = '2';
 const DIFFERENCE = 9;
 //const GRAYSCALE = 'luminosity';
-const DWELL_TIME = 2 * 60 * 1000;
+const DWELL_TIME = 90 * 1000;
 
 class VideoAnalysisService {
   #camera;
@@ -137,16 +137,8 @@ class VideoAnalysisService {
         clearTimeout(this.watchdog);
       }
 
-      if (this.motionEventTimeout) {
-        clearTimeout(this.motionEventTimeout);
-        this.motionEventTimeout = null;
-
+      if (this.motionEventTimeout || this.forceCloseTimeout) {
         this.#triggerMotion(false);
-      }
-
-      if (this.forceCloseTimeout) {
-        clearTimeout(this.forceCloseTimeout);
-        this.forceCloseTimeout = null;
       }
 
       if (this.restartTimer) {
@@ -156,7 +148,7 @@ class VideoAnalysisService {
 
       this.videoanalysisSession.cp?.kill('SIGKILL');
       this.videoanalysisSession.pamDiff?.resetCache();
-      this.videoanalysisSession = undefined;
+      this.videoanalysisSession = null;
     }
   }
 
@@ -191,7 +183,7 @@ class VideoAnalysisService {
     const videoArguments = ['-an', '-vcodec', 'pam'];
 
     if (!prebufferInput && videoConfig.mapvideo) {
-      videoArguments.push('-map', videoConfig.mapvideo);
+      videoArguments.unshift('-map', videoConfig.mapvideo);
     }
 
     const ffmpegArguments = [
@@ -223,7 +215,6 @@ class VideoAnalysisService {
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
-      //difference: settings?.videoanalysis?.difference || 9,
       //grayscale: GRAYSCALE,
       difference: DIFFERENCE,
       percent: 100 - (settings?.videoanalysis?.sensitivity || 25),
@@ -257,25 +248,22 @@ class VideoAnalysisService {
     // eslint-disable-next-line no-unused-vars
     pamDiff.on('diff', async (data) => {
       if (!this.motionEventTimeout) {
-        if (this.forceCloseTimeout) {
-          clearTimeout(this.forceCloseTimeout);
-          this.forceCloseTimeout = null;
-        }
-
         log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger[0])}`, this.cameraName);
         this.#triggerMotion(true);
 
+        // forceClose after 3min
         this.forceCloseTimeout = setTimeout(() => {
-          // forceClose after 3min
           this.#triggerMotion(false);
         }, 3 * 60 * 1000);
       }
 
-      clearTimeout(this.motionEventTimeout);
+      if (this.motionEventTimeout) {
+        clearTimeout(this.motionEventTimeout);
+        this.motionEventTimeout = null;
+      }
 
       this.motionEventTimeout = setTimeout(async () => {
         this.#triggerMotion(false);
-        this.motionEventTimeout = null;
       }, DWELL_TIME);
     });
 
@@ -326,12 +314,18 @@ class VideoAnalysisService {
   }
 
   async #triggerMotion(state) {
-    const result = await MotionController.handleMotion('motion', this.cameraName, state, 'videoanalysis', {});
-    log.debug(`Received a new VIDEOANALYSIS message ${JSON.stringify(result)} (${this.cameraName})`);
+    await MotionController.handleMotion('motion', this.cameraName, state, 'videoanalysis');
 
-    if (!state && this.forceCloseTimeout) {
-      clearTimeout(this.forceCloseTimeout);
-      this.forceCloseTimeout = null;
+    if (!state) {
+      if (this.forceCloseTimeout) {
+        clearTimeout(this.forceCloseTimeout);
+        this.forceCloseTimeout = null;
+      }
+
+      if (this.motionEventTimeout) {
+        clearTimeout(this.motionEventTimeout);
+        this.motionEventTimeout = null;
+      }
     }
   }
 
@@ -358,7 +352,8 @@ class VideoAnalysisService {
   }
 
   #createRegions(regions = [], sensitivity) {
-    const percent = 100 - (sensitivity >= 0 && sensitivity <= 100 ? sensitivity : 25);
+    const sens = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : 25;
+    const percent = 100 - sens;
 
     const zones = regions
       ?.map((region, index) => {
@@ -386,7 +381,7 @@ class VideoAnalysisService {
       })
       .filter((zone) => zone?.polygon?.length > 2);
 
-    log.debug(`Videoanalysis: Currently active zones: ${JSON.stringify(zones)}`, this.cameraName);
+    log.debug(`Videoanalysis: Sensitivity: ${sens} - Active zones: ${JSON.stringify(zones)}`, this.cameraName);
 
     return zones;
   }

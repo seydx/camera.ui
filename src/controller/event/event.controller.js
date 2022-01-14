@@ -13,7 +13,7 @@ const { Telegram } = require('../../common/telegram');
 
 const { LoggerService } = require('../../services/logger/logger.service');
 
-const { CameraController } = require('../camera/camera.controller');
+//const { CameraController } = require('../camera/camera.controller');
 
 const CamerasModel = require('../../api/components/cameras/cameras.model');
 const NotificationsModel = require('../../api/components/notifications/notifications.model');
@@ -43,7 +43,7 @@ class EventController {
   // eslint-disable-next-line no-unused-vars
   static async handle(trigger, cameraName, active, fileBuffer, type) {
     if (active) {
-      const controller = CameraController.cameras.get(cameraName);
+      //const controller = CameraController.cameras.get(cameraName);
 
       try {
         let Camera, CameraSettings;
@@ -265,9 +265,9 @@ class EventController {
 
       EventController.#movementHandler[cameraName] = false;
 
-      if (controller) {
+      /*if (controller) {
         controller.session.closeSession();
-      }
+      }*/
     } else {
       log.debug(`Skip event, motion state: ${active}`, cameraName);
     }

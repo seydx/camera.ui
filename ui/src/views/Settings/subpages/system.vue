@@ -361,7 +361,7 @@ export default {
         http: config.data.http || {
           active: false,
           localhttp: false,
-          port: 7575,
+          port: 7272,
         },
         mqtt: config.data.mqtt || {
           active: false,

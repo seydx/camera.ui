@@ -163,12 +163,12 @@
             h4.tw-my-3 {{ $t('http') }}
 
             label.form-input-label {{ $t('motion') }}
-            v-text-field(:value="`http://${hostname}:${config.http.port}/motion?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/motion?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
             label.form-input-label {{ $t('motion_reset') }}
-            v-text-field(:value="`http://${hostname}:${config.http.port}/reset?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_reset_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/reset?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_reset_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
@@ -771,7 +771,7 @@ export default {
         http: config.data.http || {
           active: false,
           localhttp: false,
-          port: 7575,
+          port: 7272,
         },
         mqtt: config.data.mqtt || {
           active: false,

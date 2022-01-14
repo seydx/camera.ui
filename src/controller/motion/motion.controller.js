@@ -65,14 +65,7 @@ class MotionController {
 
     //used for external events
     this.triggerMotion = MotionController.triggerMotion = async (cameraName, state) => {
-      let result = {
-        error: true,
-        message: 'Custom event could not be handled',
-      };
-
-      result = await MotionController.handleMotion('custom', cameraName, state, 'extern', result);
-
-      log.debug(`Received a new EXTERN message ${JSON.stringify(result)} (${cameraName})`);
+      await MotionController.handleMotion('custom', cameraName, state, 'extern');
     };
 
     this.httpServer = MotionController.httpServer;
@@ -171,8 +164,6 @@ class MotionController {
         }
       }
 
-      log.debug(`Received a new HTTP message ${JSON.stringify(result)} (${cameraName})`);
-
       response.writeHead(result.error ? 500 : 200);
       response.write(JSON.stringify(result));
       response.end();
@@ -223,11 +214,6 @@ class MotionController {
     });
 
     MotionController.mqttClient.on('message', async (topic, data) => {
-      let result = {
-        error: true,
-        message: `Malformed MQTT message ${data.toString()} (${topic})`,
-      };
-
       log.debug(`${data.toString()} (${topic})`, 'MQTT');
 
       let cameraName;
@@ -312,21 +298,16 @@ class MotionController {
           }
         }
 
-        result =
-          state !== undefined
-            ? await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt', result)
-            : {
-                error: true,
-                message: `The incoming MQTT message (${data.toString()}) for the topic (${topic}) was not the same as set in config.json (${message.toString()}). Skip...`,
-              };
+        if (state !== undefined) {
+          await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt');
+        } else {
+          log.warn(
+            `The incoming MQTT message (${data.toString()}) for the topic (${topic}) was not the same as set in config.json (${message.toString()}). Skip...`
+          );
+        }
       } else {
-        result = {
-          error: true,
-          message: `Can not assign the MQTT topic (${topic}) to a camera!`,
-        };
+        log.warn(`Can not assign the MQTT topic (${topic}) to a camera!`, 'MQTT');
       }
-
-      log.debug(`Received a new message ${JSON.stringify(result)} (${cameraName})`, 'MQTT');
     });
 
     MotionController.mqttClient.on('end', () => {
@@ -388,8 +369,7 @@ class MotionController {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
           log.debug(`Email received (${name}).`, 'SMTP');
 
-          const result = await MotionController.handleMotion('motion', name, true, 'smtp', {});
-          log.debug(`Received a new SMTP message ${JSON.stringify(result)} (${name})`);
+          await MotionController.handleMotion('motion', name, true, 'smtp');
         }
       },
     });
@@ -512,8 +492,7 @@ class MotionController {
               const name = pathSplit[0];
               log.debug(`Receiving file. (${name}).`, 'FTP');
 
-              const result = await MotionController.handleMotion('motion', name, true, 'ftp', {});
-              log.debug(`Received a new FTP message ${JSON.stringify(result)} (${name})`);
+              await MotionController.handleMotion('motion', name, true, 'ftp');
             } else {
               this.connection.reply(550, 'Permission denied.');
             }
@@ -609,7 +588,8 @@ class MotionController {
     return ConfigService.ui.cameras.find((camera) => camera && camera.name === cameraName);
   }
 
-  static async handleMotion(triggerType, cameraName, state, event, result) {
+  static async handleMotion(triggerType, cameraName, state, event, result = {}) {
+    // result = {} is used as http response
     const camera = MotionController.#getCamera(cameraName);
 
     if (camera) {
@@ -618,32 +598,37 @@ class MotionController {
       const cameraExcluded = (generalSettings?.exclude || []).includes(cameraName);
 
       if (atHome && !cameraExcluded) {
+        const message = `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`;
+
+        log.info(message, cameraName);
+
         result = {
           error: false,
-          message: `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`,
+          message: message,
         };
       } else {
-        result = {
-          error: false,
-          message: 'Handled through extern controller',
-        };
-
-        //if handled through EXTERN controller, motionTimeout should also be handled through EXTERN controller
         MotionController.#controller.emit('motion', cameraName, triggerType, state, event);
 
         if (camera.recordOnMovement) {
-          //if handled through INTERN controller, motionTimeout should also be handled through INTERN controller
-          result.message = 'Handled through intern controller';
+          const message = 'Handling through intern controller..';
 
-          const timeout = MotionController.#motionTimers.get(camera.name);
+          log.debug(message, cameraName);
+
+          result = {
+            error: false,
+            message: message,
+          };
+
+          const timeout = MotionController.#motionTimers.get(cameraName);
           const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
 
           if (timeout) {
             if (state) {
+              log.info('Skip motion event, motion timeout active!', cameraName);
               result.message += ' - Skip motion event, timeout active!';
             } else {
               clearTimeout(timeout);
-              MotionController.#motionTimers.delete(camera.name);
+              MotionController.#motionTimers.delete(cameraName);
 
               MotionController.#controller.emit('uiMotion', {
                 triggerType: triggerType,
@@ -652,13 +637,13 @@ class MotionController {
               });
             }
           } else {
-            if (state && timeoutConfig > 0) {
+            if (state) {
               const timer = setTimeout(() => {
-                log.info('Motion handler timeout. (ui)', camera.name);
-                MotionController.#motionTimers.delete(camera.name);
+                log.debug('Motion handler timeout. (ui)', cameraName);
+                MotionController.#motionTimers.delete(cameraName);
               }, timeoutConfig * 1000);
 
-              MotionController.#motionTimers.set(camera.name, timer);
+              MotionController.#motionTimers.set(cameraName, timer);
             }
 
             MotionController.#controller.emit('uiMotion', {
@@ -667,12 +652,25 @@ class MotionController {
               state: state,
             });
           }
+        } else {
+          const message = 'Handling through extern controller..';
+
+          log.debug(message, cameraName);
+
+          result = {
+            error: false,
+            message: message,
+          };
         }
       }
     } else {
+      const message = `Camera '${cameraName}' not found`;
+
+      log.warn(message, cameraName);
+
       result = {
         error: true,
-        message: `Camera '${cameraName}' not found`,
+        message: message,
       };
     }
 
