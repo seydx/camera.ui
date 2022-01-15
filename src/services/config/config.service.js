@@ -331,8 +331,8 @@ class ConfigService {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
         }
 
-        // min motionTimeout
-        camera.motionTimeout = camera.motionTimeout >= 15 ? camera.motionTimeout : 15;
+        camera.motionTimeout =
+          camera.motionTimeout === undefined || !(camera.motionTimeout >= 0) ? 15 : camera.motionTimeout;
 
         // validate prebufferLength
         camera.prebufferLength =
@@ -344,45 +344,45 @@ class ConfigService {
         };
 
         // setup mqtt
-        if (camera.mqtt) {
-          if (camera.mqtt.motionTopic) {
-            const mqttOptions = {
-              motionTopic: camera.mqtt.motionTopic,
-              motionMessage: camera.mqtt.motionMessage || 'ON',
-              motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
-              camera: camera.name,
-              motion: true,
-            };
+        camera.mqtt = camera.mqtt || {};
 
-            ConfigService.ui.topics.set(mqttOptions.motionTopic, mqttOptions);
-          }
+        if (camera.mqtt.motionTopic) {
+          const mqttOptions = {
+            motionTopic: camera.mqtt.motionTopic,
+            motionMessage: camera.mqtt.motionMessage || 'ON',
+            motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
+            camera: camera.name,
+            motion: true,
+          };
 
-          if (camera.mqtt.motionResetTopic && camera.mqtt.motionResetTopic !== camera.mqtt.motionTopic) {
-            const mqttOptions = {
-              motionResetTopic: camera.mqtt.motionResetTopic,
-              motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
-              camera: camera.name,
-              motion: true,
-              reset: true,
-            };
+          ConfigService.ui.topics.set(mqttOptions.motionTopic, mqttOptions);
+        }
 
-            ConfigService.ui.topics.set(mqttOptions.motionResetTopic, mqttOptions);
-          }
+        if (camera.mqtt.motionResetTopic && camera.mqtt.motionResetTopic !== camera.mqtt.motionTopic) {
+          const mqttOptions = {
+            motionResetTopic: camera.mqtt.motionResetTopic,
+            motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
+            camera: camera.name,
+            motion: true,
+            reset: true,
+          };
 
-          if (
-            camera.mqtt.doorbellTopic &&
-            camera.mqtt.doorbellTopic !== camera.mqtt.motionTopic &&
-            camera.mqtt.doorbellTopic !== camera.mqtt.motionResetTopic
-          ) {
-            const mqttOptions = {
-              doorbellTopic: camera.mqtt.doorbellTopic,
-              doorbellMessage: camera.mqtt.doorbellMessage || 'ON',
-              camera: camera.name,
-              doorbell: true,
-            };
+          ConfigService.ui.topics.set(mqttOptions.motionResetTopic, mqttOptions);
+        }
 
-            ConfigService.ui.topics.set(mqttOptions.doorbellTopic, mqttOptions);
-          }
+        if (
+          camera.mqtt.doorbellTopic &&
+          camera.mqtt.doorbellTopic !== camera.mqtt.motionTopic &&
+          camera.mqtt.doorbellTopic !== camera.mqtt.motionResetTopic
+        ) {
+          const mqttOptions = {
+            doorbellTopic: camera.mqtt.doorbellTopic,
+            doorbellMessage: camera.mqtt.doorbellMessage || 'ON',
+            camera: camera.name,
+            doorbell: true,
+          };
+
+          ConfigService.ui.topics.set(mqttOptions.doorbellTopic, mqttOptions);
         }
 
         return camera;

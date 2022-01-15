@@ -3,6 +3,7 @@
 const _ = require('lodash');
 const { createServer } = require('net');
 const { EventEmitter } = require('events');
+const moment = require('moment');
 const { spawn } = require('child_process');
 
 const cameraUtils = require('../utils/camera.utils');
@@ -86,8 +87,7 @@ class PrebufferService {
 
       this.prebufferSession = await this.#startPrebufferSession();
 
-      const midnight = this.#millisUntilMidnight();
-      const timer = midnight + 2 * 60 * 60 * 1000;
+      const timer = this.#millisUntilTime('02:00');
 
       log.info(`Prebuffering scheduled for restart at 2AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
 
@@ -235,7 +235,7 @@ class PrebufferService {
       audioArguments.push('-an');
     }
 
-    let vcodec = 'copy';
+    const videoArguments = [];
 
     const probeTimedout = this.#mediaService.codecs.timedout;
     const videoCodecProbe = this.#mediaService.codecs.video[0];
@@ -254,11 +254,13 @@ class PrebufferService {
         return this.stop(true);
       } else {
         log.info('Prebuffering with reencoding enabled! Please pay attention to the CPU load', this.cameraName);
-        vcodec = videoConfig.vcodec === 'copy' ? 'libx264' : videoConfig.vcodec;
-      }
-    }
 
-    const videoArguments = ['-vcodec', vcodec];
+        let vcodec = videoConfig.vcodec === 'copy' ? 'libx264' : videoConfig.vcodec;
+        videoArguments.push('-vcodec', vcodec, '-preset:v', 'ultrafast');
+      }
+    } else {
+      videoArguments.push('-vcodec', 'copy');
+    }
 
     this.parsers = {
       mp4: cameraUtils.createFragmentedMp4Parser(),
@@ -557,7 +559,7 @@ class PrebufferService {
     cp.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
 
     cp.on('exit', (code, signal) => {
-      if (code === 1) {
+      if (code === 1 || (!this.killed && errors.length > 0)) {
         errors.unshift(`FFmpeg prebuffer process exited with error! (${signal})`);
         log.error(errors.join(' - '), this.cameraName, 'prebuffer');
       } else {
@@ -566,7 +568,7 @@ class PrebufferService {
     });
 
     cp.on('close', () => {
-      log.debug('Prebufferring process closed', this.cameraName);
+      log.info('Prebufferring process closed', this.cameraName);
 
       kill();
 
@@ -599,13 +601,15 @@ class PrebufferService {
     };
   }
 
-  #millisUntilMidnight() {
-    const midnight = new Date();
-    midnight.setHours(24);
-    midnight.setMinutes(0);
-    midnight.setSeconds(0);
-    midnight.setMilliseconds(0);
-    return midnight.getTime() - Date.now();
+  #millisUntilTime(end = '03:00') {
+    const startTime = moment();
+    const endTime = moment(end, 'HH:mm');
+
+    if ((startTime.hour() >= 12 && endTime.hour() <= 12) || endTime.isBefore(startTime)) {
+      endTime.add(1, 'days');
+    }
+
+    return endTime.diff(startTime);
   }
 
   async #pingCamera() {

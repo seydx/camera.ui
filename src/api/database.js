@@ -139,6 +139,7 @@ const defaultCameraSettingsEntry = {
   },
   videoanalysis: {
     sensitivity: 25,
+    difference: 9,
     regions: [],
   },
 };
@@ -507,6 +508,10 @@ class Database {
 
     if (typeof settings.videoanalysis !== 'object') {
       settings.videoanalysis = {};
+    }
+
+    if (!(settings.videoanalysis.difference >= 0 && settings.videoanalysis.difference <= 255)) {
+      settings.videoanalysis.difference = defaultCameraSettingsEntry.videoanalysis.difference;
     }
 
     if (!(settings.videoanalysis.sensitivity >= 0 && settings.videoanalysis.sensitivity <= 100)) {

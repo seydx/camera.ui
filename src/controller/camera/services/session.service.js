@@ -62,7 +62,6 @@ class SessionService {
 
   clearSession() {
     this.session.activeStreams = 0;
-    log.debug('Session cleared', this.cameraName);
   }
 }
 

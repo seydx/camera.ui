@@ -57,8 +57,14 @@ class Interface extends EventEmitter {
     const database = new Database(this);
     this.database = await database.prepareDatabase();
 
+    // configure event controller
+    this.eventController = new EventController(this);
+
+    // configure motion controller
+    this.motionController = new MotionController(this, this.#socket);
+
     // configure camera controller
-    this.cameraController = new CameraController(this.#socket);
+    this.cameraController = new CameraController(this, this.#socket);
 
     await Promise.all(
       [...this.cameraController.entries()].map(async (controller) => {
@@ -78,21 +84,12 @@ class Interface extends EventEmitter {
       })
     );
 
-    // configure event controller
-    this.eventController = new EventController(this);
-
-    // configure motion controller
-    this.motionController = new MotionController(this, this.#socket);
-
     // start
     this.#server.listen(config.port);
   }
 
   close() {
-    this.motionController?.closeMqttClient();
-    this.motionController?.closeSmtpServer();
-    this.motionController?.closeHttpServer();
-    this.motionController?.closeFtpServer();
+    this.motionController?.close();
 
     if (this.cameraController) {
       for (const controller of this.cameraController.values()) {

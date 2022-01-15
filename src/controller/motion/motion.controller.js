@@ -19,7 +19,7 @@ const { Database } = require('../../api/database');
 
 const { log } = LoggerService;
 
-const toDotNot = (input, parentKey) =>
+const toDotNot = (input, parentKey) => {
   // eslint-disable-next-line unicorn/no-array-reduce, unicorn/prefer-object-from-entries
   Object.keys(input || {}).reduce((accumulator, key) => {
     const value = input[key];
@@ -32,6 +32,7 @@ const toDotNot = (input, parentKey) =>
 
     return { ...accumulator, [outputKey]: value };
   }, {});
+};
 
 class MotionController {
   static #controller;
@@ -83,6 +84,8 @@ class MotionController {
     this.ftpServer = MotionController.ftpServer;
     this.startFtpServer = MotionController.startFtpServer;
     this.closeFtpServer = MotionController.closeFtpServer;
+
+    this.close = MotionController.close;
   }
 
   /**
@@ -584,6 +587,24 @@ class MotionController {
     }
   }
 
+  static close() {
+    if (MotionController.httpServer) {
+      MotionController.httpServer.close();
+    }
+
+    if (MotionController.mqttClient) {
+      MotionController.mqttClient.end();
+    }
+
+    if (MotionController.smtpServer) {
+      MotionController.smtpServer.close();
+    }
+
+    if (MotionController.ftpServer) {
+      MotionController.ftpServer.close();
+    }
+  }
+
   static #getCamera(cameraName) {
     return ConfigService.ui.cameras.find((camera) => camera && camera.name === cameraName);
   }
@@ -607,20 +628,26 @@ class MotionController {
           message: message,
         };
       } else {
-        MotionController.#controller.emit('motion', cameraName, triggerType, state, event);
+        result = {
+          error: false,
+          message: `Handling through ${camera.recordOnMovement ? 'intern' : 'extern'} controller..`,
+        };
+
+        MotionController.#controller.emit('motion', cameraName, triggerType, state, event); // used for extern controller, like Homebridge
 
         if (camera.recordOnMovement) {
-          const message = 'Handling through intern controller..';
-
-          log.debug(message, cameraName);
-
-          result = {
-            error: false,
-            message: message,
-          };
+          const recordingSettings = await Database.interfaceDB.get('settings').get('recordings').value();
+          const recActive = recordingSettings.active || false;
+          const recTimer = recordingSettings.timer || 10;
 
           const timeout = MotionController.#motionTimers.get(cameraName);
-          const timeoutConfig = camera.motionTimeout >= 0 ? camera.motionTimeout : 1;
+          const timeoutConfig = recActive
+            ? camera.motionTimeout < recTimer
+              ? recTimer + 5
+              : camera.motionTimeout
+            : camera.motionTimeout > 0
+            ? camera.motionTimeout
+            : 1;
 
           if (timeout) {
             if (state) {
@@ -637,7 +664,7 @@ class MotionController {
               });
             }
           } else {
-            if (state) {
+            if (state && timeoutConfig > 0) {
               const timer = setTimeout(() => {
                 log.debug('Motion handler timeout. (ui)', cameraName);
                 MotionController.#motionTimers.delete(cameraName);
@@ -653,13 +680,9 @@ class MotionController {
             });
           }
         } else {
-          const message = 'Handling through extern controller..';
-
-          log.debug(message, cameraName);
-
           result = {
             error: false,
-            message: message,
+            message: 'Handling through extern controller..',
           };
         }
       }

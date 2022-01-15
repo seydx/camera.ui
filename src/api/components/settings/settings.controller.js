@@ -84,7 +84,11 @@ exports.patchTarget = async (req, res) => {
 
       for (const camera of cameraSettings) {
         const controller = cameras.get(camera.name);
-        controller?.videoanalysis.changeZone(camera.videoanalysis.regions, camera.videoanalysis.sensitivity);
+        controller?.videoanalysis.changeZone(
+          camera.videoanalysis.regions,
+          camera.videoanalysis.sensitivity,
+          camera.videoanalysis.difference
+        );
       }
     }
 

@@ -9,11 +9,13 @@ const { StreamService } = require('./services/stream.service');
 const { VideoAnalysisService } = require('./services/videoanalysis.service');
 
 class CameraController {
+  static #controller;
   static #socket;
 
   static cameras = new Map([]);
 
-  constructor(socket) {
+  constructor(controller, socket) {
+    CameraController.#controller = controller;
     CameraController.#socket = socket;
 
     for (const camera of ConfigService.ui.cameras) {
@@ -26,7 +28,12 @@ class CameraController {
   static createController(camera) {
     const mediaService = new MediaService(camera);
     const prebufferService = new PrebufferService(camera, mediaService, CameraController.#socket);
-    const videoanalysisService = new VideoAnalysisService(camera, prebufferService, CameraController.#socket);
+    const videoanalysisService = new VideoAnalysisService(
+      camera,
+      prebufferService,
+      CameraController.#controller,
+      CameraController.#socket
+    );
     const sessionService = new SessionService(camera);
     const streamService = new StreamService(
       camera,

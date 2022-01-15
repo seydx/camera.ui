@@ -12,7 +12,7 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
       v-form(ref="form" v-model="valid" lazy-validation)
         .tw-block
           div
-            h2.tw-mb-5 General
+            h2.tw-mb-5 {{ $t('general') }}
 
             label.form-input-label Name
               span.tw-text-red-500 *
@@ -128,7 +128,7 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
           v-divider.tw-my-6
 
           div
-            h2.tw-mb-5 Options
+            h2.tw-mb-5 {{ $t('options') }}
 
             .tw-flex.tw-justify-between.tw-items-center.tw-mt-3
               .tw-block.tw-w-full.tw-pr-2
@@ -165,7 +165,20 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
           v-divider.tw-my-6
 
           div
-            h2.tw-mb-5 MQTT
+            h2.tw-mb-5 {{ $t('videoanalysis') }}
+
+            .tw-flex.tw-justify-between.tw-items-center
+              .tw-block.tw-w-full.tw-pr-2
+                label.form-input-label {{ $t('active') }}
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ $t('videoanalysis_info') }}
+              v-switch(color="var(--cui-primary)" v-model="cam.videoanalysis.active")
+
+          v-divider.tw-my-6
+
+          div
+            h2.tw-mb-5 {{ $t('mqtt') }}
 
             label.form-input-label Motion Topic
             v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
@@ -322,6 +335,9 @@ export default {
           debug: false,
         },
         mqtt: {},
+        videoanalysis: {
+          active: false,
+        },
       },
 
       camReset: {},

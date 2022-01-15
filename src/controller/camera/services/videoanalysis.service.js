@@ -1,6 +1,7 @@
 'use-strict';
 
 const _ = require('lodash');
+const moment = require('moment');
 const P2P = require('pipe2pam');
 const PamDiff = require('pam-diff');
 const { spawn } = require('child_process');
@@ -22,12 +23,13 @@ const isUINT = (value) => Number.isInteger(value) && value >= 0;
 const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
 const FFMPEG_RESOLUTION = '640:360';
 const FFMPEG_FPS = '2';
-const DIFFERENCE = 9;
-//const GRAYSCALE = 'luminosity';
-const DWELL_TIME = 90 * 1000;
+const DEFAULT_DIFFERENCE = 9; // 1 - 255
+const DEFAULT_SENSITIVITY = 25; // 0 - 100
+const DWELL_TIME = 60 * 1000;
 
 class VideoAnalysisService {
   #camera;
+  #controller;
   #socket;
   #prebufferService;
 
@@ -39,14 +41,25 @@ class VideoAnalysisService {
   motionEventTimeout = null;
   forceCloseTimeout = null;
 
-  constructor(camera, prebufferService, socket) {
+  finishLaunching = false;
+
+  constructor(camera, prebufferService, controller, socket) {
     //log.debug('Initializing video analysis', camera.name);
 
     this.#camera = camera;
+    this.#controller = controller;
     this.#socket = socket;
     this.#prebufferService = prebufferService;
 
     this.cameraName = camera.name;
+
+    this.#controller.on('finishLaunching', () => {
+      if (camera.videoanalysis?.active) {
+        log.debug('Videoanalysis finished launching', this.cameraName);
+      }
+
+      this.finishLaunching = true;
+    });
   }
 
   reconfigure(camera) {
@@ -63,17 +76,18 @@ class VideoAnalysisService {
     }
   }
 
-  changeZone(regions = [], sensitivity) {
+  changeZone(zones = [], sensitivity, difference) {
     if (this.videoanalysisSession?.pamDiff) {
-      this.videoanalysisSession.pamDiff.resetCache();
-      this.videoanalysisSession.p2p.resetCache();
+      //this.videoanalysisSession.pamDiff.resetCache();
+      //this.videoanalysisSession.p2p.resetCache();
 
-      const percent = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : 25;
-      const zones = this.#createRegions(regions, percent);
+      const diff = difference >= 0 && difference <= 255 ? difference : DEFAULT_DIFFERENCE;
+      const percent = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : DEFAULT_SENSITIVITY;
+      const regions = this.#createRegions(zones, percent, diff);
 
-      this.videoanalysisSession.pamDiff.setDifference(DIFFERENCE);
+      this.videoanalysisSession.pamDiff.setDifference(diff);
       this.videoanalysisSession.pamDiff.setPercent(100 - percent);
-      this.videoanalysisSession.pamDiff.setRegions(zones.length > 0 ? zones : null);
+      this.videoanalysisSession.pamDiff.setRegions(regions.length > 0 ? regions : null);
     }
   }
 
@@ -98,10 +112,9 @@ class VideoAnalysisService {
 
       this.videoanalysisSession = await this.#startVideoAnalysis();
 
-      const midnight = this.#millisUntilMidnight();
-      const timer = midnight + 3 * 60 * 60 * 1000;
+      const timer = this.#millisUntilTime('04:00');
 
-      log.info(`Videoanalysis scheduled for restart at 3AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
+      log.info(`Videoanalysis scheduled for restart at 4AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
 
       this.restartTimer = setTimeout(() => {
         log.info('Sheduled restart of videoanalysis is executed...', this.cameraName);
@@ -147,7 +160,7 @@ class VideoAnalysisService {
       }
 
       this.videoanalysisSession.cp?.kill('SIGKILL');
-      this.videoanalysisSession.pamDiff?.resetCache();
+      //this.videoanalysisSession.pamDiff?.resetCache();
       this.videoanalysisSession = null;
     }
   }
@@ -190,8 +203,8 @@ class VideoAnalysisService {
       '-hide_banner',
       '-loglevel',
       'error',
-      '-hwaccel',
-      'auto',
+      //'-hwaccel',
+      //'auto',
       ...input,
       ...videoArguments,
       '-pix_fmt',
@@ -208,16 +221,19 @@ class VideoAnalysisService {
       this.cameraName
     );
 
+    const errors = [];
+
     const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
 
-    const errors = [];
-    const regions = this.#createRegions(settings?.videoanalysis?.regions, settings?.videoanalysis?.sensitivity);
+    const zones = settings?.videoanalysis?.regions || [];
+    const difference = settings?.videoanalysis?.difference || DEFAULT_DIFFERENCE;
+    const sensitivity = settings?.videoanalysis?.sensitivity || DEFAULT_SENSITIVITY;
+    const regions = this.#createRegions(zones, sensitivity, difference);
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
-      //grayscale: GRAYSCALE,
-      difference: DIFFERENCE,
-      percent: 100 - (settings?.videoanalysis?.sensitivity || 25),
+      difference: difference,
+      percent: 100 - sensitivity,
       regions: regions.length > 0 ? regions : null,
       response: 'percent',
       //response: 'bounds',
@@ -247,8 +263,12 @@ class VideoAnalysisService {
 
     // eslint-disable-next-line no-unused-vars
     pamDiff.on('diff', async (data) => {
+      if (!this.finishLaunching) {
+        return;
+      }
+
       if (!this.motionEventTimeout) {
-        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger[0])}`, this.cameraName);
+        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger)}`, this.cameraName);
         this.#triggerMotion(true);
 
         // forceClose after 3min
@@ -258,6 +278,8 @@ class VideoAnalysisService {
       }
 
       if (this.motionEventTimeout) {
+        log.debug('Resetted the dwell time because new movement detected, resetting motion in 60s..', this.cameraName);
+
         clearTimeout(this.motionEventTimeout);
         this.motionEventTimeout = null;
       }
@@ -276,7 +298,7 @@ class VideoAnalysisService {
     cp.on('exit', (code, signal) => {
       isActive = false;
 
-      if (code === 1) {
+      if (code === 1 || (!this.killed && errors.length > 0)) {
         errors.unshift(`FFmpeg videoanalysis process exited with error! (${signal})`);
         log.error(errors.join(' - '), this.cameraName, 'videoanalysis');
       } else {
@@ -295,6 +317,10 @@ class VideoAnalysisService {
       });
 
       if (!this.killed) {
+        if (errors.length > 0) {
+          log.error(errors.join(' - '), this.cameraName, 'videoanalysis');
+        }
+
         this.restart();
       }
     });
@@ -329,13 +355,15 @@ class VideoAnalysisService {
     }
   }
 
-  #millisUntilMidnight() {
-    const midnight = new Date();
-    midnight.setHours(24);
-    midnight.setMinutes(0);
-    midnight.setSeconds(0);
-    midnight.setMilliseconds(0);
-    return midnight.getTime() - Date.now();
+  #millisUntilTime(end = '04:00') {
+    const startTime = moment();
+    const endTime = moment(end, 'HH:mm');
+
+    if ((startTime.hour() >= 12 && endTime.hour() <= 12) || endTime.isBefore(startTime)) {
+      endTime.add(1, 'days');
+    }
+
+    return endTime.diff(startTime);
   }
 
   async #pingCamera() {
@@ -351,18 +379,19 @@ class VideoAnalysisService {
     return state;
   }
 
-  #createRegions(regions = [], sensitivity) {
-    const sens = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : 25;
+  #createRegions(zones = [], sensitivity, difference) {
+    const dif = difference >= 0 && difference <= 255 ? difference : DEFAULT_DIFFERENCE;
+    const sens = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : DEFAULT_SENSITIVITY;
     const percent = 100 - sens;
 
-    const zones = regions
-      ?.map((region, index) => {
-        if (region.coords?.length > 2) {
+    const regions = zones
+      ?.map((zone, index) => {
+        if (zone.coords?.length > 2) {
           return {
             name: `region${index}`,
-            difference: DIFFERENCE,
+            difference: dif,
             percent: percent,
-            polygon: region.coords
+            polygon: zone.coords
               ?.map((coord) => {
                 let x = coord[0] < 0 ? 0 : coord[0] > 100 ? 100 : coord[0];
                 let y = coord[1] < 0 ? 0 : coord[1] > 100 ? 100 : coord[1];
@@ -381,9 +410,12 @@ class VideoAnalysisService {
       })
       .filter((zone) => zone?.polygon?.length > 2);
 
-    log.debug(`Videoanalysis: Sensitivity: ${sens} - Active zones: ${JSON.stringify(zones)}`, this.cameraName);
+    log.debug(
+      `Videoanalysis: Difference: ${dif} - Sensitivity: ${sens} - Zones: ${JSON.stringify(regions)}`,
+      this.cameraName
+    );
 
-    return zones;
+    return regions;
   }
 }
 
