@@ -138,9 +138,19 @@ const defaultCameraSettingsEntry = {
     labels: [],
   },
   videoanalysis: {
-    sensitivity: 25,
-    difference: 9,
-    regions: [],
+    sensitivity: 75,
+    difference: 5,
+    regions: [
+      {
+        finished: true,
+        coords: [
+          [0, 100],
+          [0, 0],
+          [100, 0],
+          [100, 100],
+        ],
+      },
+    ],
   },
 };
 
@@ -518,7 +528,7 @@ class Database {
       settings.videoanalysis.sensitivity = defaultCameraSettingsEntry.videoanalysis.sensitivity;
     }
 
-    if (!Array.isArray(settings.videoanalysis.regions)) {
+    if (!Array.isArray(settings.videoanalysis.regions) || !settings.videoanalysis.regions?.length) {
       settings.videoanalysis.regions = defaultCameraSettingsEntry.videoanalysis.regions;
     }
 

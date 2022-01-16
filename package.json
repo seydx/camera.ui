@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "User Interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -53,7 +53,7 @@
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "4.1.6",
     "tar": "^6.1.11",
-    "telegraf": "^4.5.2",
+    "telegraf": "^4.6.0",
     "web-push": "^3.4.5"
   },
   "devDependencies": {
@@ -61,10 +61,10 @@
     "@babel/eslint-parser": "7.16.5",
     "@babel/eslint-plugin": "7.16.5",
     "concurrently": "6.5.1",
-    "eslint": "^8.6.0",
+    "eslint": "^8.7.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.25.4",
-    "eslint-plugin-jest": "^25.3.4",
+    "eslint-plugin-jest": "^25.7.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-unicorn": "^40.0.0",
     "jest": "^27.4.7",

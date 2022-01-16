@@ -96,7 +96,7 @@ class MediaService {
           this.codecs.timedout = true;
           cp.kill('SIGKILL');
         }
-      }, 8000);
+      }, 5000);
     });
   }
 }

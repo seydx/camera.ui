@@ -429,6 +429,8 @@
     "update_or_downgrade": "Bijwerken/Downgraden",
     "upload_backup_archive": "Back-up archief uploaden",
     "uptime": "Uptime",
+    "use_interface_timer": "Interface Recording Timer",
+    "use_interface_timer_info": "If enabled, the recording timer from camera.ui will be used for \"motionTimeout\".",
     "user": "Gebruiker",
     "user_list": "Gebruikerslijst",
     "username": "Gebruikersnaam",

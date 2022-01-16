@@ -431,6 +431,8 @@
     "update_or_downgrade": "Updaten/Downgraden",
     "upload_backup_archive": "Backup Archiv hochladen",
     "uptime": "Betriebszeit",
+    "use_interface_timer": "Interface Recording Timer",
+    "use_interface_timer_info": "If enabled, the recording timer from camera.ui will be used for \"motionTimeout\".",
     "user": "Benutzer",
     "user_list": "Benutzerliste",
     "username": "Benutzername",

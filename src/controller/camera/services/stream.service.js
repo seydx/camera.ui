@@ -148,13 +148,16 @@ class StreamService {
         env: process.env,
       });
 
-      const errors = [];
+      let errors = [];
 
       this.streamSession.stdout.on('data', (data) => {
         this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
       });
 
-      this.streamSession.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+      this.streamSession.stderr.on('data', (data) => {
+        errors = errors.slice(-5);
+        errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+      });
 
       this.streamSession.on('exit', (code, signal) => {
         if (code === 1) {

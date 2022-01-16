@@ -13,8 +13,6 @@ const { Telegram } = require('../../common/telegram');
 
 const { LoggerService } = require('../../services/logger/logger.service');
 
-//const { CameraController } = require('../camera/camera.controller');
-
 const CamerasModel = require('../../api/components/cameras/cameras.model');
 const NotificationsModel = require('../../api/components/notifications/notifications.model');
 const RecordingsModel = require('../../api/components/recordings/recordings.model');
@@ -43,8 +41,6 @@ class EventController {
   // eslint-disable-next-line no-unused-vars
   static async handle(trigger, cameraName, active, fileBuffer, type) {
     if (active) {
-      //const controller = CameraController.cameras.get(cameraName);
-
       try {
         let Camera, CameraSettings;
 
@@ -546,6 +542,8 @@ class EventController {
     } catch (error) {
       log.info('An error occured during sending telegram notification', cameraName, 'events');
       log.error(error, cameraName, 'events');
+    } finally {
+      await Telegram.stop();
     }
   }
 

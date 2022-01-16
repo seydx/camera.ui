@@ -145,7 +145,7 @@ class MotionController {
         message: `Malformed URL ${request.url}`,
       };
 
-      log.debug(request.url, 'HTTP');
+      log.debug(`New message: URL: ${request.url}`, 'HTTP');
 
       let cameraName;
 
@@ -217,7 +217,7 @@ class MotionController {
     });
 
     MotionController.mqttClient.on('message', async (topic, data) => {
-      log.debug(`${data.toString()} (${topic})`, 'MQTT');
+      log.debug(`New message: Topic: ${topic} - Data: ${data.toString()}`, 'MQTT');
 
       let cameraName;
 
@@ -370,7 +370,7 @@ class MotionController {
 
         for (const rcptTo of session.envelope.rcptTo) {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
-          log.debug(`Email received (${name}).`, 'SMTP');
+          log.debug(`New message: Email Address: ${name}`, 'SMTP');
 
           await MotionController.handleMotion('motion', name, true, 'smtp');
         }
@@ -493,7 +493,7 @@ class MotionController {
 
             if (pathSplit.length > 0) {
               const name = pathSplit[0];
-              log.debug(`Receiving file. (${name}).`, 'FTP');
+              log.debug(`New message: File Path: ${name}`, 'FTP');
 
               await MotionController.handleMotion('motion', name, true, 'ftp');
             } else {
@@ -641,13 +641,10 @@ class MotionController {
           const recTimer = recordingSettings.timer || 10;
 
           const timeout = MotionController.#motionTimers.get(cameraName);
-          const timeoutConfig = recActive
-            ? camera.motionTimeout < recTimer
-              ? recTimer + 5
-              : camera.motionTimeout
-            : camera.motionTimeout > 0
-            ? camera.motionTimeout
-            : 1;
+          let timeoutConfig =
+            (recActive && camera.motionTimeout < recTimer) || camera.useInterfaceTimer
+              ? recTimer
+              : camera.motionTimeout;
 
           if (timeout) {
             if (state) {
@@ -664,11 +661,11 @@ class MotionController {
               });
             }
           } else {
-            if (state && timeoutConfig > 0) {
+            if (state) {
               const timer = setTimeout(() => {
                 log.debug('Motion handler timeout. (ui)', cameraName);
                 MotionController.#motionTimers.delete(cameraName);
-              }, timeoutConfig * 1000);
+              }, (timeoutConfig || 1) * 1000);
 
               MotionController.#motionTimers.set(cameraName, timer);
             }

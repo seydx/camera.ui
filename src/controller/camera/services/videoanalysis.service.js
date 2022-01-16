@@ -23,9 +23,20 @@ const isUINT = (value) => Number.isInteger(value) && value >= 0;
 const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
 const FFMPEG_RESOLUTION = '640:360';
 const FFMPEG_FPS = '2';
-const DEFAULT_DIFFERENCE = 9; // 1 - 255
-const DEFAULT_SENSITIVITY = 25; // 0 - 100
+
 const DWELL_TIME = 60 * 1000;
+
+const DEFAULT_DIFFERENCE = 5; // 1 - 255
+const DEFAULT_SENSITIVITY = 75; // 0 - 100
+const DEFAULT_ZONE = {
+  finished: true,
+  coords: [
+    [0, 100],
+    [0, 0],
+    [100, 0],
+    [100, 100],
+  ],
+};
 
 class VideoAnalysisService {
   #camera;
@@ -151,7 +162,7 @@ class VideoAnalysisService {
       }
 
       if (this.motionEventTimeout || this.forceCloseTimeout) {
-        this.#triggerMotion(false);
+        this.#triggerMotion(false, 'killed');
       }
 
       if (this.restartTimer) {
@@ -221,7 +232,7 @@ class VideoAnalysisService {
       this.cameraName
     );
 
-    const errors = [];
+    let errors = [];
 
     const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
 
@@ -268,24 +279,23 @@ class VideoAnalysisService {
       }
 
       if (!this.motionEventTimeout) {
-        log.debug(`Motion detected via Videoanalysis: ${JSON.stringify(data.trigger)}`, this.cameraName);
-        this.#triggerMotion(true);
+        this.#triggerMotion(true, 'pixelDifference');
 
         // forceClose after 3min
         this.forceCloseTimeout = setTimeout(() => {
-          this.#triggerMotion(false);
+          this.#triggerMotion(false, 'forceClose');
         }, 3 * 60 * 1000);
       }
 
       if (this.motionEventTimeout) {
-        log.debug('Resetted the dwell time because new movement detected, resetting motion in 60s..', this.cameraName);
+        log.debug('Dwell time resetted because new motion detected, resetting motion in 60s..', this.cameraName);
 
         clearTimeout(this.motionEventTimeout);
         this.motionEventTimeout = null;
       }
 
       this.motionEventTimeout = setTimeout(async () => {
-        this.#triggerMotion(false);
+        this.#triggerMotion(false, 'dwellTime');
       }, DWELL_TIME);
     });
 
@@ -293,7 +303,10 @@ class VideoAnalysisService {
       env: process.env,
     });
 
-    cp.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    cp.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     cp.on('exit', (code, signal) => {
       isActive = false;
@@ -339,8 +352,11 @@ class VideoAnalysisService {
     };
   }
 
-  async #triggerMotion(state) {
-    await MotionController.handleMotion('motion', this.cameraName, state, 'videoanalysis');
+  async #triggerMotion(state, reason) {
+    log.debug(
+      `New message: Motion: ${state ? 'detected' : 'resetted'} - Reason: ${reason} - Camera: ${this.cameraName}`,
+      'VIDEOANALYSIS'
+    );
 
     if (!state) {
       if (this.forceCloseTimeout) {
@@ -353,6 +369,8 @@ class VideoAnalysisService {
         this.motionEventTimeout = null;
       }
     }
+
+    await MotionController.handleMotion('motion', this.cameraName, state, 'videoanalysis');
   }
 
   #millisUntilTime(end = '04:00') {
@@ -383,6 +401,10 @@ class VideoAnalysisService {
     const dif = difference >= 0 && difference <= 255 ? difference : DEFAULT_DIFFERENCE;
     const sens = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : DEFAULT_SENSITIVITY;
     const percent = 100 - sens;
+
+    if (!zones?.length) {
+      zones = DEFAULT_ZONE;
+    }
 
     const regions = zones
       ?.map((zone, index) => {

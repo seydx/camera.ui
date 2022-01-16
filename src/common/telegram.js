@@ -7,7 +7,7 @@ const { LoggerService } = require('../services/logger/logger.service');
 const { log } = LoggerService;
 
 class Telegram {
-  static bot;
+  static bot = null;
 
   constructor() {}
 
@@ -43,6 +43,7 @@ class Telegram {
     if (Telegram.bot) {
       log.debug('Stopping Telegram...');
       await Telegram.bot.stop();
+      Telegram.bot = null;
     }
   }
 

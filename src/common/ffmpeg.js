@@ -77,9 +77,12 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    const errors = [];
+    let errors = [];
 
-    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     ffmpeg.on('error', (error) => reject(error));
 
@@ -181,9 +184,12 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    const errors = [];
+    let errors = [];
 
-    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     let imageBuffer = Buffer.alloc(0);
 
@@ -247,9 +253,12 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    const errors = [];
+    let errors = [];
 
-    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     ffmpeg.on('error', (error) => reject(error));
 
@@ -331,9 +340,12 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
 
     const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
 
-    const errors = [];
+    let errors = [];
 
-    ffmpeg.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     ffmpeg.on('error', (error) => reject(error));
 

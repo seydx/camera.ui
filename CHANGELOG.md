@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.0.8 - 2022-01-16
+
+## Other Changes
+- Videoanalysis: Using a default zone if none was created
+- Videoanalysis: Increases default sensitivity
+- Telegram: Stop Telegram bot after message is send
+- Added new Translations
+- Bump dependencies
+
+## Bugfixes
+- Minor bugfixes
+
 # v1.0.7 - 2022-01-15
 
 ## Other Changes
@@ -16,7 +28,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an isue where crashing FFmpeg did not display an error message in the log
 - Fixed an issue where the dwell time could start before the motion handler was initialized
 - Fixed an issue where the restart timer for prebuffering and videoanalysis were calculated wrong
-- Minor Bugfixes
+- Minor bugfixes
 
 # v1.0.6 - 2022-01-14
 
@@ -44,7 +56,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an issue where resetting motion via MQTT didnt work
 - Fixed an issue where the video analysis sensitivity does not work as desired
 - Fixed an issue where mapping video/audio stream didnt work (ffmpeg)
-- Minor Bugfixes
+- Minor bugfixes
 
 # [1.0.4] - 2022-01-11
 

@@ -550,13 +550,16 @@ class PrebufferService {
       this.cameraName
     );
 
-    const errors = [];
+    let errors = [];
 
     const cp = spawn(ConfigService.ui.options.videoProcessor, arguments_, {
       env: process.env,
     });
 
-    cp.stderr.on('data', (data) => errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, '')));
+    cp.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+    });
 
     cp.on('exit', (code, signal) => {
       if (code === 1 || (!this.killed && errors.length > 0)) {

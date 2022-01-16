@@ -310,6 +310,14 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('excludeSwitch_info') }}
               v-switch(color="var(--cui-primary)" v-model="cam.excludeSwitch")
+
+            .tw-flex.tw-justify-between.tw-items-center
+              .tw-block.tw-w-full.tw-pr-2
+                label.form-input-label Interface Recording Timer
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ $t('use_interface_timer_info') }}
+              v-switch(color="var(--cui-primary)" v-model="cam.useInterfaceTimer")
             
             label.form-input-label *Manufacturer
             v-text-field(v-model="cam.manufacturer" :hint="$t('manufacturer_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
