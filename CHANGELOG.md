@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-# Next
+# v1.0.8 - 2022-01-17
 
 ## Other Changes
 - Videoanalysis: Improved log output (debug level)
