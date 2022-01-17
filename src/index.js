@@ -22,6 +22,7 @@ class CameraUI {
       process.env.CUI_LOG_DEBUG = 1;
     }
 
+    process.env.NTBA_FIX_350 = true;
     process.env.CUI_STORAGE_PATH = storagePath;
     process.env.CUI_STORAGE_CONFIG_FILE = path.resolve(storagePath, 'config.json');
     process.env.CUI_STORAGE_DATABASE_PATH = path.resolve(storagePath, 'database');

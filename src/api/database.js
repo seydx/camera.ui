@@ -138,6 +138,7 @@ const defaultCameraSettingsEntry = {
     labels: [],
   },
   videoanalysis: {
+    dwellTimer: 60,
     sensitivity: 75,
     difference: 5,
     regions: [
@@ -444,11 +445,11 @@ class Database {
       settings.resolution = defaultCameraSettingsEntry.resolution;
     }
 
-    if (typeof settings.pingTimeout !== 'number') {
+    if (!settings.pingTimeout >= 1) {
       settings.pingTimeout = defaultCameraSettingsEntry.pingTimeout;
     }
 
-    if (typeof settings.streamTimeout !== 'number') {
+    if (!settings.streamTimeout >= 1) {
       settings.streamTimeout = defaultCameraSettingsEntry.streamTimeout;
     }
 
@@ -484,7 +485,7 @@ class Database {
       settings.camview.live = defaultCameraSettingsEntry.camview.live;
     }
 
-    if (typeof settings.camview.snapshotTimer !== 'number') {
+    if (!(settings.camview.snapshotTimer >= 1)) {
       settings.camview.snapshotTimer = defaultCameraSettingsEntry.camview.snapshotTimer;
     }
 
@@ -496,7 +497,7 @@ class Database {
       settings.dashboard.live = defaultCameraSettingsEntry.dashboard.live;
     }
 
-    if (typeof settings.dashboard.snapshotTimer !== 'number') {
+    if (!(settings.dashboard.snapshotTimer >= 1)) {
       settings.dashboard.snapshotTimer = defaultCameraSettingsEntry.dashboard.snapshotTimer;
     }
 
@@ -518,6 +519,10 @@ class Database {
 
     if (typeof settings.videoanalysis !== 'object') {
       settings.videoanalysis = {};
+    }
+
+    if (!(settings.videoanalysis.dwellTimer >= 15)) {
+      settings.videoanalysis.dwellTimer = defaultCameraSettingsEntry.videoanalysis.dwellTimer;
     }
 
     if (!(settings.videoanalysis.difference >= 0 && settings.videoanalysis.difference <= 255)) {
@@ -588,9 +593,13 @@ class Database {
       const camera = {
         name: cam.name,
         recordOnMovement: cam.recordOnMovement,
+        useInterfaceTimer: cam.useInterfaceTimer,
         motionTimeout: cam.motionTimeout,
         prebuffering: cam.prebuffering,
         videoConfig: cam.videoConfig,
+        mqtt: cam.mqtt,
+        smtp: cam.smtp,
+        videoanalysis: cam.videoanalysis,
       };
 
       const cameraExists = await Cameras.find({ name: cam.name }).value();

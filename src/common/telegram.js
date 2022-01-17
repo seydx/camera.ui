@@ -1,6 +1,8 @@
+/* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const { Telegraf } = require('telegraf');
+const fs = require('fs-extra');
+const TelegramBot = require('node-telegram-bot-api');
 
 const { LoggerService } = require('../services/logger/logger.service');
 
@@ -18,23 +20,19 @@ class Telegram {
 
     log.debug('Connecting to Telegram...');
 
-    Telegram.bot = new Telegraf(telegramConfig.token);
+    Telegram.bot = new TelegramBot(telegramConfig.token, { polling: false, filepath: false });
 
-    Telegram.bot.catch((error, context) => {
-      log.error('Telegram: ' + context.updateType + ' Error: ' + error.message, 'Telegram', 'notifications');
+    Telegram.bot.on('error', (error) => {
+      log.error(error?.message || error, 'Telegram', 'notifications');
     });
 
-    Telegram.bot.start((context) => {
-      if (context.message) {
-        const from = context.message.chat.title || context.message.chat.username || 'unknown';
-        const message = `Chat ID for ${from}: ${context.message.chat.id}`;
-
-        log.debug(`Telegram: ${message}`);
-        context.reply(message);
-      }
+    Telegram.bot.on('polling_error', (error) => {
+      log.error(error?.message || error, 'Telegram', 'notifications');
     });
 
-    await Telegram.bot.launch();
+    Telegram.bot.on('webhook_error', (error) => {
+      log.error(error?.message || error, 'Telegram', 'notifications');
+    });
 
     return Telegram.bot;
   }
@@ -42,7 +40,7 @@ class Telegram {
   static async stop() {
     if (Telegram.bot) {
       log.debug('Stopping Telegram...');
-      await Telegram.bot.stop();
+      await Telegram.bot.close();
       Telegram.bot = null;
     }
   }
@@ -52,19 +50,22 @@ class Telegram {
       try {
         if (content.message) {
           log.debug('Telegram: Sending Message');
-          await Telegram.bot.telegram.sendMessage(chatID, content.message);
+          await Telegram.bot.sendMessage(chatID, content.message);
         }
 
         if (content.img) {
           log.debug('Telegram: Sending Photo');
-          await Telegram.bot.telegram.sendPhoto(chatID, { source: content.img });
-        } else if (content.video) {
+          const stream = fs.createReadStream(content.img);
+          await Telegram.bot.sendPhoto(chatID, stream, {}, { filename: content.fileName });
+        }
+
+        if (content.video) {
           log.debug('Telegram: Sending Video');
-          await Telegram.bot.telegram.sendVideo(chatID, { source: content.video });
+          await Telegram.bot.sendVideo(chatID, content.video, {}, { filename: content.fileName });
         }
       } catch (error) {
         log.info('An error occured during sending telegram message!', 'Telegram', 'notifications');
-        log.error(error, 'Telegram', 'notifications');
+        log.error(error?.message || error, 'Telegram', 'notifications');
       }
     } else {
       log.warn('Can not send Telegram notification, bot is not initialized!', 'Telegram', 'notifications');

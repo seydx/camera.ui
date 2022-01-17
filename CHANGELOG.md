@@ -1,6 +1,22 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# Next
+
+## Other Changes
+- Videoanalysis: Improved log output (debug level)
+- Videoanalysis: Dwell time is now configurable within interface (minimum 15s)
+- SMTP: It is now possible to modify the email adress for a camera (Settings > Cameras > Camera > Alarm > SMTP)
+- Telegram: Switched to `node-telegram-bot-api`
+- Minor UI improvements
+
+## Bugfixes
+- Fixed an issue that sometimes prevented the interface from loading
+- Fixed an issue where the profile picture did not update immediately after uploaded a new one
+- Fixed translation issues on `/start` page
+- Fixed an issue where the MQTT messages could not be mapped correctly
+- Minor bugfixes
+
 # v1.0.8 - 2022-01-16
 
 ## Other Changes

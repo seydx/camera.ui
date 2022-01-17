@@ -25,7 +25,7 @@
 
     v-divider.tw-my-8
 
-    .tw-mt-8(v-for="cam in config.cameras" v-if="camera.name && camera.name === cam.name")
+    .tw-mt-8(v-for="cam in config.cameras" :key="cam.name" v-if="camera && camera.name === cam.name")
 
       v-expansion-panels(v-model="panel[cam.name]")
         v-expansion-panel
@@ -153,21 +153,10 @@
               .page-subtitle {{ $t('alarm') }}
               .page-header-info.tw-mt-1 {{ $t('camera_alarm_info') }}
           v-expansion-panel-content
-            h4.tw-my-3 {{ $t('email') }}
-
-            label.form-input-label {{ $t('send_email_to') }}
-            v-text-field(:value="`${camera.name.replace(/ /g, '+')}@camera.ui`" persistent-hint :hint="$t('alarm_smtp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
             h4.tw-my-3 {{ $t('http') }}
 
             label.form-input-label {{ $t('motion') }}
-            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/motion?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/motion?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo disabled)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
               template(v-slot:message="{ key, message}")
@@ -176,7 +165,7 @@
                   .input-info.tw-italic {{ message }}
 
             label.form-input-label {{ $t('motion_reset') }}
-            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/reset?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_reset_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            v-text-field(:value="`http://${hostname}:${config.http.port || 7272}/reset?${encodeURIComponent(camera.name)}`" persistent-hint :hint="$t('alarm_http_reset_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo disabled)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
               template(v-slot:message="{ key, message}")
@@ -187,7 +176,18 @@
             h4.tw-my-3 {{ $t('ftp') }}
 
             label.form-input-label {{ $t('ftp_absolute_path') }}
-            v-text-field(:value="camera.name" persistent-hint :hint="$t('alarm_ftp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo readonly)
+            v-text-field(:value="camera.name" persistent-hint :hint="$t('alarm_ftp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo disabled)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            h4.tw-my-3 {{ $t('email') }}
+
+            label.form-input-label {{ $t('send_email_to') }}
+            v-text-field(v-model="cam.smtp.email" persistent-hint :hint="$t('alarm_smtp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
               template(v-slot:message="{ key, message}")
@@ -385,6 +385,15 @@
                   @addHandle="addHandle"
                   @updateHandle="updateHandle"
                 )
+
+            label.form-input-label {{ $t('dwell_time') }}
+            v-slider(:messages="$t('dwell_time_info')" min="15" max="180" step="1" thumb-label v-model="camera.videoanalysis.dwellTimer")
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            .tw-my-3
 
             label.form-input-label {{ $t('sensitivity') }}
             v-slider(:messages="$t('sensitivity_info')" min="0" max="100" step="1" thumb-label v-model="camera.videoanalysis.sensitivity")
@@ -799,20 +808,11 @@ export default {
 
       const cameras = await getSetting('cameras');
       this.cameras = cameras.data;
+      this.camera = this.cameras?.length ? this.cameras[0] : [];
 
       const config = await getConfig('?target=config');
 
       this.moduleName = config.data.env.moduleName;
-
-      //remove not used params from config editor
-      delete config.timestamp;
-      delete config.platform;
-      delete config.node;
-      delete config.version;
-      delete config.firstStart;
-      delete config.mqttConfigs;
-      delete config.serviceMode;
-      delete config.env;
 
       this.config = {
         port: config.data.port || window.location.port || 80,
@@ -846,6 +846,12 @@ export default {
 
           if (!camera.videoanalysis) {
             camera.videoanalysis = {};
+          }
+
+          if (!camera.smtp) {
+            camera.smtp = {
+              email: camera.name,
+            };
           }
 
           this.$set(this.panel, camera.name, []);
@@ -886,8 +892,6 @@ export default {
       this.$watch('camera', this.cameraWatcher, { deep: true });
       this.$watch('config', this.configWatcher, { deep: true });
 
-      this.camera = this.cameras[0];
-
       this.loading = false;
       this.loadingProgress = false;
 
@@ -903,6 +907,8 @@ export default {
 
   beforeDestroy() {
     this.$socket.client.off('prebufferStatus', this.prebufferStatus);
+    this.$socket.client.off('videoanalysisStatus', this.videoanalysisStatus);
+
     window.removeEventListener('resize', this.adjustPlayground);
     window.removeEventListener('orientationchange', this.adjustPlayground);
   },

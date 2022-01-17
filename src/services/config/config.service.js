@@ -344,13 +344,18 @@ class ConfigService {
         };
 
         // setup mqtt
+        camera.smtp = camera.smtp || {
+          email: camera.name,
+        };
+
+        // setup mqtt
         camera.mqtt = camera.mqtt || {};
 
         if (camera.mqtt.motionTopic) {
           const mqttOptions = {
             motionTopic: camera.mqtt.motionTopic,
-            motionMessage: camera.mqtt.motionMessage || 'ON',
-            motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
+            motionMessage: camera.mqtt.motionMessage !== undefined ? camera.mqtt.motionMessage : 'ON',
+            motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
             camera: camera.name,
             motion: true,
           };
@@ -361,7 +366,7 @@ class ConfigService {
         if (camera.mqtt.motionResetTopic && camera.mqtt.motionResetTopic !== camera.mqtt.motionTopic) {
           const mqttOptions = {
             motionResetTopic: camera.mqtt.motionResetTopic,
-            motionResetMessage: camera.mqtt.motionResetMessage || 'OFF',
+            motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
             camera: camera.name,
             motion: true,
             reset: true,
@@ -377,7 +382,7 @@ class ConfigService {
         ) {
           const mqttOptions = {
             doorbellTopic: camera.mqtt.doorbellTopic,
-            doorbellMessage: camera.mqtt.doorbellMessage || 'ON',
+            doorbellMessage: camera.mqtt.doorbellMessage !== undefined ? camera.mqtt.doorbellMessage : 'ON',
             camera: camera.name,
             doorbell: true,
           };

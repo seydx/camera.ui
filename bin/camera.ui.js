@@ -32,6 +32,8 @@ commander
   )
   .parse(process.argv);
 
+process.env.NTBA_FIX_350 = true;
+
 process.env.CUI_SERVICE_MODE = '1';
 
 process.env.CUI_LOG_COLOR = logColourful;

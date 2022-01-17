@@ -481,9 +481,12 @@ class EventController {
         case 'Text': {
           //Message
           if (telegramSettings.message) {
-            await Telegram.send(telegramSettings.chatID, {
+            const content = {
               message: telegramSettings.message,
-            });
+              fileName: notification.fileName,
+            };
+
+            await Telegram.send(telegramSettings.chatID, content);
           } else {
             log.debug('Can not send telegram notification (message). No telegram message defined!', cameraName);
           }
@@ -494,7 +497,9 @@ class EventController {
         case 'Text + Snapshot': {
           //Snapshot
           if (recordingSettings.active || imgBuffer || customBuffer) {
-            const content = {};
+            const content = {
+              fileName: notification.fileName,
+            };
 
             if (telegramSettings.type === 'Text + Snapshot' && telegramSettings.message) {
               content.message = telegramSettings.message;
@@ -524,7 +529,9 @@ class EventController {
         case 'Video':
         case 'Text + Video': {
           if ((recordingSettings.active && recordingSettings.type === 'Video') || customBuffer) {
-            const content = {};
+            const content = {
+              fileName: notification.fileName,
+            };
 
             if (telegramSettings.type === 'Text + Video' && telegramSettings.message) {
               content.message = telegramSettings.message;
@@ -542,8 +549,6 @@ class EventController {
     } catch (error) {
       log.info('An error occured during sending telegram notification', cameraName, 'events');
       log.error(error, cameraName, 'events');
-    } finally {
-      await Telegram.stop();
     }
   }
 

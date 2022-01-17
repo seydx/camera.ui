@@ -96,6 +96,17 @@ export default {
     },
   },
 
+  watch: {
+    currentUser: {
+      handler(newValue) {
+        if (newValue?.photo) {
+          this.avatarSrc = `/files/${newValue.photo}?rnd=${new Date()}`;
+        }
+      },
+      deep: true,
+    },
+  },
+
   beforeRouteLeave(to, from, next) {
     this.loading = true;
     next();

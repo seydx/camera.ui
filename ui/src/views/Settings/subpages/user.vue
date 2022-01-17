@@ -32,7 +32,7 @@
     .tw-mt-4.tw-mb-8(v-for="(user,i) in users" :key="user.username" v-if="users.length > 1 && !user.permissionLevel.includes('admin')")
         
       label.form-input-label {{ $t('username') }}
-      v-text-field(readonly :value="user.username" prepend-inner-icon="mdi-account" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+      v-text-field(disabled :value="user.username" prepend-inner-icon="mdi-account" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiAccount'] }}
         template(v-slot:append-outer)

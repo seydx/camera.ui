@@ -335,6 +335,9 @@ export default {
           debug: false,
         },
         mqtt: {},
+        smtp: {
+          email: '',
+        },
         videoanalysis: {
           active: false,
         },
@@ -370,6 +373,8 @@ export default {
         if (!sourceArguments.includes('-i')) {
           this.cam.videoConfig.source = `-i ${this.cam.videoConfig.source}`;
         }
+
+        this.cam.smtp.email = this.cam.name;
 
         try {
           await addCamera(this.cam);

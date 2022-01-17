@@ -12,16 +12,18 @@ export default {
   },
 
   created() {
-    // Listen for our custom event from the SW registration
-    document.addEventListener('swUpdated', this.updateAvailable, { once: true });
+    if ('serviceWorker' in navigator) {
+      // Listen for our custom event from the SW registration
+      document.addEventListener('swUpdated', this.updateAvailable, { once: true });
 
-    // Prevent multiple refreshes
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (this.refreshing) return;
-      this.refreshing = true;
-      // Here the actual reload of the page occurs
-      window.location.reload();
-    });
+      // Prevent multiple refreshes
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (this.refreshing) return;
+        this.refreshing = true;
+        // Here the actual reload of the page occurs
+        window.location.reload();
+      });
+    }
 
     this.$store.dispatch('config/loadConfig');
   },

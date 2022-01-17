@@ -145,7 +145,7 @@ class MotionController {
         message: `Malformed URL ${request.url}`,
       };
 
-      log.debug(`New message: URL: ${request.url}`, 'HTTP');
+      log.info(`New message: URL: ${request.url}`, 'HTTP');
 
       let cameraName;
 
@@ -217,16 +217,18 @@ class MotionController {
     });
 
     MotionController.mqttClient.on('message', async (topic, data) => {
-      log.debug(`New message: Topic: ${topic} - Data: ${data.toString()}`, 'MQTT');
+      data = data.toString();
+
+      log.info(`New message: Topic: ${topic} - Data: ${data} - Type: ${typeof data}`, 'MQTT');
 
       let cameraName;
 
       const cameraMqttConfig = ConfigService.ui.topics.get(topic);
 
       if (cameraMqttConfig) {
-        data = data.toString();
         cameraName = cameraMqttConfig.camera;
 
+        let index = 0;
         let message;
         let state;
         let triggerType;
@@ -266,12 +268,17 @@ class MotionController {
 
         const check = (message_) => {
           let state_;
+          let json = false;
           message_ = message_ || message;
 
           try {
             const dataObject = JSON.parse(data);
 
-            if (typeof dataObject === typeof message_) {
+            json = true;
+
+            if (dataObject === message_) {
+              state_ = triggerState();
+            } else if (typeof dataObject === typeof message_) {
               const dotNotMessage = toDotNot(message_);
               const dotNotMessagePath = Object.keys(dotNotMessage)[0];
               const dotNotMessageResult = Object.values(dotNotMessage)[0];
@@ -287,6 +294,21 @@ class MotionController {
               state_ = triggerState();
             }
           }
+
+          log.debug(
+            {
+              camera: cameraName,
+              topic: topic,
+              data: data,
+              json: json,
+              message: message_,
+              state: state_,
+              try: index,
+            },
+            'MQTT'
+          );
+
+          index++;
 
           return state_;
         };
@@ -305,7 +327,7 @@ class MotionController {
           await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt');
         } else {
           log.warn(
-            `The incoming MQTT message (${data.toString()}) for the topic (${topic}) was not the same as set in config.json (${message.toString()}). Skip...`
+            `The incoming MQTT message (${data}) for the topic (${topic}) was not the same as set in config.json (${message}). Skip...`
           );
         }
       } else {
@@ -370,7 +392,7 @@ class MotionController {
 
         for (const rcptTo of session.envelope.rcptTo) {
           const name = rcptTo.address.split('@')[0].replace(regex, ' ');
-          log.debug(`New message: Email Address: ${name}`, 'SMTP');
+          log.info(`New message: Data: ${JSON.stringify(rcptTo)}`, 'SMTP');
 
           await MotionController.handleMotion('motion', name, true, 'smtp');
         }
@@ -493,7 +515,7 @@ class MotionController {
 
             if (pathSplit.length > 0) {
               const name = pathSplit[0];
-              log.debug(`New message: File Path: ${name}`, 'FTP');
+              log.info(`New message: File Path: ${name}`, 'FTP');
 
               await MotionController.handleMotion('motion', name, true, 'ftp');
             } else {
@@ -605,23 +627,25 @@ class MotionController {
     }
   }
 
-  static #getCamera(cameraName) {
-    return ConfigService.ui.cameras.find((camera) => camera && camera.name === cameraName);
-  }
-
   static async handleMotion(triggerType, cameraName, state, event, result = {}) {
     // result = {} is used as http response
-    const camera = MotionController.#getCamera(cameraName);
+    let camera = ConfigService.ui.cameras.find((camera) => camera?.name === cameraName);
+
+    if (event === 'smtp') {
+      camera = ConfigService.ui.cameras.find(
+        (camera) => camera?.smtp?.email === cameraName || camera?.name === cameraName
+      );
+    }
 
     if (camera) {
       const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
       const atHome = generalSettings?.atHome || false;
-      const cameraExcluded = (generalSettings?.exclude || []).includes(cameraName);
+      const cameraExcluded = (generalSettings?.exclude || []).includes(camera.name);
 
       if (atHome && !cameraExcluded) {
-        const message = `Skip motion trigger. At Home is active and ${cameraName} is not excluded!`;
+        const message = `Skip motion trigger. At Home is active and ${camera.name} is not excluded!`;
 
-        log.info(message, cameraName);
+        log.info(message, camera.name);
 
         result = {
           error: false,
@@ -633,14 +657,14 @@ class MotionController {
           message: `Handling through ${camera.recordOnMovement ? 'intern' : 'extern'} controller..`,
         };
 
-        MotionController.#controller.emit('motion', cameraName, triggerType, state, event); // used for extern controller, like Homebridge
+        MotionController.#controller.emit('motion', camera.name, triggerType, state, event); // used for extern controller, like Homebridge
 
         if (camera.recordOnMovement) {
           const recordingSettings = await Database.interfaceDB.get('settings').get('recordings').value();
           const recActive = recordingSettings.active || false;
           const recTimer = recordingSettings.timer || 10;
 
-          const timeout = MotionController.#motionTimers.get(cameraName);
+          const timeout = MotionController.#motionTimers.get(camera.name);
           let timeoutConfig =
             (recActive && camera.motionTimeout < recTimer) || camera.useInterfaceTimer
               ? recTimer
@@ -648,31 +672,31 @@ class MotionController {
 
           if (timeout) {
             if (state) {
-              log.info('Skip motion event, motion timeout active!', cameraName);
+              log.info('Skip motion event, motion timeout active!', camera.name);
               result.message += ' - Skip motion event, timeout active!';
             } else {
               clearTimeout(timeout);
-              MotionController.#motionTimers.delete(cameraName);
+              MotionController.#motionTimers.delete(camera.name);
 
               MotionController.#controller.emit('uiMotion', {
                 triggerType: triggerType,
-                cameraName: cameraName,
+                cameraName: camera.name,
                 state: state,
               });
             }
           } else {
             if (state) {
               const timer = setTimeout(() => {
-                log.debug('Motion handler timeout. (ui)', cameraName);
-                MotionController.#motionTimers.delete(cameraName);
+                log.debug('Motion handler timeout. (ui)', camera.name);
+                MotionController.#motionTimers.delete(camera.name);
               }, (timeoutConfig || 1) * 1000);
 
-              MotionController.#motionTimers.set(cameraName, timer);
+              MotionController.#motionTimers.set(camera.name, timer);
             }
 
             MotionController.#controller.emit('uiMotion', {
               triggerType: triggerType,
-              cameraName: cameraName,
+              cameraName: camera.name,
               state: state,
             });
           }

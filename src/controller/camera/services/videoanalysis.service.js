@@ -24,8 +24,7 @@ const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
 const FFMPEG_RESOLUTION = '640:360';
 const FFMPEG_FPS = '2';
 
-const DWELL_TIME = 60 * 1000;
-
+const DEFAULT_DWELL_TIME = 60;
 const DEFAULT_DIFFERENCE = 5; // 1 - 255
 const DEFAULT_SENSITIVITY = 75; // 0 - 100
 const DEFAULT_ZONE = {
@@ -87,7 +86,7 @@ class VideoAnalysisService {
     }
   }
 
-  changeZone(zones = [], sensitivity, difference) {
+  changeSettings(zones = [], sensitivity, difference, timer) {
     if (this.videoanalysisSession?.pamDiff) {
       //this.videoanalysisSession.pamDiff.resetCache();
       //this.videoanalysisSession.p2p.resetCache();
@@ -95,7 +94,9 @@ class VideoAnalysisService {
       const diff = difference >= 0 && difference <= 255 ? difference : DEFAULT_DIFFERENCE;
       const percent = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : DEFAULT_SENSITIVITY;
       const regions = this.#createRegions(zones, percent, diff);
+      const dwellTime = timer >= 15 && timer <= 180 ? timer : DEFAULT_DWELL_TIME;
 
+      this.videoanalysisSession.pamDiff.dwellTime = dwellTime;
       this.videoanalysisSession.pamDiff.setDifference(diff);
       this.videoanalysisSession.pamDiff.setPercent(100 - percent);
       this.videoanalysisSession.pamDiff.setRegions(regions.length > 0 ? regions : null);
@@ -162,7 +163,10 @@ class VideoAnalysisService {
       }
 
       if (this.motionEventTimeout || this.forceCloseTimeout) {
-        this.#triggerMotion(false, 'killed');
+        this.#triggerMotion(false, {
+          time: new Date(),
+          event: 'killed',
+        });
       }
 
       if (this.restartTimer) {
@@ -240,6 +244,7 @@ class VideoAnalysisService {
     const difference = settings?.videoanalysis?.difference || DEFAULT_DIFFERENCE;
     const sensitivity = settings?.videoanalysis?.sensitivity || DEFAULT_SENSITIVITY;
     const regions = this.#createRegions(zones, sensitivity, difference);
+    const dwellTime = settings?.videoanalysis?.dwellTimer || DEFAULT_DWELL_TIME;
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
@@ -250,6 +255,8 @@ class VideoAnalysisService {
       //response: 'bounds',
       //draw: true,
     });
+
+    pamDiff.dwellTime = dwellTime;
 
     const restartWatchdog = () => {
       clearTimeout(this.watchdog);
@@ -278,25 +285,41 @@ class VideoAnalysisService {
         return;
       }
 
+      const event = data.trigger.map((data) => {
+        return {
+          zone: data.name,
+          percent: data.percent,
+          sensitivity: Math.round(100 - data.percent) + 1,
+          dwell: pamDiff.dwellTime,
+        };
+      });
+
       if (!this.motionEventTimeout) {
-        this.#triggerMotion(true, 'pixelDifference');
+        this.#triggerMotion(true, event);
 
         // forceClose after 3min
         this.forceCloseTimeout = setTimeout(() => {
-          this.#triggerMotion(false, 'forceClose');
+          this.#triggerMotion(false, {
+            time: new Date(),
+            event: 'forceClose',
+          });
         }, 3 * 60 * 1000);
       }
 
       if (this.motionEventTimeout) {
-        log.debug('Dwell time resetted because new motion detected, resetting motion in 60s..', this.cameraName);
+        log.debug(`New motion detected, resetting motion in ${pamDiff.dwellTime}s..`, this.cameraName);
+        log.debug(`Motion data: ${JSON.stringify(event)}}`, this.cameraName);
 
         clearTimeout(this.motionEventTimeout);
         this.motionEventTimeout = null;
       }
 
       this.motionEventTimeout = setTimeout(async () => {
-        this.#triggerMotion(false, 'dwellTime');
-      }, DWELL_TIME);
+        this.#triggerMotion(false, {
+          time: new Date(),
+          event: 'dwellTime',
+        });
+      }, pamDiff.dwellTime * 1000);
     });
 
     const cp = spawn(ConfigService.ui.options.videoProcessor, ffmpegArguments, {
@@ -352,9 +375,11 @@ class VideoAnalysisService {
     };
   }
 
-  async #triggerMotion(state, reason) {
-    log.debug(
-      `New message: Motion: ${state ? 'detected' : 'resetted'} - Reason: ${reason} - Camera: ${this.cameraName}`,
+  async #triggerMotion(state, data) {
+    log.info(
+      `New message: Data: ${JSON.stringify(data)} - Motion: ${state ? 'detected' : 'resetted'} - Camera: ${
+        this.cameraName
+      }`,
       'VIDEOANALYSIS'
     );
 

@@ -206,6 +206,14 @@ export default {
   },
 
   watch: {
+    currentUser: {
+      handler(newValue) {
+        if (newValue?.photo) {
+          this.avatarSrc = `/files/${newValue.photo}?rnd=${new Date()}`;
+        }
+      },
+      deep: true,
+    },
     '$route.path': {
       handler() {
         if (this.showSidebar) {

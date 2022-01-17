@@ -127,7 +127,8 @@ export default {
 
         if (response.data.result.length > 0) {
           this.page += 1;
-          this.cameras = [...this.cameras, ...response.data.result];
+          this.cameras.push(...response.data.result);
+
           $state.loaded();
         } else {
           $state.complete();
