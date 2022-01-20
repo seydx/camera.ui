@@ -57,7 +57,7 @@
     "web-push": "^3.4.5"
   },
   "devDependencies": {
-    "@babel/core": "7.16.7",
+    "@babel/core": "7.16.10",
     "@babel/eslint-parser": "7.16.5",
     "@babel/eslint-plugin": "7.16.5",
     "concurrently": "6.5.1",
