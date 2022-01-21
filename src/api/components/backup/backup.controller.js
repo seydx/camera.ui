@@ -1,11 +1,11 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const fs = require('fs-extra');
+import fs from 'fs-extra';
 
-const BackupModel = require('./backup.model');
+import * as BackupModel from './backup.model.js';
 
-exports.download = async (req, res) => {
+export const download = async (req, res) => {
   try {
     const localStorage = req.query.localStorage ? JSON.parse(req.query.localStorage) : false;
     const backup = await BackupModel.createBackup(localStorage);
@@ -31,7 +31,7 @@ exports.download = async (req, res) => {
   }
 };
 
-exports.restore = async (req, res) => {
+export const restore = async (req, res) => {
   try {
     const localStorage = await BackupModel.restoreBackup(req.file);
     res.status(201).send(localStorage);

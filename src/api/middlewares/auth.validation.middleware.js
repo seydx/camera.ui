@@ -1,13 +1,13 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
-const { ConfigService } = require('../../services/config/config.service');
+import ConfigService from '../../services/config/config.service.js';
 
-const AuthModel = require('../components/auth/auth.model');
-const UserModel = require('../components/users/users.model');
+import * as AuthModel from '../components/auth/auth.model.js';
+import * as UserModel from '../components/users/users.model.js';
 
 const jwtSecret = ConfigService.interface.jwt_secret;
 
@@ -37,7 +37,7 @@ const getBearerToken = async (username, password) => {
   }
 };
 
-exports.validJWTNeeded = async (req, res, next) => {
+export const validJWTNeeded = async (req, res, next) => {
   if (req.query.username && req.query.password) {
     const authorization = await getBearerToken(req.query.username, req.query.password);
     if (authorization) {
@@ -84,7 +84,7 @@ exports.validJWTNeeded = async (req, res, next) => {
   }
 };
 
-exports.validJWTOptional = async (req, res, next) => {
+export const validJWTOptional = async (req, res, next) => {
   if (req.query.username && req.query.password) {
     const authorization = await getBearerToken(req.query.username, req.query.password);
     if (authorization) {

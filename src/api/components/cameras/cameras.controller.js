@@ -1,14 +1,14 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const CamerasModel = require('./cameras.model');
+import * as CamerasModel from './cameras.model.js';
 
-const { CameraController } = require('../../../controller/camera/camera.controller');
-const { MotionController } = require('../../../controller/motion/motion.controller');
+import CameraController from '../../../controller/camera/camera.controller.js';
+import MotionController from '../../../controller/motion/motion.controller.js';
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
-exports.insert = async (req, res) => {
+export const insert = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.body.name);
 
@@ -32,6 +32,8 @@ exports.insert = async (req, res) => {
       name: result.name,
     });
   } catch (error) {
+    console.log(error);
+
     res.status(500).send({
       statusCode: 500,
       message: error.message,
@@ -39,7 +41,7 @@ exports.insert = async (req, res) => {
   }
 };
 
-exports.list = async (req, res, next) => {
+export const list = async (req, res, next) => {
   try {
     res.locals.items = await CamerasModel.list();
 
@@ -52,7 +54,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getByName = async (req, res) => {
+export const getByName = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -72,7 +74,7 @@ exports.getByName = async (req, res) => {
   }
 };
 
-exports.patchByName = async (req, res) => {
+export const patchByName = async (req, res) => {
   try {
     if (Object.keys(req.body).length === 0) {
       return res.status(400).send({
@@ -112,7 +114,7 @@ exports.patchByName = async (req, res) => {
   }
 };
 
-exports.getStatusByName = async (req, res) => {
+export const getStatusByName = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -136,7 +138,7 @@ exports.getStatusByName = async (req, res) => {
   }
 };
 
-exports.getCameraSettingsByName = async (req, res) => {
+export const getCameraSettingsByName = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -165,7 +167,7 @@ exports.getCameraSettingsByName = async (req, res) => {
   }
 };
 
-exports.getSnapshotByName = async (req, res) => {
+export const getSnapshotByName = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -176,7 +178,7 @@ exports.getSnapshotByName = async (req, res) => {
       });
     }
 
-    const imageBuffer = await CamerasModel.requestSnapshot(camera);
+    const imageBuffer = await CamerasModel.requestSnapshot(camera, req.query.fromSubSource);
 
     if (req.query.buffer) {
       res.status(200).send(imageBuffer.toString('base64'));
@@ -193,7 +195,7 @@ exports.getSnapshotByName = async (req, res) => {
   }
 };
 
-exports.removeByName = async (req, res) => {
+export const removeByName = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -215,7 +217,7 @@ exports.removeByName = async (req, res) => {
   }
 };
 
-exports.removeAll = async (req, res) => {
+export const removeAll = async (req, res) => {
   try {
     await CamerasModel.removeAll();
 
@@ -228,7 +230,7 @@ exports.removeAll = async (req, res) => {
   }
 };
 
-exports.resetMotion = async (req, res) => {
+export const resetMotion = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -250,7 +252,7 @@ exports.resetMotion = async (req, res) => {
   }
 };
 
-exports.restartPrebuffering = async (req, res) => {
+export const restartPrebuffering = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -282,7 +284,7 @@ exports.restartPrebuffering = async (req, res) => {
   }
 };
 
-exports.restartVideoanalysis = async (req, res) => {
+export const restartVideoanalysis = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -314,7 +316,7 @@ exports.restartVideoanalysis = async (req, res) => {
   }
 };
 
-exports.startMotion = async (req, res) => {
+export const startMotion = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -336,7 +338,7 @@ exports.startMotion = async (req, res) => {
   }
 };
 
-exports.stopPrebuffering = async (req, res) => {
+export const stopPrebuffering = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -368,7 +370,7 @@ exports.stopPrebuffering = async (req, res) => {
   }
 };
 
-exports.stopVideoanalysis = async (req, res) => {
+export const stopVideoanalysis = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 

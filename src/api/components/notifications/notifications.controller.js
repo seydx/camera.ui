@@ -1,9 +1,9 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const NotificationsModel = require('./notifications.model');
+import * as NotificationsModel from './notifications.model.js';
 
-exports.insert = async (req, res) => {
+export const insert = async (req, res) => {
   try {
     let notification = await NotificationsModel.findById(req.body.id);
 
@@ -25,7 +25,7 @@ exports.insert = async (req, res) => {
   }
 };
 
-exports.list = async (req, res, next) => {
+export const list = async (req, res, next) => {
   try {
     res.locals.items = await NotificationsModel.list(req.query);
 
@@ -38,7 +38,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getById = async (req, res) => {
+export const getById = async (req, res) => {
   try {
     const notification = await NotificationsModel.findById(req.params.id);
 
@@ -58,7 +58,7 @@ exports.getById = async (req, res) => {
   }
 };
 
-exports.removeById = async (req, res) => {
+export const removeById = async (req, res) => {
   try {
     const notification = await NotificationsModel.findById(req.params.id);
 
@@ -80,7 +80,7 @@ exports.removeById = async (req, res) => {
   }
 };
 
-exports.removeAll = async (req, res) => {
+export const removeAll = async (req, res) => {
   try {
     await NotificationsModel.removeAll();
 

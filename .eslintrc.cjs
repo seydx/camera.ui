@@ -33,5 +33,8 @@ module.exports = {
     'unicorn/no-nested-ternary': 'off',
     'unicorn/prefer-module': 'off',
     'unicorn/no-static-only-class': 'off',
+    'unicorn/prefer-node-protocol': 'off',
+    'unicorn/consistent-destructuring': 'off',
+    'unicorn/no-await-expression-member': 'off',
   },
 };

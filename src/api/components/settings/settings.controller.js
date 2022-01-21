@@ -1,22 +1,18 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const { Alexa } = require('../../../common/alexa');
-const { Cleartimer } = require('../../../common/cleartimer');
+import Alexa from '../../../common/alexa.js';
+import Cleartimer from '../../../common/cleartimer.js';
 
-const { CameraController } = require('../../../controller/camera/camera.controller');
-const { Database } = require('../../database');
+import CameraController from '../../../controller/camera/camera.controller.js';
+import Database from '../../database.js';
 
-//const { LoggerService } = require('../../../services/logger/logger.service');
-
-const SettingsModel = require('./settings.model');
+import * as SettingsModel from './settings.model.js';
 
 const { cameras } = CameraController;
-//const { log } = LoggerService;
-
 const setTimeoutAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-exports.show = async (req, res) => {
+export const show = async (req, res) => {
   try {
     const result = await SettingsModel.show(req.query.all);
 
@@ -29,7 +25,7 @@ exports.show = async (req, res) => {
   }
 };
 
-exports.getTarget = async (req, res) => {
+export const getTarget = async (req, res) => {
   try {
     if (req.query.pingAlexa) {
       const status = await Alexa.connect();
@@ -54,7 +50,7 @@ exports.getTarget = async (req, res) => {
   }
 };
 
-exports.patchTarget = async (req, res) => {
+export const patchTarget = async (req, res) => {
   try {
     if (Object.keys(req.body).length === 0) {
       return res.status(400).send({
@@ -88,7 +84,8 @@ exports.patchTarget = async (req, res) => {
           camera.videoanalysis.regions,
           camera.videoanalysis.sensitivity,
           camera.videoanalysis.difference,
-          camera.videoanalysis.dwellTimer
+          camera.videoanalysis.dwellTimer,
+          camera.videoanalysis.forceCloseTimer
         );
       }
     }
@@ -144,7 +141,7 @@ exports.patchTarget = async (req, res) => {
   }
 };
 
-exports.reset = async (req, res) => {
+export const reset = async (req, res) => {
   try {
     await SettingsModel.resetSettings();
 

@@ -1,14 +1,9 @@
 'use-strict';
 
-const crypto = require('crypto');
-const ffmpegPath = require('ffmpeg-for-homebridge');
-const fs = require('fs-extra');
-const path = require('path');
-
-const { LoggerService } = require('../../services/logger/logger.service');
-const { version } = require('../../../package.json');
-
-const { log } = LoggerService;
+import crypto from 'crypto';
+import ffmpegPath from 'ffmpeg-for-homebridge';
+import fs from 'fs-extra';
+import path from 'path';
 
 const uiDefaults = {
   port: 8081,
@@ -26,6 +21,7 @@ const smtpDefaults = {
 
 const ftpDefaults = {
   port: 5050,
+  useFile: false,
 };
 
 const mqttDefault = {
@@ -76,36 +72,31 @@ const permissionLevels = [
 const defaultVideoProcess = ffmpegPath || 'ffmpeg';
 const minNodeVersion = '16.12.0';
 
-class ConfigService {
-  static #secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
+export default class ConfigService {
+  static #secretPath;
 
   static name = 'camera.ui';
   static configJson = {};
-
   static restarted = false;
 
   //camera.ui env
-  static storagePath = process.env.CUI_STORAGE_PATH;
-  static configPath = process.env.CUI_STORAGE_CONFIG_FILE;
-  static databasePath = process.env.CUI_STORAGE_DATABASE_PATH;
-  static databaseUserPath = process.env.CUI_STORAGE_DATABASE_USER_PATH;
-  static databaseFilePath = process.env.CUI_STORAGE_DATABASE_FILE;
-  static logPath = process.env.CUI_STORAGE_LOG_PATH;
-  static logFile = process.env.CUI_STORAGE_LOG_FILE;
-  static recordingsPath = process.env.CUI_STORAGE_RECORDINGS_PATH;
+  static storagePath;
+  static configPath;
+  static databasePath;
+  static databaseUserPath;
+  static databaseFilePath;
+  static logPath;
+  static logFile;
+  static recordingsPath;
 
-  static debugEnabled = process.env.CUI_LOG_DEBUG === '1';
-  static version = version;
+  static debugEnabled;
+  static version;
 
   //server env
-  static minimumNodeVersion = minNodeVersion;
-  static serviceMode = process.env.CUI_SERVICE_MODE === '2';
+  static minimumNodeVersion;
+  static serviceMode;
 
-  static env = {
-    moduleName: process.env.CUI_MODULE_NAME,
-    global: process.env.CUI_MODULE_GLOBAL === '1',
-    sudo: process.env.CUI_MODULE_SUDO === '1',
-  };
+  static env = {};
 
   //defaults
   static ui = {
@@ -120,7 +111,7 @@ class ConfigService {
       videoProcessor: defaultVideoProcess,
     },
     cameras: [],
-    version: process.env.CUI_MODULE_VERSION,
+    version: '',
   };
 
   static interface = {
@@ -128,9 +119,35 @@ class ConfigService {
     jwt_secret: null,
   };
 
-  static config = new ConfigService();
-
   constructor() {
+    ConfigService.#secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
+
+    //camera.ui env
+    ConfigService.storagePath = process.env.CUI_STORAGE_PATH;
+    ConfigService.configPath = process.env.CUI_STORAGE_CONFIG_FILE;
+    ConfigService.databasePath = process.env.CUI_STORAGE_DATABASE_PATH;
+    ConfigService.databaseUserPath = process.env.CUI_STORAGE_DATABASE_USER_PATH;
+    ConfigService.databaseFilePath = process.env.CUI_STORAGE_DATABASE_FILE;
+    ConfigService.logPath = process.env.CUI_STORAGE_LOG_PATH;
+    ConfigService.logFile = process.env.CUI_STORAGE_LOG_FILE;
+    ConfigService.recordingsPath = process.env.CUI_STORAGE_RECORDINGS_PATH;
+
+    ConfigService.debugEnabled = process.env.CUI_LOG_DEBUG === '1';
+    ConfigService.version = process.env.CUI_VERSION;
+
+    //server env
+    ConfigService.minimumNodeVersion = minNodeVersion;
+    ConfigService.serviceMode = process.env.CUI_SERVICE_MODE === '2';
+
+    ConfigService.env = {
+      moduleName: process.env.CUI_MODULE_NAME,
+      global: process.env.CUI_MODULE_GLOBAL === '1',
+      sudo: process.env.CUI_MODULE_SUDO === '1',
+    };
+
+    //defaults
+    ConfigService.ui.version = process.env.CUI_MODULE_VERSION;
+
     const uiConfig = fs.readJSONSync(ConfigService.configPath, { throws: false }) || {};
     ConfigService.configJson = JSON.parse(JSON.stringify(uiConfig));
 
@@ -228,14 +245,10 @@ class ConfigService {
 
   static #configSSL(ssl = {}) {
     if (ssl.key && ssl.cert) {
-      try {
-        ConfigService.ui.ssl = {
-          key: fs.readFileSync(ssl.key, 'utf8'),
-          cert: fs.readFileSync(ssl.cert, 'utf8'),
-        };
-      } catch (error) {
-        log.warn(`WARNING: Could not read SSL Cert/Key. Error: ${error.message}`, 'Config', 'system');
-      }
+      ConfigService.ui.ssl = {
+        key: fs.readFileSync(ssl.key, 'utf8'),
+        cert: fs.readFileSync(ssl.cert, 'utf8'),
+      };
     }
   }
 
@@ -252,7 +265,7 @@ class ConfigService {
 
     ConfigService.ui.http = {
       port: http.port || httpDefaults.port,
-      localhttp: http.localhttp || httpDefaults.localhttp,
+      localhttp: http.localhttp !== undefined ? http.localhttp : httpDefaults.localhttp,
     };
   }
 
@@ -274,6 +287,7 @@ class ConfigService {
 
     ConfigService.ui.ftp = {
       port: ftp.port || ftpDefaults.port,
+      useFile: ftp.useFile !== undefined ? ftp.useFile : ftpDefaults.useFile,
     };
   }
 
@@ -283,7 +297,7 @@ class ConfigService {
     }
 
     ConfigService.ui.mqtt = {
-      tls: mqtt.tls || mqttDefault.tls,
+      tls: mqtt.tls !== undefined ? mqtt.tls : mqttDefault.tls,
       host: mqtt.host,
       port: mqtt.port || mqttDefault.port,
       username: mqtt.username || mqttDefault.username,
@@ -301,11 +315,6 @@ class ConfigService {
         const sourceArguments = camera.videoConfig.source.split(/\s+/);
 
         if (!sourceArguments.includes('-i')) {
-          log.warn(
-            `${camera.name}: The source for this camera is missing "-i", it is likely misconfigured.`,
-            'Config',
-            'system'
-          );
           camera.videoConfig.source = false;
         }
 
@@ -313,7 +322,6 @@ class ConfigService {
           const stillArguments = camera.videoConfig.subSource.split(/\s+/);
 
           if (!stillArguments.includes('-i')) {
-            log.warn(`${camera.name}: The subSource for this camera is missing "-i" !`, 'Config', 'system');
             camera.videoConfig.subSource = camera.videoConfig.source;
           }
         } else {
@@ -324,12 +332,14 @@ class ConfigService {
           const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
 
           if (!stillArguments.includes('-i')) {
-            log.warn(`${camera.name}: The stillImageSource for this camera is missing "-i" !`, 'Config', 'system');
             camera.videoConfig.stillImageSource = camera.videoConfig.source;
           }
         } else {
           camera.videoConfig.stillImageSource = camera.videoConfig.source;
         }
+
+        // homebridge
+        camera.recordOnMovement = !camera.hsv;
 
         camera.motionTimeout =
           camera.motionTimeout === undefined || !(camera.motionTimeout >= 0) ? 15 : camera.motionTimeout;
@@ -396,5 +406,3 @@ class ConfigService {
       .filter((camera) => camera.videoConfig?.source);
   }
 }
-
-exports.ConfigService = ConfigService;

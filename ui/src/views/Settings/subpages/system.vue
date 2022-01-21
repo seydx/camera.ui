@@ -182,6 +182,10 @@
             label.form-input-label {{ $t('enabled') }}
             v-switch(color="var(--cui-primary)" v-model="config.ftp.active")
 
+          .tw-flex.tw-justify-between.tw-items-center
+            label.form-input-label Use File
+            v-switch(color="var(--cui-primary)" v-model="config.ftp.useFile")
+
           label.form-input-label {{ $t('port') }}
           v-text-field(v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
@@ -339,16 +343,6 @@ export default {
 
       this.serviceMode = config.data.serviceMode;
       this.currentVersion = config.data.version;
-
-      //remove not used params from config editor
-      delete config.timestamp;
-      delete config.platform;
-      delete config.node;
-      delete config.version;
-      delete config.firstStart;
-      delete config.mqttConfigs;
-      delete config.serviceMode;
-      delete config.env;
 
       this.config = {
         port: config.data.port || window.location.port || 80,

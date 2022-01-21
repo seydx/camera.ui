@@ -1,9 +1,9 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const ConfigModel = require('./config.model');
+import * as ConfigModel from './config.model.js';
 
-exports.show = async (req, res) => {
+export const show = async (req, res) => {
   try {
     const result = await ConfigModel.show(req.jwt, req.query.target);
 
@@ -16,7 +16,7 @@ exports.show = async (req, res) => {
   }
 };
 
-exports.patchConfig = async (req, res) => {
+export const patchConfig = async (req, res) => {
   try {
     if (Object.keys(req.body).length === 0) {
       return res.status(400).send({

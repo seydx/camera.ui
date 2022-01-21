@@ -1,26 +1,23 @@
 'use-strict';
 
-const crypto = require('crypto');
-const fs = require('fs-extra');
-const moment = require('moment');
-const path = require('path');
-const piexif = require('piexifjs');
-const { version } = require('../../package.json');
-const webpush = require('web-push');
+import crypto from 'crypto';
+import fs from 'fs-extra';
+import lodash from 'lodash';
+import moment from 'moment';
+import path from 'path';
+import piexif from 'piexifjs';
+import webpush from 'web-push';
+import { Low, JSONFile, MemorySync } from '@seydx/lowdb';
 
-const low = require('lowdb');
-const FileAsync = require('lowdb/adapters/FileAsync');
-const Memory = require('lowdb/adapters/Memory');
+import Cleartimer from '../common/cleartimer.js';
 
-const { Cleartimer } = require('../common/cleartimer');
-
-const { ConfigService } = require('../services/config/config.service');
-const { LoggerService } = require('../services/logger/logger.service');
+import ConfigService from '../services/config/config.service.js';
+import LoggerService from '../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
 const defaultDatabase = {
-  version: version,
+  version: process.env.CUI_VERSION,
   firstStart: true,
   cameras: [],
   notifications: [],
@@ -138,6 +135,7 @@ const defaultCameraSettingsEntry = {
     labels: [],
   },
   videoanalysis: {
+    forceCloseTimer: 3,
     dwellTimer: 60,
     sensitivity: 75,
     difference: 5,
@@ -155,7 +153,7 @@ const defaultCameraSettingsEntry = {
   },
 };
 
-class Database {
+export default class Database {
   static interfaceDB;
   static notificationsDB;
   static recordingsDB;
@@ -175,38 +173,52 @@ class Database {
   }
 
   async prepareDatabase() {
-    await fs.ensureFile(Database.databaseFilePath);
     await fs.ensureDir(Database.recordingsPath);
     await fs.ensureDir(Database.databaseUserPath);
 
-    Database.interfaceDB = await low(new FileAsync(Database.databaseFilePath));
-    Database.recordingsDB = low(new Memory());
-    Database.notificationsDB = LoggerService.notificationsDB = low(new Memory()); //used for system events (errors)
-    Database.tokensDB = low(new Memory());
+    Database.interfaceDB = new Low(new JSONFile(Database.databaseFilePath));
+    Database.tokensDB = new Low(new MemorySync());
+    Database.recordingsDB = new Low(new MemorySync());
+    Database.notificationsDB = new Low(new MemorySync()); //used for system events (errors)
 
-    await Database.interfaceDB.defaults(defaultDatabase).write();
-    Database.recordingsDB.defaults(defaultRecordingsDatabase).write();
-    Database.notificationsDB.defaults(defaultNotificationsDatabase).write();
-    Database.tokensDB.defaults(defaultTokensDatabase).write();
+    await Database.interfaceDB.read();
+    Database.recordingsDB.read();
+    Database.tokensDB.read();
+    Database.notificationsDB.read();
+
+    Database.interfaceDB.data = Database.interfaceDB.data || defaultDatabase;
+    Database.tokensDB.data = Database.tokensDB.data || defaultTokensDatabase;
+    Database.recordingsDB.data = Database.recordingsDB.data || defaultRecordingsDatabase;
+    Database.notificationsDB.data = Database.notificationsDB.data || defaultNotificationsDatabase;
+
+    Database.interfaceDB.chain = lodash.chain(Database.interfaceDB.data);
+    Database.tokensDB.chain = lodash.chain(Database.tokensDB.data);
+    Database.recordingsDB.chain = lodash.chain(Database.recordingsDB.data);
+    Database.notificationsDB.chain = lodash.chain(Database.notificationsDB.data);
 
     await Database.#ensureDatabaseValues();
     await Database.#initializeUser();
     await Database.writeConfigCamerasToDB();
     await Database.refreshRecordingsDatabase();
 
-    await Database.interfaceDB.set('version', version).write();
+    await Database.interfaceDB.chain.set('version', process.env.CUI_VERSION).value();
     await Database.startAtHomeAutomation();
     await Cleartimer.start(Database.interfaceDB, Database.recordingsDB);
 
+    await Database.interfaceDB.write();
+
+    LoggerService.notificationsDB = Database.notificationsDB;
+
     return {
       interface: Database.interfaceDB,
+      tokens: Database.tokensDB,
+      recordings: Database.recordingsDB,
+      notifications: Database.notificationsDB,
     };
   }
 
   static async startAtHomeAutomation() {
-    await Database.interfaceDB.read();
-
-    const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
+    const generalSettings = await Database.interfaceDB.chain.get('settings').get('general').cloneDeep().value();
 
     if (
       generalSettings.automation.active &&
@@ -224,19 +236,17 @@ class Database {
       const newExcludeValue = generalSettings.automation.exclude;
 
       const adaptSettings = async (inTime) => {
-        await Database.interfaceDB.read();
-
-        await Database.interfaceDB
+        await Database.interfaceDB.chain
           .get('settings')
           .get('general')
           .set('atHome', inTime ? newAtHomeValue : oldAtHomeValue)
-          .write();
+          .value();
 
-        await Database.interfaceDB
+        await Database.interfaceDB.chain
           .get('settings')
           .get('general')
           .set('exclude', inTime ? newExcludeValue : oldExcludeValue)
-          .write();
+          .value();
       };
 
       const isBetween = () => {
@@ -277,17 +287,12 @@ class Database {
     }
   }
 
-  static async refreshDatabase() {
-    await Database.interfaceDB.read();
-  }
-
   static async refreshRecordingsDatabase() {
-    await Database.interfaceDB.read();
-
     Database.recordingsPath =
-      (await Database.interfaceDB.get('settings').get('recordings').get('path').value()) || Database.recordingsPath;
+      (await Database.interfaceDB.chain.get('settings').get('recordings').get('path').cloneDeep().value()) ||
+      Database.recordingsPath;
 
-    const cameras = await Database.interfaceDB.get('settings').get('cameras').value();
+    const cameras = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
     await fs.ensureDir(Database.recordingsPath);
 
@@ -297,14 +302,12 @@ class Database {
       .filter((rec) => rec && rec.includes('_CUI') && rec.endsWith('.jpeg'))
       .map((rec) => {
         let filePath = `${Database.recordingsPath}/${rec}`;
-
-        let id = rec.split('-')[1]; //Test_Cam-c45747fbdf-1616771202_m_CUI / @2 / .jpeg
         let isPlaceholder = rec.endsWith('@2.jpeg');
         let fileName = isPlaceholder ? rec.split('@2')[0] : rec.split('.')[0];
         let extension = isPlaceholder ? 'mp4' : 'jpeg';
-        let timestamp = rec.split('-')[2].split('_')[0];
-
-        let cameraName = rec.split('-')[0].replace(/_/g, ' ');
+        let id = rec.match(/(?<=-)([\dA-z]{10})(?=-)/)[0];
+        let timestamp = rec.match(/(?<=-)(\d{10})(?=_)/)[0];
+        let cameraName = rec.match(/(.*?)(?=-[\dA-z]{10})/)[0];
         let cameraSetting = cameras.find((camera) => camera?.name === cameraName);
 
         const jpeg = fs.readFileSync(filePath);
@@ -335,15 +338,18 @@ class Database {
         };
       });
 
-    Database.recordingsDB.setState({ path: Database.recordingsPath, recordings: recordings }).write();
+    Database.recordingsDB.chain.assign({ path: Database.recordingsPath, recordings: recordings }).value();
   }
 
   static async resetDatabase() {
-    return await Database.interfaceDB.setState(defaultDatabase).write();
+    Database.interfaceDB.data = defaultDatabase;
+    Database.interfaceDB.chain = lodash.chain(Database.interfaceDB.data);
+
+    await Database.interfaceDB.write();
   }
 
   static async #ensureDatabaseValues() {
-    let database = await Database.interfaceDB.value();
+    let database = await Database.interfaceDB.chain.cloneDeep().value();
 
     if (typeof database?.version !== 'string') {
       database.version = defaultDatabase.version;
@@ -429,10 +435,10 @@ class Database {
       database.settings.widgets.items = defaultDatabase.settings.widgets.items;
     }
 
-    await Database.interfaceDB.assign(database).write();
+    await Database.interfaceDB.chain.assign(database).value();
   }
 
-  static async #ensureCameraDatabaseValues(settings) {
+  static #ensureCameraDatabaseValues(settings) {
     if (!settings.name) {
       settings.name = defaultCameraSettingsEntry.name;
     }
@@ -521,6 +527,10 @@ class Database {
       settings.videoanalysis = {};
     }
 
+    if (!(settings.videoanalysis.forceCloseTimer >= 0 && settings.videoanalysis.forceCloseTimer <= 10)) {
+      settings.videoanalysis.forceCloseTimer = defaultCameraSettingsEntry.videoanalysis.forceCloseTimer;
+    }
+
     if (!(settings.videoanalysis.dwellTimer >= 15)) {
       settings.videoanalysis.dwellTimer = defaultCameraSettingsEntry.videoanalysis.dwellTimer;
     }
@@ -541,9 +551,7 @@ class Database {
   }
 
   static async #initializeUser() {
-    await Database.interfaceDB.read();
-
-    const userEntries = await Database.interfaceDB.get('users').value();
+    const userEntries = await Database.interfaceDB.chain.get('users').cloneDeep().value();
 
     if (userEntries.length === 0) {
       let salt = crypto.randomBytes(16).toString('base64');
@@ -558,36 +566,40 @@ class Database {
         permissionLevel: ['admin'],
       };
 
-      await Database.interfaceDB.get('users').push(admin).write();
+      await Database.interfaceDB.chain.get('users').push(admin).value();
     }
   }
 
   static async addCameraToDB(camera) {
-    await Database.interfaceDB.read();
-
     const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
     cameraSettingsEntry.name = camera.name;
 
-    await Database.interfaceDB.get('cameras').push(camera).write();
-    await Database.interfaceDB.get('settings').get('cameras').push(cameraSettingsEntry).write();
+    await Database.interfaceDB.chain.get('cameras').push(camera).value();
+    await Database.interfaceDB.chain.get('settings').get('cameras').push(cameraSettingsEntry).value();
 
     return camera;
   }
 
   static async writeConfigCamerasToDB() {
-    await Database.interfaceDB.read();
+    await Database.interfaceDB.chain
+      .get('cameras')
+      .remove((x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0)
+      .value();
 
-    const Cameras = await Database.interfaceDB.get('cameras');
-    const CamerasSettings = await Database.interfaceDB.get('settings').get('cameras');
-    const CamerasWidgets = await Database.interfaceDB.get('settings').get('widgets').get('items');
+    await Database.interfaceDB.chain
+      .get('settings')
+      .get('cameras')
+      .remove((x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0)
+      .value();
 
-    await Cameras.remove((x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0).write();
-    await CamerasSettings.remove(
-      (x) => ConfigService.ui.cameras.filter((y) => y && y.name === x.name).length === 0
-    ).write();
-    await CamerasWidgets.remove(
-      (x) => x.type === 'CamerasWidget' && ConfigService.ui.cameras.filter((y) => y && y.name === x.id).length === 0
-    ).write();
+    await Database.interfaceDB.chain
+      .get('settings')
+      .get('widgets')
+      .get('items')
+      .remove(
+        (x) => x.type === 'CamerasWidget' && ConfigService.ui.cameras.filter((y) => y && y.name === x.id).length === 0
+      )
+      .value();
 
     for (const cam of ConfigService.ui.cameras) {
       const camera = {
@@ -602,18 +614,32 @@ class Database {
         videoanalysis: cam.videoanalysis,
       };
 
-      const cameraExists = await Cameras.find({ name: cam.name }).value();
-      const cameraSettingsExists = await CamerasSettings.find({ name: cam.name }).value();
+      const cameraExists = await Database.interfaceDB.chain.get('cameras').find({ name: cam.name }).cloneDeep().value();
+      const cameraSettingsExists = await Database.interfaceDB.chain
+        .get('settings')
+        .get('cameras')
+        .find({ name: cam.name })
+        .cloneDeep()
+        .value();
 
-      await (cameraExists ? Cameras.find({ name: cam.name }).assign(camera).write() : Cameras.push(camera).write());
+      await (cameraExists
+        ? Database.interfaceDB.chain.get('cameras').find({ name: cam.name }).assign(camera).value()
+        : Database.interfaceDB.chain.get('cameras').push(camera).value());
 
       if (!cameraSettingsExists) {
         const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
         cameraSettingsEntry.name = cam.name;
-        await CamerasSettings.push(cameraSettingsEntry).write();
+
+        await Database.interfaceDB.chain.get('settings').get('cameras').push(cameraSettingsEntry).value();
       } else {
         let camSetting = this.#ensureCameraDatabaseValues(cameraSettingsExists);
-        await CamerasSettings.find({ name: cam.name }).assign(camSetting).write();
+
+        await Database.interfaceDB.chain
+          .get('settings')
+          .get('cameras')
+          .find({ name: cam.name })
+          .assign(camSetting)
+          .value();
       }
     }
   }
@@ -634,5 +660,3 @@ class Database {
     };
   }
 }
-
-exports.Database = Database;

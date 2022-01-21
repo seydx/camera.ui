@@ -1,30 +1,31 @@
 'use-strict';
 
-const fs = require('fs-extra');
-const moment = require('moment');
-const { customAlphabet } = require('nanoid/async');
-const nanoid = customAlphabet('1234567890abcdef', 10);
+import fs from 'fs-extra';
+import moment from 'moment';
+import { customAlphabet } from 'nanoid/async';
 
-const { Cleartimer } = require('../../../common/cleartimer');
+import Cleartimer from '../../../common/cleartimer.js';
 
-const { Database } = require('../../database');
-const { Socket } = require('../../socket');
+import Database from '../../database.js';
+import Socket from '../../socket.js';
 
-const {
+import {
   getAndStoreSnapshot,
   handleFragmentsRequests,
   storeBuffer,
   storeSnapshotFromVideo,
   storeVideo,
   storeVideoBuffer,
-} = require('../../../common/ffmpeg');
+} from '../../../common/ffmpeg.js';
 
-exports.refresh = async () => {
+const nanoid = customAlphabet('1234567890abcdef', 10);
+
+export const refresh = async () => {
   return await Database.refreshRecordingsDatabase();
 };
 
-exports.list = (query) => {
-  let recordings = Database.recordingsDB.get('recordings').value();
+export const list = (query) => {
+  let recordings = Database.recordingsDB.chain.get('recordings').cloneDeep().value();
 
   // eslint-disable-next-line unicorn/consistent-function-scoping
   const GetSortOrder = (property) => {
@@ -81,8 +82,8 @@ exports.list = (query) => {
   return recordings;
 };
 
-exports.listByCameraName = (name) => {
-  let recordings = Database.recordingsDB.get('recordings').reverse().value();
+export const listByCameraName = (name) => {
+  let recordings = Database.recordingsDB.chain.get('recordings').reverse().cloneDeep().value();
 
   if (recordings) {
     recordings = recordings.filter((rec) => rec.camera === name);
@@ -91,21 +92,19 @@ exports.listByCameraName = (name) => {
   return recordings;
 };
 
-exports.findById = (id) => {
-  return Database.recordingsDB.get('recordings').find({ id: id }).value();
+export const findById = (id) => {
+  return Database.recordingsDB.chain.get('recordings').find({ id: id }).cloneDeep().value();
 };
 
-exports.createRecording = async (data, fileBuffer) => {
-  await Database.interfaceDB.read();
-
-  const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
+export const createRecording = async (data, fileBuffer) => {
+  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
 
   if (!camera) {
     throw new Error('Can not assign recording to camera!');
   }
 
-  const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
-  const recordingsSettings = await Database.interfaceDB.get('settings').get('recordings').value();
+  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+  const recordingsSettings = await Database.interfaceDB.chain.get('settings').get('recordings').cloneDeep().value();
 
   const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
@@ -152,7 +151,7 @@ exports.createRecording = async (data, fileBuffer) => {
     if (data.imgBuffer) {
       await storeBuffer(camera, data.imgBuffer, data.path, fileName, label, isPlaceholder, externRecording);
     } else {
-      await getAndStoreSnapshot(camera, data.path, fileName, label, isPlaceholder, storeSnapshot);
+      await getAndStoreSnapshot(camera, false, data.path, fileName, label, isPlaceholder, storeSnapshot);
     }
 
     if (data.type === 'Video') {
@@ -180,7 +179,7 @@ exports.createRecording = async (data, fileBuffer) => {
     }
   }
 
-  Database.recordingsDB.push(recording).write();
+  Database.recordingsDB.chain.push(recording).value();
 
   Socket.io.emit('recording', recording);
 
@@ -189,12 +188,13 @@ exports.createRecording = async (data, fileBuffer) => {
   return recording;
 };
 
-exports.removeById = async (id) => {
-  const recPath = Database.recordingsDB.get('path').value();
+export const removeById = async (id) => {
+  const recPath = Database.recordingsDB.chain.get('path').cloneDeep().value();
 
-  const recording = Database.recordingsDB
+  const recording = Database.recordingsDB.chain
     .get('recordings')
     .find((rec) => rec.id === id)
+    .cloneDeep()
     .value();
 
   if (recording) {
@@ -208,20 +208,20 @@ exports.removeById = async (id) => {
 
   Cleartimer.removeRecordingTimer(id);
 
-  return Database.recordingsDB
+  return Database.recordingsDB.chain
     .get('recordings')
     .remove((rec) => rec.id === id)
-    .write();
+    .value();
 };
 
-exports.removeAll = async () => {
-  const recPath = Database.recordingsDB.get('path').value();
+export const removeAll = async () => {
+  const recPath = Database.recordingsDB.chain.get('path').cloneDeep().value();
 
   await fs.emptyDir(recPath);
   Cleartimer.stopRecordings();
 
-  return Database.recordingsDB
+  return Database.recordingsDB.chain
     .get('recordings')
     .remove(() => true)
-    .write();
+    .value();
 };

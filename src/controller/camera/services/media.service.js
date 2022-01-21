@@ -1,14 +1,14 @@
 'use-strict';
 
-const { spawn } = require('child_process');
-const readline = require('readline');
+import readline from 'readline';
+import { spawn } from 'child_process';
 
-const { LoggerService } = require('../../../services/logger/logger.service');
-const { ConfigService } = require('../../../services/config/config.service');
+import LoggerService from '../../../services/logger/logger.service.js';
+import ConfigService from '../../../services/config/config.service.js';
 
 const { log } = LoggerService;
 
-class MediaService {
+export default class MediaService {
   #camera;
 
   constructor(camera) {
@@ -100,5 +100,3 @@ class MediaService {
     });
   }
 }
-
-exports.MediaService = MediaService;

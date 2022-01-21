@@ -188,18 +188,7 @@ export default {
   },
 
   beforeDestroy() {
-    this.stopStream();
-
-    if (this.streamTimeout) {
-      clearTimeout(this.streamTimeout);
-      this.streamTimeout = null;
-    }
-
-    this.$socket.client.off(this.camera.name, this.writeStream);
-    document.removeEventListener('keydown', this.logKey);
-    document.removeEventListener('touchstart', this.onTouchStart);
-    window.removeEventListener('orientationchange', this.resizeFullscreenVideo);
-    window.removeEventListener('resize', this.resizeFullscreenVideo);
+    this.destroy();
   },
 
   methods: {
@@ -451,6 +440,22 @@ export default {
 
         this.loading = false;
         this.offline = true;
+      }
+    },
+    destroy() {
+      this.stopStream();
+      this.stopSnapshot();
+
+      this.$socket.client.off(this.camera.name, this.writeStream);
+      document.removeEventListener('keydown', this.logKey);
+      document.removeEventListener('touchstart', this.onTouchStart);
+      window.removeEventListener('orientationchange', this.resizeFullscreenVideo);
+      window.removeEventListener('resize', this.resizeFullscreenVideo);
+    },
+    stopSnapshot() {
+      if (this.snapshotTimeout) {
+        clearTimeout(this.snapshotTimeout);
+        this.snapshotTimeout = null;
       }
     },
     stopStream() {

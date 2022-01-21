@@ -1,18 +1,16 @@
 'use-strict';
 
-const moment = require('moment');
-const { customAlphabet } = require('nanoid/async');
+import moment from 'moment';
+import { customAlphabet } from 'nanoid/async';
+
+import Cleartimer from '../../../common/cleartimer.js';
+
+import Database from '../../database.js';
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
-
-const { Cleartimer } = require('../../../common/cleartimer');
-
-const { Database } = require('../../database');
-
 const notificationsLimit = 100;
 
-exports.list = async (query) => {
-  await Database.interfaceDB.read();
-
+export const list = async (query) => {
   // eslint-disable-next-line unicorn/consistent-function-scoping
   const GetSortOrder = (property) => {
     return (a, b) => {
@@ -25,8 +23,8 @@ exports.list = async (query) => {
     };
   };
 
-  let notifications = await Database.interfaceDB.get('notifications').value();
-  notifications.push(...Database.notificationsDB.get('notifications').value());
+  let notifications = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
+  notifications.push(...Database.notificationsDB.chain.get('notifications').cloneDeep().value());
   notifications.sort(GetSortOrder('timestamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
@@ -74,10 +72,8 @@ exports.list = async (query) => {
   return notifications;
 };
 
-exports.listByCameraName = async (name) => {
-  await Database.interfaceDB.read();
-
-  let notifications = await Database.interfaceDB.get('notifications').reverse().value();
+export const listByCameraName = async (name) => {
+  let notifications = await Database.interfaceDB.chain.get('notifications').reverse().cloneDeep().value();
 
   if (notifications) {
     notifications = notifications.filter((not) => not.camera === name);
@@ -86,32 +82,34 @@ exports.listByCameraName = async (name) => {
   return notifications;
 };
 
-exports.findById = async (id) => {
-  await Database.interfaceDB.read();
-
+export const findById = async (id) => {
   const notification =
-    (await Database.interfaceDB.get('notifications').find({ id: id }).value()) ||
-    Database.notificationsDB.get('notifications').find({ id: id }).value();
+    (await Database.interfaceDB.chain.get('notifications').find({ id: id }).cloneDeep().value()) ||
+    Database.notificationsDB.chain.get('notifications').find({ id: id }).cloneDeep().value();
 
   return notification;
 };
 
-exports.createNotification = async (data) => {
-  await Database.interfaceDB.read();
-
-  const camera = await Database.interfaceDB.get('cameras').find({ name: data.camera }).value();
-  const camerasSettings = await Database.interfaceDB.get('settings').get('cameras').value();
+export const createNotification = async (data) => {
+  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
+  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
   if (!camera) {
     throw new Error('Can not assign notification to camera!');
   }
 
   //Check notification size, if we exceed more than {100} notifications, remove the latest
-  const notificationList = await Database.interfaceDB.get('notifications').value();
+  const notificationList = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
 
   if (notificationList.length > notificationsLimit) {
     const diff = notificationList.length - notificationsLimit;
-    await Database.interfaceDB.get('notifications').dropRight(notificationList, diff).write();
+    const diffNotifiations = notificationList.slice(-diff);
+
+    for (const notification of diffNotifiations) {
+      Cleartimer.removeNotificationTimer(notification.id);
+    }
+
+    await Database.interfaceDB.chain.get('notifications').dropRight(notificationList, diff).value();
   }
 
   const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
@@ -150,7 +148,8 @@ exports.createNotification = async (data) => {
     label: label,
   };
 
-  await Database.interfaceDB.get('notifications').push(notification).write();
+  await Database.interfaceDB.chain.get('notifications').push(notification).value();
+
   Cleartimer.setNotification(id, timestamp);
 
   const notify = {
@@ -174,34 +173,30 @@ exports.createNotification = async (data) => {
   };
 };
 
-exports.removeById = async (id) => {
-  await Database.interfaceDB.read();
-
+export const removeById = async (id) => {
   Cleartimer.removeNotificationTimer(id);
 
-  Database.notificationsDB
+  Database.notificationsDB.chain
     .get('notifications')
     .remove((not) => not.id === id)
-    .write();
+    .value();
 
-  return await Database.interfaceDB
+  return await Database.interfaceDB.chain
     .get('notifications')
     .remove((not) => not.id === id)
-    .write();
+    .value();
 };
 
-exports.removeAll = async () => {
-  await Database.interfaceDB.read();
-
+export const removeAll = async () => {
   Cleartimer.stopNotifications();
 
-  Database.notificationsDB
+  Database.notificationsDB.chain
     .get('notifications')
     .remove(() => true)
-    .write();
+    .value();
 
-  return await Database.interfaceDB
+  return await Database.interfaceDB.chain
     .get('notifications')
     .remove(() => true)
-    .write();
+    .value();
 };

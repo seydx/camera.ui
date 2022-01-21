@@ -1,25 +1,27 @@
 'use-strict';
 
-const _ = require('lodash');
-const Bunyan = require('bunyan');
-const EscapeRegExp = require('lodash.escaperegexp');
-const { FileSystem, FtpSrv } = require('ftp-srv');
-const http = require('http');
-const ip = require('ip');
-const mqtt = require('mqtt');
-const { parse } = require('url');
-const path = require('path');
-const { SMTPServer } = require('smtp-server');
-const Stream = require('stream');
+import Bunyan from 'bunyan';
+import escapeRegExp from 'lodash/escapeRegExp.js';
+import has from 'lodash/has.js';
+import get from 'lodash/get.js';
+import { FileSystem, FtpSrv } from 'ftp-srv';
+import http from 'http';
+import ip from 'ip';
+import { simpleParser } from 'mailparser';
+import mqtt from 'mqtt';
+import { parse } from 'url';
+import path from 'path';
+import { SMTPServer } from 'smtp-server';
+import Stream from 'stream';
 
-const { ConfigService } = require('../../services/config/config.service');
-const { LoggerService } = require('../../services/logger/logger.service');
+import ConfigService from '../../services/config/config.service.js';
+import LoggerService from '../../services/logger/logger.service.js';
 
-const { Database } = require('../../api/database');
+import Database from '../../api/database.js';
 
 const { log } = LoggerService;
 
-const toDotNot = (input, parentKey) => {
+const toDotNot = (input, parentKey) =>
   // eslint-disable-next-line unicorn/no-array-reduce, unicorn/prefer-object-from-entries
   Object.keys(input || {}).reduce((accumulator, key) => {
     const value = input[key];
@@ -32,9 +34,8 @@ const toDotNot = (input, parentKey) => {
 
     return { ...accumulator, [outputKey]: value };
   }, {});
-};
 
-class MotionController {
+export default class MotionController {
   static #controller;
   static #socket;
   static #motionTimers = new Map();
@@ -273,17 +274,18 @@ class MotionController {
 
           try {
             const dataObject = JSON.parse(data);
+            const messageObject = JSON.parse(message);
 
             json = true;
 
-            if (dataObject === message_) {
+            if (dataObject === message || dataObject.toString() === message_.toString()) {
               state_ = triggerState();
-            } else if (typeof dataObject === typeof message_) {
-              const dotNotMessage = toDotNot(message_);
+            } else if (typeof dataObject === typeof messageObject) {
+              const dotNotMessage = toDotNot(messageObject);
               const dotNotMessagePath = Object.keys(dotNotMessage)[0];
               const dotNotMessageResult = Object.values(dotNotMessage)[0];
-              const pathExist = _.has(dataObject, dotNotMessagePath);
-              const sameValue = _.get(dataObject, dotNotMessagePath) === dotNotMessageResult;
+              const pathExist = has(dataObject, dotNotMessagePath);
+              const sameValue = get(dataObject, dotNotMessagePath) === dotNotMessageResult;
 
               if (pathExist && sameValue) {
                 state_ = triggerState();
@@ -353,7 +355,7 @@ class MotionController {
   static startSmtpServer() {
     log.debug('Setting up SMTP server for motion detection...');
 
-    const regex = new RegExp(EscapeRegExp(ConfigService.ui.smtp.space_replace), 'g');
+    const regex = new RegExp(escapeRegExp(ConfigService.ui.smtp.space_replace), 'g');
 
     const bunyan = Bunyan.createLogger({
       name: 'smtp',
@@ -385,17 +387,60 @@ class MotionController {
         callback(null, { user: true });
       },
       async onData(stream, session, callback) {
-        stream.on('data', () => {});
         stream.on('end', callback);
 
         log.debug(session, 'SMTP');
 
-        for (const rcptTo of session.envelope.rcptTo) {
-          const name = rcptTo.address.split('@')[0].replace(regex, ' ');
-          log.info(`New message: Data: ${JSON.stringify(rcptTo)}`, 'SMTP');
+        const cameras = ConfigService.ui.cameras.map((camera) => {
+          return {
+            name: camera.name,
+            from: camera.smtp?.from || false,
+            email: camera.smtp?.email || camera.name,
+            body: camera.smtp?.body || false,
+          };
+        });
 
-          await MotionController.handleMotion('motion', name, true, 'smtp');
+        const mailFrom = session.envelope.mailFrom.address.split('@')[0].replace(regex, ' ');
+        const mailFromCamera = cameras.find((camera) => camera.from === mailFrom);
+
+        const mailTo = session.envelope.rcptTo[0].address.split('@')[0].replace(regex, ' ');
+        const mailToCamera = cameras.find((camera) => camera.email === mailTo);
+
+        if (mailToCamera || mailFromCamera) {
+          let name;
+
+          if (mailToCamera) {
+            log.info(`New message: Data (email to): ${JSON.stringify(session.envelope.rcptTo)}`, 'SMTP');
+            name = mailTo;
+          } else {
+            log.info(`New message: Data (email from): ${JSON.stringify(session.envelope.mailFrom)}`, 'SMTP');
+            name = mailFrom;
+          }
+
+          return await MotionController.handleMotion('motion', name, true, 'smtp');
+        } else {
+          log.info(
+            'Email received but can not determine camera name through email adresse(s), checking email body...',
+            'SMTP'
+          );
+
+          const cameraHasBody = cameras.some((camera) => camera.body);
+
+          if (cameraHasBody) {
+            const parsed = await simpleParser(stream);
+            const body = parsed.textAsHtml;
+
+            for (const camera of cameras) {
+              if (camera.body && body.includes(camera.body)) {
+                log.info(`New message: Data (email body): "${body}"`, 'SMTP');
+                return await MotionController.handleMotion('motion', camera.name, true, 'smtp');
+              }
+            }
+          }
         }
+
+        //not found
+        await MotionController.handleMotion('motion', mailTo, true, 'smtp');
       },
     });
 
@@ -507,16 +552,25 @@ class MotionController {
 
           // eslint-disable-next-line no-unused-vars
           async write(fileName, { append = false, start }) {
-            const filePath = path.resolve(this.realCwd, fileName);
-            const pathSplit = path
+            let filePath = path.resolve(this.realCwd, fileName);
+
+            let pathSplit = path
               .dirname(filePath)
               .split('/')
               .filter((value) => value);
 
+            log.info(
+              `New message: File Name: ${fileName} - File Path: ${filePath} - Path Split ${JSON.stringify(pathSplit)}`,
+              'FTP'
+            );
+
+            if (pathSplit.length === 0 && ConfigService.ui.ftp.useFile) {
+              const name = fileName.split(/[^A-Za-z]/g)[0];
+              pathSplit.push(name);
+            }
+
             if (pathSplit.length > 0) {
               const name = pathSplit[0];
-              log.info(`New message: File Path: ${name}`, 'FTP');
-
               await MotionController.handleMotion('motion', name, true, 'ftp');
             } else {
               this.connection.reply(550, 'Permission denied.');
@@ -638,7 +692,7 @@ class MotionController {
     }
 
     if (camera) {
-      const generalSettings = await Database.interfaceDB.get('settings').get('general').value();
+      const generalSettings = await Database.interfaceDB.chain.get('settings').get('general').cloneDeep().value();
       const atHome = generalSettings?.atHome || false;
       const cameraExcluded = (generalSettings?.exclude || []).includes(camera.name);
 
@@ -657,10 +711,17 @@ class MotionController {
           message: `Handling through ${camera.recordOnMovement ? 'intern' : 'extern'} controller..`,
         };
 
+        log.debug(result, camera.name);
+
         MotionController.#controller.emit('motion', camera.name, triggerType, state, event); // used for extern controller, like Homebridge
 
         if (camera.recordOnMovement) {
-          const recordingSettings = await Database.interfaceDB.get('settings').get('recordings').value();
+          const recordingSettings = await Database.interfaceDB.chain
+            .get('settings')
+            .get('recordings')
+            .cloneDeep()
+            .value();
+
           const recActive = recordingSettings.active || false;
           const recTimer = recordingSettings.timer || 10;
 
@@ -721,5 +782,3 @@ class MotionController {
     return result;
   }
 }
-
-exports.MotionController = MotionController;

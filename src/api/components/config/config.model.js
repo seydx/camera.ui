@@ -1,23 +1,20 @@
 'use-strict';
 
-//const fs = require('fs-extra');
-const os = require('os');
+import os from 'os';
 
-const { ConfigService } = require('../../../services/config/config.service');
+import ConfigService from '../../../services/config/config.service.js';
 
-const { Database } = require('../../database');
+import Database from '../../database.js';
 
-const { CameraController } = require('../../../controller/camera/camera.controller');
+import CameraController from '../../../controller/camera/camera.controller.js';
 
-exports.show = async (user, target) => {
-  await Database.interfaceDB.read();
-
+export const show = async (user, target) => {
   let info = {
     timestamp: new Date().toISOString(),
     platform: os.platform(),
     node: process.version,
     version: ConfigService.ui.version,
-    firstStart: await Database.interfaceDB.get('firstStart').value(),
+    firstStart: await Database.interfaceDB.chain.get('firstStart').cloneDeep().value(),
     language: ConfigService.ui.language,
     theme: ConfigService.ui.theme,
     serviceMode: ConfigService.serviceMode,
@@ -66,11 +63,8 @@ exports.show = async (user, target) => {
   return info;
 };
 
-exports.patchConfig = async (configJson) => {
-  if (process.env.CUI_SERVICE_MODE === '2') {
-    Database.controller.emit('config', configJson);
-  }
-
+export const patchConfig = async (configJson) => {
+  Database.controller.emit('config', configJson);
   ConfigService.writeToConfig(false, configJson);
   await Database.writeConfigCamerasToDB();
 

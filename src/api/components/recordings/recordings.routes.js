@@ -1,11 +1,11 @@
 'use-strict';
 
-const RecordingsController = require('./recordings.controller');
+import * as RecordingsController from './recordings.controller.js';
 
-const PaginationMiddleware = require('../../middlewares/pagination.middleware');
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
-const RecordingsValidationMiddleware = require('../../middlewares/recordings.validation.middleware');
+import * as PaginationMiddleware from '../../middlewares/pagination.middleware.js';
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
+import * as RecordingsValidationMiddleware from '../../middlewares/recordings.validation.middleware.js';
 
 /**
  * @swagger
@@ -13,7 +13,7 @@ const RecordingsValidationMiddleware = require('../../middlewares/recordings.val
  *  name: Recordings
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/recordings:

@@ -1,9 +1,9 @@
 'use-strict';
 
-const SystemController = require('./system.controller');
+import * as SystemController from './system.controller.js';
 
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
 
 /**
  * @swagger
@@ -11,7 +11,7 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
  *  name: System
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/system/log:

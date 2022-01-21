@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@mdi/js": "^6.5.95",
-    "axios": "^0.24.0",
+    "axios": "^0.25.0",
     "chart.js": "2.8.0",
     "draggabilly": "^3.0.0",
     "file-saver": "^2.0.5",
@@ -22,7 +22,7 @@
     "v-jsoneditor": "^1.4.5",
     "vue": "^2.6.14",
     "vue-chartjs": "3.4.2",
-    "vue-i18n": "^8.26.8",
+    "vue-i18n": "^8.27.0",
     "vue-infinite-loading": "^2.4.5",
     "vue-inline-svg": "^2.1.0",
     "vue-it-bigger": "^0.2.2",

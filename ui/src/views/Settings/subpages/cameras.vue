@@ -27,6 +27,9 @@
 
     .tw-mt-8(v-for="cam in config.cameras" :key="cam.name" v-if="camera && camera.name === cam.name")
 
+      v-sheet.tw-p-3.tw-mb-5.mx-auto.tw-text-sm(rounded width="100%" color="rgba(var(--cui-text-default-rgb), 0.1)")
+        span.text-default {{ $t('camera_settings_save_info') }}
+
       v-expansion-panels(v-model="panel[cam.name]")
         v-expansion-panel
           v-expansion-panel-header
@@ -52,7 +55,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center.tw-mb-3
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label {{ $t('record_on_movement') }}
+                label.form-input-label {{ $t('record_on_movement') }} ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('record_on_movement_info') }}
@@ -186,8 +189,26 @@
 
             h4.tw-my-3 {{ $t('email') }}
 
-            label.form-input-label {{ $t('send_email_to') }}
-            v-text-field(v-model="cam.smtp.email" persistent-hint :hint="$t('alarm_smtp_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+            label.form-input-label {{ $t('email_to') }} ¹
+            v-text-field(v-model="cam.smtp.email" persistent-hint :hint="$t('email_to_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            label.form-input-label {{ $t('email_from') }} ¹
+            v-text-field(v-model="cam.smtp.from" persistent-hint :hint="$t('email_from_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            label.form-input-label {{ $t('email_body_lookup') }} ¹
+            v-text-field(v-model="cam.smtp.body" persistent-hint :hint="$t('email_body_lookup_info')" prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
               template(v-slot:message="{ key, message}")
@@ -197,7 +218,7 @@
 
             h4.tw-my-3 {{ $t('mqtt') }}
 
-            label.form-input-label Motion Topic
+            label.form-input-label Motion Topic ¹
             v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -206,7 +227,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Motion Message
+            label.form-input-label Motion Message ¹
             v-text-field(v-model="cam.mqtt.motionMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -215,7 +236,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Motion Reset Topic
+            label.form-input-label Motion Reset Topic ¹
             v-text-field(v-model="cam.mqtt.motionResetTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -224,7 +245,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Motion Reset Message
+            label.form-input-label Motion Reset Message ¹
             v-text-field(v-model="cam.mqtt.motionResetMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -232,6 +253,8 @@
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
+
+            v-divider.tw-mt-1.tw-mb-7
 
             v-btn.tw-text-white(:loading="prebufferingStates[cam.name].motionLoading" block color="success" @click="triggerMotion(true)") Trigger Motion
             v-btn.tw-text-white.tw-mt-3(:loading="prebufferingStates[cam.name].motionLoading" block color="error" @click="triggerMotion(false)") Reset Motion
@@ -257,7 +280,7 @@
             
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Unbridge (Recommended)
+                label.form-input-label Unbridge (Recommended) ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('unbridge_info') }}
@@ -265,7 +288,7 @@
               
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Motion Sensor
+                label.form-input-label Motion Sensor ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('motionSensor_info') }}
@@ -273,7 +296,7 @@
               
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Doorbell Sensor
+                label.form-input-label Doorbell Sensor ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('doorbellSensor_info') }}
@@ -281,7 +304,7 @@
               
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Motion / Doorbell Switches
+                label.form-input-label Motion / Doorbell Switches ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('motionDoorbellSwitch_info') }}
@@ -289,7 +312,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Privacy Switch
+                label.form-input-label Privacy Switch ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('privacySwitch_info') }}
@@ -297,7 +320,7 @@
               
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Trigger Doorbell on Motion
+                label.form-input-label Trigger Doorbell on Motion ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('motionDoorbell_info') }}
@@ -305,7 +328,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label *Exclude Switch
+                label.form-input-label Exclude Switch ¹ ²
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('excludeSwitch_info') }}
@@ -313,13 +336,13 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Interface Recording Timer
+                label.form-input-label Interface Recording Timer ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('use_interface_timer_info') }}
               v-switch(color="var(--cui-primary)" v-model="cam.useInterfaceTimer")
             
-            label.form-input-label *Manufacturer
+            label.form-input-label Manufacturer ¹ ²
             v-text-field(v-model="cam.manufacturer" :hint="$t('manufacturer_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -328,7 +351,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
                   
-            label.form-input-label *Model
+            label.form-input-label Model ¹ ²
             v-text-field(v-model="cam.model" :hint="$t('model_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -337,7 +360,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
                   
-            label.form-input-label *Serial Number
+            label.form-input-label Serial Number ¹ ²
             v-text-field(v-model="cam.serialNumber" :hint="$t('serialNumber_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -358,7 +381,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label {{ $t('enabled') }}
+                label.form-input-label {{ $t('enabled') }} ¹
               v-switch(color="var(--cui-primary)" v-model="cam.prebuffering")
 
             v-btn.tw-text-white.tw-mt-3(:disabled="!prebufferingStates[cam.name].state" :loading="prebufferingStates[cam.name].loading" block color="error" @click="onHandlePrebuffering(cam.name, false)") {{ $t('stop') }}
@@ -386,8 +409,22 @@
                   @updateHandle="updateHandle"
                 )
 
+            .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-my-8
+              v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}
+              v-btn.tw-mx-2(@click="undo") {{ $t('undo') }}
+              v-btn(@click="clear") {{ $t('clear') }}
+
             label.form-input-label {{ $t('dwell_time') }}
             v-slider(:messages="$t('dwell_time_info')" min="15" max="180" step="1" thumb-label v-model="camera.videoanalysis.dwellTimer")
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+
+            .tw-my-3
+
+            label.form-input-label {{ $t('forceClose_timer') }}
+            v-slider(:messages="$t('forceClose_timer_info')" min="0" max="10" step="1" thumb-label v-model="camera.videoanalysis.forceCloseTimer")
               template(v-slot:message="{ key, message}")
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
@@ -410,13 +447,10 @@
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
+                  
+            v-btn.tw-text-white.tw-mt-8(block color="var(--cui-primary)" @click="resetVideoanalysis") {{ $t('reset') }}
 
-            .tw-w-full.tw-flex.tw-justify-center.tw-items-center.tw-mt-10.tw-mb-10
-              v-btn(@click="customizing ? finishCustom() : startCustom()") {{ customizing ? $t('finish_zone') : $t('new_zone') }}
-              v-btn.tw-mx-2(@click="undo") {{ $t('undo') }}
-              v-btn(@click="clear") {{ $t('clear') }}
-
-            v-divider
+            v-divider.tw-mt-10
             
             .tw-flex.tw-justify-between.tw-items-center.tw-mt-10
               label.form-input-label {{ $t('status') }}
@@ -424,7 +458,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label {{ $t('enabled') }}
+                label.form-input-label {{ $t('enabled') }} ¹
               v-switch(color="var(--cui-primary)" v-model="cam.videoanalysis.active")
 
             v-btn.tw-text-white.tw-mt-3(:disabled="!videoanalysisStates[cam.name].state" :loading="videoanalysisStates[cam.name].loading" block color="error" @click="onHandleVideoanalysis(cam.name, false)") {{ $t('stop') }}
@@ -438,7 +472,7 @@
           v-expansion-panel-content
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Debug
+                label.form-input-label Debug ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('debug_info') }}
@@ -446,7 +480,7 @@
 
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Audio
+                label.form-input-label Audio ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('audio_info') }}
@@ -454,13 +488,13 @@
               
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Read Rate
+                label.form-input-label Read Rate ¹
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('read_rate_info') }}
               v-switch(color="var(--cui-primary)" v-model="cam.videoConfig.readRate")
 
-            label.form-input-label Video Source
+            label.form-input-label Video Source ¹
             v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -469,7 +503,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Subtream Source
+            label.form-input-label Video Subtream Source ¹
             v-text-field(v-model="cam.videoConfig.subSource" :hint="$t('sub_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -478,7 +512,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Still Image Source
+            label.form-input-label Still Image Source ¹
             v-text-field(v-model="cam.videoConfig.stillImageSource" :hint="$t('still_image_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -487,7 +521,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Motion Timeout
+            label.form-input-label Motion Timeout ¹
             v-text-field(v-model.number="cam.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -496,7 +530,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Max Streams
+            label.form-input-label Max Streams ¹
             v-text-field(v-model.number="cam.videoConfig.maxStreams" :hint="$t('max_streams_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -505,7 +539,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Width
+            label.form-input-label Video Width ¹
             v-text-field(v-model.number="cam.videoConfig.maxWidth" :hint="$t('width_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -514,7 +548,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Height
+            label.form-input-label Video Height ¹
             v-text-field(v-model.number="cam.videoConfig.maxHeight" :hint="$t('height_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -523,7 +557,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label FPS
+            label.form-input-label FPS ¹
             v-text-field(v-model.number="cam.videoConfig.maxFPS" :hint="$t('fps_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -532,7 +566,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Bitrate
+            label.form-input-label Bitrate ¹
             v-text-field(v-model.number="cam.videoConfig.maxBitrate" :hint="$t('bitrate_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -541,7 +575,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label RTSP Transport
+            label.form-input-label RTSP Transport ¹
             v-text-field(v-model="cam.videoConfig.rtspTransport" :hint="$t('rtsp_transport_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -550,7 +584,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Codec
+            label.form-input-label Video Codec ¹
             v-text-field(v-model="cam.videoConfig.vcodec" :hint="$t('video_codec_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -559,7 +593,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Audio Codec
+            label.form-input-label Audio Codec ¹
             v-text-field(v-model="cam.videoConfig.acodec" :hint="$t('audio_codec_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -568,7 +602,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Stream Timeout
+            label.form-input-label Stream Timeout ¹
             v-text-field(v-model.number="cam.videoConfig.stimeout" :hint="$t('timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -577,7 +611,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Analyze Duration
+            label.form-input-label Analyze Duration ¹
             v-text-field(v-model.number="cam.videoConfig.analyzeDuration" :hint="$t('analyze_duration_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -586,7 +620,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Probe Size
+            label.form-input-label Probe Size ¹
             v-text-field(v-model.number="cam.videoConfig.probeSize" :hint="$t('probe_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -595,7 +629,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Reorder Queue Size
+            label.form-input-label Reorder Queue Size ¹
             v-text-field(v-model.number="cam.videoConfig.reorderQueueSize" :hint="$t('reorder_queue_size_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -604,7 +638,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Max Timeout
+            label.form-input-label Max Timeout ¹
             v-text-field(v-model.number="cam.videoConfig.maxTimeout" :hint="$t('max_delay_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiNumeric'] }}
@@ -613,7 +647,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Filter
+            label.form-input-label Video Filter ¹
             v-text-field(v-model="cam.videoConfig.vfilter" :hint="$t('video_filter_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -622,7 +656,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Video Stream Map
+            label.form-input-label Video Stream Map ¹
             v-text-field(v-model="cam.videoConfig.vmap" :hint="$t('map_video_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -631,7 +665,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Audio Stream Map
+            label.form-input-label Audio Stream Map ¹
             v-text-field(v-model="cam.videoConfig.amap" :hint="$t('map_audio_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -640,7 +674,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}
 
-            label.form-input-label Encodec Options
+            label.form-input-label Encodec Options ¹
             v-text-field(v-model="cam.videoConfig.encoderOptions" :hint="$t('encoder_options_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -775,12 +809,14 @@ export default {
           }
         }
 
-        const isVideoAnalysisPanelOpen = panel.some((index) => index === 7);
+        const panelId = this.moduleName === 'homebridge-camera-ui' || this.env === 'development' ? 7 : 6;
+        const isVideoAnalysisPanelOpen = panel.some((index) => index === panelId);
+
         if (isVideoAnalysisPanelOpen && !this.options[this.camera.name]?.background) {
           this.adjustPlayground();
 
           try {
-            const snapshot = await getCameraSnapshot(this.camera.name, '?buffer=true');
+            const snapshot = await getCameraSnapshot(this.camera.name, '?buffer=true&fromSubSource=true');
             this.options[this.camera.name].background = `data:image/png;base64,${snapshot.data}`;
             this.options[this.camera.name].loading = false;
           } catch (err) {
@@ -835,6 +871,10 @@ export default {
           active: false,
           port: 2525,
           space_replace: '+',
+        },
+        ftp: config.data.ftp || {
+          active: false,
+          port: 5050,
         },
         options: config.data.options || {
           videoProcessor: 'ffmpeg',
@@ -1023,6 +1063,22 @@ export default {
     prebufferStatus(data) {
       if (this.prebufferingStates[data.camera]) {
         this.prebufferingStates[data.camera].state = data.status === 'active';
+      }
+    },
+    resetVideoanalysis() {
+      if (this.camera) {
+        const DEFAULT_FORCECLOSE_TIME = 3;
+        const DEFAULT_DWELL_TIME = 60;
+        const DEFAULT_DIFFERENCE = 5; // 1 - 255
+        const DEFAULT_SENSITIVITY = 75; // 0 - 100
+
+        this.camera.videoanalysis = {
+          ...this.camera.videoanalysis,
+          sensitivity: DEFAULT_SENSITIVITY,
+          difference: DEFAULT_DIFFERENCE,
+          dwellTimer: DEFAULT_DWELL_TIME,
+          forceCloseTimer: DEFAULT_FORCECLOSE_TIME,
+        };
       }
     },
     async triggerMotion(state) {

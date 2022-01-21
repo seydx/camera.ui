@@ -1,14 +1,14 @@
 'use-strict';
 
-const { App } = require('../../src/api/app');
-const { Database } = require('../../src/api/database');
+import App from '../../src/api/app.js';
+import Database from '../../src/api/database.js';
 
-const app = App({
+const app = new App({
   debug: process.env.CUI_LOG_DEBUG === '1',
-  version: require('../../package.json').version,
+  version: process.env.CUI_MODULE_VERSION,
 });
 
-const supertest = require('supertest');
+import supertest from 'supertest';
 const request = supertest(app);
 
 const masterCredentials = {
@@ -62,6 +62,7 @@ describe('POST /api/cameras', () => {
     };
 
     const response = await request.post('/api/cameras').auth(auth.body.access_token, { type: 'bearer' }).send(camera);
+
     expect(response.statusCode).toBe(201);
   });
 
@@ -95,6 +96,7 @@ describe('GET /api/cameras/:name', () => {
     expect(auth.statusCode).toBe(201);
 
     const response = await request.get('/api/cameras/Test Camera 3').auth(auth.body.access_token, { type: 'bearer' });
+
     expect(response.statusCode).toBe(200);
     expect(Object.keys(response.body).length).toBeTruthy();
   });
@@ -159,6 +161,9 @@ describe('DELETE /api/cameras', () => {
     expect(auth.statusCode).toBe(201);
 
     const response = await request.delete('/api/cameras').auth(auth.body.access_token, { type: 'bearer' });
+
+    console.log(response.error);
+
     expect(response.statusCode).toBe(204);
   });
 });

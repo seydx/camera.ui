@@ -1,9 +1,9 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const RecordingsModel = require('./recordings.model');
+import * as RecordingsModel from './recordings.model.js';
 
-exports.insert = async (req, res) => {
+export const insert = async (req, res) => {
   try {
     let recording = await RecordingsModel.findById(req.body.id);
 
@@ -25,7 +25,7 @@ exports.insert = async (req, res) => {
   }
 };
 
-exports.list = async (req, res, next) => {
+export const list = async (req, res, next) => {
   try {
     if (req.query.refresh === 'true') {
       await RecordingsModel.refresh();
@@ -42,7 +42,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getById = async (req, res) => {
+export const getById = async (req, res) => {
   try {
     if (req.query.refresh === 'true') {
       await RecordingsModel.refresh();
@@ -66,7 +66,7 @@ exports.getById = async (req, res) => {
   }
 };
 
-exports.removeById = async (req, res) => {
+export const removeById = async (req, res) => {
   try {
     if (req.query.refresh === 'true') {
       await RecordingsModel.refresh();
@@ -92,7 +92,7 @@ exports.removeById = async (req, res) => {
   }
 };
 
-exports.removeAll = async (req, res) => {
+export const removeAll = async (req, res) => {
   try {
     await RecordingsModel.removeAll();
 

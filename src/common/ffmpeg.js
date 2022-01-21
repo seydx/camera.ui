@@ -1,21 +1,21 @@
 'use-strict';
 
-const fs = require('fs-extra');
-const piexif = require('piexifjs');
-const { spawn } = require('child_process');
+import fs from 'fs-extra';
+import piexif from 'piexifjs';
+import { spawn } from 'child_process';
 
-const cameraUtils = require('../controller/camera/utils/camera.utils');
+import * as cameraUtils from '../controller/camera/utils/camera.utils.js';
 
-const { ConfigService } = require('../services/config/config.service');
-const { LoggerService } = require('../services/logger/logger.service');
+import ConfigService from '../services/config/config.service.js';
+import LoggerService from '../services/logger/logger.service.js';
 
-const { CameraController } = require('../controller/camera/camera.controller');
+import CameraController from '../controller/camera/camera.controller.js';
 
 const { log } = LoggerService;
 
 const snapshotCache = {};
 
-const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
+const replaceJpegWithExifJPEG = (cameraName, filePath, label) => {
   let jpeg;
 
   try {
@@ -44,7 +44,7 @@ const replaceJpegWithExifJPEG = function (cameraName, filePath, label) {
   fs.writeFileSync(filePath, newJpeg);
 };
 
-const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
+const storeFrameFromVideoBuffer = (camera, fileBuffer, outputPath) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
@@ -105,7 +105,7 @@ const storeFrameFromVideoBuffer = function (camera, fileBuffer, outputPath) {
   });
 };
 
-exports.storeBuffer = async function (
+export const storeBuffer = async (
   camera,
   fileBuffer,
   recordingPath,
@@ -113,7 +113,7 @@ exports.storeBuffer = async function (
   label,
   isPlaceholder,
   externRecording
-) {
+) => {
   let outputPath = `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg`;
 
   // eslint-disable-next-line unicorn/prefer-ternary
@@ -126,21 +126,35 @@ exports.storeBuffer = async function (
   replaceJpegWithExifJPEG(camera.name, outputPath, label);
 };
 
-exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, isPlaceholder, storeSnapshot) {
+export const getAndStoreSnapshot = (
+  camera,
+  fromSubSource,
+  recordingPath,
+  fileName,
+  label,
+  isPlaceholder,
+  storeSnapshot
+) => {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
     if (!storeSnapshot && snapshotCache[camera.name]) {
-      const now = Date.now();
-      if ((now - snapshotCache[camera.name].time) / 1000 <= 30) {
-        log.debug('Snapshot requested (cache)', camera.name);
-        return resolve(snapshotCache[camera.name].buffer);
+      let store = fromSubSource ? snapshotCache[camera.name].sub : snapshotCache[camera.name].main;
+
+      if (store) {
+        const now = Date.now();
+        if ((now - store.time) / 1000 <= 10) {
+          log.debug('Snapshot requested (cache)', camera.name);
+          return resolve(store.buffer);
+        }
       }
     }
 
     const videoProcessor = ConfigService.ui.options.videoProcessor;
 
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+    let ffmpegInput = [
+      ...cameraUtils.generateInputSource(videoConfig, fromSubSource ? videoConfig.subSource : false).split(/\s+/),
+    ];
 
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
@@ -148,7 +162,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
     const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
 
     const controller = CameraController.cameras.get(camera.name);
-    if (camera.prebuffering && controller?.prebuffer) {
+    if (!fromSubSource && camera.prebuffering && controller?.prebuffer) {
       try {
         ffmpegInput = await controller.prebuffer.getVideo();
       } catch {
@@ -228,7 +242,7 @@ exports.getAndStoreSnapshot = function (camera, recordingPath, fileName, label, 
   });
 };
 
-exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName) {
+export const storeSnapshotFromVideo = async (camera, recordingPath, fileName) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoName = `${recordingPath}/${fileName}.mp4`;
@@ -275,7 +289,7 @@ exports.storeSnapshotFromVideo = async function (camera, recordingPath, fileName
 };
 
 // eslint-disable-next-line no-unused-vars
-exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) {
+export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
@@ -363,7 +377,7 @@ exports.storeVideo = function (camera, recordingPath, fileName, recordingTimer) 
   });
 };
 
-exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName) {
+export const storeVideoBuffer = (camera, fileBuffer, recordingPath, fileName) => {
   return new Promise((resolve, reject) => {
     const videoName = `${recordingPath}/${fileName}.mp4`;
 
@@ -379,7 +393,7 @@ exports.storeVideoBuffer = function (camera, fileBuffer, recordingPath, fileName
   });
 };
 
-exports.handleFragmentsRequests = async function* (camera) {
+export const handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
   const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);

@@ -1,8 +1,8 @@
 'use-strict';
-const AuthController = require('./auth.controller');
+import * as AuthController from './auth.controller.js';
 
-const AuthValidationMiddleware = require('../../middlewares/auth.validation.middleware');
-const UserValidationMiddleware = require('../../middlewares/user.validation.middleware');
+import * as AuthValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
+import * as UserValidationMiddleware from '../../middlewares/user.validation.middleware.js';
 
 /**
  * @swagger
@@ -10,7 +10,7 @@ const UserValidationMiddleware = require('../../middlewares/user.validation.midd
  *  name: Authentication
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/auth/login:

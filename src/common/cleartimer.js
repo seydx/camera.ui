@@ -1,13 +1,13 @@
 'use-strict';
 
-const fs = require('fs-extra');
-const moment = require('moment');
+import fs from 'fs-extra';
+import moment from 'moment';
 
-const { LoggerService } = require('../services/logger/logger.service');
+import LoggerService from '../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
-class Cleartimer {
+export default class Cleartimer {
   static #interfaceDB;
   static #recordingsDB;
 
@@ -28,13 +28,11 @@ class Cleartimer {
     try {
       //log.debug('Initializing clear timer');
 
-      await Cleartimer.#interfaceDB.read();
-
-      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
+      const notSettings = await Cleartimer.#interfaceDB.chain.get('settings').get('notifications').cloneDeep().value();
       const notRemoveAfter = notSettings.removeAfter;
 
       if (notRemoveAfter > 0) {
-        const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
+        const notifications = await Cleartimer.#interfaceDB.chain.get('notifications').cloneDeep().value();
 
         for (const notification of notifications) {
           let timestampNow = moment();
@@ -56,11 +54,11 @@ class Cleartimer {
         }
       }
 
-      const recSettings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
+      const recSettings = await Cleartimer.#interfaceDB.chain.get('settings').get('recordings').cloneDeep().value();
       const recRemoveAfter = recSettings.removeAfter;
 
       if (recRemoveAfter) {
-        const recordings = Cleartimer.#recordingsDB.get('recordings').value();
+        const recordings = Cleartimer.#recordingsDB.chain.get('recordings').cloneDeep().value();
 
         for (const recording of recordings) {
           let timestampNow = moment();
@@ -94,13 +92,11 @@ class Cleartimer {
 
   static async startNotifications() {
     try {
-      await Cleartimer.#interfaceDB.read();
-
-      const notSettings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
+      const notSettings = await Cleartimer.#interfaceDB.chain.get('settings').get('notifications').cloneDeep().value();
       const notRemoveAfter = notSettings.removeAfter;
 
       if (notRemoveAfter > 0) {
-        const notifications = await Cleartimer.#interfaceDB.get('notifications').value();
+        const notifications = await Cleartimer.#interfaceDB.chain.get('notifications').cloneDeep().value();
 
         for (const notification of notifications) {
           let timestampNow = moment();
@@ -129,13 +125,11 @@ class Cleartimer {
 
   static async startRecordings() {
     try {
-      await Cleartimer.#interfaceDB.read();
-
-      const recSettings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
+      const recSettings = await Cleartimer.#interfaceDB.chain.get('settings').get('recordings').cloneDeep().value();
       const recRemoveAfter = recSettings.removeAfter;
 
       if (recRemoveAfter) {
-        const recordings = Cleartimer.#recordingsDB.get('recordings').value();
+        const recordings = Cleartimer.#recordingsDB.chain.get('recordings').cloneDeep().value();
 
         for (const recording of recordings) {
           let timestampNow = moment();
@@ -184,9 +178,7 @@ class Cleartimer {
 
   static async setNotification(id, timestamp) {
     try {
-      await Cleartimer.#interfaceDB.read();
-
-      const settings = await Cleartimer.#interfaceDB.get('settings').get('notifications').value();
+      const settings = await Cleartimer.#interfaceDB.chain.get('settings').get('notifications').cloneDeep().value();
       const clearTimer = settings.removeAfter;
 
       Cleartimer.#timeout(clearTimer, 'hours', id, timestamp, false);
@@ -198,9 +190,7 @@ class Cleartimer {
 
   static async setRecording(id, timestamp) {
     try {
-      await Cleartimer.#interfaceDB.read();
-
-      const settings = await Cleartimer.#interfaceDB.get('settings').get('recordings').value();
+      const settings = await Cleartimer.#interfaceDB.chain.get('settings').get('recordings').cloneDeep().value();
       const clearTimer = settings.removeAfter;
 
       Cleartimer.#timeout(clearTimer, 'days', id, timestamp, true);
@@ -231,14 +221,12 @@ class Cleartimer {
   static async #clearNotification(id) {
     try {
       if (Cleartimer.#notificationsTimer.has(id)) {
-        await Cleartimer.#interfaceDB.read();
-
         log.debug(`Clear timer for notification (${id}) reached`);
 
-        await Cleartimer.#interfaceDB
+        await Cleartimer.#interfaceDB.chain
           .get('notifications')
           .remove((not) => not.id === id)
-          .write();
+          .value();
       }
     } catch (error) {
       log.info(`An error occured during removing notification (${id}) due to cleartimer`, 'Cleartimer', 'interface');
@@ -251,11 +239,12 @@ class Cleartimer {
       if (Cleartimer.#recordingsTimer.has(id)) {
         log.debug(`Clear timer for recording (${id}) reached`);
 
-        const recPath = Cleartimer.#recordingsDB.get('path').value();
+        const recPath = Cleartimer.#recordingsDB.chain.get('path').cloneDeep().value();
 
-        const recording = Cleartimer.#recordingsDB
+        const recording = Cleartimer.#recordingsDB.chain
           .get('recordings')
           .find((rec) => rec.id === id)
+          .cloneDeep()
           .value();
 
         if (recording) {
@@ -267,10 +256,10 @@ class Cleartimer {
           }
         }
 
-        Cleartimer.#recordingsDB
+        Cleartimer.#recordingsDB.chain
           .get('recordings')
           .remove((rec) => rec.id === id)
-          .write();
+          .value();
       }
     } catch (error) {
       log.info(`An error occured during removing recording (${id}) due to cleartimer`, 'Cleartimer', 'interface');
@@ -303,5 +292,3 @@ class Cleartimer {
     }
   }
 }
-
-exports.Cleartimer = Cleartimer;

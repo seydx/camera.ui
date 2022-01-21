@@ -1,21 +1,31 @@
 'use-strict';
 
-const fs = require('fs-extra');
-const os = require('os');
-const path = require('path');
-const tar = require('tar');
+import fs from 'fs-extra';
+import os from 'os';
+import path from 'path';
+import tar from 'tar';
 
-const { ConfigService } = require('../../../services/config/config.service');
-const { LoggerService } = require('../../../services/logger/logger.service');
+import ConfigService from '../../../services/config/config.service.js';
+import LoggerService from '../../../services/logger/logger.service.js';
 
-const { Database } = require('../../database');
+import Database from '../../database.js';
 
 const { log } = LoggerService;
 
-exports.createBackup = async (localStorage) => {
-  await Database.interfaceDB.read();
+/**
+ *
+ * @url https://github.com/oznu/homebridge-config-ui-x/blob/441fa8b3df6e24dc51b7033a64441e03bd9ed988/src/modules/backup/backup.service.ts
+ * (c) oznu <https://github.com/oznu>
+ *
+ **/
+export const createBackup = async (localStorage) => {
+  const recordingsPath = await Database.interfaceDB.chain
+    .get('settings')
+    .get('recordings')
+    .get('path')
+    .cloneDeep()
+    .value();
 
-  const recordingsPath = await Database.interfaceDB.get('settings').get('recordings').get('path').value();
   const backupDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'cameraui-backup-'));
   const backupFileName = 'cameraui-backup.tar.gz';
   const backupPath = path.resolve(backupDirectory, backupFileName);
@@ -31,7 +41,7 @@ exports.createBackup = async (localStorage) => {
     timestamp: new Date().toISOString(),
     platform: os.platform(),
     node: process.version,
-    firstStart: await Database.interfaceDB.get('firstStart').value(),
+    firstStart: await Database.interfaceDB.chain.get('firstStart').cloneDeep().value(),
     version: ConfigService.ui.version,
     database: Database.databasePath,
     recordings: recordingsPath,
@@ -70,10 +80,14 @@ exports.createBackup = async (localStorage) => {
   };
 };
 
-exports.restoreBackup = async (file) => {
-  await Database.interfaceDB.read();
+export const restoreBackup = async (file) => {
+  const recordingsPath = await Database.interfaceDB.chain
+    .get('settings')
+    .get('recordings')
+    .get('path')
+    .cloneDeep()
+    .value();
 
-  const recordingsPath = await Database.interfaceDB.get('settings').get('recordings').get('path').value();
   const backupDirectory = file.destination;
   const backupFileName = file.filename; // eslint-disable-line no-unused-vars
   const backupPath = file.path;
@@ -97,7 +111,7 @@ exports.restoreBackup = async (file) => {
   await fs.remove(backupDirectory);
 
   // refresh db
-  await Database.refreshDatabase();
+  await Database.interfaceDB.read();
   await Database.refreshRecordingsDatabase();
 
   log.info('Backup was successfully restored');
@@ -105,7 +119,7 @@ exports.restoreBackup = async (file) => {
   return infoFile.localStorage;
 };
 
-exports.removeBackup = async (backup) => {
+export const removeBackup = async (backup) => {
   log.info(`Removing temporary backup directory at ${backup.backupDirectory}`);
   return await fs.remove(backup.backupDirectory);
 };

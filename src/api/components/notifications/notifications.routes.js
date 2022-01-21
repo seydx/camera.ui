@@ -1,11 +1,11 @@
 'use-strict';
 
-const NotificationsController = require('./notifications.controller');
+import * as NotificationsController from './notifications.controller.js';
 
-const PaginationMiddleware = require('../../middlewares/pagination.middleware');
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
-const NotificationsValidationMiddleware = require('../../middlewares/notifications.validation.middleware');
+import * as PaginationMiddleware from '../../middlewares/pagination.middleware.js';
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
+import * as NotificationsValidationMiddleware from '../../middlewares/notifications.validation.middleware.js';
 
 /**
  * @swagger
@@ -13,7 +13,7 @@ const NotificationsValidationMiddleware = require('../../middlewares/notificatio
  *  name: Notifications
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/notifications:

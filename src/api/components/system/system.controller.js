@@ -5,18 +5,18 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const axios = require('axios');
-const { exec } = require('child_process');
-const fs = require('fs-extra');
-const systeminformation = require('systeminformation');
+import axios from 'axios';
+import { exec } from 'child_process';
+import fs from 'fs-extra';
+import systeminformation from 'systeminformation';
 
-const { LoggerService } = require('../../../services/logger/logger.service');
-const { ConfigService } = require('../../../services/config/config.service');
+import LoggerService from '../../../services/logger/logger.service.js';
+import ConfigService from '../../../services/config/config.service.js';
 
-const { Database } = require('../../database');
-const { Socket } = require('../../socket');
+import Database from '../../database.js';
+import Socket from '../../socket.js';
 
-const { MotionController } = require('../../../controller/motion/motion.controller');
+import MotionController from '../../../controller/motion/motion.controller.js';
 
 const { log } = LoggerService;
 
@@ -61,7 +61,7 @@ const updatePlugin = (version) => {
   });
 };
 
-exports.clearLog = async (req, res) => {
+export const clearLog = async (req, res) => {
   try {
     const logPath = ConfigService.logFile;
     fs.truncate(logPath, (err) => {
@@ -83,7 +83,7 @@ exports.clearLog = async (req, res) => {
   }
 };
 
-exports.downloadDb = async (req, res, next) => {
+export const downloadDb = async (req, res, next) => {
   try {
     const dbPath = ConfigService.databaseFilePath;
     //const dbJson = JSON.stringify((await fs.readJSON(dbPath, { throws: false })) || {});
@@ -106,7 +106,7 @@ exports.downloadDb = async (req, res, next) => {
   }
 };
 
-exports.downloadLog = async (req, res) => {
+export const downloadLog = async (req, res) => {
   try {
     const logPath = ConfigService.logFile;
     //res.download(logPath);
@@ -131,7 +131,7 @@ exports.downloadLog = async (req, res) => {
   }
 };
 
-exports.fetchNpm = async (req, res) => {
+export const fetchNpm = async (req, res) => {
   try {
     const moduleName = ConfigService.env.moduleName;
 
@@ -150,7 +150,7 @@ exports.fetchNpm = async (req, res) => {
   }
 };
 
-exports.getChangelog = async (req, res) => {
+export const getChangelog = async (req, res) => {
   try {
     const moduleName = ConfigService.env.moduleName;
     const version = req.query.version || ConfigService.version;
@@ -166,7 +166,7 @@ exports.getChangelog = async (req, res) => {
   }
 };
 
-exports.getFtpServerStatus = async (req, res) => {
+export const getFtpServerStatus = async (req, res) => {
   try {
     const status = MotionController.ftpServer.server.listening;
 
@@ -181,7 +181,7 @@ exports.getFtpServerStatus = async (req, res) => {
   }
 };
 
-exports.getHttpServerStatus = async (req, res) => {
+export const getHttpServerStatus = async (req, res) => {
   try {
     const status = MotionController.httpServer.listening;
 
@@ -196,7 +196,7 @@ exports.getHttpServerStatus = async (req, res) => {
   }
 };
 
-exports.getLog = async (req, res) => {
+export const getLog = async (req, res) => {
   try {
     const logPath = ConfigService.logFile;
     const truncateSize = 200000;
@@ -217,7 +217,7 @@ exports.getLog = async (req, res) => {
   }
 };
 
-exports.getMqttClientStatus = async (req, res) => {
+export const getMqttClientStatus = async (req, res) => {
   try {
     const status = MotionController.mqttClient.connected;
 
@@ -232,7 +232,7 @@ exports.getMqttClientStatus = async (req, res) => {
   }
 };
 
-exports.getSmtpServerStatus = async (req, res) => {
+export const getSmtpServerStatus = async (req, res) => {
   try {
     const status = MotionController.smtpServer.server.listening;
 
@@ -247,7 +247,7 @@ exports.getSmtpServerStatus = async (req, res) => {
   }
 };
 
-exports.getUptime = async (req, res) => {
+export const getUptime = async (req, res) => {
   try {
     const humaniseDuration = (seconds) => {
       if (seconds < 50) {
@@ -277,7 +277,7 @@ exports.getUptime = async (req, res) => {
   }
 };
 
-exports.lastModifiedDb = async (req, res) => {
+export const lastModifiedDb = async (req, res) => {
   try {
     const dbPath = ConfigService.databaseFilePath;
     const dbFileInfo = await fs.stat(dbPath);
@@ -291,7 +291,7 @@ exports.lastModifiedDb = async (req, res) => {
   }
 };
 
-exports.restartFtpServer = async (req, res) => {
+export const restartFtpServer = async (req, res) => {
   try {
     MotionController.closeFtpServer();
     await setTimeoutAsync(1000);
@@ -308,7 +308,7 @@ exports.restartFtpServer = async (req, res) => {
   }
 };
 
-exports.restarHttpServer = async (req, res) => {
+export const restarHttpServer = async (req, res) => {
   try {
     MotionController.closeHttpServer();
     await setTimeoutAsync(1000);
@@ -325,7 +325,7 @@ exports.restarHttpServer = async (req, res) => {
   }
 };
 
-exports.restartMqttClient = async (req, res) => {
+export const restartMqttClient = async (req, res) => {
   try {
     MotionController.closeMqttClient();
     await setTimeoutAsync(1000);
@@ -342,7 +342,7 @@ exports.restartMqttClient = async (req, res) => {
   }
 };
 
-exports.restartSmtpServer = async (req, res) => {
+export const restartSmtpServer = async (req, res) => {
   try {
     MotionController.closeSmtpServer();
     await setTimeoutAsync(1000);
@@ -359,7 +359,7 @@ exports.restartSmtpServer = async (req, res) => {
   }
 };
 
-exports.restartSystem = async (req, res) => {
+export const restartSystem = async (req, res) => {
   try {
     Database.controller.emit('restart');
     res.status(204).send({});
@@ -371,7 +371,7 @@ exports.restartSystem = async (req, res) => {
   }
 };
 
-exports.stopFtpServer = async (req, res) => {
+export const stopFtpServer = async (req, res) => {
   try {
     MotionController.closeFtpServer();
     await setTimeoutAsync(1000);
@@ -385,7 +385,7 @@ exports.stopFtpServer = async (req, res) => {
   }
 };
 
-exports.stopHttpServer = async (req, res) => {
+export const stopHttpServer = async (req, res) => {
   try {
     MotionController.closeHttpServer();
     await setTimeoutAsync(1000);
@@ -399,7 +399,7 @@ exports.stopHttpServer = async (req, res) => {
   }
 };
 
-exports.stopMqttClient = async (req, res) => {
+export const stopMqttClient = async (req, res) => {
   try {
     MotionController.closeMqttClient();
     await setTimeoutAsync(1000);
@@ -413,7 +413,7 @@ exports.stopMqttClient = async (req, res) => {
   }
 };
 
-exports.stopSmtpServer = async (req, res) => {
+export const stopSmtpServer = async (req, res) => {
   try {
     MotionController.closeSmtpServer();
     await setTimeoutAsync(1000);
@@ -427,7 +427,7 @@ exports.stopSmtpServer = async (req, res) => {
   }
 };
 
-exports.updateSystem = async (req, res) => {
+export const updateSystem = async (req, res) => {
   try {
     if (updating) {
       return res.status(500).send({

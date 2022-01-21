@@ -1,23 +1,20 @@
 'use-strict';
 
-const { customAlphabet } = require('nanoid/async');
+import { customAlphabet } from 'nanoid/async';
+
+import Database from '../../database.js';
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
-const { Database } = require('../../database');
-
-exports.list = async () => {
-  await Database.interfaceDB.read();
-  return await Database.interfaceDB.get('users').value();
+export const list = async () => {
+  return await Database.interfaceDB.chain.get('users').cloneDeep().value();
 };
 
-exports.findByName = async (username) => {
-  await Database.interfaceDB.read();
-  return await Database.interfaceDB.get('users').find({ username: username }).value();
+export const findByName = async (username) => {
+  return await Database.interfaceDB.chain.get('users').find({ username: username }).cloneDeep().value();
 };
 
-exports.createUser = async (userData) => {
-  await Database.interfaceDB.read();
-
+export const createUser = async (userData) => {
   const user = {
     id: await nanoid(),
     username: userData.username,
@@ -27,13 +24,11 @@ exports.createUser = async (userData) => {
     permissionLevel: userData.permissionLevel || 1,
   };
 
-  return await Database.interfaceDB.get('users').push(user).write();
+  return await Database.interfaceDB.chain.get('users').push(user).value();
 };
 
-exports.patchUser = async (username, userData) => {
-  await Database.interfaceDB.read();
-
-  const user = await Database.interfaceDB.get('users').find({ username: username }).value();
+export const patchUser = async (username, userData) => {
+  const user = await Database.interfaceDB.chain.get('users').find({ username: username }).cloneDeep().value();
 
   for (const [key, value] of Object.entries(userData)) {
     if (user[key] !== undefined) {
@@ -41,14 +36,12 @@ exports.patchUser = async (username, userData) => {
     }
   }
 
-  return await Database.interfaceDB.get('users').find({ username: username }).assign(user).write();
+  return await Database.interfaceDB.chain.get('users').find({ username: username }).assign(user).value();
 };
 
-exports.removeByName = async (username) => {
-  await Database.interfaceDB.read();
-
-  return await Database.interfaceDB
+export const removeByName = async (username) => {
+  return await Database.interfaceDB.chain
     .get('users')
     .remove((usr) => usr.username === username)
-    .write();
+    .value();
 };

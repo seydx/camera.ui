@@ -2,15 +2,15 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const AlexaRemote = require('alexa-remote2');
+import AlexaRemote from 'alexa-remote2';
 
-const { LoggerService } = require('../services/logger/logger.service');
+import LoggerService from '../services/logger/logger.service.js';
 
-const { Database } = require('../api/database');
+import Database from '../api/database.js';
 
 const { log } = LoggerService;
 
-class Alexa {
+export default class Alexa {
   static remote = new AlexaRemote();
 
   constructor() {}
@@ -54,8 +54,12 @@ class Alexa {
             };
 
             try {
-              await Database.interfaceDB.read();
-              await Database.interfaceDB.get('settings').get('notifications').get('alexa').set('auth', auth).write();
+              await Database.interfaceDB.chain
+                .get('settings')
+                .get('notifications')
+                .get('alexa')
+                .set('auth', auth)
+                .value();
             } catch (e) {
               Alexa.remote = false;
               reject(e);
@@ -71,14 +75,10 @@ class Alexa {
   static async connect(config) {
     try {
       if (!config) {
-        await Database.interfaceDB.read();
-
-        config = await Database.interfaceDB.get('settings').get('notifications').get('alexa').value();
+        config = await Database.interfaceDB.chain.get('settings').get('notifications').get('alexa').cloneDeep().value();
       }
 
-      const status = await Alexa.start(config, false, true);
-
-      return status;
+      return await Alexa.start(config, false, true);
     } catch (error) {
       if (error.includes('You can try to get the cookie manually by opening') && Alexa.remote?.alexaCookie) {
         Alexa.remote.alexaCookie.stopProxyServer();
@@ -135,5 +135,3 @@ class Alexa {
     }
   }
 }
-
-exports.Alexa = Alexa;

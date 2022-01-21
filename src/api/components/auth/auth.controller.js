@@ -1,18 +1,19 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
-const { ConfigService } = require('../../../services/config/config.service');
+import ConfigService from '../../../services/config/config.service.js';
 
-const { Socket } = require('../../socket');
+import Database from '../../database.js';
+import Socket from '../../socket.js';
 
-const AuthModel = require('./auth.model');
+import * as AuthModel from './auth.model.js';
 
 const jwtSecret = ConfigService.interface.jwt_secret;
 
-exports.check = (req, res) => {
+export const check = (req, res) => {
   try {
     res.status(200).send({
       status: 'OK',
@@ -25,7 +26,7 @@ exports.check = (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     let sessionTimer = req.body.sessionTimer || 14400;
     let salt = crypto.randomBytes(16).toString('base64');
@@ -57,7 +58,7 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
+export const logout = async (req, res) => {
   try {
     let authHeader = req.headers['authorization'] || req.headers['Authorization'];
     let authorization = authHeader ? req.headers['authorization'].split(/\s+/) : false;
@@ -77,6 +78,8 @@ exports.logout = async (req, res) => {
       AuthModel.invalidateByName(userName);
     }*/
 
+    await Database.interfaceDB.write();
+
     res.sendStatus(200);
   } catch (error) {
     res.status(500).send({
@@ -86,9 +89,10 @@ exports.logout = async (req, res) => {
   }
 };
 
-exports.logoutAll = async (req, res) => {
+export const logoutAll = async (req, res) => {
   try {
     AuthModel.invalidateAll();
+    await Database.interfaceDB.write();
     res.sendStatus(200);
   } catch (error) {
     res.status(500).send({

@@ -1,20 +1,21 @@
 /* eslint-disable unicorn/explicit-length-check */
 'use-strict';
 
-const socketioJwt = require('socketio-jwt');
-const systeminformation = require('systeminformation');
+import { Server } from 'socket.io';
+import socketioJwt from 'socketio-jwt';
+import systeminformation from 'systeminformation';
 
-const { LoggerService } = require('../services/logger/logger.service');
-const { ConfigService } = require('../services/config/config.service');
+import LoggerService from '../services/logger/logger.service.js';
+import ConfigService from '../services/config/config.service.js';
 
-const { Database } = require('./database');
+import Database from './database.js';
 
-const { CameraController } = require('../controller/camera/camera.controller');
-const { MotionController } = require('../controller/motion/motion.controller');
+import CameraController from '../controller/camera/camera.controller.js';
+import MotionController from '../controller/motion/motion.controller.js';
 
 const { log } = LoggerService;
 
-class Socket {
+export default class Socket {
   #streamTimeouts = new Map();
 
   static #uptime = {
@@ -30,7 +31,7 @@ class Socket {
   static create = (server) => new Socket(server);
 
   constructor(server) {
-    Socket.io = LoggerService.socket = require('socket.io')(server, {
+    Socket.io = LoggerService.socket = new Server(server, {
       cors: {
         origin: '*',
       },
@@ -46,7 +47,7 @@ class Socket {
     Socket.io.on('connection', async (socket) => {
       //check if token is valid
       const token = socket.encoded_token;
-      const tokenExist = Database.tokensDB.get('tokens').find({ token: token }).value();
+      const tokenExist = Database.tokensDB.chain.get('tokens').find({ token: token }).value();
 
       if (!tokenExist) {
         log.debug(
@@ -67,8 +68,8 @@ class Socket {
         socket.decoded_token.permissionLevel.includes('notifications:access') ||
         socket.decoded_token.permissionLevel.includes('admin')
       ) {
-        const notifications = await Database.interfaceDB.get('notifications').value();
-        const systemNotifications = Database.notificationsDB.get('notifications').value();
+        const notifications = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
+        const systemNotifications = Database.notificationsDB.chain.get('notifications').cloneDeep().value();
         const size = notifications.length + systemNotifications.length;
 
         socket.emit('notification_size', size);
@@ -405,5 +406,3 @@ class Socket {
     }
   }
 }
-
-exports.Socket = Socket;

@@ -2,134 +2,146 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const cors = require('cors');
-const fs = require('fs-extra');
-const helmet = require('helmet');
-const history = require('connect-history-api-fallback');
-const morgan = require('morgan');
-const multer = require('multer');
-const path = require('path');
-const os = require('os');
+import cors from 'cors';
+import fs from 'fs-extra';
+import helmet from 'helmet';
+import history from 'connect-history-api-fallback';
+import morgan from 'morgan';
+import multer from 'multer';
+import path from 'path';
+import os from 'os';
+import { fileURLToPath } from 'url';
 
-const { LoggerService } = require('../services/logger/logger.service');
+import LoggerService from '../services/logger/logger.service.js';
 
-const express = require('express');
-const app = express();
+import express from 'express';
 
 //swagger
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
-const swaggerOptions = require('./docs/swagger');
-const specs = swaggerJsdoc(swaggerOptions);
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+import swaggerOptions from './docs/swagger.js';
 
-const AuthRouter = require('./components/auth/auth.routes');
-const BackupRouter = require('./components/backup/backup.routes');
-const CamerasRouter = require('./components/cameras/cameras.routes');
-const ConfigRouter = require('./components/config/config.routes');
-const FilesRouter = require('./components/files/files.routes');
-const NotificationsRouter = require('./components/notifications/notifications.routes');
-const RecordingsRouter = require('./components/recordings/recordings.routes');
-const SettingsRouter = require('./components/settings/settings.routes');
-const SubscribeRouter = require('./components/subscribe/subscribe.routes');
-const SystemRouter = require('./components/system/system.routes');
-const UsersRouter = require('./components/users/users.routes');
+import * as AuthRouter from './components/auth/auth.routes.js';
+import * as BackupRouter from './components/backup/backup.routes.js';
+import * as CamerasRouter from './components/cameras/cameras.routes.js';
+import * as ConfigRouter from './components/config/config.routes.js';
+import * as FilesRouter from './components/files/files.routes.js';
+import * as NotificationsRouter from './components/notifications/notifications.routes.js';
+import * as RecordingsRouter from './components/recordings/recordings.routes.js';
+import * as SettingsRouter from './components/settings/settings.routes.js';
+import * as SubscribeRouter from './components/subscribe/subscribe.routes.js';
+import * as SystemRouter from './components/system/system.routes.js';
+import * as UsersRouter from './components/users/users.routes.js';
 
 const { log } = LoggerService;
 
-exports.App = (options) => {
-  app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(helmet());
-  app.use(
-    helmet.contentSecurityPolicy({
-      directives: {
-        defaultSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
-        scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:', 'data:'],
-        childSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'https:'],
-        fontSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:'],
-        connectSrc: [
-          'ws:',
-          'wss:',
-          'https:',
-          'blob:',
-          'data:',
-          'file:',
-          'filesystem:',
-          'mediastream:',
-          'https://registry.npmjs.org',
-          'https://unpkg.com',
-          "'unsafe-eval'",
-          "'unsafe-inline'",
-          "'self'",
-        ],
-        imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:', 'https://openweathermap.org'],
-        mediaSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
-      },
-    })
-  );
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-  //app.use(morgan('dev', { skip: () => !options.debug }));
+const app = express();
+const specs = swaggerJsdoc(swaggerOptions);
 
-  app.use(
-    morgan('dev', {
-      skip: () => !options.debug,
-      stream: {
-        write: (a) => {
-          log.debug(a.replace(/^\s+|\s+$/g, ''));
+export default class App {
+  constructor(options) {
+    app.use(cors());
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(
+      helmet({
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false,
+        originAgentCluster: false,
+      })
+    );
+    app.use(
+      helmet.contentSecurityPolicy({
+        useDefaults: false,
+        directives: {
+          defaultSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
+          scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'https://*.googleapis.com', 'blob:', 'data:'],
+          childSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'https:'],
+          fontSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:'],
+          connectSrc: [
+            'ws:',
+            'wss:',
+            'https:',
+            'blob:',
+            'data:',
+            'file:',
+            'filesystem:',
+            'mediastream:',
+            'https://registry.npmjs.org',
+            'https://unpkg.com',
+            "'unsafe-eval'",
+            "'unsafe-inline'",
+            "'self'",
+          ],
+          imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:', 'https://openweathermap.org'],
+          mediaSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:'],
         },
-      },
-    })
-  );
+      })
+    );
 
-  const backupUpload = multer({
-    storage: multer.diskStorage({
-      destination: async (request, file, callback) => {
-        const backupDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'cameraui-restore-'));
-        callback(null, backupDirectory);
-      },
-      filename: (request, file, callback) => {
-        callback(null, file.originalname);
-      },
-    }),
-  });
+    app.use(
+      morgan('dev', {
+        skip: () => !options.debug,
+        stream: {
+          write: (a) => {
+            log.debug(a.replace(/^\s+|\s+$/g, ''));
+          },
+        },
+      })
+    );
 
-  AuthRouter.routesConfig(app);
-  BackupRouter.routesConfig(app, backupUpload);
-  CamerasRouter.routesConfig(app);
-  ConfigRouter.routesConfig(app);
-  FilesRouter.routesConfig(app);
-  NotificationsRouter.routesConfig(app);
-  RecordingsRouter.routesConfig(app);
-  SettingsRouter.routesConfig(app);
-  SubscribeRouter.routesConfig(app);
-  SystemRouter.routesConfig(app);
-  UsersRouter.routesConfig(app);
-
-  app.get('/version', (req, res) => {
-    res.status(200).send({
-      version: options.version,
+    const backupUpload = multer({
+      storage: multer.diskStorage({
+        destination: async (request, file, callback) => {
+          const backupDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'cameraui-restore-'));
+          callback(null, backupDirectory);
+        },
+        filename: (request, file, callback) => {
+          callback(null, file.originalname);
+        },
+      }),
     });
-  });
 
-  app.use(
-    '/swagger',
-    swaggerUi.serve,
-    swaggerUi.setup(specs, {
-      explorer: true,
-      swaggerOptions: {
-        displayRequestDuration: true,
-        docExpansion: 'none',
-        filter: false,
-        showExtensions: true,
-        showCommonExtensions: true,
-        displayOperationId: false,
-      },
-    })
-  );
+    AuthRouter.routesConfig(app);
+    BackupRouter.routesConfig(app, backupUpload);
+    CamerasRouter.routesConfig(app);
+    ConfigRouter.routesConfig(app);
+    FilesRouter.routesConfig(app);
+    NotificationsRouter.routesConfig(app);
+    RecordingsRouter.routesConfig(app);
+    SettingsRouter.routesConfig(app);
+    SubscribeRouter.routesConfig(app);
+    SystemRouter.routesConfig(app);
+    UsersRouter.routesConfig(app);
 
-  app.use(history({ index: 'index.html', verbose: options.debug }));
-  app.use(express.static(path.join(__dirname, '../../interface')));
+    app.get('/version', (req, res) => {
+      res.status(200).send({
+        version: options.version,
+      });
+    });
 
-  return app;
-};
+    app.use(
+      '/swagger',
+      swaggerUi.serve,
+      swaggerUi.setup(specs, {
+        explorer: true,
+        swaggerOptions: {
+          displayRequestDuration: true,
+          docExpansion: 'none',
+          filter: false,
+          showExtensions: true,
+          showCommonExtensions: true,
+          displayOperationId: false,
+        },
+      })
+    );
+
+    app.use(history({ index: 'index.html', verbose: options.debug }));
+    app.use(express.static(path.join(__dirname, '../../interface')));
+
+    return app;
+  }
+}

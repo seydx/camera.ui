@@ -1,16 +1,20 @@
 'use-strict';
 
-const { App } = require('../../src/api/app');
-const { Database } = require('../../src/api/database');
+import App from '../../src/api/app.js';
+import Database from '../../src/api/database.js';
+import { fileURLToPath } from 'url';
 
-const app = App({
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const app = new App({
   debug: process.env.CUI_LOG_DEBUG === '1',
-  version: require('../../package.json').version,
+  version: process.env.CUI_MODULE_VERSION,
 });
 
-const fs = require('fs-extra');
-const path = require('path');
-const supertest = require('supertest');
+import fs from 'fs-extra';
+import path from 'path';
+import supertest from 'supertest';
+
 const request = supertest(app);
 
 const masterCredentials = {
@@ -24,12 +28,12 @@ beforeAll(async () => {
   await Database.resetDatabase();
   await database.prepareDatabase();
 
-  Database.recordingsDB
+  Database.recordingsDB.chain
     .get('recordings')
     .remove(() => true)
-    .write(); // eslint-disable-line no-unused-vars
+    .value(); // eslint-disable-line no-unused-vars
 
-  let recPath = Database.recordingsDB.get('path').value();
+  let recPath = Database.recordingsDB.chain.get('path').value();
   await fs.emptyDir(recPath);
 
   let files = [
@@ -45,22 +49,27 @@ beforeAll(async () => {
 
 describe('GET /api/backup/download', () => {
   // eslint-disable-next-line jest/no-done-callback
-  it('should response if successfull', async (done) => {
+  it('should response if successfull', (done) => {
     const backupFileName = 'cameraui-backup.tar.gz';
+
     const backupDirectory = path.resolve(__dirname, '..', 'camera.ui');
     const backupPath = path.resolve(backupDirectory, backupFileName);
 
     const file = fs.createWriteStream(backupPath);
 
-    const auth = await request.post('/api/auth/login').send(masterCredentials);
-    expect(auth.statusCode).toBe(201);
+    request
+      .post('/api/auth/login')
+      .send(masterCredentials)
+      .then((auth) => {
+        expect(auth.statusCode).toBe(201);
 
-    await request
-      .get('/api/backup/download')
-      .auth(auth.body.access_token, { type: 'bearer' })
-      .expect(200)
-      .pipe(file)
-      .on('finish', () => done());
+        request
+          .get('/api/backup/download')
+          .auth(auth.body.access_token, { type: 'bearer' })
+          .expect(200)
+          .pipe(file)
+          .on('finish', () => done());
+      });
   });
 });
 

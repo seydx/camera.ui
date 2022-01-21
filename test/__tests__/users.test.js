@@ -1,14 +1,14 @@
 'use-strict';
 
-const { App } = require('../../src/api/app');
-const { Database } = require('../../src/api/database');
+import App from '../../src/api/app.js';
+import Database from '../../src/api/database.js';
 
-const app = App({
+const app = new App({
   debug: process.env.CUI_LOG_DEBUG === '1',
-  version: require('../../package.json').version,
+  version: process.env.CUI_MODULE_VERSION,
 });
 
-const supertest = require('supertest');
+import supertest from 'supertest';
 const request = supertest(app);
 
 const userCredentials = {
@@ -174,6 +174,7 @@ describe('DELETE /api/users/:name', () => {
     const response = await request
       .delete('/api/users/' + userCredentials.username)
       .auth(auth.body.access_token, { type: 'bearer' });
+
     expect(response.statusCode).toBe(204);
   });
 });

@@ -1,16 +1,16 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const path = require('path');
+import path from 'path';
 
-const SettingsModel = require('../settings/settings.model');
+import * as SettingsModel from '../settings/settings.model.js';
 
-const { ConfigService } = require('../../../services/config/config.service');
-const { LoggerService } = require('../../../services/logger/logger.service');
+import ConfigService from '../../../services/config/config.service.js';
+import LoggerService from '../../../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
-exports.serve = async (req, res, next) => {
+export const serve = async (req, res, next) => {
   try {
     const recordingSettings = await SettingsModel.getByTarget(false, 'recordings');
 

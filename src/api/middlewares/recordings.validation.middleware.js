@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-exports.hasValidFields = async (req, res, next) => {
+export const hasValidFields = async (req, res, next) => {
   let errors = [];
 
   if (req.body) {

@@ -1,14 +1,14 @@
 'use-strict';
 
-const { ConfigService } = require('../../services/config/config.service');
+import ConfigService from '../../services/config/config.service.js';
 
-const { MediaService } = require('./services/media.service');
-const { PrebufferService } = require('./services/prebuffer.service');
-const { SessionService } = require('./services/session.service');
-const { StreamService } = require('./services/stream.service');
-const { VideoAnalysisService } = require('./services/videoanalysis.service');
+import MediaService from './services/media.service.js';
+import PrebufferService from './services/prebuffer.service.js';
+import SessionService from './services/session.service.js';
+import StreamService from './services/stream.service.js';
+import VideoAnalysisService from './services/videoanalysis.service.js';
 
-class CameraController {
+export default class CameraController {
   static #controller;
   static #socket;
 
@@ -114,5 +114,3 @@ class CameraController {
     CameraController.cameras.set(camera.name, controller);
   }
 }
-
-exports.CameraController = CameraController;

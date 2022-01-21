@@ -1,17 +1,18 @@
 'use-strict';
 
-const _ = require('lodash');
-const cameraUtils = require('../utils/camera.utils');
-const { spawn } = require('child_process');
+import isEqual from 'lodash/isEqual.js';
+import { spawn } from 'child_process';
 
-const { ConfigService } = require('../../../services/config/config.service');
-const { LoggerService } = require('../../../services/logger/logger.service');
+import * as cameraUtils from '../utils/camera.utils.js';
 
-const { Database } = require('../../../api/database');
+import ConfigService from '../../../services/config/config.service.js';
+import LoggerService from '../../../services/logger/logger.service.js';
+
+import Database from '../../../api/database.js';
 
 const { log } = LoggerService;
 
-class StreamService {
+export default class StreamService {
   #socket;
   #camera;
   #prebufferService;
@@ -39,7 +40,7 @@ class StreamService {
     this.#camera = camera;
     this.cameraName = camera.name;
 
-    if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.streamSession) {
+    if (!isEqual(oldVideoConfig, newVideoConfig) && this.streamSession) {
       log.info('Stream: Video configuration changed! Restarting...', this.cameraName);
 
       this.restart();
@@ -47,9 +48,7 @@ class StreamService {
   }
 
   async configureStreamOptions() {
-    await Database.interfaceDB.read();
-
-    const Settings = await Database.interfaceDB.get('settings').get('cameras').value();
+    const Settings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
     const cameraSetting = Settings.find((camera) => camera && camera.name === this.cameraName);
 
     const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
@@ -194,5 +193,3 @@ class StreamService {
     }
   }
 }
-
-exports.StreamService = StreamService;

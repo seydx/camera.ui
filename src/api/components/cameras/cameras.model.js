@@ -1,39 +1,30 @@
 'use-strict';
 
-const { getAndStoreSnapshot } = require('../../../common/ffmpeg');
-const { Ping } = require('../../../common/ping');
+import { getAndStoreSnapshot } from '../../../common/ffmpeg.js';
+import Ping from '../../../common/ping.js';
 
-const { ConfigService } = require('../../../services/config/config.service');
+import ConfigService from '../../../services/config/config.service.js';
 
-const { Database } = require('../../database');
+import Database from '../../database.js';
 
-const { CameraController } = require('../../../controller/camera/camera.controller');
+import CameraController from '../../../controller/camera/camera.controller.js';
 
-exports.list = async () => {
-  await Database.interfaceDB.read();
-  return await Database.interfaceDB.get('cameras').value();
+export const list = async () => {
+  return await Database.interfaceDB.chain.get('cameras').cloneDeep().value();
 };
 
-exports.findByName = async (name) => {
-  await Database.interfaceDB.read();
-  return await Database.interfaceDB.get('cameras').find({ name: name }).value();
+export const findByName = async (name) => {
+  return await Database.interfaceDB.chain.get('cameras').find({ name: name }).cloneDeep().value();
 };
 
-exports.getSettingsByName = async (name) => {
-  await Database.interfaceDB.read();
-
-  const settings = await Database.interfaceDB.get('settings').get('cameras').value();
-  const cameraSetting = settings.find((cameraSetting) => cameraSetting && cameraSetting.name === name);
-
-  return cameraSetting;
+export const getSettingsByName = async (name) => {
+  return await Database.interfaceDB.chain.get('settings').get('cameras').find({ name: name }).cloneDeep().value();
 };
 
-exports.createCamera = async (cameraData) => {
+export const createCamera = async (cameraData) => {
   const camExist = ConfigService.ui.cameras.find((cam) => cam.name === cameraData.name);
 
   if (!camExist) {
-    await Database.interfaceDB.read();
-
     ConfigService.ui.cameras.push(cameraData);
     ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 
@@ -50,7 +41,7 @@ exports.createCamera = async (cameraData) => {
 };
 
 // todo: not used, handled through system/config
-exports.patchCamera = async (name, cameraData) => {
+export const patchCamera = async (name, cameraData) => {
   if (
     cameraData.name &&
     name !== cameraData.name &&
@@ -58,8 +49,6 @@ exports.patchCamera = async (name, cameraData) => {
   ) {
     throw new Error('Camera already exists in config.json');
   }
-
-  await Database.interfaceDB.read();
 
   ConfigService.ui.cameras = ConfigService.ui.cameras.map((camera) => {
     if (camera.name === cameraData.name) {
@@ -74,21 +63,19 @@ exports.patchCamera = async (name, cameraData) => {
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
   await Database.writeConfigCamerasToDB();
 
-  return await Database.interfaceDB.get('cameras').find({ name: name }).assign(cameraData).write();
+  return await Database.interfaceDB.chain.get('cameras').find({ name: name }).assign(cameraData).value();
 };
 
-exports.pingCamera = async (camera, timeout) => {
+export const pingCamera = async (camera, timeout) => {
   timeout = (Number.parseInt(timeout) || 0) < 1 ? 1 : Number.parseInt(timeout);
   return await Ping.status(camera, timeout);
 };
 
-exports.requestSnapshot = async (camera) => {
-  return await getAndStoreSnapshot(camera);
+export const requestSnapshot = async (camera, fromSubSource) => {
+  return await getAndStoreSnapshot(camera, fromSubSource);
 };
 
-exports.removeByName = async (name) => {
-  await Database.interfaceDB.read();
-
+export const removeByName = async (name) => {
   ConfigService.ui.cameras = ConfigService.ui.cameras.filter((camera) => camera.name !== name);
   ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
 
@@ -96,13 +83,9 @@ exports.removeByName = async (name) => {
 
   await Database.writeConfigCamerasToDB();
   Database.controller?.emit('removeCamera', name);
-
-  return;
 };
 
-exports.removeAll = async () => {
-  await Database.interfaceDB.read();
-
+export const removeAll = async () => {
   const cameras = ConfigService.ui.cameras.map((camera) => camera.name);
 
   ConfigService.ui.cameras = [];
@@ -114,6 +97,4 @@ exports.removeAll = async () => {
 
   await Database.writeConfigCamerasToDB();
   Database.controller?.emit('removeCameras');
-
-  return;
 };

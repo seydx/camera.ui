@@ -2,13 +2,17 @@
 
 process.title = 'camera.ui';
 
-const cluster = require('cluster');
-const os = require('os');
-const path = require('path');
-const commander = require('commander');
-const { version } = require('../package.json');
+import fs from 'fs-extra';
+import cluster from 'cluster';
+import os from 'os';
+import path from 'path';
+import commander from 'commander';
+import { fileURLToPath } from 'url';
 
-const { LoggerService } = require('../src/services/logger/logger.service');
+import LoggerService from '../src/services/logger/logger.service.js';
+import ConfigService from '../src/services/config/config.service.js';
+
+import Interface from '../src/main.js';
 
 let moduleName = 'camera.ui';
 let globalInstalled = '1';
@@ -17,6 +21,9 @@ let debugEnabled = '0';
 let logTimestamps = '1';
 let logColourful = '1';
 let storagePath = path.resolve(os.homedir(), '.camera.ui');
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageJson = fs.readJsonSync(path.resolve(__dirname, '../package.json'));
 
 commander
   .allowUnknownOption()
@@ -32,13 +39,17 @@ commander
   )
   .parse(process.argv);
 
-process.env.NTBA_FIX_350 = true;
+// node-telegram-bot-api
+process.env.NTBA_FIX_319 = 1;
+process.env.NTBA_FIX_350 = 1;
 
 process.env.CUI_SERVICE_MODE = '1';
 
 process.env.CUI_LOG_COLOR = logColourful;
 process.env.CUI_LOG_DEBUG = debugEnabled;
 process.env.CUI_LOG_TIMESTAMPS = logTimestamps;
+
+process.env.CUI_BASE_PATH = path.resolve(__dirname, '../');
 
 process.env.CUI_STORAGE_PATH = storagePath;
 process.env.CUI_STORAGE_CONFIG_FILE = path.resolve(storagePath, 'config.json');
@@ -50,11 +61,14 @@ process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.
 process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
 
 process.env.CUI_MODULE_NAME = moduleName;
-process.env.CUI_MODULE_VERSION = version;
+process.env.CUI_MODULE_VERSION = packageJson.version;
 process.env.CUI_MODULE_GLOBAL = globalInstalled;
 process.env.CUI_MODULE_SUDO = sudoEnabled;
 
-LoggerService.create();
+process.env.CUI_VERSION = packageJson.version;
+
+const logger = new LoggerService();
+const config = new ConfigService();
 
 if (cluster.isPrimary) {
   const { log } = LoggerService;
@@ -101,5 +115,5 @@ if (cluster.isPrimary) {
 
   cluster.fork();
 } else {
-  require('../src/main');
+  new Interface(logger, config);
 }

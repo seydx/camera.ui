@@ -1,10 +1,10 @@
 'use-strict';
 
-const { LoggerService } = require('../../../services/logger/logger.service');
+import LoggerService from '../../../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
-class SessionService {
+export default class SessionService {
   #camera;
 
   constructor(camera) {
@@ -64,5 +64,3 @@ class SessionService {
     this.session.activeStreams = 0;
   }
 }
-
-exports.SessionService = SessionService;

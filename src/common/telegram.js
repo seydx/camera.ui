@@ -1,14 +1,14 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const fs = require('fs-extra');
-const TelegramBot = require('node-telegram-bot-api');
+import fs from 'fs-extra';
+import TelegramBot from 'node-telegram-bot-api';
 
-const { LoggerService } = require('../services/logger/logger.service');
+import LoggerService from '../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
-class Telegram {
+export default class Telegram {
   static bot = null;
 
   constructor() {}
@@ -72,5 +72,3 @@ class Telegram {
     }
   }
 }
-
-exports.Telegram = Telegram;

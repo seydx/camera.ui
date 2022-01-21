@@ -1,11 +1,11 @@
 'use-strict';
 
-const CamerasController = require('./cameras.controller');
+import * as CamerasController from './cameras.controller.js';
 
-const PaginationMiddleware = require('../../middlewares/pagination.middleware');
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
-const CamerasValidationMiddleware = require('../../middlewares/cameras.validation.middleware');
+import * as PaginationMiddleware from '../../middlewares/pagination.middleware.js';
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
+import * as CamerasValidationMiddleware from '../../middlewares/cameras.validation.middleware.js';
 
 /**
  * @swagger
@@ -13,7 +13,7 @@ const CamerasValidationMiddleware = require('../../middlewares/cameras.validatio
  *  name: Cameras
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/cameras:
@@ -278,6 +278,11 @@ exports.routesConfig = (app) => {
    *         schema:
    *           type: boolean
    *         description: Returns a buffer of the snapshot
+   *       - in: query
+   *         name: fromSubSource
+   *         schema:
+   *           type: boolean
+   *         description: Get snapshot from sub source
    *     responses:
    *       200:
    *         description: Successfull

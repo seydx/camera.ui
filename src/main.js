@@ -1,41 +1,21 @@
 'use-strict';
 
-const compareVersions = require('compare-versions');
-const { EventEmitter } = require('events');
+import compareVersions from 'compare-versions';
+import { EventEmitter } from 'events';
 
-const { ConfigService } = require('./services/config/config.service');
-const { LoggerService } = require('./services/logger/logger.service');
-
-const { Database } = require('./api/database');
-const { Server } = require('./api/index');
-
-//Controller
-const { CameraController } = require('./controller/camera/camera.controller');
-const { EventController } = require('./controller/event/event.controller');
-const { MotionController } = require('./controller/motion/motion.controller');
-
-const { log } = LoggerService;
-const { config } = ConfigService;
-
-class Interface extends EventEmitter {
+export default class Interface extends EventEmitter {
   #server;
   #socket;
 
-  static Controller;
-
-  constructor() {
+  constructor(log, config) {
     super();
 
     this.log = log;
+    this.config = config;
 
     this.cameraController = null;
     this.eventController = null;
     this.motionController = null;
-
-    const { server, socket } = new Server(this);
-
-    this.#server = server;
-    this.#socket = socket;
 
     if (process.env.CUI_SERVICE_MODE === '1') {
       this.#startAsWorker();
@@ -53,22 +33,34 @@ class Interface extends EventEmitter {
       );
     }
 
+    // configure server
+    this.log.debug('Configuring server...');
+    this.#server = new (await import('./api/index.js')).default(this);
+
+    // configure socket
+    this.log.debug('Configuring socket...');
+    this.#socket = new (await import('./api/socket.js')).default(this.#server);
+
     // configure database
-    const database = new Database(this);
+    this.log.debug('Configuring database...');
+    const database = new (await import('./api/database.js')).default(this);
     this.database = await database.prepareDatabase();
 
     // configure event controller
-    this.eventController = new EventController(this);
+    this.log.debug('Configuring event controller...');
+    this.eventController = new (await import('./controller/event/event.controller.js')).default(this);
 
     // configure motion controller
-    this.motionController = new MotionController(this, this.#socket);
+    this.log.debug('Configuring motion controller...');
+    this.motionController = new (await import('./controller/motion/motion.controller.js')).default(this, this.#socket);
 
     // configure camera controller
-    this.cameraController = new CameraController(this, this.#socket);
+    this.log.debug('Configuring camera controller...');
+    this.cameraController = new (await import('./controller/camera/camera.controller.js')).default(this, this.#socket);
 
     await Promise.all(
       [...this.cameraController.entries()].map(async (controller) => {
-        log.info('Setting up camera, please be patient...', controller[0]);
+        this.log.info('Setting up camera, please be patient...', controller[0]);
 
         await controller[1].media.probe();
 
@@ -84,11 +76,13 @@ class Interface extends EventEmitter {
       })
     );
 
-    // start
-    this.#server.listen(config.port);
+    this.log.debug('Starting interface...');
+    this.#server.listen(this.config.port);
   }
 
-  close() {
+  async close() {
+    await this.database?.interface.write();
+
     this.motionController?.close();
 
     if (this.cameraController) {
@@ -105,7 +99,7 @@ class Interface extends EventEmitter {
   #startAsWorker() {
     let shuttingDown = false;
 
-    const signalHandler = (signal, signalNumber) => {
+    const signalHandler = async (signal, signalNumber) => {
       if (shuttingDown) {
         return;
       }
@@ -117,12 +111,12 @@ class Interface extends EventEmitter {
         process.exit(128 + signalNumber);
       }, 5000);
 
-      this.close();
+      await this.close();
     };
 
     const errorHandler = (error) => {
       if (error.stack) {
-        log.error(error.stack, 'System', 'system');
+        this.log.error(error.stack, 'System', 'system');
       }
 
       if (!shuttingDown) {
@@ -138,5 +132,3 @@ class Interface extends EventEmitter {
     this.start();
   }
 }
-
-module.exports = new Interface();

@@ -29,7 +29,9 @@ export default {
     this.loading = false;
   },
 
-  beforeDestroy() {},
+  beforeDestroy() {
+    this.$refs[this.item.name]?.destroy();
+  },
 };
 </script>
 

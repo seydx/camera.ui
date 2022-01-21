@@ -1,9 +1,9 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const SettingsModel = require('../settings/settings.model');
+import * as SettingsModel from '../settings/settings.model.js';
 
-exports.getKeys = async (req, res) => {
+export const getKeys = async (req, res) => {
   try {
     const webpush = await SettingsModel.getByTarget(false, 'webpush');
     res.status(200).send(webpush);
@@ -15,7 +15,7 @@ exports.getKeys = async (req, res) => {
   }
 };
 
-exports.subscribe = async (req, res) => {
+export const subscribe = async (req, res) => {
   try {
     if (!req.body || !req.body.endpoint) {
       res.status(400).send({

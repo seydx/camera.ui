@@ -1,34 +1,28 @@
 'use-strict';
 
-const { Database } = require('../../database');
+import Database from '../../database.js';
 
-exports.show = async (all) => {
-  await Database.interfaceDB.read();
-
+export const show = async (all) => {
   // eslint-disable-next-line unicorn/prefer-ternary
   if (all) {
-    return await Database.interfaceDB.value();
+    return await Database.interfaceDB.chain.cloneDeep().value();
   } else {
-    return await Database.interfaceDB.get('settings').value();
+    return await Database.interfaceDB.chain.get('settings').value();
   }
 };
 
-exports.getByTarget = async (all, target) => {
-  await Database.interfaceDB.read();
-
+export const getByTarget = async (all, target) => {
   // eslint-disable-next-line unicorn/prefer-ternary
   if (all) {
-    return await Database.interfaceDB.get(target).value();
+    return await Database.interfaceDB.chain.get(target).cloneDeep().value();
   } else {
-    return await Database.interfaceDB.get('settings').get(target).value();
+    return await Database.interfaceDB.chain.get('settings').get(target).cloneDeep().value();
   }
 };
 
-exports.patchByTarget = async (all, target, settingsData) => {
-  await Database.interfaceDB.read();
-
+export const patchByTarget = async (all, target, settingsData) => {
   if (all) {
-    let settings = await Database.interfaceDB.value();
+    let settings = await Database.interfaceDB.chain.cloneDeep().value();
 
     for (const [key, value] of Object.entries(settingsData)) {
       if (settings[key] !== undefined) {
@@ -36,9 +30,9 @@ exports.patchByTarget = async (all, target, settingsData) => {
       }
     }
 
-    return await Database.interfaceDB.get(target).assign(settings).write();
+    return await Database.interfaceDB.chain.assign(settings).value();
   } else {
-    const settings = await Database.interfaceDB.get('settings').get(target).value();
+    const settings = await Database.interfaceDB.chain.get('settings').get(target).cloneDeep().value();
 
     if (target === 'aws') {
       settingsData.contingent_total = Number.parseInt(settingsData.contingent_total) || settings.contingent_total;
@@ -70,10 +64,10 @@ exports.patchByTarget = async (all, target, settingsData) => {
       }
     }
 
-    return await Database.interfaceDB.get('settings').get(target).assign(settings).write();
+    return await Database.interfaceDB.chain.get('settings').get(target).assign(settings).value();
   }
 };
 
-exports.resetSettings = async () => {
+export const resetSettings = async () => {
   return await Database.resetDatabase();
 };

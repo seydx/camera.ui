@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-exports.minimumPermissionLevelRequired = (required_permission_level) => {
+export const minimumPermissionLevelRequired = (required_permission_level) => {
   return (req, res, next) => {
     if (typeof required_permission_level === 'string') {
       required_permission_level = [required_permission_level];
@@ -19,7 +19,7 @@ exports.minimumPermissionLevelRequired = (required_permission_level) => {
   };
 };
 
-exports.onlySameUserOrAdminCanDoThisAction = (req, res, next) => {
+export const onlySameUserOrAdminCanDoThisAction = (req, res, next) => {
   let user_permission_level = req.jwt.permissionLevel || [];
   let userName = req.jwt.username;
 
@@ -35,7 +35,7 @@ exports.onlySameUserOrAdminCanDoThisAction = (req, res, next) => {
   }
 };
 
-exports.onlySameUserOrMasterCanDoThisAction = (req, res, next) => {
+export const onlySameUserOrMasterCanDoThisAction = (req, res, next) => {
   let user_permission_level = req.jwt.permissionLevel || [];
   let userName = req.jwt.name;
 
@@ -51,7 +51,7 @@ exports.onlySameUserOrMasterCanDoThisAction = (req, res, next) => {
   }
 };
 
-exports.onlyMasterCanDoThisAction = (req, res, next) => {
+export const onlyMasterCanDoThisAction = (req, res, next) => {
   let user_permission_level = req.jwt.permissionLevel || [];
 
   return user_permission_level.includes('admin')
@@ -62,7 +62,7 @@ exports.onlyMasterCanDoThisAction = (req, res, next) => {
       });
 };
 
-exports.masterCantDoThisAction = (req, res, next) => {
+export const masterCantDoThisAction = (req, res, next) => {
   let user_permission_level = req.jwt.permissionLevel || [];
 
   return !user_permission_level.includes('admin')
@@ -73,7 +73,7 @@ exports.masterCantDoThisAction = (req, res, next) => {
       });
 };
 
-exports.sameUserCantDoThisAction = (req, res, next) => {
+export const sameUserCantDoThisAction = (req, res, next) => {
   let userName = req.jwt.username;
 
   return req.params.name !== userName

@@ -1,9 +1,11 @@
 'use-strict';
 
-const chalk = require('chalk');
-const { FileLogger } = require('./utils/filelogger.utils');
-const moment = require('moment');
-const { customAlphabet } = require('nanoid/async');
+import chalk from 'chalk';
+import moment from 'moment';
+import { customAlphabet } from 'nanoid/async';
+
+import FileLogger from './utils/filelogger.utils.js';
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const LogLevel = {
@@ -13,7 +15,7 @@ const LogLevel = {
   DEBUG: 'debug',
 };
 
-function hookStream(stream, callback) {
+const hookStream = (stream, callback) => {
   var old_write = stream.write;
 
   stream.write = (function (write) {
@@ -26,9 +28,9 @@ function hookStream(stream, callback) {
   return function () {
     stream.write = old_write;
   };
-}
+};
 
-class LoggerService {
+export default class LoggerService {
   static #prefix = 'camera.ui';
   static #logger = console;
   static #customLogger = false;
@@ -40,8 +42,6 @@ class LoggerService {
   static logPath;
   static notificationsDB;
   static socket;
-
-  static create = (logger) => new LoggerService(logger);
 
   constructor(logger) {
     if (process.env.CUI_LOG_COLOR === '1') {
@@ -85,6 +85,8 @@ class LoggerService {
         logger.createUiLogger(LoggerService.log);
       }
     }
+
+    return LoggerService.log;
   }
 
   static #formatMessage(message, name) {
@@ -111,11 +113,11 @@ class LoggerService {
     if (LoggerService.notificationsDB) {
       //Check notification size, if we exceed more than {1000} notifications, remove the latest
       const notificationsLimit = 1000;
-      const notificationList = LoggerService.notificationsDB.get('notifications').value();
+      const notificationList = LoggerService.notificationsDB.chain.get('notifications').value();
 
       if (notificationList.length > notificationsLimit) {
         const diff = notificationList.length - notificationsLimit;
-        LoggerService.notificationsDB.get('notifications').dropRight(notificationList, diff).write();
+        LoggerService.notificationsDB.chain.get('notifications').dropRight(notificationList, diff).value();
       }
 
       const notification = {
@@ -129,7 +131,7 @@ class LoggerService {
         isSystemNotification: true,
       };
 
-      LoggerService.notificationsDB.get('notifications').push(notification).write();
+      LoggerService.notificationsDB.chain.get('notifications').push(notification).value();
       LoggerService.socket?.emit('notification', notification);
       LoggerService.socket?.emit('increase_notification');
     }
@@ -241,5 +243,3 @@ class LoggerService {
     LoggerService.socket?.emit('logMessage', message);
   }
 }
-
-exports.LoggerService = LoggerService;

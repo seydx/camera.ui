@@ -1,15 +1,15 @@
 'use-strict';
 
-const { App } = require('../../src/api/app');
-const { Database } = require('../../src/api/database');
+import App from '../../src/api/app.js';
+import Database from '../../src/api/database.js';
 
-const app = App({
+const app = new App({
   debug: process.env.CUI_LOG_DEBUG === '1',
-  version: require('../../package.json').version,
+  version: process.env.CUI_MODULE_VERSION,
 });
 
-const fs = require('fs-extra');
-const supertest = require('supertest');
+import fs from 'fs-extra';
+import supertest from 'supertest';
 const request = supertest(app);
 
 const masterCredentials = {
@@ -23,12 +23,12 @@ beforeAll(async () => {
   await Database.resetDatabase();
   await database.prepareDatabase();
 
-  Database.recordingsDB
+  Database.recordingsDB.chain
     .get('recordings')
     .remove(() => true)
-    .write(); // eslint-disable-line no-unused-vars
+    .value(); // eslint-disable-line no-unused-vars
 
-  let recPath = Database.recordingsDB.get('path').value();
+  let recPath = Database.recordingsDB.chain.get('path').value();
   await fs.emptyDir(recPath);
 
   let files = [

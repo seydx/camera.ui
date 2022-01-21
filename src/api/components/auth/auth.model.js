@@ -1,38 +1,41 @@
 'use-strict';
 
-const { Database } = require('../../database');
+import Database from '../../database.js';
 
-exports.list = () => {
-  return Database.tokensDB.get('tokens').value();
+export const list = () => {
+  return Database.tokens.chain.get('tokens').value();
 };
 
-exports.insert = (token) => {
-  /* Use this if only one device is allowed to be logged in
-  Tokens
-  .get('tokens')
-  .forEach(usr => {
-    if(usr.username === userName)
-      usr.valid = false;
-  })
-  .write();*/
+export const insert = (token) => {
+  /**
+   * // Use this if only one device is allowed to be logged in
+   *
+   * Database.tokens.chain
+   * .get('tokens')
+   * .forEach(usr => {
+   *   if(usr.username === userName)
+   *     usr.valid = false;
+   * })
+   * .value();
+   */
 
-  return Database.tokensDB.get('tokens').push({ token: token, valid: true }).write();
+  return Database.tokensDB.chain.get('tokens').push({ token: token, valid: true }).value();
 };
 
-exports.findByToken = (token) => {
-  return Database.tokensDB.get('tokens').find({ token: token }).value();
+export const findByToken = (token) => {
+  return Database.tokensDB.chain.get('tokens').find({ token: token }).value();
 };
 
-exports.invalidateByToken = (token) => {
-  return Database.tokensDB.get('tokens').find({ token: token }).assign({ valid: false }).write();
+export const invalidateByToken = (token) => {
+  return Database.tokensDB.chain.get('tokens').find({ token: token }).assign({ valid: false }).value();
 };
 
-exports.invalidateAll = () => {
-  let users = Database.tokensDB.get('tokens').value();
+export const invalidateAll = () => {
+  let users = Database.tokensDB.chain.get('tokens').value();
 
   for (const user of users) {
     user.valid = false;
   }
 
-  return Database.tokensDB.get('tokens').setState(users).write();
+  return Database.tokensDB.chain.get('tokens').set(users).value();
 };

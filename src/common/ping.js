@@ -1,14 +1,14 @@
 'use-strict';
 
-const nodejsTcpPing = require('nodejs-tcp-ping');
-const ping = require('ping');
-const { URL } = require('url');
+import nodejsTcpPing from 'nodejs-tcp-ping';
+import ping from 'ping';
+import { URL } from 'url';
 
-const { LoggerService } = require('../services/logger/logger.service');
+import LoggerService from '../services/logger/logger.service.js';
 
 const { log } = LoggerService;
 
-class Ping {
+export default class Ping {
   static async status(camera, timeout = 1) {
     let cameraSource = camera.videoConfig.source.split('-i ')[1];
 
@@ -58,5 +58,3 @@ class Ping {
     return available;
   }
 }
-
-exports.Ping = Ping;

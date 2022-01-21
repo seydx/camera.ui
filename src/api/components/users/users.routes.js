@@ -1,11 +1,11 @@
 'use-strict';
 
-const UsersController = require('./users.controller');
+import * as UsersController from './users.controller.js';
 
-const PaginationMiddleware = require('../../middlewares/pagination.middleware');
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
-const UserValidationMiddleware = require('../../middlewares/user.validation.middleware');
+import * as PaginationMiddleware from '../../middlewares/pagination.middleware.js';
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
+import * as UserValidationMiddleware from '../../middlewares/user.validation.middleware.js';
 
 /**
  * @swagger
@@ -13,7 +13,7 @@ const UserValidationMiddleware = require('../../middlewares/user.validation.midd
  *  name: Users
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/users:

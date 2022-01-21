@@ -1,7 +1,14 @@
 'use-strict';
 
-const path = require('path');
-const { version } = require('../package.json');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+import LoggerService from '../src/services/logger/logger.service.js';
+import ConfigService from '../src/services/config/config.service.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageJson = fs.readJsonSync(path.resolve(__dirname, '../package.json'));
 
 let moduleName = 'camera.ui';
 let globalInstalled = '1';
@@ -11,7 +18,9 @@ let logTimestamps = '1';
 let logColourful = '1';
 let storagePath = path.resolve('test', 'camera.ui');
 
-const { LoggerService } = require('../src/services/logger/logger.service');
+// node-telegram-bot-api
+process.env.NTBA_FIX_319 = 1;
+process.env.NTBA_FIX_350 = 1;
 
 process.env.CUI_SERVICE_MODE = '1';
 
@@ -29,11 +38,11 @@ process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.
 process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
 
 process.env.CUI_MODULE_NAME = moduleName;
-process.env.CUI_MODULE_VERSION = version;
+process.env.CUI_MODULE_VERSION = packageJson.version;
 process.env.CUI_MODULE_GLOBAL = globalInstalled;
 process.env.CUI_MODULE_SUDO = sudoEnabled;
 
-LoggerService.create();
+process.env.CUI_VERSION = packageJson.version;
 
-const { ConfigService } = require('../src/services/config/config.service');
-ConfigService.config;
+new LoggerService();
+new ConfigService();

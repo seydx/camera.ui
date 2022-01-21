@@ -1,15 +1,15 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const crypto = require('crypto');
+import crypto from 'crypto';
 
-const { ConfigService } = require('../../services/config/config.service');
+import ConfigService from '../../services/config/config.service.js';
 
-const UserModel = require('../components/users/users.model');
+import * as UserModel from '../components/users/users.model.js';
 
 const validPermissions = ConfigService.interface.permissionLevels;
 
-exports.hasAuthValidFields = (req, res, next) => {
+export const hasAuthValidFields = (req, res, next) => {
   let errors = [];
 
   if (req.body) {
@@ -35,7 +35,7 @@ exports.hasAuthValidFields = (req, res, next) => {
   }
 };
 
-exports.hasValidFields = (req, res, next) => {
+export const hasValidFields = (req, res, next) => {
   let errors = [];
 
   if (req.body) {
@@ -65,7 +65,7 @@ exports.hasValidFields = (req, res, next) => {
   }
 };
 
-exports.isPasswordAndUserMatch = async (req, res, next) => {
+export const isPasswordAndUserMatch = async (req, res, next) => {
   const user = await UserModel.findByName(req.body.username);
 
   if (!user) {

@@ -1,9 +1,9 @@
 'use-strict';
 
-const path = require('path');
-const fs = require('fs-extra');
+import path from 'path';
+import fs from 'fs-extra';
 
-class FileLogger {
+export default class FileLogger {
   defaultOptions = {
     path: path.resolve(),
     fileName: 'log.txt',
@@ -88,5 +88,3 @@ class FileLogger {
     await fs.close(logFileHandle);
   }
 }
-
-exports.FileLogger = FileLogger;

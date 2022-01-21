@@ -1,14 +1,19 @@
 'use-strict';
 
-const { version } = require('../../../package.json');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports = {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageJson = fs.readJsonSync(path.resolve(__dirname, '../../../package.json'));
+
+export default {
   definition: {
     openapi: '3.0.0',
     info: {
       title: 'camera.ui API',
       description: '',
-      version: version,
+      version: packageJson.version,
       contact: {
         name: 'camera.ui',
         url: 'https://github.com/SeydX/camera.ui',
@@ -32,5 +37,5 @@ module.exports = {
       },
     },
   },
-  apis: [`${__dirname}/components/**/*.routes.js`],
+  apis: [`${path.resolve(__dirname, '..')}/components/**/*.routes.js`],
 };

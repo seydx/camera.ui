@@ -1,9 +1,9 @@
 'use-strict';
 
-const BackupController = require('./backup.controller');
+import * as BackupController from './backup.controller.js';
 
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
 
 /**
  * @swagger
@@ -11,7 +11,7 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
  *  name: Backup
  */
 
-exports.routesConfig = (app, upload) => {
+export const routesConfig = (app, upload) => {
   /**
    * @swagger
    * /api/backup/download:

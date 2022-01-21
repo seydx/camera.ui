@@ -1,24 +1,25 @@
 'use strict';
 
-const got = require('got');
-const { customAlphabet } = require('nanoid/async');
-const nanoid = customAlphabet('1234567890abcdef', 10);
-const moment = require('moment');
-const { RekognitionClient, DetectLabelsCommand } = require('@aws-sdk/client-rekognition');
-const URL = require('url').URL;
-const webpush = require('web-push');
+import got from 'got';
+import { customAlphabet } from 'nanoid/async';
+import moment from 'moment';
+import { RekognitionClient, DetectLabelsCommand } from '@aws-sdk/client-rekognition';
+import { URL } from 'url';
+import webpush from 'web-push';
 
-const { Alexa } = require('../../common/alexa');
-const { Telegram } = require('../../common/telegram');
+import Alexa from '../../common/alexa.js';
+import Telegram from '../../common/telegram.js';
 
-const { LoggerService } = require('../../services/logger/logger.service');
+import LoggerService from '../../services/logger/logger.service.js';
 
-const CamerasModel = require('../../api/components/cameras/cameras.model');
-const NotificationsModel = require('../../api/components/notifications/notifications.model');
-const RecordingsModel = require('../../api/components/recordings/recordings.model');
-const SettingsModel = require('../../api/components/settings/settings.model');
+import * as CamerasModel from '../../api/components/cameras/cameras.model.js';
+import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
+import * as RecordingsModel from '../../api/components/recordings/recordings.model.js';
+import * as SettingsModel from '../../api/components/settings/settings.model.js';
 
 const { log } = LoggerService;
+
+const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const stringIsAValidUrl = (s) => {
   try {
@@ -29,7 +30,7 @@ const stringIsAValidUrl = (s) => {
   }
 };
 
-class EventController {
+export default class EventController {
   static #movementHandler = {};
 
   constructor(controller) {
@@ -42,18 +43,13 @@ class EventController {
   static async handle(trigger, cameraName, active, fileBuffer, type) {
     if (active) {
       try {
-        let Camera, CameraSettings;
+        const database = await SettingsModel.show(true);
 
-        try {
-          Camera = await CamerasModel.findByName(cameraName);
-          CameraSettings = await CamerasModel.getSettingsByName(cameraName);
-        } catch (error) {
-          log.warn(error.message, cameraName, 'events');
-        }
+        const SettingsDB = database.settings;
+        const Camera = database.cameras.find((camera) => camera.name === cameraName);
+        const CameraSettings = database.settings.cameras.find((camera) => camera.name === cameraName);
 
         if (Camera && Camera.videoConfig) {
-          const SettingsDB = await SettingsModel.show(false);
-
           const awsSettings = {
             active: SettingsDB.aws.active,
             accessKeyId: SettingsDB.aws.accessKeyId,
@@ -614,5 +610,3 @@ class EventController {
     }
   }
 }
-
-exports.EventController = EventController;

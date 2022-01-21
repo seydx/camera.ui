@@ -1,16 +1,16 @@
 'use-strict';
 
-const _ = require('lodash');
-const { createServer } = require('net');
-const { EventEmitter } = require('events');
-const moment = require('moment');
-const { spawn } = require('child_process');
+import isEqual from 'lodash/isEqual.js';
+import { createServer } from 'net';
+import { EventEmitter } from 'events';
+import moment from 'moment';
+import { spawn } from 'child_process';
 
-const cameraUtils = require('../utils/camera.utils');
-const { Ping } = require('../../../common/ping');
+import * as cameraUtils from '../utils/camera.utils.js';
+import Ping from '../../../common/ping.js';
 
-const { LoggerService } = require('../../../services/logger/logger.service');
-const { ConfigService } = require('../../../services/config/config.service');
+import LoggerService from '../../../services/logger/logger.service.js';
+import ConfigService from '../../../services/config/config.service.js';
 
 const { log } = LoggerService;
 
@@ -19,7 +19,7 @@ const prebufferDurationMs = 15000;
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-class PrebufferService {
+export default class PrebufferService {
   #camera;
   #socket;
   #mediaService;
@@ -59,7 +59,7 @@ class PrebufferService {
     this.#camera = camera;
     this.cameraName = camera.name;
 
-    if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.prebufferSession) {
+    if (!isEqual(oldVideoConfig, newVideoConfig) && this.prebufferSession) {
       log.info('Prebuffer: Video configuration changed! Restarting...', this.cameraName);
 
       this.restart();
@@ -274,7 +274,7 @@ class PrebufferService {
     const restartWatchdog = () => {
       clearTimeout(this.watchdog);
       this.watchdog = setTimeout(() => {
-        log.error('Watchdog for mp4 parser timed out... killing ffmpeg session', this.cameraName, 'prebuffer');
+        log.error('Prebuffer timed out... killing ffmpeg session', this.cameraName, 'prebuffer');
         session.kill();
       }, 60000);
     };
@@ -628,5 +628,3 @@ class PrebufferService {
     return state;
   }
 }
-
-exports.PrebufferService = PrebufferService;

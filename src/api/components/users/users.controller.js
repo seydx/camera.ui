@@ -1,14 +1,14 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const crypto = require('crypto');
-const multer = require('multer');
+import crypto from 'crypto';
+import multer from 'multer';
 
-const { ConfigService } = require('../../../services/config/config.service');
+import ConfigService from '../../../services/config/config.service.js';
 
-const UserModel = require('./users.model');
+import * as UserModel from './users.model.js';
 
-exports.insert = async (req, res) => {
+export const insert = async (req, res) => {
   try {
     const userExist = await UserModel.findByName(req.body.username);
 
@@ -47,7 +47,7 @@ exports.insert = async (req, res) => {
   }
 };
 
-exports.list = async (req, res, next) => {
+export const list = async (req, res, next) => {
   try {
     let result = await UserModel.list();
 
@@ -67,7 +67,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getByName = async (req, res) => {
+export const getByName = async (req, res) => {
   try {
     const user = await UserModel.findByName(req.params.name);
 
@@ -89,7 +89,7 @@ exports.getByName = async (req, res) => {
   }
 };
 
-exports.patchByName = async (req, res) => {
+export const patchByName = async (req, res) => {
   try {
     let user = await UserModel.findByName(req.params.name);
 
@@ -160,7 +160,7 @@ exports.patchByName = async (req, res) => {
   }
 };
 
-exports.removeByName = async (req, res) => {
+export const removeByName = async (req, res) => {
   try {
     const user = await UserModel.findByName(req.params.name);
 

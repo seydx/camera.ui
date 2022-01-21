@@ -1,45 +1,36 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-const http = require('http');
-const https = require('https');
+import http from 'http';
+import https from 'https';
 
-const { ConfigService } = require('../services/config/config.service');
-const { LoggerService } = require('../services/logger/logger.service');
+import App from './app.js';
 
-const { App } = require('./app');
-const { Socket } = require('./socket');
-
-const { log } = LoggerService;
-
-class Server {
-  #port = ConfigService.ui.port;
-  #ssl = ConfigService.ui.ssl;
-  #version = ConfigService.ui.version;
-
+export default class Server {
   constructor(controller) {
-    const app = App({
+    const log = controller.log;
+    const config = controller.config;
+
+    const app = new App({
       debug: process.env.CUI_LOG_DEBUG === '1',
-      version: this.#version,
+      version: config.version,
     });
 
-    const server = this.#ssl
+    const server = config.ssl
       ? https.createServer(
           {
-            key: this.#ssl.key,
-            cert: this.#ssl.cert,
+            key: config.ssl.key,
+            cert: config.ssl.cert,
           },
           app
         )
       : http.createServer(app);
 
-    const socket = Socket.create(server);
-
     server.on('listening', async () => {
       let addr = server.address();
       let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
 
-      log.info(`camera.ui v${this.#version} is listening on ${bind} (${this.#ssl ? 'https' : 'http'})`);
+      log.info(`camera.ui v${config.version} is listening on ${bind} (${config.ssl ? 'https' : 'http'})`);
 
       controller.emit('finishLaunching');
     });
@@ -51,7 +42,7 @@ class Server {
         log.error(error, 'Interface', 'server');
       }
 
-      let bind = typeof port === 'string' ? 'Pipe ' + this.#port : 'Port ' + this.#port;
+      let bind = typeof port === 'string' ? 'Pipe ' + config.port : 'Port ' + config.port;
 
       switch (error.code) {
         case 'EACCES':
@@ -74,12 +65,6 @@ class Server {
       controller.emit('shutdown');
     });
 
-    //return server;
-    return {
-      server: server,
-      socket: socket,
-    };
+    return server;
   }
 }
-
-exports.Server = Server;

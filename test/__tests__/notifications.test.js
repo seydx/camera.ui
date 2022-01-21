@@ -1,14 +1,14 @@
 'use-strict';
 
-const { App } = require('../../src/api/app');
-const { Database } = require('../../src/api/database');
+import App from '../../src/api/app.js';
+import Database from '../../src/api/database.js';
 
-const app = App({
+const app = new App({
   debug: process.env.CUI_LOG_DEBUG === '1',
-  version: require('../../package.json').version,
+  version: process.env.CUI_MODULE_VERSION,
 });
 
-const supertest = require('supertest');
+import supertest from 'supertest';
 const request = supertest(app);
 
 let notificationId;
@@ -31,10 +31,10 @@ beforeAll(async () => {
   await Database.resetDatabase();
   await database.prepareDatabase();
 
-  let cameraExist = await Database.interfaceDB.get('cameras').find({ name: 'Test Camera' }).value();
+  let cameraExist = await Database.interfaceDB.chain.get('cameras').find({ name: 'Test Camera' }).value();
 
   if (!cameraExist) {
-    await Database.interfaceDB.get('cameras').push(camera).write();
+    await Database.interfaceDB.chain.get('cameras').push(camera).value();
   }
 });
 
@@ -124,6 +124,7 @@ describe('DELETE /api/notifications/:id', () => {
     const response = await request
       .delete('/api/notifications/' + notificationId)
       .auth(auth.body.access_token, { type: 'bearer' });
+
     expect(response.statusCode).toBe(204);
   });
 });
@@ -134,6 +135,7 @@ describe('DELETE /api/notifications', () => {
     expect(auth.statusCode).toBe(201);
 
     const response = await request.delete('/api/notifications').auth(auth.body.access_token, { type: 'bearer' });
+
     expect(response.statusCode).toBe(204);
   });
 });

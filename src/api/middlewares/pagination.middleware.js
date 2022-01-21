@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
-exports.pages = (req, res) => {
+export const pages = (req, res) => {
   let start = Number.parseInt(req.query.start); //for infinite scroll
   let page = Number.parseInt(req.query.page) || 1;
   let pageSize = Number.parseInt(req.query.pageSize) || 6;

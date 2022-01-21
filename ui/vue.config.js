@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
@@ -10,13 +10,13 @@ try {
   // ignore
 }
 
-process.env.VUE_APP_SERVER_PORT = configJson.port || 8081;
+process.env.VUE_APP_SERVER_PORT = configJson.port || 3600;
 
 module.exports = {
   transpileDependencies: ['vuetify'],
   devServer: {
     https:
-      configJson.ssl && configJson.ssl.key && configJson.ssl.cert
+      configJson.ssl?.active && configJson.ssl?.key && configJson.ssl?.cert
         ? {
             key: fs.readFileSync(configJson.ssl.key),
             cert: fs.readFileSync(configJson.ssl.cert),

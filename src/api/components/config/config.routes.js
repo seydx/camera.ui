@@ -1,9 +1,9 @@
 'use-strict';
 
-const ConfigController = require('./config.controller');
+import * as ConfigController from './config.controller.js';
 
-const PermissionMiddleware = require('../../middlewares/auth.permission.middleware');
-const ValidationMiddleware = require('../../middlewares/auth.validation.middleware');
+import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
+import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
 
 /**
  * @swagger
@@ -11,7 +11,7 @@ const ValidationMiddleware = require('../../middlewares/auth.validation.middlewa
  *  name: Config
  */
 
-exports.routesConfig = (app) => {
+export const routesConfig = (app) => {
   /**
    * @swagger
    * /api/config:

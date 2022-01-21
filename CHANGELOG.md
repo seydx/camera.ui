@@ -1,6 +1,35 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.0 - 2022-01-21
+
+## Breaking Changes
+- camera.ui has been refactored is now a ESM package.
+
+## Notable Changes
+- camera.ui now throws an error if no `storagePath` is given
+- The database has been completely updated and will not be read/written again when the data is changed. Instead, any changes are cached and saved when logging out/restarting/closing camera.ui
+
+## Other Changes
+- Database: Changed to `@seydx/lowdb`
+- Videoanalysis: It is now possible to set the internal "forceClose" timer for video analysis via the interface
+- Videoanalysis: A "reset" button has been added (interface) to reset the values for video analytics to default values
+- SMTP: The SMTP server can now also search the content of an email if no camera could be assigned to the email addresse(s)
+- More translations
+- Minor UI improvements
+- Bump dependencies
+
+## Bugfixes
+- Fixed an issue where recordings displayed an invalid date
+- Fixed an issue where references were obtained instead of (copied) values when reading from the database
+- Fixed an issue where notification cleartimer not resetted if notification was removed
+- Fixed an issue where mapping mqtt messages failed
+- Fixed an issue where the "videoanalysis" image was not displayed
+- Fixed a bug where a removed camera widget (when Snapshot was set) tried to refresh the image in the background even though the widget no longer existed.
+- When writing or reading from the database, unnecessary actions to the database are prevented (Windows: `EMFILE`)
+- Pinned `"mqtt"` to v4.2.8 to fix `RangeError: Maximum call stack size exceeded`
+- Minor bugfixes
+
 # v1.0.9 - 2022-01-17
 
 ## Other Changes

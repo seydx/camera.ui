@@ -1,20 +1,20 @@
 'use-strict';
 
-const _ = require('lodash');
-const moment = require('moment');
-const P2P = require('pipe2pam');
-const PamDiff = require('pam-diff');
-const { spawn } = require('child_process');
+import isEqual from 'lodash/isEqual.js';
+import moment from 'moment';
+import P2P from 'pipe2pam';
+import PamDiff from 'pam-diff';
+import { spawn } from 'child_process';
 
-const cameraUtils = require('../utils/camera.utils');
-const { Ping } = require('../../../common/ping');
+import * as cameraUtils from '../utils/camera.utils.js';
+import Ping from '../../../common/ping.js';
 
-const { Database } = require('../../../api/database');
+import Database from '../../../api/database.js';
 
-const { LoggerService } = require('../../../services/logger/logger.service');
-const { ConfigService } = require('../../../services/config/config.service');
+import LoggerService from '../../../services/logger/logger.service.js';
+import ConfigService from '../../../services/config/config.service.js';
 
-const { MotionController } = require('../../motion/motion.controller');
+import MotionController from '../../motion/motion.controller.js';
 
 const { log } = LoggerService;
 
@@ -24,20 +24,24 @@ const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
 const FFMPEG_RESOLUTION = '640:360';
 const FFMPEG_FPS = '2';
 
+const DEFAULT_FORCECLOSE_TIME = 3;
 const DEFAULT_DWELL_TIME = 60;
 const DEFAULT_DIFFERENCE = 5; // 1 - 255
 const DEFAULT_SENSITIVITY = 75; // 0 - 100
-const DEFAULT_ZONE = {
-  finished: true,
-  coords: [
-    [0, 100],
-    [0, 0],
-    [100, 0],
-    [100, 100],
-  ],
-};
+const DEFAULT_ZONE = [
+  {
+    name: 'region0',
+    finished: true,
+    coords: [
+      [0, 100],
+      [0, 0],
+      [100, 0],
+      [100, 100],
+    ],
+  },
+];
 
-class VideoAnalysisService {
+export default class VideoAnalysisService {
   #camera;
   #controller;
   #socket;
@@ -63,7 +67,7 @@ class VideoAnalysisService {
 
     this.cameraName = camera.name;
 
-    this.#controller.on('finishLaunching', () => {
+    this.#controller?.on('finishLaunching', () => {
       if (camera.videoanalysis?.active) {
         log.debug('Videoanalysis finished launching', this.cameraName);
       }
@@ -79,24 +83,23 @@ class VideoAnalysisService {
     this.#camera = camera;
     this.cameraName = camera.name;
 
-    if (!_.isEqual(oldVideoConfig, newVideoConfig) && this.videoanalysisSession) {
+    if (!isEqual(oldVideoConfig, newVideoConfig) && this.videoanalysisSession) {
       log.info('Videoanalysis: Video configuration changed! Restarting...', this.cameraName);
 
       this.restart();
     }
   }
 
-  changeSettings(zones = [], sensitivity, difference, timer) {
+  changeSettings(zones = [], sensitivity, difference, dwellTimer, forceCloseTimer) {
     if (this.videoanalysisSession?.pamDiff) {
-      //this.videoanalysisSession.pamDiff.resetCache();
-      //this.videoanalysisSession.p2p.resetCache();
-
       const diff = difference >= 0 && difference <= 255 ? difference : DEFAULT_DIFFERENCE;
       const percent = sensitivity >= 0 && sensitivity <= 100 ? sensitivity : DEFAULT_SENSITIVITY;
       const regions = this.#createRegions(zones, percent, diff);
-      const dwellTime = timer >= 15 && timer <= 180 ? timer : DEFAULT_DWELL_TIME;
+      const dwellTime = dwellTimer >= 15 && dwellTimer <= 180 ? dwellTimer : DEFAULT_DWELL_TIME;
+      const forceCloseTime = forceCloseTimer >= 0 && forceCloseTimer <= 10 ? forceCloseTimer : DEFAULT_DWELL_TIME;
 
       this.videoanalysisSession.pamDiff.dwellTime = dwellTime;
+      this.videoanalysisSession.pamDiff.forceCloseTime = forceCloseTime;
       this.videoanalysisSession.pamDiff.setDifference(diff);
       this.videoanalysisSession.pamDiff.setPercent(100 - percent);
       this.videoanalysisSession.pamDiff.setRegions(regions.length > 0 ? regions : null);
@@ -175,7 +178,6 @@ class VideoAnalysisService {
       }
 
       this.videoanalysisSession.cp?.kill('SIGKILL');
-      //this.videoanalysisSession.pamDiff?.resetCache();
       this.videoanalysisSession = null;
     }
   }
@@ -238,13 +240,19 @@ class VideoAnalysisService {
 
     let errors = [];
 
-    const settings = await Database.interfaceDB.get('settings').get('cameras').find({ name: this.cameraName }).value();
+    const settings = await Database.interfaceDB.chain
+      .get('settings')
+      .get('cameras')
+      .find({ name: this.cameraName })
+      .cloneDeep()
+      .value();
 
     const zones = settings?.videoanalysis?.regions || [];
     const difference = settings?.videoanalysis?.difference || DEFAULT_DIFFERENCE;
     const sensitivity = settings?.videoanalysis?.sensitivity || DEFAULT_SENSITIVITY;
     const regions = this.#createRegions(zones, sensitivity, difference);
     const dwellTime = settings?.videoanalysis?.dwellTimer || DEFAULT_DWELL_TIME;
+    const forceCloseTime = settings?.videoanalysis?.forceCloseTimer || DEFAULT_FORCECLOSE_TIME;
 
     const p2p = new P2P();
     const pamDiff = new PamDiff({
@@ -252,16 +260,15 @@ class VideoAnalysisService {
       percent: 100 - sensitivity,
       regions: regions.length > 0 ? regions : null,
       response: 'percent',
-      //response: 'bounds',
-      //draw: true,
     });
 
     pamDiff.dwellTime = dwellTime;
+    pamDiff.forceCloseTime = forceCloseTime;
 
     const restartWatchdog = () => {
       clearTimeout(this.watchdog);
       this.watchdog = setTimeout(() => {
-        log.error('Watchdog for videoanalysis timed out... killing ffmpeg session', this.cameraName, 'videoanalysis');
+        log.error('Videoanalysis timed out... killing ffmpeg session', this.cameraName, 'videoanalysis');
         cp?.kill('SIGKILL');
 
         isActive = false;
@@ -291,6 +298,7 @@ class VideoAnalysisService {
           percent: data.percent,
           sensitivity: Math.round(100 - data.percent) + 1,
           dwell: pamDiff.dwellTime,
+          forceClose: pamDiff.forceCloseTime,
         };
       });
 
@@ -298,12 +306,14 @@ class VideoAnalysisService {
         this.#triggerMotion(true, event);
 
         // forceClose after 3min
-        this.forceCloseTimeout = setTimeout(() => {
-          this.#triggerMotion(false, {
-            time: new Date(),
-            event: 'forceClose',
-          });
-        }, 3 * 60 * 1000);
+        if (pamDiff.forceCloseTime > 0) {
+          this.forceCloseTimeout = setTimeout(() => {
+            this.#triggerMotion(false, {
+              time: new Date(),
+              event: `forceClose (${pamDiff.forceCloseTime}m)`,
+            });
+          }, pamDiff.forceCloseTime * 60 * 1000);
+        }
       }
 
       if (this.motionEventTimeout) {
@@ -317,7 +327,7 @@ class VideoAnalysisService {
       this.motionEventTimeout = setTimeout(async () => {
         this.#triggerMotion(false, {
           time: new Date(),
-          event: 'dwellTime',
+          event: `dwellTime (${pamDiff.dwellTime}s)`,
         });
       }, pamDiff.dwellTime * 1000);
     });
@@ -465,5 +475,3 @@ class VideoAnalysisService {
     return regions;
   }
 }
-
-exports.VideoAnalysisService = VideoAnalysisService;
