@@ -15,12 +15,12 @@ const LogLevel = {
   DEBUG: 'debug',
 };
 
-const hookStream = (stream, callback) => {
+const hook_writestream = (stream, callback) => {
   var old_write = stream.write;
 
   stream.write = (function (write) {
     return function (string, encoding, fd) {
-      write.apply(stream, arguments); // comments this line if you don't want output in the console
+      write.apply(stream, arguments);
       callback(string, encoding, fd);
     };
   })(stream.write);
@@ -48,8 +48,6 @@ export default class LoggerService {
       chalk.level = 1;
     }
 
-    //chalk.level = process.env.CUI_LOG_COLOR === '1' ? 1 : 0;
-
     if (process.env.CUI_LOG_DEBUG === '1') {
       LoggerService.#debugEnabled = true;
     }
@@ -71,7 +69,7 @@ export default class LoggerService {
       debug: this.debug,
       notify: this.notify,
       toast: this.toast,
-      file: this.file,
+      stream: LoggerService.#filelogger.stream,
       db: LoggerService.#db,
     };
 
@@ -84,12 +82,37 @@ export default class LoggerService {
       if (logger.createUiLogger) {
         logger.createUiLogger(LoggerService.log);
       }
+    } else {
+      // eslint-disable-next-line no-unused-vars
+      const unhookStdout = hook_writestream(process.stdout, function (string, encoding, fd) {
+        LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
+      });
+
+      // eslint-disable-next-line no-unused-vars
+      const unhookStderr = hook_writestream(process.stderr, function (string, encoding, fd) {
+        LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
+      });
+
+      // eslint-disable-next-line no-unused-vars
+      LoggerService.#filelogger?.stream.once('error', function (error) {
+        unhookStdout();
+        unhookStderr();
+      });
+
+      LoggerService.#filelogger?.stream.once('close', function () {
+        unhookStdout();
+        unhookStderr();
+      });
     }
+
+    setInterval(() => {
+      LoggerService.#filelogger.truncateFile();
+    }, 1000 * 60 * 60 * 2);
 
     return LoggerService.log;
   }
 
-  static #formatMessage(message, name) {
+  static #formatMessage(message, name, level) {
     let formatted = '';
 
     if (name) {
@@ -104,6 +127,18 @@ export default class LoggerService {
       formatted += JSON.stringify(message);
     } else {
       formatted += message;
+    }
+
+    switch (level) {
+      case LogLevel.WARN:
+        formatted = chalk.yellow(formatted);
+        break;
+      case LogLevel.ERROR:
+        formatted = chalk.red(formatted);
+        break;
+      case LogLevel.DEBUG:
+        formatted = chalk.gray(formatted);
+        break;
     }
 
     return formatted;
@@ -138,59 +173,33 @@ export default class LoggerService {
   }
 
   static #logging(level, message, name) {
-    if (LoggerService.#customLogger) {
-      return LoggerService.#logger.log[level](message, name);
-    }
-
     if (level === LogLevel.DEBUG && !LoggerService.#debugEnabled) {
       return;
     }
 
-    //let fileMessage = (message = LoggerService.#formatMessage(message, name));
-    message = LoggerService.#formatMessage(message, name);
-
-    const logger = LoggerService.#logger;
-    let loggingFunction = logger.log;
-
-    switch (level) {
-      case LogLevel.WARN:
-        message = chalk.yellow(message);
-        loggingFunction = logger.warn;
-        break;
-      case LogLevel.ERROR:
-        message = chalk.red(message);
-        loggingFunction = logger.error;
-        break;
-      case LogLevel.DEBUG:
-        message = chalk.gray(message);
-        break;
-    }
+    let origMessage = message;
+    message = LoggerService.#formatMessage(message, name, level);
 
     if (LoggerService.#withPrefix) {
       message = chalk.magenta(`[${LoggerService.#prefix}] `) + message;
-      //fileMessage = `[${this.#prefix}] ${fileMessage}`;
     }
 
     if (LoggerService.#timestampEnabled) {
       const date = new Date();
       message = chalk.white(`[${date.toLocaleString()}] `) + message;
-      //fileMessage = `[${date.toLocaleString()}] ${fileMessage}`;
     }
 
-    const unhookStdout = hookStream(process.stdout, () => {
-      LoggerService.#filelogger.log(message);
-      LoggerService.socket?.emit('logMessage', message);
-    });
+    LoggerService.socket?.emit('logMessage', message);
 
-    const unhookStderr = hookStream(process.stderr, () => {
-      LoggerService.#filelogger.log(message);
-      LoggerService.socket?.emit('logMessage', message);
-    });
+    if (LoggerService.#customLogger) {
+      return LoggerService.#logger.log[level](origMessage, name);
+    }
+
+    const logger = LoggerService.#logger;
+    const loggingFunction =
+      level === LogLevel.WARN ? logger.warn : level === LogLevel.ERROR ? logger.error : logger.log;
 
     loggingFunction(message);
-
-    unhookStdout();
-    unhookStderr();
   }
 
   info(message, name) {
@@ -236,10 +245,5 @@ export default class LoggerService {
   toast(message) {
     LoggerService.#logging(LogLevel.DEBUG, `Toasting new message: ${message}`);
     LoggerService.socket?.emit('toast', message);
-  }
-
-  file(message) {
-    LoggerService.#filelogger.log(message);
-    LoggerService.socket?.emit('logMessage', message);
   }
 }

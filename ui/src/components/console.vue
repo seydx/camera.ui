@@ -51,7 +51,8 @@ export default {
     this.fitAddon?.fit();
 
     const log = await getLog();
-    const message = log.data + '\r\n';
+
+    const message = log.data.replace(/[\n]+/g, '\r\n');
 
     this.term?.write(message);
     this.fitAddon?.fit();

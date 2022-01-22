@@ -1,6 +1,6 @@
 {
   "name": "camera.ui",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "NVR like user interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
   "scripts": {
@@ -16,7 +16,7 @@
   },
   "main": "src/index.js",
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.47.1",
+    "@aws-sdk/client-rekognition": "^3.48.0",
     "@seydx/lowdb": "^3.0.2",
     "alexa-remote2": "^4.1.1",
     "axios": "^0.25.0",
@@ -51,7 +51,7 @@
     "smtp-server": "^3.9.0",
     "socket.io": "4.4.1",
     "socketio-jwt": "^4.6.2",
-    "systeminformation": "^5.10.5",
+    "systeminformation": "^5.10.7",
     "swagger-jsdoc": "^6.1.0",
     "swagger-ui-express": "^4.3.0",
     "tar": "^6.1.11",

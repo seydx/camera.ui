@@ -39,31 +39,7 @@ export default class FileLogger {
     }
   }
 
-  #createLogDirectory() {
-    try {
-      fs.mkdirSync(this.options.path, {
-        recursive: true,
-        mode: '0775',
-      });
-    } catch {
-      return false;
-    }
-
-    return true;
-  }
-
-  async #toFile(string) {
-    try {
-      await this.#truncateFile();
-    } catch {
-      //ignore
-    }
-
-    const output = `${string}\r\n`;
-    this.stream.write(output);
-  }
-
-  async #truncateFile() {
+  async truncateFile() {
     if (!(await fs.pathExists(this.logPath))) {
       return;
     }
@@ -86,5 +62,29 @@ export default class FileLogger {
     // re-write the truncated log file
     await fs.write(logFileHandle, logBuffer);
     await fs.close(logFileHandle);
+  }
+
+  #createLogDirectory() {
+    try {
+      fs.mkdirSync(this.options.path, {
+        recursive: true,
+        mode: '0775',
+      });
+    } catch {
+      return false;
+    }
+
+    return true;
+  }
+
+  async #toFile(string) {
+    /*try {
+      await this.#truncateFile();
+    } catch {
+      //ignore
+    }*/
+
+    const output = `${string}\r\n`;
+    this.stream.write(output);
   }
 }
