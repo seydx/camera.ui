@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.2 - 2022-01-22
+
+## Bugfixes
+- Fixed issues with logging
+- Minor bugfixes
+
 # v1.1.1 - 2022-01-22
 
 ## Other Changes

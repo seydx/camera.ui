@@ -19,11 +19,8 @@ export default class CameraUI {
     }
 
     process.env.CUI_SERVICE_MODE = 2;
-
-    if (!logger) {
-      process.env.CUI_LOG_COLOR = 1;
-      process.env.CUI_LOG_TIMESTAMPS = 1;
-    }
+    process.env.CUI_LOG_COLOR = 1;
+    process.env.CUI_LOG_TIMESTAMPS = 1;
 
     if (configJson.debug) {
       process.env.CUI_LOG_DEBUG = 1;

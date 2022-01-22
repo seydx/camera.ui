@@ -44,6 +44,19 @@ export default class LoggerService {
   static socket;
 
   constructor(logger) {
+    /**
+     * logger = {
+     *   createUiLogger: (cameraUiLogger) => {},
+     *   log: {
+     *     prefix: 'MyLogger',
+     *     info: console.info,
+     *     warn: console.warn,
+     *     error: console.error,
+     *     debug: console.debug,
+     *   },
+     * }
+     */
+
     if (process.env.CUI_LOG_COLOR === '1') {
       chalk.level = 1;
     }
@@ -61,6 +74,38 @@ export default class LoggerService {
       fileName: 'camera.ui.log.txt',
     });
 
+    if (logger?.log) {
+      LoggerService.#prefix = logger.log.prefix;
+      LoggerService.#logger = logger;
+      LoggerService.#customLogger = true;
+      LoggerService.#withPrefix = Boolean(logger.log.prefix);
+    }
+
+    // eslint-disable-next-line no-unused-vars
+    const unhookStdout = hook_writestream(process.stdout, function (string, encoding, fd) {
+      LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
+    });
+
+    // eslint-disable-next-line no-unused-vars
+    const unhookStderr = hook_writestream(process.stderr, function (string, encoding, fd) {
+      LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
+    });
+
+    // eslint-disable-next-line no-unused-vars
+    LoggerService.#filelogger?.stream.once('error', function (error) {
+      unhookStdout();
+      unhookStderr();
+    });
+
+    LoggerService.#filelogger?.stream.once('close', function () {
+      unhookStdout();
+      unhookStderr();
+    });
+
+    setInterval(() => {
+      LoggerService.#filelogger.truncateFile();
+    }, 1000 * 60 * 60 * 2);
+
     LoggerService.log = {
       prefix: LoggerService.#prefix,
       info: this.info,
@@ -69,45 +114,12 @@ export default class LoggerService {
       debug: this.debug,
       notify: this.notify,
       toast: this.toast,
-      stream: LoggerService.#filelogger.stream,
       db: LoggerService.#db,
     };
 
-    if (logger) {
-      LoggerService.#prefix = logger.log.prefix || '';
-      LoggerService.#logger = logger;
-      LoggerService.#customLogger = true;
-      LoggerService.#withPrefix = false;
-
-      if (logger.createUiLogger) {
-        logger.createUiLogger(LoggerService.log);
-      }
-    } else {
-      // eslint-disable-next-line no-unused-vars
-      const unhookStdout = hook_writestream(process.stdout, function (string, encoding, fd) {
-        LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
-      });
-
-      // eslint-disable-next-line no-unused-vars
-      const unhookStderr = hook_writestream(process.stderr, function (string, encoding, fd) {
-        LoggerService.#filelogger?.stream.write(string, encoding || 'utf8');
-      });
-
-      // eslint-disable-next-line no-unused-vars
-      LoggerService.#filelogger?.stream.once('error', function (error) {
-        unhookStdout();
-        unhookStderr();
-      });
-
-      LoggerService.#filelogger?.stream.once('close', function () {
-        unhookStdout();
-        unhookStderr();
-      });
+    if (logger?.createUiLogger) {
+      logger.createUiLogger(LoggerService.log);
     }
-
-    setInterval(() => {
-      LoggerService.#filelogger.truncateFile();
-    }, 1000 * 60 * 60 * 2);
 
     return LoggerService.log;
   }
@@ -172,52 +184,52 @@ export default class LoggerService {
     }
   }
 
-  static #logging(level, message, name) {
+  static #logging(level, message, name, fromExtern) {
     if (level === LogLevel.DEBUG && !LoggerService.#debugEnabled) {
       return;
     }
 
     let origMessage = message;
-    message = LoggerService.#formatMessage(message, name, level);
+    let formattedMessage = LoggerService.#formatMessage(message, name, level);
 
     if (LoggerService.#withPrefix) {
-      message = chalk.magenta(`[${LoggerService.#prefix}] `) + message;
+      formattedMessage = chalk.cyan(`[${LoggerService.#prefix}] `) + formattedMessage;
     }
 
     if (LoggerService.#timestampEnabled) {
       const date = new Date();
-      message = chalk.white(`[${date.toLocaleString()}] `) + message;
+      formattedMessage = chalk.white(`[${date.toLocaleString()}] `) + formattedMessage;
     }
 
-    LoggerService.socket?.emit('logMessage', message);
+    LoggerService.socket?.emit('logMessage', formattedMessage);
 
-    if (LoggerService.#customLogger) {
-      return LoggerService.#logger.log[level](origMessage, name);
+    if (LoggerService.#customLogger && !fromExtern) {
+      return LoggerService.#logger.log[level](origMessage, name, false, true);
     }
 
     const logger = LoggerService.#logger;
     const loggingFunction =
       level === LogLevel.WARN ? logger.warn : level === LogLevel.ERROR ? logger.error : logger.log;
 
-    loggingFunction(message);
+    loggingFunction(formattedMessage);
   }
 
-  info(message, name) {
-    LoggerService.#logging(LogLevel.INFO, message, name);
+  info(message, name, subprefix, fromExtern) {
+    LoggerService.#logging(LogLevel.INFO, message, name, false, fromExtern);
   }
 
-  warn(message, name, subprefix) {
+  warn(message, name, subprefix, fromExtern) {
     LoggerService.#logging(LogLevel.WARN, message, name);
-    LoggerService.#db(LogLevel.WARN, message, name, subprefix);
+    LoggerService.#db(LogLevel.WARN, message, name, subprefix, fromExtern);
   }
 
-  error(message, name, subprefix) {
+  error(message, name, subprefix, fromExtern) {
     LoggerService.#logging(LogLevel.ERROR, message, name);
-    LoggerService.#db(LogLevel.ERROR, message, name, subprefix);
+    LoggerService.#db(LogLevel.ERROR, message, name, subprefix, fromExtern);
   }
 
-  debug(message, name) {
-    LoggerService.#logging(LogLevel.DEBUG, message, name);
+  debug(message, name, subprefix, fromExtern) {
+    LoggerService.#logging(LogLevel.DEBUG, message, name, false, fromExtern);
   }
 
   notify(notification) {

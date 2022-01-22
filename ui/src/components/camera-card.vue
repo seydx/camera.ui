@@ -457,11 +457,21 @@ export default {
         clearTimeout(this.snapshotTimeout);
         this.snapshotTimeout = null;
       }
+
+      if (this.snapshotTimerTimeout) {
+        clearTimeout(this.snapshotTimerTimeout);
+        this.snapshotTimerTimeout = null;
+      }
     },
     stopStream() {
       if (this.player) {
         this.player.destroy();
         this.player = null;
+      }
+
+      if (this.streamTimeout) {
+        clearTimeout(this.streamTimeout);
+        this.streamTimeout = null;
       }
 
       this.$socket.client.emit('leave_stream', {
