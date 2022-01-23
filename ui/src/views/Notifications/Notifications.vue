@@ -7,10 +7,10 @@
     .header.tw-justify-between.tw-items-center.header.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
         h2 {{ $t($route.name.toLowerCase()) }}
-      .header-utils
-        v-btn(icon height="38px" width="38px" color="red" :disabled="!notifications.length" @click="removeAll")
-          v-icon {{ icons['mdiDelete'] }}
+      .header-utils.tw-flex.tw-justify-center.tw-items-center
         FilterCard(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
+        v-btn(icon height="30px" width="30px" color="red" :disabled="!notifications.length" @click="removeAll")
+          v-icon(size="20") {{ icons['mdiDelete'] }}
 
     v-row.tw-mt-5.overflow-hidden
       v-col(v-for="(notification,i) in notifications" :key="notification.id" cols="12")

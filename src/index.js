@@ -38,13 +38,9 @@ export default class CameraUI {
     process.env.CUI_STORAGE_DATABASE_USER_PATH = path.resolve(storagePath, 'database', 'user');
     process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'database.json');
     process.env.CUI_STORAGE_LOG_PATH = path.resolve(storagePath, 'logs');
-    process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log.txt');
+    process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log');
     process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
-
-    if (Object.keys(configJson).length > 0) {
-      fs.ensureFileSync(process.env.CUI_STORAGE_CONFIG_FILE);
-      fs.writeJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, configJson, { spaces: 2 });
-    }
+    process.env.CUI_STORAGE_REPORTS_PATH = path.resolve(storagePath, 'reports');
 
     process.env.CUI_MODULE_NAME = environment.moduleName || 'camera.ui';
     process.env.CUI_MODULE_VERSION = environment.moduleVersion || packageJson.version;
@@ -54,7 +50,7 @@ export default class CameraUI {
     process.env.CUI_VERSION = packageJson.version;
 
     const log = new LoggerService(logger);
-    const config = new ConfigService();
+    const config = new ConfigService(configJson, this);
 
     return new Interface(log, config);
   }

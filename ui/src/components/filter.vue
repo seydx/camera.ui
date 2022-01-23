@@ -1,41 +1,45 @@
 <template lang="pug">
-v-menu(z-index="10" :content-class="datePicker && datePickerOpened ? 'datePickerOpened' : 'datePickerClosed'" v-model="showFilter" transition="slide-y-transition" min-width="260px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" content-class="light-shadow")
-  template(v-slot:activator="{ on, attrs }")
-    v-badge(:value="selected.length" :content="selected.length" color="var(--cui-primary)" offset-x="20" offset-y="20" overlap)
-      v-btn.text-default.tw-mr-1(icon height="38px" width="38px" v-bind="attrs" v-on="on")
-        v-icon {{ icons['mdiFilter'] }}
+div
+  v-dialog(ref="dialog" v-model="dateModal" width="290px" v-if="datePicker")
+    template(v-slot:activator="{ on, attrs }")
+      v-badge(dot :value="selected.filter(s => s.type === 'date').length" :content="selected.filter(s => s.type === 'date').length" color="var(--cui-primary)" offset-x="10" offset-y="10" overlap)
+        v-btn.text-muted(icon height="30px" width="30px" v-bind="attrs" v-on="on")
+          v-icon(size="20") {{ icons['mdiCalendar'] }}
 
-  v-card.light-shadow.card-border(:class="datePicker && datePickerOpened ? 'datePickerOpened' : 'datePickerClosed'")
-    .tw-p-6.tw-pb-0.tw-flex.tw-justify-between.filter-title.tw-pb-4
-      .tw-flex.tw-items-center.filter-menu-title {{ $t('filters') }}
+    v-date-picker(v-model="dateRange" :locale="uiConfig.currentLanguage" scrollable range :selected-items-text="`{0} ${$t('selected')}`")
+      v-spacer
+      v-btn(text color="primary" @click="dateModal = false") {{ $t('cancel') }}
+      v-btn(text color="primary" @click="saveDateRange") {{ $t('ok') }}
 
-      .t-block.tw-ml-auto
-        v-btn.text-muted(icon height="38px" width="38px" @click="clearFilter")
-          v-icon {{ icons['mdiAutorenew'] }}
+  v-menu(z-index="10" v-model="showFilter" transition="slide-y-transition" min-width="260px" :close-on-content-click="false" offset-y bottom nudge-top="-15" content-class="light-shadow")
+    template(v-slot:activator="{ on, attrs }")
+      v-badge(dot :value="selected.filter(s => s.type !== 'date').length" :content="selected.filter(s => s.type !== 'date').length" color="var(--cui-primary)" offset-x="10" offset-y="10" overlap)
+        v-btn.text-muted(icon height="30px" width="30px" v-bind="attrs" v-on="on")
+          v-icon(size="20") {{ icons['mdiFilter'] }}
 
-      DatePicker(v-model="dateRange" :model-config="dateConfig" mode="date" color="pink" is24hr is-range :is-dark="darkMode" v-if="datePicker" :attributes="dateAttr" @popoverWillShow="datePickerOpened = true" @popoverDidHide="datePickerOpened = false")
-        template(v-slot="{ inputValue, inputEvents, togglePopover }")
-          v-btn(icon height="38px" width="38px" @click="togglePopover()" :color="dateRange.start || dateRange.end ? 'var(--cui-primary)' : 'var(--cui-text-hint)'")
-            v-icon {{ icons['mdiCalendar'] }}
+    v-card.light-shadow.card-border
+      .tw-p-6.tw-pb-0.tw-flex.tw-justify-between.filter-title.tw-pb-4
+        .tw-flex.tw-items-center.filter-menu-title {{ $t('filters') }}
 
-    v-list.tw-pt-0(:dark="darkMode")
-      v-list-group(v-for="item in items" :key="item.id" v-model="filter[item.type]" v-if="item.enabled" no-action)
-        template(v-slot:prependIcon)
-          v-icon.text-default.tw-ml-5 {{ filter[item.type] ? icons['mdiChevronUp'] : icons['mdiChevronDown'] }}
-        template(v-slot:activator)
-          v-list-item-content
-            v-list-item-title.filter-menu-subtitle {{ item.title }}
-        template(v-slot:appendIcon)
-          v-icon.text-default 
-          v-chip.tw-mr-5.tw-text-white(small color="rgba(0,0,0, 0.2)" style="font-size: 0.6rem !important;") {{ item.items.filter(child => child.selected).length }}
+      v-list.tw-pt-0(:dark="darkMode")
+        v-list-group(v-for="item in items" :key="item.id" v-model="filter[item.type]" v-if="item.enabled" no-action)
+          template(v-slot:prependIcon)
+            v-icon.text-default.tw-ml-5 {{ filter[item.type] ? icons['mdiChevronUp'] : icons['mdiChevronDown'] }}
+          template(v-slot:activator)
+            v-list-item-content
+              v-list-item-title.filter-menu-subtitle {{ item.title }}
+          template(v-slot:appendIcon)
+            v-icon.text-default 
+            v-chip.tw-mr-5.tw-text-white(small color="rgba(0,0,0, 0.2)" style="font-size: 0.6rem !important;") {{ item.items.filter(child => child.selected).length }}
 
-        v-list-item.tw-p-0(dense v-for="child in item.items" :key="child.title")
-          v-checkbox(v-model="child.selected" :label="child.title" color="var(--cui-primary)" :value="child.title" hide-details)
+          v-list-item.tw-p-0(dense v-for="child in item.items" :key="child.title")
+            v-checkbox(v-model="child.selected" :ripple="false" :label="child.title" color="var(--cui-primary)" :value="child.title" hide-details)
 
+  v-btn.text-muted(icon height="30px" width="30px" @click="clearFilter")
+    v-icon(size="20") {{ icons['mdiAutorenew'] }}
 </template>
 
 <script>
-import DatePicker from 'v-calendar/lib/components/date-picker.umd';
 import { mdiAutorenew, mdiCalendar, mdiChevronDown, mdiChevronUp, mdiFilter } from '@mdi/js';
 
 import { getSetting } from '@/api/settings.api';
@@ -44,10 +48,6 @@ import { getRecordings } from '@/api/recordings.api';
 
 export default {
   name: 'Filters',
-
-  components: {
-    DatePicker,
-  },
 
   props: {
     camerasSelect: Boolean,
@@ -60,23 +60,8 @@ export default {
 
   data() {
     return {
-      datePickerOpened: false,
-
-      dateRange: {
-        start: null,
-        end: null,
-      },
-      dateAttr: [
-        {
-          popover: {
-            placement: 'right-end',
-          },
-        },
-      ],
-      dateConfig: {
-        type: 'string',
-        mask: 'YYYY-MM-DD',
-      },
+      dateModal: false,
+      dateRange: [],
 
       filter: {
         cameras: false,
@@ -140,6 +125,9 @@ export default {
   computed: {
     darkMode() {
       return localStorage.getItem('theme') === 'dark';
+    },
+    uiConfig() {
+      return this.$store.state.config.ui;
     },
   },
 
@@ -250,9 +238,7 @@ export default {
       this.$toast.error(err.message);
     }
 
-    this.$watch('showFilter', this.watchShowFilter, { deep: true });
     this.$watch('items', this.watchItems, { deep: true });
-    this.$watch('dateRange', this.watchDateRange, { deep: true });
   },
 
   methods: {
@@ -263,10 +249,8 @@ export default {
         });
       });
 
-      this.dateRange = {
-        start: null,
-        end: null,
-      };
+      this.dateRange = [];
+      this.saveDateRange();
     },
     filterQuery(filter) {
       if (filter && filter.length) {
@@ -409,16 +393,19 @@ export default {
 
       return labels;
     },
-    watchDateRange() {
+    saveDateRange() {
       const selected = [];
       const date = {};
 
-      if (this.dateRange.start) {
-        date.start = this.dateRange.start;
+      if (this.dateRange.length) {
+        const start = this.dateRange[0];
+        const end = this.dateRange[1];
 
-        if (this.dateRange.end) {
-          date.end = this.dateRange.end;
+        if (start) {
+          date.start = start;
         }
+
+        date.end = end || start;
 
         selected.push({
           value: date,
@@ -430,6 +417,8 @@ export default {
       this.selected.push(...selected);
 
       this.filterQuery(this.selected);
+
+      this.$refs.dialog.save(this.dateRange);
     },
     watchItems() {
       const selected = [];
@@ -450,22 +439,11 @@ export default {
 
       this.filterQuery(this.selected);
     },
-    watchShowFilter() {
-      if (!this.showFilter) {
-        this.datePickerOpened = this.showFilter;
-      }
-    },
   },
 };
 </script>
 
 <style scoped>
-span >>> .v-badge__badge {
-  height: 16px;
-  font-size: 8px;
-  min-width: 16px;
-}
-
 .filter-title {
   border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
 }
@@ -478,16 +456,6 @@ span >>> .v-badge__badge {
 .filter-menu-subtitle {
   font-weight: 700 !important;
   font-size: 0.9rem !important;
-}
-
-.datePickerClosed {
-  min-height: 0px;
-  transition: 0.2s all;
-}
-
-.datePickerOpened {
-  min-height: 360px;
-  transition: 0.2s all;
 }
 
 div >>> .v-list {
@@ -515,7 +483,7 @@ div >>> .v-list-group__header {
 div >>> .v-list-group__items {
   background: rgba(var(--cui-menu-secondary-rgb)) !important;
   border-bottom: 1px solid rgba(var(--cui-text-secondary-rgb), 0.1);
-  padding: 1rem;
+  /*padding: 1rem;*/
 }
 
 div >>> .v-input--selection-controls {
@@ -529,11 +497,11 @@ div >>> .v-label {
   color: var(--cui-text-default);
 }
 
-div >>> .v-list-group__items {
+/*div >>> .v-list-group__items {
   padding: 0;
   padding-top: 10px !important;
   padding-bottom: 10px !important;
-}
+}*/
 
 div >>> .v-input input,
 div >>> .v-icon {

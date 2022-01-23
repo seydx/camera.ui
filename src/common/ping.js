@@ -6,10 +6,10 @@ import { URL } from 'url';
 
 import LoggerService from '../services/logger/logger.service.js';
 
-const { log } = LoggerService;
-
 export default class Ping {
   static async status(camera, timeout = 1) {
+    const { log } = LoggerService;
+
     let cameraSource = camera.videoConfig.source.split('-i ')[1];
 
     if (!cameraSource) {

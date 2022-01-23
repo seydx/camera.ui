@@ -59,6 +59,11 @@ body .v-application .accent {
   border-color: var(--cui-primary-300) !important;
 }
 
+body .v-application .accent--text {
+  color: var(--cui-primary-300) !important;
+  caret-color: var(--cui-primary-300) !important;
+}
+
 .v-card,
 .v-list,
 .v-data-table {
@@ -83,6 +88,28 @@ body .v-application .accent {
 }
 
 body .v-application .v-stepper__step__step.primary {
+  color: #fff !important;
+}
+
+.v-date-picker-title {
+  color: #fff !important;
+}
+
+.v-date-picker-header,
+.v-date-picker-header__value button {
+  color: var(--cui-text-default) !important;
+}
+
+.v-date-picker-header .theme--light.v-btn.v-btn--icon {
+  color: rgba(var(--cui-text-default-rgb), 0.87) !important;
+}
+
+.v-date-picker-table th,
+.v-date-picker-table button {
+  color: var(--cui-text-default) !important;
+}
+
+.v-date-picker-table__current {
   color: #fff !important;
 }
 

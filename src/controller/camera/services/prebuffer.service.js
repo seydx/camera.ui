@@ -329,7 +329,7 @@ export default class PrebufferService {
 
   async getVideo(options) {
     if (this.prebufferSession) {
-      const requestedPrebuffer = options?.prebuffer || Math.max(4000, this.idrInterval || 4000) * 1.5;
+      const requestedPrebuffer = options?.prebuffer * 1000 || Math.max(4000, this.idrInterval || 4000) * 1.5;
 
       if (options?.prebuffer) {
         log.debug(`Prebuffer requested with a duration of -${requestedPrebuffer / 1000}s`, this.cameraName);

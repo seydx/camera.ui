@@ -71,7 +71,7 @@ export default class LoggerService {
 
     LoggerService.#filelogger = new FileLogger({
       path: process.env.CUI_STORAGE_LOG_PATH,
-      fileName: 'camera.ui.log.txt',
+      fileName: 'camera.ui.log',
     });
 
     if (logger?.log) {
@@ -124,7 +124,7 @@ export default class LoggerService {
     return LoggerService.log;
   }
 
-  static #formatMessage(message, name, level) {
+  static formatMessage(message, name, level) {
     let formatted = '';
 
     if (name) {
@@ -190,7 +190,7 @@ export default class LoggerService {
     }
 
     let origMessage = message;
-    let formattedMessage = LoggerService.#formatMessage(message, name, level);
+    let formattedMessage = LoggerService.formatMessage(message, name, level);
 
     if (LoggerService.#withPrefix) {
       formattedMessage = chalk.cyan(`[${LoggerService.#prefix}] `) + formattedMessage;

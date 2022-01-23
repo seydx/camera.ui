@@ -162,6 +162,7 @@ export default class Database {
   static databasePath = ConfigService.databasePath;
   static databaseUserPath = ConfigService.databaseUserPath;
   static recordingsPath = ConfigService.recordingsPath;
+  static reportsPath = ConfigService.reportsPath;
   static databaseFilePath = ConfigService.databaseFilePath;
 
   static controller;
@@ -175,6 +176,7 @@ export default class Database {
   async prepareDatabase() {
     await fs.ensureDir(Database.recordingsPath);
     await fs.ensureDir(Database.databaseUserPath);
+    await fs.ensureDir(Database.reportsPath);
 
     Database.interfaceDB = new Low(new JSONFile(Database.databaseFilePath));
     Database.tokensDB = new Low(new MemorySync());
@@ -324,7 +326,7 @@ export default class Database {
 
         return {
           id: id,
-          camera: cameraName,
+          camera: cameraName.replace(/_/g, ' '),
           fileName: `${fileName}.${extension}`,
           name: fileName,
           extension: extension,

@@ -7,10 +7,10 @@
     .header.tw-justify-between.tw-items-center.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
         h2 {{ $t($route.name.toLowerCase()) }}
-      .header-utils
-        v-btn(icon height="38px" width="38px" color="red" :disabled="!recordings.length" @click="removeAll")
-          v-icon {{ icons['mdiDelete'] }}
+      .header-utils.tw-flex.tw-justify-center.tw-items-center
         FilterCard(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
+        v-btn(icon height="30px" width="30px" color="red" :disabled="!recordings.length" @click="removeAll")
+          v-icon(size="20") {{ icons['mdiDelete'] }}
 
     v-layout.tw-mt-5(row wrap)
       v-flex.tw-mb-4.tw-px-2(xs12 sm6 md4 lg3 xl2 v-for="(recording, i) in recordings" :key="recording.id" :style="`height: ${height}px`")

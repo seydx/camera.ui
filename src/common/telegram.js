@@ -47,25 +47,35 @@ export default class Telegram {
 
   static async send(chatID, content) {
     if (Telegram.bot) {
-      try {
-        if (content.message) {
+      if (content.message) {
+        try {
           log.debug('Telegram: Sending Message');
           await Telegram.bot.sendMessage(chatID, content.message);
+        } catch (error) {
+          log.info('An error occured during sending message!', 'Telegram', 'notifications');
+          log.error(error?.message || error, 'Telegram', 'notifications');
         }
+      }
 
-        if (content.img) {
-          log.debug('Telegram: Sending Photo');
+      if (content.img) {
+        try {
+          log.debug('Telegram: Sending Image');
           const stream = fs.createReadStream(content.img);
           await Telegram.bot.sendPhoto(chatID, stream, {}, { filename: content.fileName });
+        } catch (error) {
+          log.info('An error occured during sending image!', 'Telegram', 'notifications');
+          log.error(error?.message || error, 'Telegram', 'notifications');
         }
+      }
 
-        if (content.video) {
+      if (content.video) {
+        try {
           log.debug('Telegram: Sending Video');
           await Telegram.bot.sendVideo(chatID, content.video, {}, { filename: content.fileName });
+        } catch (error) {
+          log.info('An error occured during sending video!', 'Telegram', 'notifications');
+          log.error(error?.message || error, 'Telegram', 'notifications');
         }
-      } catch (error) {
-        log.info('An error occured during sending telegram message!', 'Telegram', 'notifications');
-        log.error(error?.message || error, 'Telegram', 'notifications');
       }
     } else {
       log.warn('Can not send Telegram notification, bot is not initialized!', 'Telegram', 'notifications');

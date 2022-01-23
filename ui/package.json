@@ -18,7 +18,6 @@
     "register-service-worker": "^1.7.2",
     "socket.io-client": "4.4.1",
     "swiper": "7.4.1",
-    "v-calendar": "^2.3.4",
     "v-jsoneditor": "^1.4.5",
     "vue": "^2.6.14",
     "vue-chartjs": "3.5.1",

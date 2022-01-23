@@ -124,7 +124,7 @@ export const patchByName = async (req, res) => {
         req.body.photo = req.file.filename;
       }
 
-      if (Object.keys(req.body).length === 0) {
+      if (req.body === undefined) {
         return res.status(400).send({
           statusCode: 400,
           message: 'Bad request',

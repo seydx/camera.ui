@@ -29,17 +29,16 @@ export const list = async (query) => {
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
     notifications = notifications.filter((notification) => {
-      let date = notification.time.split(',')[0].split('.');
+      const date = moment.unix(notification.timestamp).format('YYYY-MM-DD');
+      const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
 
-      let year = date[2];
-      let month = date[1];
-      let day = date[0];
+      const fromDate = query.from;
+      const toDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
 
-      date = year + '-' + month + '-' + day;
+      const fromDateMoment = moment(fromDate).set({ hour: 0, minute: 0, second: 0 });
+      const toDateMoment = moment(toDate).set({ hour: 23, minute: 59, second: 59 });
 
-      let to = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
-
-      let isBetween = moment(date).isBetween(query.from, to);
+      const isBetween = dateMoment.isBetween(fromDateMoment, toDateMoment);
 
       return isBetween;
     });

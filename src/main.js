@@ -23,6 +23,8 @@ export default class Interface extends EventEmitter {
   }
 
   async start() {
+    this.emit('config', this.config.json);
+
     this.log.debug(`Initializing camera.ui with PID: ${process.pid}`);
 
     if (!compareVersions.compare(process.version, '14.18.1', '>=')) {
@@ -77,7 +79,7 @@ export default class Interface extends EventEmitter {
     );
 
     this.log.debug('Starting interface...');
-    this.#server.listen(this.config.port);
+    this.#server.listen(this.config.ui.port);
   }
 
   async close() {

@@ -57,8 +57,9 @@ process.env.CUI_STORAGE_DATABASE_PATH = path.resolve(storagePath, 'database');
 process.env.CUI_STORAGE_DATABASE_USER_PATH = path.resolve(storagePath, 'database', 'user');
 process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'database.json');
 process.env.CUI_STORAGE_LOG_PATH = path.resolve(storagePath, 'logs');
-process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log.txt');
+process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log');
 process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
+process.env.CUI_STORAGE_REPORTS_PATH = path.resolve(storagePath, 'reports');
 
 process.env.CUI_MODULE_NAME = moduleName;
 process.env.CUI_MODULE_VERSION = packageJson.version;
@@ -68,7 +69,9 @@ process.env.CUI_MODULE_SUDO = sudoEnabled;
 process.env.CUI_VERSION = packageJson.version;
 
 const logger = new LoggerService();
-const config = new ConfigService();
+
+const configJson = fs.readJSONSync(process.env.CUI_STORAGE_CONFIG_FILE, { throws: false });
+const config = new ConfigService(configJson);
 
 if (cluster.isPrimary) {
   const { log } = LoggerService;

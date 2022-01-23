@@ -67,7 +67,7 @@ export default class MotionController {
 
     //used for external events
     this.triggerMotion = MotionController.triggerMotion = async (cameraName, state) => {
-      await MotionController.handleMotion('custom', cameraName, state, 'extern');
+      await MotionController.handleMotion('motion', cameraName, state, 'extern');
     };
 
     this.httpServer = MotionController.httpServer;
@@ -326,6 +326,7 @@ export default class MotionController {
         }
 
         if (state !== undefined) {
+          triggerType = triggerType === 'reset' ? 'motion' : triggerType;
           await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt');
         } else {
           log.warn(

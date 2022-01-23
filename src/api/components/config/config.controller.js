@@ -18,7 +18,7 @@ export const show = async (req, res) => {
 
 export const patchConfig = async (req, res) => {
   try {
-    if (Object.keys(req.body).length === 0) {
+    if (req.body === undefined) {
       return res.status(400).send({
         statusCode: 400,
         message: 'Bad request',

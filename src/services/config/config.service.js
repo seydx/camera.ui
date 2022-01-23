@@ -1,76 +1,20 @@
 'use-strict';
 
 import crypto from 'crypto';
-import ffmpegPath from 'ffmpeg-for-homebridge';
 import fs from 'fs-extra';
 import path from 'path';
 
-const uiDefaults = {
-  port: 8081,
-};
-
-const httpDefaults = {
-  port: 7272,
-  localhttp: false,
-};
-
-const smtpDefaults = {
-  port: 2727,
-  speace_replace: '+',
-};
-
-const ftpDefaults = {
-  port: 5050,
-  useFile: false,
-};
-
-const mqttDefault = {
-  tls: false,
-  port: 1883,
-  username: '',
-  password: '',
-};
-
-const permissionLevels = [
-  'admin',
-  //API
-  'backup:download',
-  'backup:restore',
-  'cameras:access',
-  'cameras:edit',
-  'config:access',
-  'config:edit',
-  'notifications:access',
-  'notifications:edit',
-  'recordings:access',
-  'recordings:edit',
-  'settings:access',
-  'settings:edit',
-  'users:access',
-  'users:edit',
-  //CLIENT
-  'camview:access',
-  'dashboard:access',
-  'settings:cameras:access',
-  'settings:cameras:edit',
-  'settings:camview:access',
-  'settings:camview:edit',
-  'settings:config:access',
-  'settings:config:edit',
-  'settings:dashboard:access',
-  'settings:dashboard:edit',
-  'settings:general:access',
-  'settings:general:edit',
-  'settings:notifications:access',
-  'settings:notifications:edit',
-  'settings:profile:access',
-  'settings:profile:edit',
-  'settings:recordings:access',
-  'settings:recordings:edit',
-];
-
-const defaultVideoProcess = ffmpegPath || 'ffmpeg';
-const minNodeVersion = '16.12.0';
+import {
+  uiDefaults,
+  defaultVideoProcess,
+  permissionLevels,
+  minNodeVersion,
+  httpDefaults,
+  ftpDefaults,
+  mqttDefault,
+  smtpDefaults,
+  ConfigSetup,
+} from './config.defaults.js';
 
 export default class ConfigService {
   static #secretPath;
@@ -119,7 +63,7 @@ export default class ConfigService {
     jwt_secret: null,
   };
 
-  constructor() {
+  constructor(configJson) {
     ConfigService.#secretPath = path.resolve(process.env.CUI_STORAGE_PATH, '.camera.ui.secrets');
 
     //camera.ui env
@@ -131,6 +75,7 @@ export default class ConfigService {
     ConfigService.logPath = process.env.CUI_STORAGE_LOG_PATH;
     ConfigService.logFile = process.env.CUI_STORAGE_LOG_FILE;
     ConfigService.recordingsPath = process.env.CUI_STORAGE_RECORDINGS_PATH;
+    ConfigService.reportsPath = process.env.CUI_STORAGE_REPORTS_PATH;
 
     ConfigService.debugEnabled = process.env.CUI_LOG_DEBUG === '1';
     ConfigService.version = process.env.CUI_VERSION;
@@ -148,69 +93,75 @@ export default class ConfigService {
     //defaults
     ConfigService.ui.version = process.env.CUI_MODULE_VERSION;
 
-    const uiConfig = fs.readJSONSync(ConfigService.configPath, { throws: false }) || {};
-    ConfigService.configJson = JSON.parse(JSON.stringify(uiConfig));
+    const config = new ConfigSetup(configJson);
 
-    ConfigService.parseConfig(uiConfig);
+    ConfigService.configJson = JSON.parse(JSON.stringify(config));
+    ConfigService.parseConfig(config);
 
-    return ConfigService.ui;
+    fs.ensureFileSync(ConfigService.configPath);
+    fs.writeJSONSync(ConfigService.configPath, config, { spaces: 2 });
+
+    return {
+      ui: ConfigService.ui,
+      json: ConfigService.configJson,
+    };
   }
 
-  static parseConfig(uiConfig) {
-    ConfigService.#config(uiConfig);
+  static parseConfig(config) {
+    ConfigService.#config(config);
     ConfigService.#configInterface();
 
-    if (Array.isArray(uiConfig.cameras)) {
-      ConfigService.#configCameras(uiConfig.cameras);
+    if (Array.isArray(config.cameras)) {
+      ConfigService.#configCameras(config.cameras);
     }
 
-    if (uiConfig.options) {
-      ConfigService.#configOptions(uiConfig.options);
+    if (config.options) {
+      ConfigService.#configOptions(config.options);
     }
 
-    if (uiConfig.ssl) {
-      ConfigService.#configSSL(uiConfig.ssl);
+    if (config.ssl) {
+      ConfigService.#configSSL(config.ssl);
     }
 
-    if (uiConfig.http) {
-      ConfigService.#configHTTP(uiConfig.http);
+    if (config.http) {
+      ConfigService.#configHTTP(config.http);
     }
 
-    if (uiConfig.smtp) {
-      ConfigService.#configSMTP(uiConfig.smtp);
+    if (config.smtp) {
+      ConfigService.#configSMTP(config.smtp);
     }
 
-    if (uiConfig.ftp) {
-      ConfigService.#configFTP(uiConfig.ftp);
+    if (config.ftp) {
+      ConfigService.#configFTP(config.ftp);
     }
 
-    if (uiConfig.mqtt) {
-      ConfigService.#configMQTT(uiConfig.mqtt);
+    if (config.mqtt) {
+      ConfigService.#configMQTT(config.mqtt);
     }
   }
 
-  static writeToConfig(target, config) {
-    if (config) {
+  static writeToConfig(target, configJson) {
+    if (configJson) {
       if (ConfigService.configJson[target]) {
-        ConfigService.configJson[target] = config;
+        ConfigService.configJson[target] = configJson;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else if (!target) {
-        ConfigService.configJson = config;
+        ConfigService.configJson = configJson;
         fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
       } else {
-        throw new Error(`Can not save config, target ${target} not found in config!`, 'Config', 'system');
+        throw new Error(`Can not save config, "${target}" not found in config!`, 'Config', 'system');
       }
     } else {
       throw new Error('Can not save config, no config defined!', 'Config', 'system');
     }
 
-    const uiConfig = JSON.parse(JSON.stringify(ConfigService.configJson));
-    ConfigService.parseConfig(uiConfig);
+    const config = JSON.parse(JSON.stringify(ConfigService.configJson));
+    ConfigService.parseConfig(config);
   }
 
-  static #config(uiConfig) {
-    if (Number.parseInt(uiConfig.port)) {
-      ConfigService.ui.port = uiConfig.port;
+  static #config(config = {}) {
+    if (Number.parseInt(config.port)) {
+      ConfigService.ui.port = config.port;
     }
   }
 
@@ -244,6 +195,10 @@ export default class ConfigService {
   }
 
   static #configSSL(ssl = {}) {
+    if (!ssl.active) {
+      return;
+    }
+
     if (ssl.key && ssl.cert) {
       ConfigService.ui.ssl = {
         key: fs.readFileSync(ssl.key, 'utf8'),
@@ -346,7 +301,7 @@ export default class ConfigService {
 
         // validate prebufferLength
         camera.prebufferLength =
-          (camera.prebufferLength >= 4 && camera.prebufferLength <= 8 ? camera.prebufferLength : 4) * 1000;
+          camera.prebufferLength >= 4 && camera.prebufferLength <= 8 ? camera.prebufferLength : 4;
 
         // setup video analysis
         camera.videoanalysis = {

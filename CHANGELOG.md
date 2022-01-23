@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.3 - 2022-01-23
+
+## Other Changes
+- Refactored recordings/notifications filter
+- Refactored config generator
+
+## Bugfixes
+- Fixed an issue where camera names were displayed incorrectly in recordings
+- Fixed an issue where the recordings/notifications could not be filtered properly
+- Fixed an issue where config.json was not created in standalone mode
+- Fixed an issue where deleting the camera via the interface caused errors
+- Minor bugfixes
+
 # v1.1.2 - 2022-01-22
 
 ## Bugfixes

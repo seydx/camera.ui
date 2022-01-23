@@ -4,15 +4,15 @@
 
   .tw-mb-7(v-if="!loading" ref="innerContainer")
     label.form-input-label {{ $t('selected_camera') }}
-    v-select(v-model="camera" :items="cameras" item-text="name" prepend-inner-icon="mdi-cctv" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" return-object solo)
+    v-select(v-model="camera" :items="cameras" :no-data-text="$t('no_data_available')" item-text="name" prepend-inner-icon="mdi-cctv" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" return-object solo)
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiCctv'] }}
       template(v-slot:append-outer)
         v-dialog(v-model="removeCameraDialog" width="500" scrollable)
           template(v-slot:activator='{ on, attrs }')
-            v-btn(icon v-bind='attrs' v-on='on' style="margin-top: -6px;")
+            v-btn(icon v-bind='attrs' v-on='camera && camera.name ? on : null' style="margin-top: -6px;")
               v-icon.tw-cursor-pointer(color="error") {{ icons['mdiCloseThick'] }}
-          v-card
+          v-card(v-if="camera && camera.name")
             v-card-title {{ $t('remove_camera') }}
             v-divider
             v-card-text.tw-p-7.text-default.tw-text-center {{ moduleName === 'homebridge-camera-ui' ? $t('remove_camera_confirm_text_homebridge').replace('@', camera.name) : $t('remove_camera_confirm_text').replace('@', camera.name) }}
@@ -683,7 +683,7 @@
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ message }}   
 
-    v-btn.tw-mt-5.tw-text-white(block color="var(--cui-primary)" @click="onSave" :loading="loadingProgress") {{ $t('save') }}
+    v-btn.tw-mt-5.tw-text-white(v-if="cameras.length" block color="var(--cui-primary)" @click="onSave" :loading="loadingProgress") {{ $t('save') }}
 
 </template>
 
@@ -1049,16 +1049,20 @@ export default {
 
       try {
         await removeCamera(this.camera.name);
-        this.cameras = this.cameras.filter((camera) => camera.name !== this.camera.name);
-        this.camera = this.cameras[0];
+        this.removeCameraDialog = false;
+
+        setTimeout(() => {
+          this.cameras = this.cameras.filter((camera) => camera.name !== this.camera.name);
+          this.camera = this.cameras[0];
+        }, 500);
 
         this.$toast.success(`${this.$t('successfully_removed')}`);
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);
-      }
 
-      this.removeCameraDialog = false;
+        this.removeCameraDialog = false;
+      }
     },
     prebufferStatus(data) {
       if (this.prebufferingStates[data.camera]) {

@@ -4,23 +4,25 @@
 import http from 'http';
 import https from 'https';
 
+import ConfigService from '../services/config/config.service.js';
+import LoggerService from '../services/logger/logger.service.js';
+
+const { log } = LoggerService;
+
 import App from './app.js';
 
 export default class Server {
   constructor(controller) {
-    const log = controller.log;
-    const config = controller.config;
-
     const app = new App({
       debug: process.env.CUI_LOG_DEBUG === '1',
-      version: config.version,
+      version: ConfigService.ui.version,
     });
 
-    const server = config.ssl
+    const server = ConfigService.ui.ssl
       ? https.createServer(
           {
-            key: config.ssl.key,
-            cert: config.ssl.cert,
+            key: ConfigService.ui.ssl.key,
+            cert: ConfigService.ui.ssl.cert,
           },
           app
         )
@@ -30,7 +32,9 @@ export default class Server {
       let addr = server.address();
       let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
 
-      log.info(`camera.ui v${config.version} is listening on ${bind} (${config.ssl ? 'https' : 'http'})`);
+      log.info(
+        `camera.ui v${ConfigService.ui.version} is listening on ${bind} (${ConfigService.ui.ssl ? 'https' : 'http'})`
+      );
 
       controller.emit('finishLaunching');
     });
@@ -42,7 +46,7 @@ export default class Server {
         log.error(error, 'Interface', 'server');
       }
 
-      let bind = typeof port === 'string' ? 'Pipe ' + config.port : 'Port ' + config.port;
+      let bind = typeof port === 'string' ? 'Pipe ' + ConfigService.ui.port : 'Port ' + ConfigService.ui.port;
 
       switch (error.code) {
         case 'EACCES':
