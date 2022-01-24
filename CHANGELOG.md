@@ -1,6 +1,22 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.4 - 2022-01-24
+
+## Other Changes
+- Improved adding of cameras within the interface
+- Added a new "Reports" page (atm its only placeholder)
+- Redesigned the "save" button in camera settings page
+- Reduced system payload
+- Added more translations
+
+## Bugfixes
+- Fixed an issue where filtering of recordings and/or notifications did not work if end date was before start date
+- Fixed an issue where it was possible to add multiple cameras with the same name through the interface
+- Fixed an issue where a maximum of only 6 cameras could be displayed on Dashboard and Camview
+- Fixed an issue where the config generator failed
+- Minor bugfixes
+
 # v1.1.3 - 2022-01-23
 
 ## Other Changes
@@ -40,7 +56,7 @@ All notable changes to this project will be documented in this file.
 - The database has been completely updated and will not be read/written again when the data is changed. Instead, any changes are cached and saved when logging out/restarting/closing camera.ui
 
 ## Other Changes
-- Database: Changed to `@seydx/lowdb`
+- Database: Changed to `lowdb`
 - Videoanalysis: It is now possible to set the internal "forceClose" timer for video analysis via the interface
 - Videoanalysis: A "reset" button has been added (interface) to reset the values for video analytics to default values
 - SMTP: The SMTP server can now also search the content of an email if no camera could be assigned to the email addresse(s)

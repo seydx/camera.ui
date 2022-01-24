@@ -558,7 +558,7 @@ export default class PrebufferService {
 
     cp.stderr.on('data', (data) => {
       errors = errors.slice(-5);
-      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ''));
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
     });
 
     cp.on('exit', (code, signal) => {

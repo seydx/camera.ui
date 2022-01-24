@@ -75,7 +75,7 @@ export class ConfigSetup {
       ...ConfigSetup.setupUi(config),
       options: ConfigSetup.setupOptions(config?.options),
       ssl: ConfigSetup.setupSsl(config?.ssl),
-      http: ConfigSetup.setupMqtt(config?.http),
+      http: ConfigSetup.setupHttp(config?.http),
       smtp: ConfigSetup.setupSmtp(config?.smtp),
       ftp: ConfigSetup.setupFtp(config?.ftp),
       mqtt: ConfigSetup.setupMqtt(config?.mqtt),

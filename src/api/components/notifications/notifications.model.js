@@ -32,8 +32,13 @@ export const list = async (query) => {
       const date = moment.unix(notification.timestamp).format('YYYY-MM-DD');
       const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
 
-      const fromDate = query.from;
-      const toDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
+      let fromDate = query.from;
+      let toDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
+
+      if (moment(toDate).isBefore(fromDate)) {
+        toDate = query.from;
+        fromDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
+      }
 
       const fromDateMoment = moment(fromDate).set({ hour: 0, minute: 0, second: 0 });
       const toDateMoment = moment(toDate).set({ hour: 23, minute: 59, second: 59 });

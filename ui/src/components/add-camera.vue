@@ -16,7 +16,7 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
 
             label.form-input-label Name
               span.tw-text-red-500 *
-            v-text-field(v-model="cam.name" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
+            v-text-field(v-model="cam.name" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" required solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
@@ -25,6 +25,15 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
             v-text-field(v-model="cam.videoConfig.source" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
+            label.form-input-label Sub Source
+            v-text-field(v-model="cam.videoConfig.subSource" :hint="$t('sub_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+              template(v-slot:prepend-inner)
+                  v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
 
             label.form-input-label Still Image Source
             v-text-field(v-model="cam.videoConfig.stillImageSource" :hint="$t('still_image_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
@@ -296,12 +305,17 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
 </template>
 
 <script>
+/* eslint-disable vue/require-default-prop */
 import { mdiAlphabetical, mdiInformationOutline, mdiPlus } from '@mdi/js';
 
 import { addCamera } from '@/api/cameras.api';
 
 export default {
   name: 'AddCamera',
+
+  props: {
+    cameras: Array,
+  },
 
   data() {
     return {
@@ -310,6 +324,17 @@ export default {
 
       valid: true,
       rules: {
+        camera: [
+          (v) => {
+            if (!v || !v.trim()) {
+              return this.$t('field_must_not_be_empty');
+            } else if (this.cameras.some((camera) => camera.name === v)) {
+              return this.$t('camera_already_exists');
+            }
+
+            return true;
+          },
+        ],
         string: [(v) => !!v || this.$t('field_must_not_be_empty')],
       },
 
@@ -368,21 +393,25 @@ export default {
       if (valid) {
         this.loading = true;
 
-        const sourceArguments = this.cam.videoConfig.source.split(/\s+/);
+        const camera = { ...this.cam };
+
+        const sourceArguments = camera.videoConfig.source.split(/\s+/);
 
         if (!sourceArguments.includes('-i')) {
-          this.cam.videoConfig.source = `-i ${this.cam.videoConfig.source}`;
+          camera.videoConfig.source = `-i ${camera.videoConfig.source}`;
         }
 
-        this.cam.smtp.email = this.cam.name;
+        camera.videoConfig.subSource = camera.videoConfig.subSource || camera.videoConfig.source;
+        camera.videoConfig.stillImageSource = camera.videoConfig.stillImageSource || camera.videoConfig.source;
+
+        camera.smtp.email = camera.name;
 
         try {
-          await addCamera(this.cam);
+          await addCamera(camera);
+          this.$emit('add', camera);
 
           this.$toast.success(`${this.$t('successfully_added_camera')}`);
           this.closeDialog();
-
-          this.$emit('add', this.cam);
         } catch (err) {
           console.log(err);
           this.$toast.error(err.message);

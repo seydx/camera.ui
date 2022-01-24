@@ -94,8 +94,8 @@ export default class ConfigService {
     ConfigService.ui.version = process.env.CUI_MODULE_VERSION;
 
     const config = new ConfigSetup(configJson);
+    ConfigService.configJson = new ConfigSetup(configJson);
 
-    ConfigService.configJson = JSON.parse(JSON.stringify(config));
     ConfigService.parseConfig(config);
 
     fs.ensureFileSync(ConfigService.configPath);
@@ -107,7 +107,7 @@ export default class ConfigService {
     };
   }
 
-  static parseConfig(config) {
+  static parseConfig(config = {}) {
     ConfigService.#config(config);
     ConfigService.#configInterface();
 
@@ -141,13 +141,13 @@ export default class ConfigService {
   }
 
   static writeToConfig(target, configJson) {
+    let config = ConfigService.configJson;
+
     if (configJson) {
-      if (ConfigService.configJson[target]) {
-        ConfigService.configJson[target] = configJson;
-        fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
+      if (config[target]) {
+        config[target] = configJson;
       } else if (!target) {
-        ConfigService.configJson = configJson;
-        fs.writeJSONSync(ConfigService.configPath, ConfigService.configJson, { spaces: 2 });
+        config = configJson;
       } else {
         throw new Error(`Can not save config, "${target}" not found in config!`, 'Config', 'system');
       }
@@ -155,7 +155,11 @@ export default class ConfigService {
       throw new Error('Can not save config, no config defined!', 'Config', 'system');
     }
 
-    const config = JSON.parse(JSON.stringify(ConfigService.configJson));
+    config = new ConfigSetup(config);
+    ConfigService.configJson = new ConfigSetup(config);
+
+    fs.writeJSONSync(ConfigService.configPath, config, { spaces: 2 });
+
     ConfigService.parseConfig(config);
   }
 

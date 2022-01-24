@@ -2,20 +2,19 @@
 'use-strict';
 
 export const pages = (req, res) => {
+  const maxPageSize = req.path === '/api/cameras' ? 50 : 6;
+  const minPage = 1;
+
   let start = Number.parseInt(req.query.start); //for infinite scroll
-  let page = Number.parseInt(req.query.page) || 1;
-  let pageSize = Number.parseInt(req.query.pageSize) || 6;
+  let page = Number.parseInt(req.query.page) || minPage;
+  let pageSize = Number.parseInt(req.query.pageSize) || maxPageSize;
 
   // eslint-disable-next-line unicorn/prefer-number-properties
   start = !isNaN(start) ? start : null;
   const items = res.locals.items || [];
-
-  let maxPageSize = 6;
-  let minPage = 1;
-  let maxPage = Math.ceil(items.length / pageSize);
+  const maxPage = Math.ceil(items.length / pageSize);
 
   pageSize = pageSize > maxPageSize ? maxPageSize : pageSize;
-
   page = page < minPage ? minPage : page;
 
   /*if(page > maxPage && items.length){

@@ -248,6 +248,27 @@ export const routes = [
     component: () => import(/* webpackChunkName: "utilization" */ '@/views/Utilization/Utilization.vue'),
   },
   {
+    path: '/reports',
+    name: 'Reports',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['admin'],
+      },
+      config: {
+        fixedNavbar: true,
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        extras: true,
+        icon: 'mdi-script',
+      },
+    },
+    component: () => import(/* webpackChunkName: "reports" */ '@/views/Reports/Reports.vue'),
+  },
+  {
     path: '/settings',
     name: 'Settings',
     meta: {

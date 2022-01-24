@@ -252,10 +252,7 @@ export default class Socket {
       }
     });
 
-    Socket.handleUptime();
-    Socket.handleCpuLoad();
-    Socket.handleCpuTemperature();
-    Socket.handleMemoryUsage();
+    Socket.watchSystem();
 
     return Socket.io;
   }
@@ -276,6 +273,17 @@ export default class Socket {
           break;
       }
     }
+  }
+
+  static async watchSystem() {
+    await Socket.handleUptime();
+    await Socket.handleCpuLoad();
+    await Socket.handleCpuTemperature();
+    await Socket.handleMemoryUsage();
+
+    setTimeout(() => {
+      Socket.watchSystem();
+    }, 30000);
   }
 
   static async handleUptime() {
@@ -302,13 +310,9 @@ export default class Socket {
       };
     } catch (error) {
       log.error(error, 'Socket');
-    } finally {
-      Socket.io.emit('uptime', Socket.#uptime);
-
-      setTimeout(() => {
-        Socket.handleUptime();
-      }, 30000);
     }
+
+    Socket.io.emit('uptime', Socket.#uptime);
   }
 
   static async handleCpuLoad() {
@@ -338,13 +342,9 @@ export default class Socket {
       });
     } catch (error) {
       log.error(error, 'Socket');
-    } finally {
-      Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
-
-      setTimeout(() => {
-        Socket.handleCpuLoad();
-      }, 20000);
     }
+
+    Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
   }
 
   static async handleCpuTemperature() {
@@ -358,13 +358,9 @@ export default class Socket {
       });
     } catch (error) {
       log.error(error, 'Socket');
-    } finally {
-      Socket.io.emit('cpuTemp', Socket.#cpuTempHistory);
-
-      setTimeout(() => {
-        Socket.handleCpuTemperature();
-      }, 20000);
     }
+
+    Socket.io.emit('cpuTemp', Socket.#cpuTempHistory);
   }
 
   static async handleMemoryUsage() {
@@ -397,12 +393,8 @@ export default class Socket {
       });
     } catch (error) {
       log.error(error, 'Socket');
-    } finally {
-      Socket.io.emit('memory', Socket.#memoryUsageHistory);
-
-      setTimeout(() => {
-        Socket.handleMemoryUsage();
-      }, 20000);
     }
+
+    Socket.io.emit('memory', Socket.#memoryUsageHistory);
   }
 }
