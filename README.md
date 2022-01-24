@@ -29,6 +29,8 @@ and much mure...
 
 :de: | :gb: | :netherlands:
 
+**Demo:** https://streamable.com/3yce42 
+
 ## Installation
 
 camera.ui can be installed as follows:
