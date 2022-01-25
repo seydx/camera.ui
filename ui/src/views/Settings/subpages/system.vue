@@ -3,6 +3,9 @@
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
   .tw-mb-7(v-if="!loading")
+    v-btn.save-btn(v-scroll="onScroll" color="success" v-show="fab" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
+      v-icon  {{ icons['mdiCheckBold'] }}
+
     .page-subtitle.tw-mt-8 {{ $t('server') }}
     .page-subtitle-info {{ $t('server_information') }}
 
@@ -226,7 +229,7 @@
 <script>
 import compareVersions from 'compare-versions';
 import VueMarkdown from 'vue-markdown';
-import { mdiAt, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
+import { mdiAt, mdiCheckBold, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
 import { changeConfig, getConfig } from '@/api/config.api';
 import {
@@ -261,12 +264,15 @@ export default {
 
     icons: {
       mdiAt,
+      mdiCheckBold,
       mdiFindReplace,
       mdiNpm,
       mdiNumeric,
       mdiUpdate,
       mdiWeb,
     },
+
+    fab: false,
 
     loading: true,
     loadingProgress: true,
@@ -440,7 +446,7 @@ export default {
       this.latestVersion = relatedVersions[0].value || relatedVersions[0];
       this.updateAvailable = compareVersions.compare(this.latestVersion, this.currentVersion, '>');
 
-      this.$watch('config', this.configWatcher, { deep: true });
+      //this.$watch('config', this.configWatcher, { deep: true });
 
       this.loading = false;
       this.loadingProgress = false;
@@ -469,7 +475,7 @@ export default {
       this.updateDialog = false;
       this.changelog = '';
     },
-    async configWatcher() {
+    /*async configWatcher() {
       if (this.loadingSave) {
         return;
       }
@@ -493,7 +499,7 @@ export default {
         this.loadingSave = false;
         this.loadingProgress = false;
       }, 2000);
-    },
+    },*/
     getFtpStatus(data) {
       this.ftpStatus = data.status === 'online';
     },
@@ -700,6 +706,14 @@ export default {
       this.loadingSave = false;
       this.loadingProgress = false;
     },
+    onScroll(e) {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const top = window.pageYOffset || e.target.scrollTop || 0;
+      this.fab = top > 20;
+    },
     async onUpdateRestart() {
       this.updateDialog = false;
 
@@ -741,6 +755,13 @@ export default {
 </script>
 
 <style scoped>
+.save-btn {
+  background: rgba(var(--cui-primary-rgb)) !important;
+  right: 80px !important;
+  bottom: 45px !important;
+  z-index: 11 !important;
+}
+
 .changelog >>> a {
   color: var(--cui-primary);
   text-decoration: none;

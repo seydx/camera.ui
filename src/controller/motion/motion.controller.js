@@ -199,8 +199,8 @@ export default class MotionController {
         ':' +
         ConfigService.ui.mqtt.port,
       {
-        username: ConfigService.ui.mqtt.username,
-        password: ConfigService.ui.mqtt.password,
+        username: ConfigService.ui.mqtt.username || '',
+        password: ConfigService.ui.mqtt.password || '',
       }
     );
 

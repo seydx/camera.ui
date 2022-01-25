@@ -3,6 +3,7 @@
 
 import { createServer } from 'net';
 import { once } from 'events';
+import readline from 'readline';
 import { spawn } from 'child_process';
 
 import LoggerService from '../../../services/logger/logger.service.js';
@@ -264,6 +265,8 @@ export const startFFMPegFragmetedMP4Session = async (
       'frag_keyframe+empty_moov+default_base_moof',
       '-max_muxing_queue_size',
       '1024',
+      '-vsync',
+      'cfr',
       'tcp://127.0.0.1:' + serverPort,
     ];
 
@@ -271,18 +274,32 @@ export const startFFMPegFragmetedMP4Session = async (
 
     const cp = spawn(videoProcessor, arguments_, { env: process.env });
 
+    const stderr = readline.createInterface({
+      input: cp.stderr,
+      terminal: false,
+    });
+
+    let errors = [];
+
+    stderr.on('line', (line) => {
+      if (/\[(panic|fatal|error)]/.test(line)) {
+        errors = errors.slice(-5);
+        errors.push(line);
+
+        log.debug(line, cameraName);
+      } else if (cameraDebug) {
+        log.debug(line, cameraName);
+      }
+    });
+
     cp.on('exit', (code, signal) => {
       if (code === 1) {
-        log.error(`FFmpeg recording process exited with error! (${signal})`, cameraName, 'Homebridge');
+        errors.unshift(`FFmpeg recording process exited with error! (${signal})`);
+        log.error(errors.join(' - '), cameraName, 'Homebridge');
       } else {
         log.debug('FFmpeg recording process exited (expected)', cameraName);
       }
     });
-
-    if (cameraDebug) {
-      cp.stdout.on('data', (data) => log.debug(data.toString(), cameraName));
-      cp.stderr.on('data', (data) => log.debug(data.toString(), cameraName));
-    }
   });
 };
 

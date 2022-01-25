@@ -35,6 +35,11 @@ export default class Interface extends EventEmitter {
       );
     }
 
+    /**
+     * The modules are imported dynamically.
+     * They should only be loaded when the user wants to start camera.ui
+     */
+
     // configure server
     this.log.debug('Configuring server...');
     this.#server = new (await import('./api/index.js')).default(this);
@@ -82,6 +87,9 @@ export default class Interface extends EventEmitter {
     this.#server.listen(this.config.ui.port);
   }
 
+  /**
+   * Stops camera.ui and all started servers and controllers
+   */
   async close() {
     await this.database?.interface.write();
 
@@ -98,6 +106,9 @@ export default class Interface extends EventEmitter {
     this.#server?.close();
   }
 
+  /**
+   * Starts camera.ui as "worker" in standalone mode
+   */
   #startAsWorker() {
     let shuttingDown = false;
 

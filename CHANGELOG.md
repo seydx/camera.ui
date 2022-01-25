@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.5 - 2022-01-25
+
+## Other Changes
+- Improved debug/error logging for recording
+- Minor ui improvements
+
+## Bugfixes
+- Minor bugfixes
+
 # v1.1.4 - 2022-01-24
 
 ## Other Changes

@@ -82,7 +82,7 @@ export default {
   async created() {
     for (const [key, value] of Object.entries(this.uiConfig.validLangs)) {
       this.langs.push({
-        text: this.$t(value),
+        text: value,
         value: key,
       });
     }
