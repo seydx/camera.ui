@@ -2,6 +2,8 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import Languages from './languages';
 
+const defaultLanguage = 'en';
+
 /**
  * Update this each time a new translation is added
  * This is displayed in the interface for selecting the language
@@ -22,11 +24,15 @@ const languageList = {
 const languages = ['de', 'nl', 'en'];
 
 const supportedLanguages = (lang) => {
+  if (!lang) {
+    return defaultLanguage;
+  }
+
   switch (lang) {
     case languages.find((l) => l === lang):
       return lang;
     default:
-      return 'en';
+      return defaultLanguage;
   }
 };
 
