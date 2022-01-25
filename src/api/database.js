@@ -604,18 +604,6 @@ export default class Database {
       .value();
 
     for (const cam of ConfigService.ui.cameras) {
-      const camera = {
-        name: cam.name,
-        recordOnMovement: cam.recordOnMovement,
-        useInterfaceTimer: cam.useInterfaceTimer,
-        motionTimeout: cam.motionTimeout,
-        prebuffering: cam.prebuffering,
-        videoConfig: cam.videoConfig,
-        mqtt: cam.mqtt,
-        smtp: cam.smtp,
-        videoanalysis: cam.videoanalysis,
-      };
-
       const cameraExists = await Database.interfaceDB.chain.get('cameras').find({ name: cam.name }).cloneDeep().value();
       const cameraSettingsExists = await Database.interfaceDB.chain
         .get('settings')
@@ -625,8 +613,8 @@ export default class Database {
         .value();
 
       await (cameraExists
-        ? Database.interfaceDB.chain.get('cameras').find({ name: cam.name }).assign(camera).value()
-        : Database.interfaceDB.chain.get('cameras').push(camera).value());
+        ? Database.interfaceDB.chain.get('cameras').find({ name: cam.name }).assign(cam).value()
+        : Database.interfaceDB.chain.get('cameras').push(cam).value());
 
       if (!cameraSettingsExists) {
         const cameraSettingsEntry = { ...defaultCameraSettingsEntry };
