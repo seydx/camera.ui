@@ -443,7 +443,7 @@
     "upload_backup_archive": "อัปโหลดไฟล์สำรอง",
     "uptime": "เวลาทำงาน",
     "use_interface_timer": "ตัวจับเวลาการบันทึกอินเทอร์เฟซ",
-    "use_interface_timer_info": "หากเปิดใช้งาน ตัวจับเวลาการบันทึกจาก camera.ui จะถูกใช้สำหรับ \"motionTimeout\",
+    "use_interface_timer_info": "หากเปิดใช้งาน ตัวจับเวลาการบันทึกจาก camera.ui จะถูกใช้สำหรับ \'motionTimeout'\",
     "user": "ผุ้ใช้",
     "user_list": "รายชื่อผู้ใช้",
     "username": "ชื่อผู้ใช้",
