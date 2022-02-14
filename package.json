@@ -19,7 +19,7 @@
     "@aws-sdk/client-rekognition": "^3.48.0",
     "@seydx/lowdb": "^3.0.2",
     "alexa-remote2": "^4.1.1",
-    "axios": "^0.25.0",
+    "axios": "^0.26.0",
     "bunyan": "^1.8.15",
     "chalk": "4.1.2",
     "commander": "6.2.1",
