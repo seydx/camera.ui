@@ -2,19 +2,37 @@ import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import Languages from './languages';
 
-const validLanguages = {
-  de: 'german',
-  nl: 'dutch',
-  en: 'english',
+const defaultLanguage = 'en';
+
+/**
+ * Update this each time a new translation is added
+ * This is displayed in the interface for selecting the language
+ *
+ * Key (e.g. "en") represents the language shortcut also added to the "languages" array
+ * Value (e.g. "English (en)") represents the Text which is displayed in the interface
+ */
+const languageList = {
+  de: 'German (de)',
+  nl: 'Dutch (nl)',
+  en: 'English (en)',
 };
 
+/**
+ * Update this array each time a new translation is added
+ * It must be a valid language shortcut, please see languages.js for available shortcuts
+ */
+const languages = ['de', 'nl', 'en'];
+
 const supportedLanguages = (lang) => {
+  if (!lang) {
+    return defaultLanguage;
+  }
+
   switch (lang) {
-    case 'de':
-    case 'nl':
+    case languages.find((l) => l === lang):
       return lang;
     default:
-      return 'en';
+      return defaultLanguage;
   }
 };
 
@@ -43,4 +61,4 @@ const index18n = new VueI18n({
   messages: loadLanguage(lang),
 });
 
-export { index18n as i18n, currentLanguage, loadLanguage, supportedLanguages, validLanguages };
+export { index18n as i18n, currentLanguage, loadLanguage, supportedLanguages, languageList };

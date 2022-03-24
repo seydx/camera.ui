@@ -4,10 +4,20 @@
 import crypto from 'crypto';
 
 import ConfigService from '../../services/config/config.service.js';
+import LoggerService from '../../services/logger/logger.service.js';
 
 import * as UserModel from '../components/users/users.model.js';
 
+const { log } = LoggerService;
 const validPermissions = ConfigService.interface.permissionLevels;
+
+const loginAttempt = () => {
+  log.warn(
+    `Failed login attempt! If you have forgotten your password you can reset to the default of master/master by removing the user in the "database.json" file (${ConfigService.databaseFilePath}) and then restarting camera.ui`,
+    'Interface',
+    'interface'
+  );
+};
 
 export const hasAuthValidFields = (req, res, next) => {
   let errors = [];
@@ -69,12 +79,16 @@ export const isPasswordAndUserMatch = async (req, res, next) => {
   const user = await UserModel.findByName(req.body.username);
 
   if (!user) {
-    res.status(403).send({
+    loginAttempt();
+
+    return res.status(403).send({
       statusCode: 403,
       message: 'Forbidden',
     });
   } else if (!user?.password) {
-    res.status(403).send({
+    loginAttempt();
+
+    return res.status(403).send({
       statusCode: 403,
       message: 'Password missing',
     });
@@ -94,6 +108,8 @@ export const isPasswordAndUserMatch = async (req, res, next) => {
 
       return next();
     } else {
+      loginAttempt();
+
       return res.status(401).send({
         statusCode: 401,
         message: 'Invalid username or password',

@@ -75,6 +75,7 @@ sudo npm install -g camera.ui@latest
   - [FAQ](#faq)
   - [Contributing](#contributing)
   - [Troubleshooting](#troubleshooting)
+  - [Wiki](#wiki)
   - [License](#license)
     - [MIT License](#mit-license)
 
@@ -385,6 +386,9 @@ See [CONTRIBUTING](https://github.com/SeydX/camera.ui/blob/master/CONTRIBUTING.m
 If you have any issues then you can run camera.ui in debug mode, which will provide some additional information. This might be useful for debugging issues. Open the interface > settings > system > 
 
 https://github.com/SeydX/camera.ui/wiki/Debug
+
+## Wiki
+Before you open a new issue, please read carefully the wiki: https://github.com/seydx/homebridge-camera-ui/wiki
 
 ## License
 

@@ -81,7 +81,7 @@ const storeFrameFromVideoBuffer = (camera, fileBuffer, outputPath) => {
 
     ffmpeg.stderr.on('data', (data) => {
       errors = errors.slice(-5);
-      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
     });
 
     ffmpeg.on('error', (error) => reject(error));
@@ -202,7 +202,7 @@ export const getAndStoreSnapshot = (
 
     ffmpeg.stderr.on('data', (data) => {
       errors = errors.slice(-5);
-      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
     });
 
     let imageBuffer = Buffer.alloc(0);
@@ -271,7 +271,7 @@ export const storeSnapshotFromVideo = async (camera, recordingPath, fileName) =>
 
     ffmpeg.stderr.on('data', (data) => {
       errors = errors.slice(-5);
-      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
     });
 
     ffmpeg.on('error', (error) => reject(error));
@@ -358,7 +358,7 @@ export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
 
     ffmpeg.stderr.on('data', (data) => {
       errors = errors.slice(-5);
-      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
     });
 
     ffmpeg.on('error', (error) => reject(error));

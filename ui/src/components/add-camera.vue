@@ -5,12 +5,12 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
   v-card
     v-card-title {{ $t('add_camera') }}
     v-divider
-    
-    v-card-text.tw-p-7.text-default.tw-relative(:class="loading ? 'tw-overflow-hidden' : ''")
-      .tw-flex.tw-items-center.tw-justify-center.tw-absolute.tw-inset-0.tw-z-10(v-if="loading" style="background: rgba(0, 0, 0, 0.5);")
-        v-progress-circular(indeterminate color="var(--cui-primary)")
-      v-form(ref="form" v-model="valid" lazy-validation)
-        .tw-block
+
+    v-card-text.tw-p-7.text-default
+      v-form.tw-relative(ref="form" v-model="valid" lazy-validation)
+        .tw-flex.tw-items-center.tw-justify-center.tw-absolute.tw-inset-0.tw-z-10(v-if="loading")
+          v-progress-circular(indeterminate color="var(--cui-primary)")
+        .tw-block(v-else)
           div
             h2.tw-mb-5 {{ $t('general') }}
 
@@ -378,6 +378,14 @@ export default {
     },
   },
 
+  watch: {
+    dialog(visible) {
+      if (visible) {
+        setTimeout(() => this.$refs.form.reset(), 100);
+      }
+    },
+  },
+
   mounted() {
     this.env = process.env.NODE_ENV;
     this.moduleName = this.uiConfig?.env?.moduleName || 'camera.ui';
@@ -388,6 +396,10 @@ export default {
 
   methods: {
     async createCamera() {
+      if (this.loading) {
+        return;
+      }
+
       const valid = this.$refs.form.validate();
 
       if (valid) {

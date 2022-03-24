@@ -155,7 +155,7 @@ export default class StreamService {
 
       this.streamSession.stderr.on('data', (data) => {
         errors = errors.slice(-5);
-        errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' - '));
+        errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
       });
 
       this.streamSession.on('exit', (code, signal) => {

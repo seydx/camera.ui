@@ -29,7 +29,7 @@
       .tw-mt-8(v-for="cam in config.cameras" :key="cam.name")
         div(v-if="camera && camera.name === cam.name")
 
-          v-btn.save-btn(v-scroll="onScroll" v-show="fab" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
+          v-btn.save-btn(v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
             v-icon  {{ icons['mdiCheckBold'] }}
 
           v-sheet.tw-p-3.tw-mb-5.mx-auto.tw-text-sm(rounded width="100%" color="rgba(var(--cui-text-default-rgb), 0.1)")
@@ -982,9 +982,8 @@ export default {
       this.loadingProgress = true;
 
       try {
-        if (this.configChanged) {
-          await changeConfig(this.config);
-        }
+        await changeConfig(this.config);
+        this.$toast.success(this.$t('config_was_saved'));
       } catch (err) {
         console.log(err);
         this.$toast.error(err.message);

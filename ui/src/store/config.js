@@ -1,4 +1,4 @@
-import { i18n, loadLanguage, supportedLanguages, validLanguages } from '@/i18n';
+import { i18n, loadLanguage, supportedLanguages, languageList } from '@/i18n';
 import { getConfig } from '@/api/config.api';
 
 const initialState = { ui: false };
@@ -34,7 +34,7 @@ export const config = {
       state.ui = {
         ...config,
         currentLanguage: i18n.locale,
-        validLangs: validLanguages,
+        validLangs: languageList,
         validThemes: [
           'light-blue',
           'light-blgray',
