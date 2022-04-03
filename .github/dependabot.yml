@@ -9,6 +9,7 @@ updates:
     ignore:
       - dependency-name: 'chalk'
       - dependency-name: 'chart.js'
+      - dependency-name: 'commander'
       - dependency-name: 'concurrently'
       - dependency-name: 'mqtt'
       - dependency-name: 'supertest'
