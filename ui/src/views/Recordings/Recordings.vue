@@ -67,6 +67,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     icons: {
       mdiDelete,
@@ -96,11 +101,6 @@ export default {
           return 250;
       }
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   mounted() {

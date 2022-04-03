@@ -47,6 +47,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     icons: {
       mdiDeleteEmpty,
@@ -65,11 +70,6 @@ export default {
       name: 'terminal',
     },
   }),
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
-  },
 
   created() {
     this.showShare = navigator.share ? true : false;

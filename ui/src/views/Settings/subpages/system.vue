@@ -259,6 +259,16 @@ export default {
     VueMarkdown,
   },
 
+  beforeRouteLeave(to, from, next) {
+    if (this.loadingRestart || this.loadingUpdate || this.losdingReset) {
+      return next(false);
+    }
+
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data: () => ({
     panel: [],
 
@@ -307,16 +317,6 @@ export default {
     mqttStatus: false,
     smtpStatus: false,
   }),
-
-  beforeRouteLeave(to, from, next) {
-    if (this.loadingRestart || this.loadingUpdate || this.losdingReset) {
-      return next(false);
-    }
-
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
-  },
 
   async created() {
     this.$socket.client.on('ftpStatus', this.getFtpStatus);

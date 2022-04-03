@@ -51,7 +51,7 @@ export const patchByTarget = async (all, target, settingsData) => {
           cameraSettings.rekognition.labels = cameraSettings.rekognition.labels
             .split(',')
             .map((value) => value.trim())
-            .filter((value) => value);
+            .filter(Boolean);
         }
 
         cameraSettings.pingTimeout =

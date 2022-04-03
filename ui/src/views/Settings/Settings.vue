@@ -48,6 +48,19 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteEnter(to, from, next) {
+    if (to.fullPath === '/settings') {
+      next('/settings/account');
+    } else {
+      next();
+    }
+  },
+
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     icons: {
       mdiMenu,
@@ -62,19 +75,6 @@ export default {
         this.showOverlay = false;
       },
     },
-  },
-
-  beforeRouteEnter(to, from, next) {
-    if (to.fullPath === '/settings') {
-      next('/settings/account');
-    } else {
-      next();
-    }
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   created() {

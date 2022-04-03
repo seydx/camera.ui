@@ -119,6 +119,12 @@ import { getSetting, changeSetting } from '@/api/settings.api';
 export default {
   name: 'NotificationsSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       icons: {
@@ -156,12 +162,6 @@ export default {
         { value: 0, text: this.$t('never') },
       ],
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {

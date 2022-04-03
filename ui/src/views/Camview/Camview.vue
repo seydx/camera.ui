@@ -71,6 +71,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     allCameras: [],
     cameras: [],
@@ -85,11 +90,6 @@ export default {
     camviewLayout() {
       return this.$store.state.camview?.layout;
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   async mounted() {

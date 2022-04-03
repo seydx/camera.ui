@@ -36,15 +36,15 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data() {
     return {
       loading: true,
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   mounted() {

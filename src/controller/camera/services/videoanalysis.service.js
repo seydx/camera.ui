@@ -461,7 +461,7 @@ export default class VideoAnalysisService {
                   };
                 }
               })
-              .filter((coord) => coord),
+              .filter(Boolean),
           };
         }
       })

@@ -50,6 +50,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     config: {},
     error: false,
@@ -66,11 +71,6 @@ export default {
       colorPicker: false,
     },
   }),
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
-  },
 
   async mounted() {
     const config = await getConfig('?target=config');

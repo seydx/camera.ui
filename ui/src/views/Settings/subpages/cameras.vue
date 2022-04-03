@@ -732,6 +732,12 @@ export default {
     playground: playground,
   },
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       env: '',
@@ -833,12 +839,6 @@ export default {
       },
       deep: true,
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {

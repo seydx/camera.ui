@@ -15,5 +15,6 @@ module.exports = {
     'no-multiple-empty-lines': ['warn', { max: 1, maxEOF: 0 }],
     'eol-last': ['error', 'always'],
     'space-before-function-paren': ['error', { named: 'never' }],
+    'vue/multi-word-component-names': 'off',
   },
 };

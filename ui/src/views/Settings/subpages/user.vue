@@ -56,6 +56,12 @@ import { addUser, getUsers, removeUser } from '@/api/users.api';
 export default {
   name: 'UserSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       icons: { mdiAccount, mdiCloseThick, mdiKeyVariant, mdiSecurity },
@@ -193,12 +199,6 @@ export default {
 
       valid: true,
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {

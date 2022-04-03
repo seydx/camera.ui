@@ -37,6 +37,12 @@ import { getSetting, changeSetting } from '@/api/settings.api';
 export default {
   name: 'RecordingsSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       icons: { mdiAt, mdiTimelapse, mdiVideoImage },
@@ -82,12 +88,6 @@ export default {
 
       valid: true,
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {

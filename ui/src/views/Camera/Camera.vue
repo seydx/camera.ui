@@ -85,6 +85,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     camera: {},
     cols: 12,
@@ -97,11 +102,6 @@ export default {
     notificationsPanel: [0],
     showNotifications: false,
   }),
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
-  },
 
   async mounted() {
     try {

@@ -555,10 +555,7 @@ export default class MotionController {
           async write(fileName, { append = false, start }) {
             let filePath = path.resolve(this.realCwd, fileName);
 
-            let pathSplit = path
-              .dirname(filePath)
-              .split('/')
-              .filter((value) => value);
+            let pathSplit = path.dirname(filePath).split('/').filter(Boolean);
 
             log.info(
               `New message: File Name: ${fileName} - File Path: ${filePath} - Path Split ${JSON.stringify(pathSplit)}`,

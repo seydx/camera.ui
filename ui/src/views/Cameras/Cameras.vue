@@ -60,6 +60,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     icons: {
       mdiPlus,
@@ -90,11 +95,6 @@ export default {
           return 250;
       }
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   async mounted() {

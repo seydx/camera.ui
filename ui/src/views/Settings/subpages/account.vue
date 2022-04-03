@@ -59,6 +59,11 @@ import { changeUser } from '@/api/users.api';
 export default {
   name: 'AccountSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data() {
     return {
       icons: {
@@ -105,11 +110,6 @@ export default {
       },
       deep: true,
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   created() {

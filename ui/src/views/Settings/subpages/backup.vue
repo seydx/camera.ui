@@ -36,18 +36,18 @@ import { downloadBackup, restoreBackup } from '@/api/backup.api';
 export default {
   name: 'BackupSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data: () => ({
     loading: true,
     loadingProgress: true,
     loadingBackupDl: false,
     loadingBackupUl: false,
   }),
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
-  },
 
   async created() {
     this.loading = false;

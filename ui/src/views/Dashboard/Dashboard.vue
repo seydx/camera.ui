@@ -69,6 +69,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data: () => ({
     itemChange: false,
 
@@ -257,11 +262,6 @@ export default {
       console.log(err);
       this.$toast.error(err.message);
     }
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   beforeDestroy() {

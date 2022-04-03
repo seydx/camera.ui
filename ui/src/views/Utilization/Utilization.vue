@@ -62,6 +62,11 @@ export default {
 
   mixins: [socket],
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    next();
+  },
+
   data() {
     return {
       loading: true,
@@ -287,11 +292,6 @@ export default {
         },
       },
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    next();
   },
 
   created() {

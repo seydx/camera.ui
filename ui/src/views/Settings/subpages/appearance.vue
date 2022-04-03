@@ -36,6 +36,12 @@ import { mdiPalette, mdiThemeLightDark, mdiTranslate } from '@mdi/js';
 export default {
   name: 'AppearanceSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       icons: { mdiPalette, mdiThemeLightDark, mdiTranslate },
@@ -71,12 +77,6 @@ export default {
     uiConfig() {
       return this.$store.state.config.ui;
     },
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {

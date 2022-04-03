@@ -86,6 +86,12 @@ import { getSetting, changeSetting } from '@/api/settings.api';
 export default {
   name: 'GeneralSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data: () => ({
     icons: { mdiCctv, mdiCheckBold, mdiClockTimeFourOutline, mdiCloseThick, mdiDoor },
 
@@ -110,12 +116,6 @@ export default {
 
     valid: true,
   }),
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
-  },
 
   async created() {
     try {

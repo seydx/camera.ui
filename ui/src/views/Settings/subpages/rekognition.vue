@@ -50,6 +50,12 @@ import { getSetting, changeSetting } from '@/api/settings.api';
 export default {
   name: 'RekognitionSettings',
 
+  beforeRouteLeave(to, from, next) {
+    this.loading = true;
+    this.loadingProgress = true;
+    next();
+  },
+
   data() {
     return {
       icons: {
@@ -70,12 +76,6 @@ export default {
         string: [(v) => !!v || this.$t('field_must_not_be_empty')],
       },
     };
-  },
-
-  beforeRouteLeave(to, from, next) {
-    this.loading = true;
-    this.loadingProgress = true;
-    next();
   },
 
   async created() {
