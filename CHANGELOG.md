@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# NEXT
+
+## Other Changes
+- Bump dependencies
+
 # v1.1.6 - 2022-01-25
 
 ## Bugfixes
