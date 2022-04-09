@@ -27,7 +27,7 @@
     "connect-history-api-fallback": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.17.3",
-    "ffmpeg-for-homebridge": "^0.0.10",
+    "ffmpeg-for-homebridge": "^0.1.0",
     "fs-extra": "^10.0.1",
     "ftp-srv": "^4.5.0",
     "got": "^12.0.3",
