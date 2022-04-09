@@ -27,7 +27,7 @@ and much mure...
 
 **Supported Languages:** 
 
-:de: | :gb: | :netherlands: | :france: | :thailand: | :spain:
+:de: | :gb: | :netherlands: | :fr: | :thailand: | :es:
 
 **Demo:** https://streamable.com/3yce42 
 
