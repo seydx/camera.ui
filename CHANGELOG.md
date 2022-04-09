@@ -4,8 +4,9 @@ All notable changes to this project will be documented in this file.
 # NEXT
 
 ## Other Changes
-- i18n: Thai (th) language added by @tomzt
-- i18n: French (fr) language added by @NebzHB
+- i18n: Thai (th) language added by [@tomzt](https://github.com/tomzt)
+- i18n: French (fr) language added by [@NebzHB](https://github.com/NebzHB)
+- i18n: Spanish (es) language added by [@mastefordev](https://github.com/masterfordev)
 - Bump dependencies
 
 # v1.1.6 - 2022-01-25
