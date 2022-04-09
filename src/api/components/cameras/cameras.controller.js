@@ -76,7 +76,7 @@ export const getByName = async (req, res) => {
 
 export const patchByName = async (req, res) => {
   try {
-    if (req.body === undefined) {
+    if (req.body === undefined || Object.keys(req?.body).length === 0) {
       return res.status(400).send({
         statusCode: 400,
         message: 'Bad request',

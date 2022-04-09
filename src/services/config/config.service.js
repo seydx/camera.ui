@@ -32,6 +32,7 @@ export default class ConfigService {
   static logPath;
   static logFile;
   static recordingsPath;
+  static reportsPath;
 
   static debugEnabled;
   static version;

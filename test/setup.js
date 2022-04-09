@@ -36,6 +36,7 @@ process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'd
 process.env.CUI_STORAGE_LOG_PATH = path.resolve(storagePath, 'logs');
 process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log');
 process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
+process.env.CUI_STORAGE_REPORTS_PATH = path.resolve(storagePath, 'reports');
 
 process.env.CUI_MODULE_NAME = moduleName;
 process.env.CUI_MODULE_VERSION = packageJson.version;
