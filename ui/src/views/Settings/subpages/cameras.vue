@@ -29,8 +29,8 @@
       .tw-mt-8(v-for="cam in config.cameras" :key="cam.name")
         div(v-if="camera && camera.name === cam.name")
 
-          v-btn.save-btn(v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
-            v-icon  {{ icons['mdiCheckBold'] }}
+          v-btn.save-btn(:class="fabAbove ? 'save-btn-top' : ''" v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
+            v-icon {{ icons['mdiCheckBold'] }}
 
           v-sheet.tw-p-3.tw-mb-5.mx-auto.tw-text-sm(rounded width="100%" color="rgba(var(--cui-text-default-rgb), 0.1)")
             span.text-default {{ $t('camera_settings_save_info') }}
@@ -64,6 +64,8 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('record_on_movement_info') }}
+                        br(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
+                        span(style="color: #FF5252 !important" v-if="moduleName === 'homebridge-camera-ui' || env === 'development'") Attention: Enabling this option will disable HSV and disabling this option will enable HSV.
                   v-switch(color="var(--cui-primary)" v-model="cam.recordOnMovement")
                   
                 label.form-input-label {{ `${$t('dashboard')} ${$t('snapshot_timer')}` }}
@@ -252,6 +254,24 @@
 
                 label.form-input-label Motion Reset Message ¹
                 v-text-field(v-model="cam.mqtt.motionResetMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                  template(v-slot:message="{ key, message}")
+                    .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                      v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                      .input-info.tw-italic {{ message }}
+
+                label.form-input-label Doorbell Topic ¹
+                v-text-field(v-model="cam.mqtt.doorbellTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                  template(v-slot:message="{ key, message}")
+                    .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                      v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                      .input-info.tw-italic {{ message }}
+
+                label.form-input-label Doorbell Message ¹
+                v-text-field(v-model="cam.mqtt.doorbellMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiAlphabetical'] }}
                   template(v-slot:message="{ key, message}")
@@ -743,7 +763,8 @@ export default {
       env: '',
       panel: {},
 
-      fab: false,
+      fab: true,
+      fabAbove: false,
 
       removeCameraDialog: false,
 
@@ -938,19 +959,9 @@ export default {
           videoProcessor: 'ffmpeg',
         },
         cameras: (config.data.cameras || []).map((camera) => {
-          if (!camera.mqtt) {
-            camera.mqtt = {};
-          }
-
-          if (!camera.videoanalysis) {
-            camera.videoanalysis = {};
-          }
-
-          if (!camera.smtp) {
-            camera.smtp = {
-              email: camera.name,
-            };
-          }
+          camera.mqtt = camera.mqtt || {};
+          camera.videoanalysis = camera.videoanalysis || {};
+          camera.smtp = camera.smtp || {};
 
           this.$set(this.panel, camera.name, []);
 
@@ -1094,13 +1105,15 @@ export default {
         this.removeCameraDialog = false;
       }
     },
+    // eslint-disable-next-line no-unused-vars
     onScroll(e) {
       if (typeof window === 'undefined') {
+        this.fabAbove = true;
         return;
       }
 
       const top = window.pageYOffset || e.target.scrollTop || 0;
-      this.fab = top > 20;
+      this.fabAbove = top > 20;
     },
     prebufferStatus(data) {
       if (this.prebufferingStates[data.camera]) {
@@ -1236,10 +1249,14 @@ export default {
 
 <style scoped>
 .save-btn {
-  background: rgba(var(--cui-primary-rgb)) !important;
-  right: 80px !important;
+  right: 30px !important;
   bottom: 45px !important;
   z-index: 11 !important;
+  transition: 0.3s all;
+}
+
+.save-btn-top {
+  bottom: 95px !important;
 }
 
 div >>> .v-chip .v-chip__content {

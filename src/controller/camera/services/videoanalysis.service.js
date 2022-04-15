@@ -18,6 +18,7 @@ import MotionController from '../../motion/motion.controller.js';
 
 const { log } = LoggerService;
 
+const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isUINT = (value) => Number.isInteger(value) && value >= 0;
 
 const FFMPEG_MODE = 'rgb24'; // gray, rgba, rgb24
@@ -110,31 +111,63 @@ export default class VideoAnalysisService {
     try {
       this.resetVideoAnalysis();
 
-      this.cameraState = await this.#pingCamera();
+      const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+      let input = cameraUtils.generateInputSource(videoConfig, videoConfig.subSource).split(/\s+/);
+      let withPrebuffer = false;
 
-      if (!this.cameraState) {
-        log.warn(
-          'Can not start video analysis, camera not reachable. Trying again in 60s..',
-          this.cameraName,
-          'videoanalysis'
-        );
+      if (this.#camera.prebuffering && videoConfig.subSource === videoConfig.source) {
+        try {
+          input = withPrebuffer = await this.#prebufferService.getVideo();
+        } catch {
+          // retry
+          log.debug(
+            'Can not start videoanalysis, prebuffer process not yet started, retrying in 10s..',
+            this.cameraName
+          );
 
-        this.stop(true);
-        setTimeout(() => this.start(), 60000);
+          this.stop(true);
 
-        return;
+          await timeout(10000);
+
+          this.start();
+
+          return;
+        }
+      } else {
+        this.cameraState = await this.#pingCamera();
+
+        if (!this.cameraState) {
+          log.warn(
+            'Can not start video analysis, camera not reachable. Trying again in 60s..',
+            this.cameraName,
+            'videoanalysis'
+          );
+
+          this.stop(true);
+
+          await timeout(60000);
+
+          this.start();
+
+          return;
+        }
       }
 
-      this.videoanalysisSession = await this.#startVideoAnalysis();
+      this.videoanalysisSession = await this.#startVideoAnalysis(input, videoConfig);
 
-      const timer = this.#millisUntilTime('04:00');
+      if (!withPrebuffer) {
+        const timer = this.#millisUntilTime('04:00');
 
-      log.info(`Videoanalysis scheduled for restart at 4AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
+        log.info(
+          `Videoanalysis scheduled for restart at 4AM: ${Math.round(timer / 1000 / 60)} minutes`,
+          this.cameraName
+        );
 
-      this.restartTimer = setTimeout(() => {
-        log.info('Sheduled restart of videoanalysis is executed...', this.cameraName);
-        this.restart();
-      }, timer);
+        this.restartTimer = setTimeout(() => {
+          log.info('Sheduled restart of videoanalysis is executed...', this.cameraName);
+          this.restart();
+        }, timer);
+      }
     } catch (error) {
       if (error) {
         log.info('An error occured during starting videoanalysis!', this.cameraName, 'videoanalysis');
@@ -182,13 +215,15 @@ export default class VideoAnalysisService {
     }
   }
 
-  restart() {
+  async restart() {
     log.info('Restart videoanalysis session..', this.cameraName);
+
     this.stop(true);
-    setTimeout(() => this.start(), 10000);
+    await timeout(14000);
+    await this.start();
   }
 
-  async #startVideoAnalysis() {
+  async #startVideoAnalysis(input, videoConfig) {
     if (this.videoanalysisSession) {
       return this.videoanalysisSession;
     }
@@ -197,22 +232,9 @@ export default class VideoAnalysisService {
 
     log.debug('Start videoanalysis...', this.cameraName);
 
-    const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
-    let input = cameraUtils.generateInputSource(videoConfig, videoConfig.subSource).split(/\s+/);
-    let prebufferInput = false;
-    let invalidSubstream = videoConfig.subSource === videoConfig.source;
-
-    if (this.#camera.prebuffering && invalidSubstream) {
-      try {
-        input = prebufferInput = await this.#prebufferService.getVideo();
-      } catch {
-        // ignore
-      }
-    }
-
     const videoArguments = ['-an', '-vcodec', 'pam'];
 
-    if (!prebufferInput && videoConfig.mapvideo) {
+    if (!this.#camera.prebuffering && videoConfig.mapvideo) {
       videoArguments.unshift('-map', videoConfig.mapvideo);
     }
 

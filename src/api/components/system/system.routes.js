@@ -36,7 +36,7 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
-   * /api/system/log/download:
+   * /api/system/db/download:
    *   get:
    *     tags: [System]
    *     security:

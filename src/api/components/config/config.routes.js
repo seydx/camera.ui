@@ -36,6 +36,51 @@ export const routesConfig = (app) => {
    */
 
   app.get('/api/config', [ValidationMiddleware.validJWTOptional, ConfigController.show]);
+
+  /**
+   * @swagger
+   * /api/system/config/download:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get config.json
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/config/download', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    ConfigController.downloadConfig,
+  ]);
+
+  /**
+   * @swagger
+   * /api/config/stat:
+   *   get:
+   *     tags: [Config]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get Config file info
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/config/stat', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    ConfigController.lastModifiedConfig,
+  ]);
+
   /**
    * @swagger
    * /api/config/{target}:

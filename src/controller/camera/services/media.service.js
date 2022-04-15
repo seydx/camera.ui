@@ -41,11 +41,6 @@ export default class MediaService {
   async probe() {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
-      log.debug(
-        `Probe stream: ${ConfigService.ui.options.videoProcessor} ${this.#camera.videoConfig.subSource}`,
-        this.cameraName
-      );
-
       const arguments_ = [
         '-hide_banner',
         '-loglevel',
@@ -56,6 +51,8 @@ export default class MediaService {
         '5000',
         ...this.#camera.videoConfig.source.split(/\s+/),
       ];
+
+      log.debug(`Probe stream: ${ConfigService.ui.options.videoProcessor} ${arguments_.join(' ')}`, this.cameraName);
 
       let cp = spawn(ConfigService.ui.options.videoProcessor, arguments_, {
         env: process.env,

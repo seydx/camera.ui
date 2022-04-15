@@ -10,7 +10,8 @@ export default class Ping {
   static async status(camera, timeout = 1) {
     const { log } = LoggerService;
 
-    let cameraSource = camera.videoConfig.source.split('-i ')[1];
+    //fix for non-break-spaces
+    let cameraSource = camera.videoConfig.source.replace(/\u00A0/g, ' ').split('-i ')[1];
 
     if (!cameraSource) {
       log.warn(`Can not ping camera source, no source found (${camera.videoConfig.source})`, camera.name);

@@ -540,7 +540,9 @@ export default class EventController {
 
           break;
         }
-        // No default
+        default:
+          log.warn(`Can not send telegram message, unknown telegram type (${telegramSettings.type})`, cameraName);
+          break;
       }
     } catch (error) {
       log.info('An error occured during sending telegram notification', cameraName, 'events');
@@ -571,6 +573,9 @@ export default class EventController {
           method: 'POST',
           responseType: 'json',
           json: notification,
+          https: {
+            rejectUnauthorized: false,
+          },
         });
 
         log.debug(`Payload was sent successfully to ${webhookSettings.endpoint}`, cameraName);

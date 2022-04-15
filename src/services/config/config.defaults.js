@@ -141,6 +141,64 @@ export class ConfigSetup {
   }
 
   static setupCameras(cameras = []) {
-    return cameras || [];
+    return (
+      cameras
+        // include only cameras with given name, videoConfig and source
+        .filter((camera) => camera.name && camera.videoConfig?.source)
+        .map((camera) => {
+          const sourceArguments = camera.videoConfig.source.split(/\s+/);
+
+          if (!sourceArguments.includes('-i')) {
+            camera.videoConfig.source = false;
+          }
+
+          if (camera.videoConfig.subSource) {
+            const stillArguments = camera.videoConfig.subSource.split(/\s+/);
+
+            if (!stillArguments.includes('-i')) {
+              camera.videoConfig.subSource = camera.videoConfig.source;
+            }
+          } else {
+            camera.videoConfig.subSource = camera.videoConfig.source;
+          }
+
+          if (camera.videoConfig.stillImageSource) {
+            const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
+
+            if (!stillArguments.includes('-i')) {
+              camera.videoConfig.stillImageSource = camera.videoConfig.source;
+            }
+          } else {
+            camera.videoConfig.stillImageSource = camera.videoConfig.source;
+          }
+
+          // homebridge
+          camera.recordOnMovement = camera.recordOnMovement !== undefined ? camera.recordOnMovement : !camera.hsv;
+
+          camera.motionTimeout =
+            camera.motionTimeout === undefined || !(camera.motionTimeout >= 0) ? 15 : camera.motionTimeout;
+
+          // validate prebufferLength
+          camera.prebufferLength =
+            camera.prebufferLength >= 4 && camera.prebufferLength <= 8 ? camera.prebufferLength : 4;
+
+          // setup video analysis
+          camera.videoanalysis = {
+            active: camera.videoanalysis?.active || false,
+          };
+
+          // setup mqtt
+          camera.smtp = camera.smtp || {
+            email: camera.name,
+          };
+
+          // setup mqtt
+          camera.mqtt = camera.mqtt || {};
+
+          return camera;
+        })
+        // exclude cameras with invalid videoConfig, source
+        .filter((camera) => camera.videoConfig?.source)
+    );
   }
 }

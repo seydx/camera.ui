@@ -363,7 +363,7 @@ export default class PrebufferService {
             };
 
             this.events.on(eventName, safeWriteData);
-            this.prebufferSession.events.once('killed', cleanup);
+            this.prebufferSession?.events.once('killed', cleanup);
 
             const parser = this.parsers[container];
             const availablePrebuffers = parser.findSyncFrame(

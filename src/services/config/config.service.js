@@ -95,7 +95,7 @@ export default class ConfigService {
     ConfigService.ui.version = process.env.CUI_MODULE_VERSION;
 
     const config = new ConfigSetup(configJson);
-    ConfigService.configJson = new ConfigSetup(configJson);
+    ConfigService.configJson = { ...config };
 
     ConfigService.parseConfig(config);
 
@@ -157,7 +157,7 @@ export default class ConfigService {
     }
 
     config = new ConfigSetup(config);
-    ConfigService.configJson = new ConfigSetup(config);
+    ConfigService.configJson = { ...config };
 
     fs.writeJSONSync(ConfigService.configPath, config, { spaces: 2 });
 
@@ -268,101 +268,47 @@ export default class ConfigService {
   static #configCameras(cameras = []) {
     ConfigService.ui.topics.clear();
 
-    ConfigService.ui.cameras = cameras
-      // include only cameras with given name, videoConfig and source
-      .filter((camera) => camera.name && camera.videoConfig?.source)
-      .map((camera) => {
-        const sourceArguments = camera.videoConfig.source.split(/\s+/);
-
-        if (!sourceArguments.includes('-i')) {
-          camera.videoConfig.source = false;
-        }
-
-        if (camera.videoConfig.subSource) {
-          const stillArguments = camera.videoConfig.subSource.split(/\s+/);
-
-          if (!stillArguments.includes('-i')) {
-            camera.videoConfig.subSource = camera.videoConfig.source;
-          }
-        } else {
-          camera.videoConfig.subSource = camera.videoConfig.source;
-        }
-
-        if (camera.videoConfig.stillImageSource) {
-          const stillArguments = camera.videoConfig.stillImageSource.split(/\s+/);
-
-          if (!stillArguments.includes('-i')) {
-            camera.videoConfig.stillImageSource = camera.videoConfig.source;
-          }
-        } else {
-          camera.videoConfig.stillImageSource = camera.videoConfig.source;
-        }
-
-        // homebridge
-        camera.recordOnMovement = !camera.hsv;
-
-        camera.motionTimeout =
-          camera.motionTimeout === undefined || !(camera.motionTimeout >= 0) ? 15 : camera.motionTimeout;
-
-        // validate prebufferLength
-        camera.prebufferLength =
-          camera.prebufferLength >= 4 && camera.prebufferLength <= 8 ? camera.prebufferLength : 4;
-
-        // setup video analysis
-        camera.videoanalysis = {
-          active: camera.videoanalysis?.active || false,
+    ConfigService.ui.cameras = cameras.map((camera) => {
+      if (camera.mqtt.motionTopic) {
+        const mqttOptions = {
+          motionTopic: camera.mqtt.motionTopic,
+          motionMessage: camera.mqtt.motionMessage !== undefined ? camera.mqtt.motionMessage : 'ON',
+          motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
+          camera: camera.name,
+          motion: true,
         };
 
-        // setup mqtt
-        camera.smtp = camera.smtp || {
-          email: camera.name,
+        ConfigService.ui.topics.set(mqttOptions.motionTopic, mqttOptions);
+      }
+
+      if (camera.mqtt.motionResetTopic && camera.mqtt.motionResetTopic !== camera.mqtt.motionTopic) {
+        const mqttOptions = {
+          motionResetTopic: camera.mqtt.motionResetTopic,
+          motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
+          camera: camera.name,
+          motion: true,
+          reset: true,
         };
 
-        // setup mqtt
-        camera.mqtt = camera.mqtt || {};
+        ConfigService.ui.topics.set(mqttOptions.motionResetTopic, mqttOptions);
+      }
 
-        if (camera.mqtt.motionTopic) {
-          const mqttOptions = {
-            motionTopic: camera.mqtt.motionTopic,
-            motionMessage: camera.mqtt.motionMessage !== undefined ? camera.mqtt.motionMessage : 'ON',
-            motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
-            camera: camera.name,
-            motion: true,
-          };
+      if (
+        camera.mqtt.doorbellTopic &&
+        camera.mqtt.doorbellTopic !== camera.mqtt.motionTopic &&
+        camera.mqtt.doorbellTopic !== camera.mqtt.motionResetTopic
+      ) {
+        const mqttOptions = {
+          doorbellTopic: camera.mqtt.doorbellTopic,
+          doorbellMessage: camera.mqtt.doorbellMessage !== undefined ? camera.mqtt.doorbellMessage : 'ON',
+          camera: camera.name,
+          doorbell: true,
+        };
 
-          ConfigService.ui.topics.set(mqttOptions.motionTopic, mqttOptions);
-        }
+        ConfigService.ui.topics.set(mqttOptions.doorbellTopic, mqttOptions);
+      }
 
-        if (camera.mqtt.motionResetTopic && camera.mqtt.motionResetTopic !== camera.mqtt.motionTopic) {
-          const mqttOptions = {
-            motionResetTopic: camera.mqtt.motionResetTopic,
-            motionResetMessage: camera.mqtt.motionResetMessage !== undefined ? camera.mqtt.motionResetMessage : 'OFF',
-            camera: camera.name,
-            motion: true,
-            reset: true,
-          };
-
-          ConfigService.ui.topics.set(mqttOptions.motionResetTopic, mqttOptions);
-        }
-
-        if (
-          camera.mqtt.doorbellTopic &&
-          camera.mqtt.doorbellTopic !== camera.mqtt.motionTopic &&
-          camera.mqtt.doorbellTopic !== camera.mqtt.motionResetTopic
-        ) {
-          const mqttOptions = {
-            doorbellTopic: camera.mqtt.doorbellTopic,
-            doorbellMessage: camera.mqtt.doorbellMessage !== undefined ? camera.mqtt.doorbellMessage : 'ON',
-            camera: camera.name,
-            doorbell: true,
-          };
-
-          ConfigService.ui.topics.set(mqttOptions.doorbellTopic, mqttOptions);
-        }
-
-        return camera;
-      })
-      // exclude cameras with invalid videoConfig, source
-      .filter((camera) => camera.videoConfig?.source);
+      return camera;
+    });
   }
 }

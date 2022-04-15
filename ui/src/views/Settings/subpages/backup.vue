@@ -27,7 +27,7 @@
 
     p.tw-mt-4.tw-mb-8 {{ $t('backup_info_shedule') }}
 
-    span.text-muted.tw-italic coming soon
+    span.text-muted.tw-italic coming soon...
 </template>
 
 <script>

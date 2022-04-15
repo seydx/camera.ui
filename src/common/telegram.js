@@ -71,7 +71,8 @@ export default class Telegram {
       if (content.video) {
         try {
           log.debug('Telegram: Sending Video');
-          await Telegram.bot.sendVideo(chatID, content.video, {}, { filename: content.fileName });
+          const stream = fs.createReadStream(content.video);
+          await Telegram.bot.sendVideo(chatID, stream, {}, { filename: content.fileName });
         } catch (error) {
           log.info('An error occured during sending video!', 'Telegram', 'notifications');
           log.error(error?.message || error, 'Telegram', 'notifications');

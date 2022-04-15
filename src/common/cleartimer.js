@@ -271,16 +271,20 @@ export default class Cleartimer {
     if (timeValue) {
       const endTime = moment.unix(timestamp).add(timeValue, timeTyp);
 
-      //log.debug(`SET cleartimer for ${isRecording ? 'Recording' : 'Notification'} (${id}) - Endtime: ${endTime}`);
+      /*log.debug(
+        `SET cleartimer for ${
+          isRecording ? 'Recording' : 'Notification'
+        } (${id}) - Removing after ${timeValue} ${timeTyp} - Endtime: ${endTime}`
+      );*/
 
-      const interval = isRecording ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+      const interval = isRecording ? 6 * 60 * 60 * 1000 : 30 * 60 * 1000;
 
       const timer = setInterval(async () => {
         const now = moment();
 
         if (now > endTime) {
-          clearInterval(timer);
           await (isRecording ? Cleartimer.#clearRecording(id) : Cleartimer.#clearNotification(id));
+          clearInterval(timer);
         }
       }, interval);
 

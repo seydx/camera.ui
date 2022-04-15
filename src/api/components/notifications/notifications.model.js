@@ -102,20 +102,6 @@ export const createNotification = async (data) => {
     throw new Error('Can not assign notification to camera!');
   }
 
-  //Check notification size, if we exceed more than {100} notifications, remove the latest
-  const notificationList = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
-
-  if (notificationList.length > notificationsLimit) {
-    const diff = notificationList.length - notificationsLimit;
-    const diffNotifiations = notificationList.slice(-diff);
-
-    for (const notification of diffNotifiations) {
-      Cleartimer.removeNotificationTimer(notification.id);
-    }
-
-    await Database.interfaceDB.chain.get('notifications').dropRight(notificationList, diff).value();
-  }
-
   const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
@@ -152,10 +138,6 @@ export const createNotification = async (data) => {
     label: label,
   };
 
-  await Database.interfaceDB.chain.get('notifications').push(notification).value();
-
-  Cleartimer.setNotification(id, timestamp);
-
   const notify = {
     ...notification,
     title: cameraName,
@@ -170,6 +152,32 @@ export const createNotification = async (data) => {
     count: true,
     isNotification: true,
   };
+
+  const notificationSettings = await Database.interfaceDB.chain
+    .get('settings')
+    .get('notifications')
+    .cloneDeep()
+    .value();
+
+  if (notificationSettings.active) {
+    //Check notification size, if we exceed more than {100} notifications, remove the latest
+    const notificationList = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
+
+    if (notificationList.length > notificationsLimit) {
+      const diff = notificationList.length - notificationsLimit;
+      const diffNotifiations = notificationList.slice(-diff);
+
+      for (const notification of diffNotifiations) {
+        Cleartimer.removeNotificationTimer(notification.id);
+      }
+
+      await Database.interfaceDB.chain.get('notifications').dropRight(notificationList, diff).value();
+    }
+
+    await Database.interfaceDB.chain.get('notifications').push(notification).value();
+
+    Cleartimer.setNotification(id, timestamp);
+  }
 
   return {
     notification: notification,

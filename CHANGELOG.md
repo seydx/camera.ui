@@ -1,13 +1,25 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-# NEXT
+# v1.1.7 - 2022-04-15
 
 ## Other Changes
 - i18n: Thai (th) language added by [@tomzt](https://github.com/tomzt)
 - i18n: French (fr) language added by [@NebzHB](https://github.com/NebzHB)
 - i18n: Spanish (es) language added by [@mastefordev](https://github.com/masterfordev)
+- Added a new config.json tab to `Interface > Settings > System`
+- Improved videoanalysis
+- Minor UI improvements
 - Bump dependencies
+
+## Bugfixes
+- Fixed an issue where pinging camera sources with `non-break spaces` failed
+- Fixed an issue where Doorbell Topic and Message were not displayed in the interface
+- Fixed an issue where changing `recordOnMovement` in the ui settings was resetted after restart
+- Fixed an issue where notifications were saved to the database even if the notifications were disabled in the settings
+- Fixed an issue where Telegram sometimes could not send videos
+- Fixed tests
+- Minor bugfixes
 
 # v1.1.6 - 2022-01-25
 

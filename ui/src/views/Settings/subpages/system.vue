@@ -60,6 +60,17 @@
 
     v-divider.tw-mt-6.tw-mb-8
 
+    .page-subtitle.tw-mt-8 {{ $t('config') }}
+    .page-subtitle-info {{ $t('config_information') }}
+
+    .tw-flex.tw-justify-between.tw-items-center.tw-my-5
+      label.form-input-label {{ $t('last_changed') }}
+      span.tw-text-right.tw-text-green-500 {{ configFile.mtime }}
+
+    v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingSave" :loading="loadingConfig" block color="success" @click="onDownloadConfig") {{ $t('download') }}
+
+    v-divider.tw-mt-6.tw-mb-8
+
     .page-subtitle.tw-mt-8 {{ $t('database') }}
     .page-subtitle-info {{ $t('database_information') }}
 
@@ -231,7 +242,7 @@ import compareVersions from 'compare-versions';
 import VueMarkdown from 'vue-markdown';
 import { mdiAt, mdiCheckBold, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
-import { changeConfig, getConfig } from '@/api/config.api';
+import { changeConfig, downloadConfig, getConfig, getConfigStat } from '@/api/config.api';
 import {
   downloadDb,
   getChangelog,
@@ -290,6 +301,7 @@ export default {
     loadingReset: false,
     loadingRestart: false,
     loadingUpdate: false,
+    loadingConfig: false,
     loadingDb: false,
     loadingRestartFtp: false,
     loadingRestartHttp: false,
@@ -305,6 +317,7 @@ export default {
     config: {},
     configTimeout: null,
     currentVersion: null,
+    configFile: {},
     dbFile: {},
     env: '',
     latestVersion: null,
@@ -338,13 +351,20 @@ export default {
       this.env = process.env.NODE_ENV;
 
       const config = await getConfig('?target=config');
+      const configFile = await getConfigStat();
       const dbFile = await getDb();
 
+      this.configFile = configFile.data;
       this.dbFile = dbFile.data;
 
       if (this.dbFile?.mtime) {
         let time = new Date(this.dbFile.mtime);
         this.dbFile.mtime = `${time.toLocaleDateString()}, ${time.toLocaleTimeString()}`;
+      }
+
+      if (this.configFile?.mtime) {
+        let time = new Date(this.configFile.mtime);
+        this.configFile.mtime = `${time.toLocaleDateString()}, ${time.toLocaleTimeString()}`;
       }
 
       this.serviceMode = config.data.serviceMode;
@@ -526,6 +546,31 @@ export default {
         console.log(err);
         this.$toast.error(err);
       }
+    },
+    async onDownloadConfig() {
+      if (this.loadingConfig) {
+        return;
+      }
+
+      this.loadingProgress = true;
+      this.loadingConfig = true;
+
+      try {
+        const response = await downloadConfig();
+        const url = window.URL.createObjectURL(new Blob([JSON.stringify(response.data)], { type: 'text/json' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'camera.ui.config.json');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.log(err);
+        this.$toast.error(err.message);
+      }
+
+      this.loadingProgress = false;
+      this.loadingConfig = false;
     },
     async onDownloadDb() {
       if (this.loadingDb) {

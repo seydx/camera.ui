@@ -63,7 +63,7 @@ export default {
       this.connected = false;
 
       await this.$store.dispatch('auth/logout');
-      setTimeout(() => this.$router.push('/'), 200);
+      setTimeout(() => this.$router.push('/'), 500);
     },
     async invalidToken(token) {
       if (token === this.currentUser.access_token) {
@@ -71,7 +71,7 @@ export default {
         this.connected = false;
 
         await this.$store.dispatch('auth/logout');
-        setTimeout(() => this.$router.push('/'), 200);
+        setTimeout(() => this.$router.push('/'), 500);
       }
     },
     notification(notification) {
