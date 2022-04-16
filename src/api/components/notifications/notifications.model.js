@@ -120,7 +120,6 @@ export const createNotification = async (data) => {
     '_CUI';
 
   const extension = data.type === 'Video' ? 'mp4' : 'jpeg';
-  const storing = data.type === 'Video' || data.type === 'Snapshot';
   const label = (data.label || 'no label').toString();
 
   const notification = {
@@ -129,7 +128,7 @@ export const createNotification = async (data) => {
     fileName: `${fileName}.${extension}`,
     name: fileName,
     extension: extension,
-    recordStoring: storing,
+    recordStoring: data.storing,
     recordType: data.type,
     trigger: data.trigger,
     room: room,
@@ -143,8 +142,8 @@ export const createNotification = async (data) => {
     title: cameraName,
     message: `${data.trigger} - ${time}`,
     subtxt: room,
-    mediaSource: storing ? `/files/${fileName}.${extension}` : false,
-    tumbnail: storing
+    mediaSource: data.storing ? `/files/${fileName}.${extension}` : false,
+    thumbnail: data.storing
       ? data.type === 'Video'
         ? `/files/${fileName}@2.jpeg`
         : `/files/${fileName}.${extension}`

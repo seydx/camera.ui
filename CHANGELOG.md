@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.8 - 2022-04-16
+
+## Other Changes
+- Minor recording improvements
+
+## Bugfixes
+- Fixed an issue where the notification in the interface referred to a saved recording even though recordings were disabled
+- Fixed an issue where the recorded video could not be sent via Telegram
+- Fix ffmpeg command `-stimeout`
+- Minor bugfixes
+
 # v1.1.7 - 2022-04-15
 
 ## Other Changes

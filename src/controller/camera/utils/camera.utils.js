@@ -264,7 +264,7 @@ export const startFFMPegFragmetedMP4Session = async (
       '-movflags',
       'frag_keyframe+empty_moov+default_base_moof',
       '-max_muxing_queue_size',
-      '1024',
+      '9999',
       '-vsync',
       'cfr',
       'tcp://127.0.0.1:' + serverPort,
@@ -311,8 +311,8 @@ export const generateInputSource = (videoConfig, source) => {
       inputSource = `-re ${inputSource}`;
     }
 
-    if (videoConfig.stimeout > 0 && !inputSource.includes('-stimeout')) {
-      inputSource = `-stimeout ${videoConfig.stimeout * 10000000} ${inputSource}`;
+    if (videoConfig.stimeout > 0 && !inputSource.includes('-timeout')) {
+      inputSource = `-timeout ${videoConfig.stimeout * 10000000} ${inputSource}`;
     }
 
     if (videoConfig.maxDelay >= 0 && !inputSource.includes('-max_delay')) {

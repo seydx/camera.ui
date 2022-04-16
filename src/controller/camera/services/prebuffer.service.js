@@ -89,7 +89,7 @@ export default class PrebufferService {
 
       const timer = this.#millisUntilTime('02:00');
 
-      log.info(`Prebuffering scheduled for restart at 2AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
+      log.debug(`Prebuffering scheduled for restart at 2AM: ${Math.round(timer / 1000 / 60)} minutes`, this.cameraName);
 
       this.restartTimer = setTimeout(() => {
         log.info('Sheduled restart of prebuffering is executed...', this.cameraName);
@@ -571,7 +571,7 @@ export default class PrebufferService {
     });
 
     cp.on('close', () => {
-      log.info('Prebufferring process closed', this.cameraName);
+      log.debug('Prebuffering process closed', this.cameraName);
 
       kill();
 

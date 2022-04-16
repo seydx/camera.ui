@@ -134,7 +134,7 @@ export default class EventController {
             }*/
 
             if (fileBuffer) {
-              motionInfo.label = 'Custom';
+              motionInfo.label = 'no label';
               motionInfo.type = type || 'Video';
             }
 

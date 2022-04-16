@@ -158,7 +158,7 @@ export default class VideoAnalysisService {
       if (!withPrebuffer) {
         const timer = this.#millisUntilTime('04:00');
 
-        log.info(
+        log.debug(
           `Videoanalysis scheduled for restart at 4AM: ${Math.round(timer / 1000 / 60)} minutes`,
           this.cameraName
         );

@@ -426,7 +426,7 @@
     "thursday": "Jeudi",
     "time": "Temps",
     "timeout": "Délai d'expiration",
-    "timeout_info": "Délai d'expiration des E/S du socket TCP en secondes. Si vous avez des problèmes de processus FFmpeg bloqués en arrière-plan, vous pouvez entrer une valeur ici pour stopper le processus automatiquement après le temps désiré si aucune réponse n'arrive (-stimeout).",
+    "timeout_info": "Délai d'expiration des E/S du socket TCP en secondes. Si vous avez des problèmes de processus FFmpeg bloqués en arrière-plan, vous pouvez entrer une valeur ici pour stopper le processus automatiquement après le temps désiré si aucune réponse n'arrive (-timeout).",
     "timestamp": "Horodatage",
     "tuesday": "Mardi",
     "typ": "Type",

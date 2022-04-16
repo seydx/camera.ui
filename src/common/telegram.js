@@ -60,7 +60,7 @@ export default class Telegram {
       if (content.img) {
         try {
           log.debug('Telegram: Sending Image');
-          const stream = fs.createReadStream(content.img);
+          const stream = Buffer.isBuffer(content.img) ? content.img : fs.createReadStream(content.img);
           await Telegram.bot.sendPhoto(chatID, stream, {}, { filename: content.fileName });
         } catch (error) {
           log.info('An error occured during sending image!', 'Telegram', 'notifications');
@@ -71,7 +71,7 @@ export default class Telegram {
       if (content.video) {
         try {
           log.debug('Telegram: Sending Video');
-          const stream = fs.createReadStream(content.video);
+          const stream = Buffer.isBuffer(content.video) ? content.video : fs.createReadStream(content.video);
           await Telegram.bot.sendVideo(chatID, stream, {}, { filename: content.fileName });
         } catch (error) {
           log.info('An error occured during sending video!', 'Telegram', 'notifications');
