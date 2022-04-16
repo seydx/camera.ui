@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.9 - 2022-04-16
+
+## Bugfixes
+- Fixed minor issues with FFmpeg v5
+
 # v1.1.8 - 2022-04-16
 
 ## Other Changes

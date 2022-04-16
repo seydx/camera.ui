@@ -41,10 +41,9 @@ export default class MediaService {
   async probe() {
     // eslint-disable-next-line no-unused-vars
     return new Promise((resolve, reject) => {
+      let lines = 0;
+
       const arguments_ = [
-        '-hide_banner',
-        '-loglevel',
-        'info',
         '-analyzeduration',
         '0',
         '-probesize',
@@ -64,6 +63,10 @@ export default class MediaService {
       });
 
       stderr.on('line', (line) => {
+        if (lines === 0) {
+          ConfigService.ffmpegVersion = line.split(' ')[2];
+        }
+
         const audioLine = line.includes('Audio: ') ? line.split('Audio: ')[1] : false;
 
         if (audioLine) {
@@ -75,6 +78,8 @@ export default class MediaService {
         if (videoLine) {
           this.codecs.video = videoLine.split(', ');
         }
+
+        lines++;
       });
 
       cp.on('exit', () => {
