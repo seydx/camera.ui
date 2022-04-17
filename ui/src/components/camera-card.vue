@@ -87,7 +87,7 @@
 /* eslint-disable vue/require-default-prop */
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import JSMpeg from 'jsmpeg-fast-player';
+import JSMpeg from '@seydx/jsmpeg/lib/index.js';
 import JSMpegWritableSource from '@/common/jsmpeg-source.js';
 import {
   mdiArrowExpand,
@@ -386,7 +386,7 @@ export default {
             source: JSMpegWritableSource,
             canvas: this.$refs.streamBox,
             audio: true,
-            disableWebAssembly: true,
+            //disableWebAssembly: true,
             pauseWhenHidden: false,
             videoBufferSize: 1024 * 1024,
             onSourcePaused: () => {

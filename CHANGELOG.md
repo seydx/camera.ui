@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.10 - 2022-04-17
+
+## Other Changes
+- Enabled Web Assembly for better streaming performance within web browser
+- Minor UI improvements
+- Changed to `@seydx/jsmpeg`
+- Bump dependencies
+
 # v1.1.9 - 2022-04-16
 
 ## Bugfixes

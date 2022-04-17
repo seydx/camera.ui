@@ -1105,7 +1105,6 @@ export default {
         this.removeCameraDialog = false;
       }
     },
-    // eslint-disable-next-line no-unused-vars
     onScroll(e) {
       if (typeof window === 'undefined') {
         this.fabAbove = true;

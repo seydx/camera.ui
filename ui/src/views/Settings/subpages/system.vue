@@ -3,8 +3,8 @@
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
   .tw-mb-7(v-if="!loading")
-    v-btn.save-btn(v-scroll="onScroll" color="success" v-show="fab" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
-      v-icon  {{ icons['mdiCheckBold'] }}
+    v-btn.save-btn(:class="fabAbove ? 'save-btn-top' : ''" v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
+       v-icon {{ icons['mdiCheckBold'] }}
 
     .page-subtitle.tw-mt-8 {{ $t('server') }}
     .page-subtitle-info {{ $t('server_information') }}
@@ -293,7 +293,8 @@ export default {
       mdiWeb,
     },
 
-    fab: false,
+    fab: true,
+    fabAbove: false,
 
     loading: true,
     loadingProgress: true,
@@ -753,11 +754,12 @@ export default {
     },
     onScroll(e) {
       if (typeof window === 'undefined') {
+        this.fabAbove = true;
         return;
       }
 
       const top = window.pageYOffset || e.target.scrollTop || 0;
-      this.fab = top > 20;
+      this.fabAbove = top > 20;
     },
     async onUpdateRestart() {
       this.updateDialog = false;
@@ -801,10 +803,14 @@ export default {
 
 <style scoped>
 .save-btn {
-  background: rgba(var(--cui-primary-rgb)) !important;
-  right: 80px !important;
+  right: 30px !important;
   bottom: 45px !important;
   z-index: 11 !important;
+  transition: 0.3s all;
+}
+
+.save-btn-top {
+  bottom: 95px !important;
 }
 
 .changelog >>> a {
