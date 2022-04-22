@@ -4,7 +4,7 @@
 
   .tw-mb-7(v-if="!loading")
     v-btn.save-btn(:class="fabAbove ? 'save-btn-top' : ''" v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
-       v-icon {{ icons['mdiCheckBold'] }}
+      v-icon {{ icons['mdiCheckBold'] }}
 
     .page-subtitle.tw-mt-8 {{ $t('server') }}
     .page-subtitle-info {{ $t('server_information') }}
@@ -14,13 +14,13 @@
       span.tw-text-right(:class="updateAvailable ? 'tw-text-red-500' : 'tw-text-green-500'") {{ updateAvailable ? $t('update_available') : $t('up_to_date') }}
 
     label.form-input-label {{ $t('update_or_downgrade') }}
-    v-select(:value="currentVersion" v-model="currentVersion" :items="availableVersions" prepend-inner-icon="mdi-npm" append-outer-icon="mdi-update" background-color="var(--cui-bg-card)" solo)
+    v-select(:loading="loadingNpm" :disabled="loadingNpm" :value="currentVersion" v-model="currentVersion" :items="availableVersions" prepend-inner-icon="mdi-npm" append-outer-icon="mdi-update" background-color="var(--cui-bg-card)" solo)
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiNpm'] }}
       template(v-slot:append-outer)
         v-dialog(v-model="updateDialog" width="600" scrollable @click:outside="closeUpdateDialog" @keydown="closeUpdateDialog")
           template(v-slot:activator='{ on, attrs }')
-            v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingSave" :loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
+            v-btn.tw-text-white(:disabled="loadingRestart || loadingReset || loadingSave|| loadingNpm" :loading="loadingUpdate" small fab style="margin-top: -8px" color="var(--cui-primary)")
               v-icon.tw-text-white(color="var(--cui-primary)" v-bind='attrs' v-on='on' @click="onBeforeUpdate") {{ icons['mdiUpdate'] }}
           v-card
             v-card-title {{ $t('release_notes') }}
@@ -89,13 +89,14 @@
             .page-subtitle {{ $t('interface') }}
             .page-subtitle-info.tw-mt-1 {{ $t('interface_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center
-            label.form-input-label {{ $t('debug') }}
-            v-switch(color="var(--cui-primary)" v-model="config.debug")
-
           .tw-flex.tw-justify-between.tw-items-center(v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
             label.form-input-label {{ $t('at_home_switch') }}
             v-switch(color="var(--cui-primary)" v-model="config.atHomeSwitch")
+          
+          label.form-input-label {{ $t('loglevel') }}
+          v-select.select(prepend-inner-icon="mdi-door" v-model="config.logLevel" :items="logLevels" background-color="var(--cui-bg-card)" solo)
+            template(v-slot:prepend-inner)
+              v-icon.text-muted {{ icons['mdiConsole'] }}
 
           label.form-input-label {{ $t('port') }}
           v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
@@ -240,7 +241,7 @@
 <script>
 import compareVersions from 'compare-versions';
 import VueMarkdown from 'vue-markdown';
-import { mdiAt, mdiCheckBold, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
+import { mdiAt, mdiCheckBold, mdiConsole, mdiFindReplace, mdiNpm, mdiNumeric, mdiUpdate, mdiWeb } from '@mdi/js';
 
 import { changeConfig, downloadConfig, getConfig, getConfigStat } from '@/api/config.api';
 import {
@@ -286,6 +287,7 @@ export default {
     icons: {
       mdiAt,
       mdiCheckBold,
+      mdiConsole,
       mdiFindReplace,
       mdiNpm,
       mdiNumeric,
@@ -297,6 +299,7 @@ export default {
     fabAbove: false,
 
     loading: true,
+    loadingNpm: true,
     loadingProgress: true,
     loadingSave: false,
     loadingReset: false,
@@ -325,6 +328,7 @@ export default {
     serviceMode: false,
     updateAvailable: false,
     npmPackageName: 'camera.ui',
+    logLevels: ['info', 'debug', 'warn', 'error'],
 
     ftpStatus: false,
     httpStatus: false,
@@ -373,8 +377,8 @@ export default {
 
       this.config = {
         port: config.data.port || window.location.port || 80,
-        debug: config.data.debug || false,
         atHomeSwitch: config.data.atHomeSwitch || false,
+        logLevel: config.data.logLevel || 'info',
         ssl: config.data.ssl || {
           key: '',
           cert: '',
@@ -411,6 +415,9 @@ export default {
       } else {
         currentDistTag = currentDistTag.split('.')[0];
       }
+
+      this.loading = false;
+      this.loadingProgress = false;
 
       const pkg = await getPackage();
       const distTags = pkg.data['dist-tags'];
@@ -469,8 +476,10 @@ export default {
 
       //this.$watch('config', this.configWatcher, { deep: true });
 
-      this.loading = false;
-      this.loadingProgress = false;
+      //this.loading = false;
+      //this.loadingProgress = false;
+
+      this.loadingNpm = false;
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);

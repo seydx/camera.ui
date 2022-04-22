@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = new App({
-  debug: process.env.CUI_LOG_DEBUG === '1',
+  debug: process.env.CUI_LOG_MODE === '2',
   version: process.env.CUI_MODULE_VERSION,
 });
 

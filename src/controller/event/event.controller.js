@@ -31,12 +31,16 @@ const stringIsAValidUrl = (s) => {
 };
 
 export default class EventController {
+  static #controller;
   static #movementHandler = {};
 
   constructor(controller) {
-    this.triggerEvent = EventController.handle;
+    EventController.#controller = controller;
+    EventController.#controller.on('uiMotion', (event) =>
+      EventController.handle(event.triggerType, event.cameraName, event.state)
+    );
 
-    controller.on('uiMotion', (event) => EventController.handle(event.triggerType, event.cameraName, event.state));
+    this.triggerEvent = EventController.handle;
   }
 
   // eslint-disable-next-line no-unused-vars
@@ -102,6 +106,10 @@ export default class EventController {
             endpoint: CameraSettings.webhookUrl,
           };
 
+          const mqttPublishSettings = {
+            topic: CameraSettings.mqttTopic,
+          };
+
           const webpushSettings = {
             publicKey: SettingsDB.webpush.publicKey,
             privateKey: SettingsDB.webpush.privateKey,
@@ -114,13 +122,14 @@ export default class EventController {
             /*
              * Movement Event flow
              *
-             * 1) If recording not enabled, send ui notification banner and webpush
+             * 1) Publish mqtt message
              * 2) If webhook enabled, send webhook notification
-             * 3) If alexa enabled, send notification to alexa
-             * 4) If telegram enabled and type = "Text" for the camera, send telegram notification
-             * 5) Handle recording (Snapshot/Video)
-             * 6) If recording enabled, send ui notification banner with media and webpush
-             * 7) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
+             * 3) If recording not enabled, send ui notification banner and webpush
+             * 4) If alexa enabled, send notification to alexa
+             * 5) If telegram enabled and type = "Text" for the camera, send telegram notification
+             * 6) Handle recording (Snapshot/Video)
+             * 7) If recording enabled, send ui notification banner with media and webpush
+             * 8) If telegram enabled and type = "Snapshot" or "Video" for the camera, send additional telegram notification
              */
 
             log.debug(`New ${trigger} alert`, cameraName);
@@ -134,7 +143,7 @@ export default class EventController {
             }*/
 
             if (fileBuffer) {
-              motionInfo.label = 'no label';
+              motionInfo.label = trigger || 'no label';
               motionInfo.type = type || 'Video';
             }
 
@@ -156,6 +165,17 @@ export default class EventController {
                 const { notification, notify } = await EventController.#handleNotification(motionInfo);
 
                 // 1)
+                await EventController.#publishMqtt(cameraName, notification, mqttPublishSettings);
+
+                // 2)
+                await EventController.#sendWebhook(
+                  cameraName,
+                  notification,
+                  webhookSettings,
+                  notificationsSettings.active
+                );
+
+                // 3)
                 if (notificationsSettings.active && !recordingSettings.active) {
                   log.notify(notify);
 
@@ -167,18 +187,10 @@ export default class EventController {
                   );
                 }
 
-                // 2)
-                await EventController.#sendWebhook(
-                  cameraName,
-                  notification,
-                  webhookSettings,
-                  notificationsSettings.active
-                );
-
-                // 3)
+                // 4)
                 await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
 
-                // 4)
+                // 5)
                 if (telegramSettings.type === 'Text') {
                   await EventController.#sendTelegram(
                     cameraName,
@@ -191,10 +203,10 @@ export default class EventController {
                   );
                 }
 
-                // 5)
+                // 6)
                 await EventController.#handleRecording(cameraName, motionInfo, fileBuffer, recordingSettings.active);
 
-                // 6)
+                // 7)
                 if (notificationsSettings.active && recordingSettings.active) {
                   log.notify(notify);
 
@@ -206,7 +218,7 @@ export default class EventController {
                   );
                 }
 
-                // 7)
+                // 8)
                 if (
                   (telegramSettings.type === 'Text + Snapshot' ||
                     telegramSettings.type === 'Snapshot' ||
@@ -582,6 +594,25 @@ export default class EventController {
       }
     } catch (error) {
       log.info('An error occured during sending webhook notification', cameraName, 'events');
+      log.error(error, cameraName, 'events');
+    }
+  }
+
+  static async #publishMqtt(cameraName, notification, mqttPublishSettings) {
+    try {
+      const mqttClient = EventController.#controller.motionController?.mqttClient;
+
+      if (mqttClient && mqttClient.connected) {
+        if (!mqttPublishSettings.topic) {
+          return log.debug('No MQTT Publish Topic defined, skip MQTT..');
+        }
+
+        mqttClient.publish(mqttPublishSettings.topic, JSON.stringify(notification));
+      } else {
+        return log.debug('MQTT client not connected, skip MQTT..');
+      }
+    } catch (error) {
+      log.info('An error occured during publishing mqtt message', cameraName, 'events');
       log.error(error, cameraName, 'events');
     }
   }

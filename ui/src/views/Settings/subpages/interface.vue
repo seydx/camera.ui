@@ -32,7 +32,7 @@
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiCctv'] }}
 
-    label.form-input-label {{ $t('automation_from') }}
+    label.form-input-label {{ $t('from') }}
     v-dialog(ref="fromDialog" v-model="modalFrom" :return-value.sync="general.automation.startTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="general.automation.startTime" :disabled="!general.automation.active" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on" @change="function(){restartAutomation = true; stopAutomation = false;}")
@@ -43,7 +43,7 @@
         v-btn(text color="var(--cui-primary)" @click="modalFrom = false") {{ $t('cancel') }}
         v-btn(text color="var(--cui-primary)" @click="$refs.fromDialog.save(general.automation.startTime)") {{ $t('ok') }}
 
-    label.form-input-label {{ $t('automation_to') }}
+    label.form-input-label {{ $t('to') }}
     v-dialog(ref="toDialog" v-model="modalTo" :return-value.sync="general.automation.endTime" width="290px")
       template(v-slot:activator="{ on, attrs }")
         v-text-field(solo v-model="general.automation.endTime" :disabled="!general.automation.active" prepend-inner-icon="mdi-clock-time-four-outline" readonly v-bind="attrs" v-on="on" @change="function(){restartAutomation = true; stopAutomation = false;}")

@@ -14,7 +14,7 @@ import App from './app.js';
 export default class Server {
   constructor(controller) {
     const app = new App({
-      debug: process.env.CUI_LOG_DEBUG === '1',
+      debug: process.env.CUI_LOG_MODE === '2',
       version: ConfigService.ui.version,
     });
 

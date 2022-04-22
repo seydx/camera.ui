@@ -6,13 +6,18 @@
         
     .tw-flex.tw-flex-wrap
       v-row.tw-w-full.tw-h-full
-        v-col.tw-mb-3.py-2(:cols="cols")
-          VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
+        v-col.tw-mb-3(:cols="cols")
+          vue-aspect-ratio(ar="16:9" width="100%")
+            VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
           
     v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="12")
-      .tw-block
-        h2.tw-leading-6 {{ $route.params.name }}
-        span.subtitle {{ camera.settings.room }}
+      .tw-w-full.tw-flex.tw-justify-between.tw-items-center
+        .tw-block
+          h2.tw-leading-6 {{ $route.params.name }}
+          span.subtitle {{ camera.settings.room }}
+        .tw-block
+          v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+            v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
     v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
       v-expansion-panels(v-model="notificationsPanel" multiple)
@@ -64,7 +69,8 @@
 <script>
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import { mdiPlusCircle } from '@mdi/js';
+import { mdiOpenInNew, mdiPlusCircle } from '@mdi/js';
+import VueAspectRatio from 'vue-aspect-ratio';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -81,6 +87,7 @@ export default {
   components: {
     LightBox,
     VideoCard,
+    'vue-aspect-ratio': VueAspectRatio,
   },
 
   mixins: [socket],
@@ -94,6 +101,7 @@ export default {
     camera: {},
     cols: 12,
     icons: {
+      mdiOpenInNew,
       mdiPlusCircle,
     },
     images: [],

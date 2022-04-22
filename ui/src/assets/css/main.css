@@ -129,6 +129,10 @@ body .v-application .v-stepper__step__step.primary {
   font-family: 'Inter', sans-serif !important;
 }*/
 
+.v-data-table tbody tr.v-data-table__selected {
+  background: rgba(var(--cui-text-default-rgb), 0.05) !important;
+}
+
 .v-messages {
   color: rgba(var(--cui-text-default-rgb), 0.6) !important;
 }
@@ -142,6 +146,10 @@ body .v-application .v-stepper__step__step.primary {
 .v-select .v-chip {
   color: #fff;
   background: var(--cui-primary) !important;
+}
+
+.v-select__selection--disabled {
+  color: #747474 !important;
 }
 
 .v-btn.v-btn--disabled,

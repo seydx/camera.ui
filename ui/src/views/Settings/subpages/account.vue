@@ -2,6 +2,9 @@
 .tw-w-full.tw-mt-8
   v-progress-linear.loader(:active="loading" :indeterminate="loading" fixed top color="var(--cui-primary)")
 
+  v-btn.save-btn(:class="fabAbove ? 'save-btn-top' : ''" v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="save" :loading="loadingProgress")
+    v-icon {{ icons['mdiCheckBold'] }}
+
   .tw-flex.tw-justify-between
     .tw-block
       .page-subtitle {{ $t('profile') }}
@@ -42,17 +45,10 @@
     v-text-field(v-model="form.password2" label="******" autocomplete="new-password-confirm" :type="showNewPasswordConfirm ? 'text' : 'password'" :append-icon="showNewPasswordConfirm ? icons['mdiEye'] : icons['mdiEyeOff']" @click:append="showNewPasswordConfirm = !showNewPasswordConfirm" prepend-inner-icon="mdi-key-variant" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.newpassword2" required solo)
       template(v-slot:prepend-inner)
         v-icon.text-muted {{ icons['mdiKeyVariant'] }}
-
-    v-divider.tw-mt-4.tw-mb-8
-
-    .tw-flex.tw-justify-end.tw-mt-5
-      v-btn.tw-mr-2.tw-text-white.tw-text-xs.tw-font-semibold(@click="reset" color="var(--cui-text-hint)" rounded depressed) {{ $t('cancel') }}
-      v-btn.tw-text-white.tw-text-xs.tw-font-semibold(@click="save" color="var(--cui-primary)" rounded depressed) {{ $t('save') }}
-
 </template>
 
 <script>
-import { mdiAccount, mdiEye, mdiEyeOff, mdiKeyVariant, mdiTimelapse } from '@mdi/js';
+import { mdiAccount, mdiCheckBold, mdiEye, mdiEyeOff, mdiKeyVariant, mdiTimelapse } from '@mdi/js';
 
 import { changeUser } from '@/api/users.api';
 
@@ -68,13 +64,18 @@ export default {
     return {
       icons: {
         mdiAccount,
+        mdiCheckBold,
         mdiEye,
         mdiEyeOff,
         mdiKeyVariant,
         mdiTimelapse,
       },
 
+      fab: true,
+      fabAbove: false,
+
       loading: false,
+      loadingProgress: false,
 
       avatarSrc: '',
 
@@ -159,10 +160,21 @@ export default {
     handleErrorImg() {
       this.avatarSrc = require('../../../assets/img/no_user.png');
     },
+    onScroll(e) {
+      if (typeof window === 'undefined') {
+        this.fabAbove = true;
+        return;
+      }
+
+      const top = window.pageYOffset || e.target.scrollTop || 0;
+      this.fabAbove = top > 20;
+    },
     reset() {
       this.form = { ...this.currentUser };
     },
     async save() {
+      this.loadingProgress = true;
+
       const valid = this.$refs.form.validate();
 
       if (valid) {
@@ -188,6 +200,8 @@ export default {
       } else {
         this.$toast.warning(this.$t('fill_all_required_fields'));
       }
+
+      this.loadingProgress = false;
     },
   },
 };
@@ -213,5 +227,16 @@ export default {
 .profile-avatar-bg {
   border-radius: 5rem;
   border: 5px solid var(--trans-border-color);
+}
+
+.save-btn {
+  right: 30px !important;
+  bottom: 45px !important;
+  z-index: 11 !important;
+  transition: 0.3s all;
+}
+
+.save-btn-top {
+  bottom: 95px !important;
 }
 </style>

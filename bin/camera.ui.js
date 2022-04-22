@@ -17,7 +17,7 @@ import Interface from '../src/main.js';
 let moduleName = 'camera.ui';
 let globalInstalled = '1';
 let sudoEnabled = '1';
-let debugEnabled = '0';
+let logLevel = '1';
 let logTimestamps = '1';
 let logColourful = '1';
 let storagePath = path.resolve(os.homedir(), '.camera.ui');
@@ -27,7 +27,11 @@ const packageJson = fs.readJsonSync(path.resolve(__dirname, '../package.json'));
 
 commander
   .allowUnknownOption()
-  .option('-D, --debug', 'Turn on debug level logging', () => (debugEnabled = '1'))
+  .option(
+    '-L, --log-level [level]',
+    'Change Log Level: 1 = Info (Default), 2 = Debug, 3 = Warn, 4 = Error',
+    (l) => (logLevel = l)
+  )
   .option('-C, --no-color', 'Disable color in logging', () => (logColourful = '0'))
   .option('-T, --no-timestamp', 'Do not issue timestamps in logging', () => (logTimestamps = '0'))
   .option('--no-sudo', 'Disable sudo for updating through ui', () => (sudoEnabled = '0'))
@@ -46,7 +50,7 @@ process.env.NTBA_FIX_350 = 1;
 process.env.CUI_SERVICE_MODE = '1';
 
 process.env.CUI_LOG_COLOR = logColourful;
-process.env.CUI_LOG_DEBUG = debugEnabled;
+process.env.CUI_LOG_MODE = logLevel;
 process.env.CUI_LOG_TIMESTAMPS = logTimestamps;
 
 process.env.CUI_BASE_PATH = path.resolve(__dirname, '../');

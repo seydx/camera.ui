@@ -187,6 +187,10 @@ export default {
       if (this.isPage('Recordings')) {
         this.recordings?.unshift(recording);
 
+        if (this.totalRecordings !== undefined) {
+          this.totalRecordings++;
+        }
+
         let mediaContainer = {
           type: 'image',
           caption: `${recording.camera} - ${recording.time}`,

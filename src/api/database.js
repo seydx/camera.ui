@@ -119,6 +119,7 @@ const defaultCameraSettingsEntry = {
   telegramType: 'Snapshot',
   alexa: false,
   webhookUrl: '',
+  mqttTopic: 'camera.ui/motion',
   privacyMode: false,
   camview: {
     favourite: true,
@@ -475,6 +476,10 @@ export default class Database {
 
     if (!settings.webhookUrl) {
       settings.webhookUrl = defaultCameraSettingsEntry.webhookUrl;
+    }
+
+    if (!settings.mqttTopic) {
+      settings.mqttTopic = defaultCameraSettingsEntry.mqttTopic;
     }
 
     if (typeof settings.privacyMode !== 'boolean') {

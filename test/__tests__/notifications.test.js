@@ -4,7 +4,7 @@ import App from '../../src/api/app.js';
 import Database from '../../src/api/database.js';
 
 const app = new App({
-  debug: process.env.CUI_LOG_DEBUG === '1',
+  debug: process.env.CUI_LOG_MODE === '2',
   version: process.env.CUI_MODULE_VERSION,
 });
 

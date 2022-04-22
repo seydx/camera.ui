@@ -6,7 +6,7 @@
 
     .header.tw-justify-between.tw-items-center.header.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
-        h2 {{ $t($route.name.toLowerCase()) }}
+        .page-title {{ $t($route.name.toLowerCase()) }}
 
     .tw-mt-10.tw-relative
       h3 {{ $t('cpu_load') }}
@@ -329,6 +329,13 @@ export default {
 </script>
 
 <style scoped>
+.page-title {
+  font-size: 1.3rem !important;
+  letter-spacing: -0.025em !important;
+  font-weight: 700 !important;
+  line-height: 1.5 !important;
+}
+
 .chart-badge {
   font-size: 1.6rem;
   position: absolute;

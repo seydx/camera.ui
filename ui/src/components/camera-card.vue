@@ -338,6 +338,11 @@ export default {
       try {
         const status = await getCameraStatus(this.camera.name, this.camera.settings.pingTimeout);
 
+        this.$emit('cameraStatus', {
+          name: this.camera.name,
+          status: status.data.status,
+        });
+
         if (status.data.status === 'ONLINE') {
           const snapshot = await getCameraSnapshot(this.camera.name, '?buffer=true');
           this.loading = false;

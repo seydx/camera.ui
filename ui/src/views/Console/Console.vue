@@ -1,20 +1,37 @@
 <template lang="pug">
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
-.console-container.tw-relative(v-else)
-  #log.tw-relative.tw-h-full
-    .utils.tw-flex.tw-justify-between.tw-items-center
-      .remove-btn.tw-block.tw-ml-auto
-        v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onRemove" :loading="loadingRemove")
-          v-icon.tw-text-white {{ icons['mdiDeleteEmpty'] }}
-      .dl-btn.tw-block.tw-ml-1
-        v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onDownload" :loading="loadingDownload")
-          v-icon.tw-text-white {{ icons['mdiDownload'] }}
-      .share-btn.tw-block.tw-ml-1(v-if="showShare")
-        v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onShare" :loading="loadingShare")
-          v-icon.tw-text-white {{ icons['mdiShareVariant'] }}
-    
-    my-terminal(:terminal="terminal" ref="xterm")
+.tw-relative(v-else)
+  .filter-button(ref="filterButton" @click="toggleFilter" v-click-outside="{ handler: hideFilter, include: include }")
+    v-icon(size="20" color="white") {{ filterOpened ? icons['mdiChevronUp'] : icons['mdiChevronDown'] }}
+  .filter.tw-flex.tw-items-center.tw-p-2(ref="filter" v-click-outside="{ handler: hideFilter, include: include }")
+    span {{ $t('filter') }}
+    v-combobox.tw-ml-3.selector(v-model="selectedFilter" background-color="var(--cui-bg-card)" :no-data-text="$t('no_data_available')" :items="filterData" item-value="key" item-text="key" :search-input.sync="search" prepend-inner-icon="mdi-filter" hide-selected label="..." multiple small-chips deletable-chips dense hide-details solo)
+      template(v-slot:prepend-inner)
+        v-icon.text-muted {{ icons['mdiFilter'] }}
+      template(v-slot:no-data v-if="search")
+        v-list-item
+          v-list-item-content
+            v-list-item-title 
+              span {{ $t('no_label_matching') }} 
+              strong "{{ search }}"
+              span . {{ $t('press_enter_to_create').split(' %')[0] }} 
+              kbd {{ $t('press_enter_to_create').split(' %')[1].split('% ')[0] }}
+              span  {{ $t('press_enter_to_create').split('% ')[1] }} 
+  .console-container.tw-relative
+    #log.tw-relative.tw-h-full
+      .utils.tw-flex.tw-justify-between.tw-items-center
+        .remove-btn.tw-block.tw-ml-auto
+          v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onRemove" :loading="loadingRemove")
+            v-icon.tw-text-white {{ icons['mdiDeleteEmpty'] }}
+        .dl-btn.tw-block.tw-ml-1
+          v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onDownload" :loading="loadingDownload")
+            v-icon.tw-text-white {{ icons['mdiDownload'] }}
+        .share-btn.tw-block.tw-ml-1(v-if="showShare")
+          v-btn.tw-text-white.tw-mr-1(fab height="40px" width="40px" color="rgba(var(--cui-primary-rgb))" @click="onShare" :loading="loadingShare")
+            v-icon.tw-text-white {{ icons['mdiShareVariant'] }}
+      
+      my-terminal(:terminal="terminal" :filter="selectedFilter" ref="xterm")
 
   LightBox(
     ref="lightboxBanner"
@@ -30,8 +47,9 @@
 <script>
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import { mdiDeleteEmpty, mdiDownload, mdiShareVariant } from '@mdi/js';
+import { mdiChevronDown, mdiChevronUp, mdiDeleteEmpty, mdiDownload, mdiFilter, mdiShareVariant } from '@mdi/js';
 
+import { getCameras } from '@/api/cameras.api';
 import { downloadLog, removeLog } from '@/api/system.api';
 import socket from '@/mixins/socket';
 
@@ -54,10 +72,18 @@ export default {
 
   data: () => ({
     icons: {
+      mdiChevronDown,
+      mdiChevronUp,
       mdiDeleteEmpty,
       mdiDownload,
+      mdiFilter,
       mdiShareVariant,
     },
+
+    filterData: ['HTTP', 'FTP', 'SMTP', 'MQTT', 'Videoanalysis'],
+
+    search: null,
+    selectedFilter: [],
 
     loading: true,
     loadingDownload: false,
@@ -69,17 +95,40 @@ export default {
       pid: 1,
       name: 'terminal',
     },
+
+    filterOpened: false,
   }),
 
   created() {
     this.showShare = navigator.share ? true : false;
   },
 
-  mounted() {
+  async mounted() {
+    const response = await getCameras();
+
+    response.data.result.forEach((camera) => {
+      this.filterData.push(camera.name);
+    });
+
     this.loading = false;
   },
 
   methods: {
+    include() {
+      return [
+        ...document.querySelectorAll('.filter-button'),
+        ...document.querySelectorAll('.filter'),
+        ...document.querySelectorAll('.v-menu__content'),
+      ];
+    },
+    hideFilter() {
+      if (this.filterOpened) {
+        this.filterOpened = false;
+
+        this.$refs.filter?.classList.remove('filter-open');
+        this.$refs.filterButton?.classList.remove('filter-button-open');
+      }
+    },
     async onDownload() {
       this.loadingDownload = true;
 
@@ -137,12 +186,24 @@ export default {
 
       this.loadingShare = false;
     },
+    toggleFilter() {
+      if (this.filterOpened) {
+        this.$refs.filter?.classList.remove('filter-open');
+        this.$refs.filterButton?.classList.remove('filter-button-open');
+      } else {
+        this.$refs.filter?.classList.add('filter-open');
+        this.$refs.filterButton?.classList.add('filter-button-open');
+      }
+
+      this.filterOpened = !this.filterOpened;
+    },
   },
 };
 </script>
 
 <style scoped>
 .console-container {
+  margin-top: 3px;
   background: #000;
   overflow: hidden;
   height: calc(100vh - 64px - 44px - env(safe-area-inset-top, 0px));
@@ -176,5 +237,45 @@ export default {
 
 div >>> .xterm .xterm-viewport {
   width: 100% !important;
+}
+
+.filter {
+  height: 50px;
+  background: var(--cui-primary);
+  color: #fff !important;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -47px;
+  z-index: 11;
+  transition: 0.3s all;
+}
+
+.filter-open {
+  top: 0px;
+}
+
+.filter-button {
+  height: 25px;
+  width: 30px;
+  background: var(--cui-primary);
+  color: #fff !important;
+  position: absolute;
+  left: 10px;
+  top: -2px;
+  z-index: 11;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  transition: 0.3s all;
+  cursor: pointer;
+  text-align: center;
+}
+
+.filter-button-open {
+  top: 45px;
+}
+
+div >>> .v-chip__content {
+  color: #fff !important;
 }
 </style>

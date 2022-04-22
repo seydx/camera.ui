@@ -46,7 +46,7 @@ export default class ConfigService {
   //defaults
   static ui = {
     port: uiDefaults.port,
-    debug: true,
+    logLevel: '2',
     ssl: false,
     mqtt: false,
     topics: new Map(),
@@ -78,8 +78,26 @@ export default class ConfigService {
     ConfigService.recordingsPath = process.env.CUI_STORAGE_RECORDINGS_PATH;
     ConfigService.reportsPath = process.env.CUI_STORAGE_REPORTS_PATH;
 
-    ConfigService.debugEnabled = process.env.CUI_LOG_DEBUG === '1';
+    ConfigService.debugEnabled = process.env.CUI_LOG_MODE === '2';
     ConfigService.version = process.env.CUI_VERSION;
+
+    switch (process.env.CUI_LOG_MODE) {
+      case '1':
+        ConfigService.logLevel = 'info';
+        break;
+      case '2':
+        ConfigService.logLevel = 'debug';
+        break;
+      case '3':
+        ConfigService.logLevel = 'warn';
+        break;
+      case '4':
+        ConfigService.logLevel = 'error';
+        break;
+      default:
+        ConfigService.logLevel = 'info';
+        break;
+    }
 
     //server env
     ConfigService.minimumNodeVersion = minNodeVersion;

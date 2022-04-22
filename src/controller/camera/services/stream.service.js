@@ -101,7 +101,7 @@ export default class StreamService {
       '-q',
       '1',
       '-max_muxing_queue_size',
-      '9999',
+      '1024',
     ];
 
     return {

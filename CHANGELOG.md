@@ -1,6 +1,29 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.11 - 2022-04-23
+
+## Notable Changes
+- **Interface:**
+  - **Recordings:** The recordings section has been redesigned and now includes another list mode to view the recordings. The filter function has been redesigned.
+  - **Camera:** Added a new endpoint for direct streaming (`/cameras/:name/feed`)
+  - **Cameras:** The cameras section has been redesigned and now includes another list mode to view the cameras.
+  - **Notifications:** The filter function has been redesigned.
+  - **Console:** Added a new filter function
+  - **System:** Improved loading time (`npm`)
+- **Config:** 
+  - Top level `"debug"` in config.json is deprecated now. Replaced with `"logLevel"`. Log Level: Show only defined log level. _(Info = Show informative messages during processing. This is in addition to warnings and errors - Debug: Show everything, including debugging information - Warning: Show only warnings and errors - Error: Show only errors)_
+- **MQTT:** When motion is detected, the messages are now also published via MQTT to the topic configured under `Settings > Cameras > Notifications > MQTT Publish Topic`
+
+## Other Changes
+- Minor UI improvements
+- Minor logger improvements
+- Bump dependencies
+- Downgrade `ffmpeg-for-homebridge`
+
+## Bugfixes
+- Minor bugfixes
+
 # v1.1.10 - 2022-04-17
 
 ## Other Changes

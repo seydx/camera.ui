@@ -3,7 +3,7 @@
   .top-navi-bar-minified(v-if="$route.meta.config.showMinifiedNavbar")
     v-btn.text-muted.included(@click="toggleNavi" fab elevation="1" height="38px" width="38px" color="rgba(0, 0, 0, 0.5)" retain-focus-on-click)
       v-icon {{ showSidebar ? icons['mdiArrowLeftThick'] : icons['mdiArrowRightThick'] }}
-  v-app-bar.top-navi-bar.pt-safe(v-else height="64px" :class="($route.meta.config.fixedNavbar ? 'top-navi-bar-fixed ' : '') + (extendSidebar ? 'extended-sidebar' : '')")
+  v-app-bar.top-navi-bar.pt-safe(v-else height="64px" :class="($route.meta.config.fixedNavbar ? 'top-navi-bar-fixed ' : '') + (extendSidebar ? 'extended-sidebar' : '')" style="border-top: 1px solid rgba(121,121,121,0.1);")
     .navi-wrap.pl-safe.pr-safe
       v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
         v-icon {{ icons['mdiMenu'] }}

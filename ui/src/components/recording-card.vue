@@ -1,5 +1,7 @@
 <template lang="pug">
-v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col
+v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col(v-if="!list")
+
+  v-checkbox.select-checkbox(v-model="selected" @change="$emit('select')")
         
   v-img.video-card-img.tw-items-end.tw-text-white.tw-relative.tw-cursor-pointer(v-on:error="handleErrorImg" :src="src" height="calc(100% - 37px)" @click="$emit('show')" :class="errorImg ? 'errorImg' : ''")
     template(v-slot:placeholder)
@@ -13,10 +15,18 @@ v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col
   .video-card-content.tw-relative
     v-icon.text-default(small style="margin-top: -3px; margin-right: 5px") {{ icons['mdiClockTimeNineOutline'] }}
     span.text-font-disabled {{ recording.time }}
-    v-btn.tw-text-white(style="top: -20px; right: 55px" width="36px" height="36px" @click="download(item)" :loading="downloading" absolute color="#333333" fab right top)
+    v-btn.tw-text-white(style="top: -20px; right: 10px" width="36px" height="36px" @click="download(item)" :loading="downloading" absolute color="#333333" fab right top)
       v-icon(small) {{ icons['mdiDownload'] }}
-    v-btn.tw-text-white(style="top: -20px; right: 10px" width="36px" height="36px" @click="remove" :loading="removing" small absolute color="red" fab right top)
+    //v-btn.tw-text-white(style="top: -20px; right: 10px" width="36px" height="36px" @click="remove" :loading="removing" small absolute color="red" fab right top)
       v-icon(small) {{ icons['mdiTrashCan'] }}
+
+v-card.card.fill-height.video-card.tw-overflow-hidden.tw-flex.tw-flex-col(v-else)
+  v-img.video-card-img.tw-items-end.tw-text-white.tw-relative.tw-cursor-pointer(v-on:error="handleErrorImg" :src="src" height="calc(100% - 37px)" @click="$emit('show')" :class="errorImg ? 'errorImg' : ''")
+    template(v-slot:placeholder)
+      .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+        v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
+    .shadow.tw-absolute.tw-inset-0
+  
 </template>
 
 <script>
@@ -28,7 +38,9 @@ import { removeRecording } from '@/api/recordings.api';
 
 export default {
   props: {
+    list: Boolean,
     recording: Object,
+    selectedItems: Array,
   },
 
   data() {
@@ -48,7 +60,20 @@ export default {
       src: `/files/${
         this.recording.recordType === 'Video' ? `${this.recording.name}@2.jpeg` : this.recording.fileName
       }`,
+      selected: false,
     };
+  },
+
+  watch: {
+    selectedItems: {
+      handler() {
+        this.selected = this.selectedItems.some((item) => item.id === this.recording.id);
+      },
+    },
+  },
+
+  mounted() {
+    this.selected = this.selectedItems.some((item) => item.id === this.recording.id);
   },
 
   methods: {
@@ -148,7 +173,8 @@ export default {
 }
 
 .video-card-content {
-  background: rgba(var(--cui-bg-card-rgb));
+  /*background: rgba(var(--cui-bg-card-rgb));*/
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 10px;
   font-size: 0.7rem;
 }
@@ -170,5 +196,13 @@ div >>> .v-image__image--contain {
 
 .errorImg >>> .v-image__image {
   background-size: 50% !important;
+}
+
+.select-checkbox {
+  position: absolute;
+  z-index: 1;
+  left: 10px;
+  top: 5px;
+  margin: 0;
 }
 </style>

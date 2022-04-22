@@ -128,6 +128,11 @@
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiLink'] }}
 
+                label.form-input-label {{ $t('mqtt_publish_topic') }}
+                v-text-field(v-model="camera.mqttTopic" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiLink'] }}
+
             v-expansion-panel
               v-expansion-panel-header 
                 div
@@ -292,6 +297,14 @@
               v-expansion-panel-content
                 v-sheet.tw-p-3.tw-mb-5.mx-auto.tw-text-sm(rounded width="100%" color="rgba(var(--cui-text-default-rgb), 0.1)")
                   span.text-default {{ $t('homebridge_restart_info') }}
+
+                .tw-flex.tw-justify-between.tw-items-center
+                  .tw-block.tw-w-full.tw-pr-2
+                    label.form-input-label Disable ¹ ²
+                    .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                      v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                      .input-info.tw-italic {{ $t('disable_info') }}
+                  v-switch(color="var(--cui-primary)" v-model="cam.disable")
 
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
@@ -682,7 +695,7 @@
                       .input-info.tw-italic {{ message }}
 
                 label.form-input-label Video Stream Map ¹
-                v-text-field(v-model="cam.videoConfig.vmap" :hint="$t('map_video_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                v-text-field(v-model="cam.videoConfig.mapvideo" :hint="$t('map_video_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiAlphabetical'] }}
                   template(v-slot:message="{ key, message}")
@@ -691,7 +704,7 @@
                       .input-info.tw-italic {{ message }}
 
                 label.form-input-label Audio Stream Map ¹
-                v-text-field(v-model="cam.videoConfig.amap" :hint="$t('map_audio_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                v-text-field(v-model="cam.videoConfig.mapaudio" :hint="$t('map_audio_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiAlphabetical'] }}
                   template(v-slot:message="{ key, message}")
@@ -699,7 +712,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}
 
-                label.form-input-label Encodec Options ¹
+                label.form-input-label Encoder Options ¹
                 v-text-field(v-model="cam.videoConfig.encoderOptions" :hint="$t('encoder_options_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiAlphabetical'] }}
@@ -707,6 +720,89 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}   
+                
+                .tw-mt-3(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
+                  .page-subtitle HKSV Configuration
+
+                  .tw-flex.tw-justify-between.tw-items-center
+                    .tw-block.tw-w-full.tw-pr-2
+                      label.form-input-label Audio ¹
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ $t('audio_info_hksv') }}
+                    v-switch(color="var(--cui-primary)" :input-value="cam.hksvConfig ? cam.hksvConfig.audio : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'audio', $event)")
+
+                  label.form-input-label Video Source ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.source : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'source', $event)" :hint="$t('source_info_hksv')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Video Width ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.maxWidth : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'maxWidth', $event)" :hint="$t('width_info_hksv')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiNumeric'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Video Height ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.maxHeight : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'maxHeight', $event)" :hint="$t('height_info_hksv')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiNumeric'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label FPS ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.maxFPS : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'maxFPS', $event)" :hint="$t('fps_info_hksv')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiNumeric'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Bitrate ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.maxBitrate : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'maxBitrate', $event)" :hint="$t('bitrate_info_hksv')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiNumeric'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Video Codec ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.vcodec : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'vcodec', $event)" :hint="$t('video_codec_info_hksv')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Audio Codec ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.acodec : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'acodec', $event)" :hint="$t('audio_codec_info_hksv')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
+
+                  label.form-input-label Encoder Options ¹
+                  v-text-field(:value="cam.hksvConfig ? cam.hksvConfig.encoderOptions : undefined" v-on:change="addToObject(cam, 'hksvConfig', 'encoderOptions', $event)" :hint="$t('encoder_options_info_hksv')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                    template(v-slot:prepend-inner)
+                      v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                    template(v-slot:message="{ key, message}")
+                      .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                        v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                        .input-info.tw-italic {{ message }}
 </template>
 
 <script>
@@ -912,6 +1008,13 @@ export default {
   },
 
   methods: {
+    addToObject(config, objectName, key, value) {
+      if (!config[objectName]) {
+        config[objectName] = {};
+      }
+
+      config[objectName][key] = value;
+    },
     async cameraAdded(camera) {
       try {
         await this.configCameraSettings();
@@ -931,7 +1034,7 @@ export default {
 
       this.config = {
         port: config.data.port || window.location.port || 80,
-        debug: config.data.debug || false,
+        logLevel: config.data.logLevel || 'info',
         ssl: config.data.ssl || {
           key: '',
           cert: '',

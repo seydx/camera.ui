@@ -122,6 +122,23 @@ export const routes = [
     component: () => import(/* webpackChunkName: "camera" */ '@/views/Camera/Camera.vue'),
   },
   {
+    path: '/cameras/:name/feed',
+    name: 'CameraFeed',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        fixedNavbar: false,
+        showFooter: false,
+        showNavbar: false,
+        showSidebar: false,
+      },
+    },
+    component: () => import(/* webpackChunkName: "cameraFeed" */ '@/views/Camera/CameraFeed.vue'),
+  },
+  {
     path: '/recordings',
     name: 'Recordings',
     meta: {
@@ -248,8 +265,8 @@ export const routes = [
     component: () => import(/* webpackChunkName: "utilization" */ '@/views/Utilization/Utilization.vue'),
   },
   {
-    path: '/reports',
-    name: 'Reports',
+    path: '/timeline',
+    name: 'Timeline',
     meta: {
       auth: {
         requiresAuth: true,
@@ -263,10 +280,10 @@ export const routes = [
       },
       navigation: {
         extras: true,
-        icon: 'mdi-script',
+        icon: 'mdi-timeline-outline',
       },
     },
-    component: () => import(/* webpackChunkName: "reports" */ '@/views/Reports/Reports.vue'),
+    component: () => import(/* webpackChunkName: "timeline" */ '@/views/Timeline/Timeline.vue'),
   },
   {
     path: '/settings',

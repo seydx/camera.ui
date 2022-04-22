@@ -35,7 +35,7 @@ export default class LoggerService {
   static #logger = console;
   static #customLogger = false;
   static #withPrefix = true;
-  static #debugEnabled = false;
+  static #logLevel = 'info';
   static #timestampEnabled = false;
   static #filelogger;
 
@@ -61,8 +61,22 @@ export default class LoggerService {
       chalk.level = 1;
     }
 
-    if (process.env.CUI_LOG_DEBUG === '1') {
-      LoggerService.#debugEnabled = true;
+    switch (process.env.CUI_LOG_MODE) {
+      case '1':
+        LoggerService.#logLevel = 'info';
+        break;
+      case '2':
+        LoggerService.#logLevel = 'debug';
+        break;
+      case '3':
+        LoggerService.#logLevel = 'warn';
+        break;
+      case '4':
+        LoggerService.#logLevel = 'error';
+        break;
+      default:
+        LoggerService.#logLevel = 'info';
+        break;
     }
 
     if (process.env.CUI_LOG_TIMESTAMPS === '1') {
@@ -124,8 +138,38 @@ export default class LoggerService {
     return LoggerService.log;
   }
 
+  static allowLogging(level) {
+    switch (level) {
+      case 'info':
+        return Boolean(LoggerService.#logLevel === LogLevel.DEBUG || LoggerService.#logLevel === LogLevel.INFO);
+      case 'debug':
+        return Boolean(LoggerService.#logLevel === LogLevel.DEBUG);
+      case 'warn':
+        return Boolean(
+          LoggerService.#logLevel === LogLevel.WARN ||
+            LoggerService.#logLevel === LogLevel.ERROR ||
+            LoggerService.#logLevel === LogLevel.INFO ||
+            LoggerService.#logLevel === LogLevel.DEBUG
+        );
+      case 'error':
+        return Boolean(
+          LoggerService.#logLevel === LogLevel.ERROR ||
+            LoggerService.#logLevel === LogLevel.INFO ||
+            LoggerService.#logLevel === LogLevel.DEBUG
+        );
+      default:
+        return false;
+    }
+  }
+
   static formatMessage(message, name, level) {
     let formatted = '';
+
+    if (level === LogLevel.WARN) {
+      formatted += `${chalk.bgYellowBright.black.bold(' WARNING ')} `;
+    } else if (level === LogLevel.ERROR) {
+      formatted += `${chalk.bgRedBright.white.bold(' ERROR ')} `;
+    }
 
     if (name) {
       formatted += `${name}: `;
@@ -185,7 +229,7 @@ export default class LoggerService {
   }
 
   static #logging(level, message, name, fromExtern) {
-    if (level === LogLevel.DEBUG && !LoggerService.#debugEnabled) {
+    if (!LoggerService.allowLogging(level)) {
       return;
     }
 

@@ -9,7 +9,7 @@
     .overlay(v-if="showOverlay")
       
     .settings-content.settings-included.tw-w-full.tw-relative
-      .tw-flex.tw-flex
+      .tw-flex.tw-items-center
         v-btn.text-default.included.settings-nav-toggle(@click="toggleSettingsNavi" icon height="38px" width="38px")
           v-icon {{ icons['mdiMenu'] }}
         .page-title {{ $t($route.meta.name.toLowerCase()) }}
@@ -99,7 +99,7 @@ export default {
 
 <style>
 .page-title {
-  font-size: 1.5rem !important;
+  font-size: 1.3rem !important;
   letter-spacing: -0.025em !important;
   font-weight: 700 !important;
   line-height: 1.5 !important;

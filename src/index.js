@@ -18,13 +18,27 @@ export default class CameraUI {
       throw new Error('No storage path was given for camera.ui');
     }
 
+    const logLevel = configJson.logLevel || 'info';
+    switch (logLevel) {
+      case 'info':
+        process.env.CUI_LOG_MODE = 1;
+        break;
+      case 'debug':
+        process.env.CUI_LOG_MODE = 2;
+        break;
+      case 'error':
+        process.env.CUI_LOG_MODE = 3;
+        break;
+      case 'warn':
+        process.env.CUI_LOG_MODE = 4;
+        break;
+      default:
+        process.env.CUI_LOG_MODE = 1;
+    }
+
     process.env.CUI_SERVICE_MODE = 2;
     process.env.CUI_LOG_COLOR = 1;
     process.env.CUI_LOG_TIMESTAMPS = 1;
-
-    if (configJson.debug) {
-      process.env.CUI_LOG_DEBUG = 1;
-    }
 
     // node-telegram-bot-api
     process.env.NTBA_FIX_319 = 1;

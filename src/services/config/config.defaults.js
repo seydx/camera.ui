@@ -85,7 +85,7 @@ export class ConfigSetup {
 
   static setupUi(config = {}) {
     return {
-      debug: config?.debug || false,
+      logLevel: config?.logLevel || 'info',
       port: config?.port || uiDefaults.port,
       atHomeSwitch: config?.atHomeSwitch || false,
     };

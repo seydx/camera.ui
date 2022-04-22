@@ -26,7 +26,7 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
-            label.form-input-label Sub Source
+            label.form-input-label Video Substream Source
             v-text-field(v-model="cam.videoConfig.subSource" :hint="$t('sub_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                   v-icon.text-muted {{ icons['mdiAlphabetical'] }}

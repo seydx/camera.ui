@@ -136,6 +136,7 @@ import {
   mdiImageMultiple,
   mdiScript,
   mdiTextBoxOutline,
+  mdiTimelineOutline,
   mdiTune,
   mdiViewDashboard,
 } from '@mdi/js';
@@ -172,6 +173,7 @@ export default {
         'mdi-grid-large': mdiGridLarge,
         'mdi-image-multiple': mdiImageMultiple,
         'mdi-script': mdiScript,
+        'mdi-timeline-outline': mdiTimelineOutline,
         'mdi-text-box-outline': mdiTextBoxOutline,
         'mdi-view-dashboard': mdiViewDashboard,
       },

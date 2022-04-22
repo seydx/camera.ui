@@ -2,6 +2,7 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 'use-strict';
 
+import chalk from 'chalk';
 import cors from 'cors';
 import fs from 'fs-extra';
 import helmet from 'helmet';
@@ -83,14 +84,45 @@ export default class App {
     );
 
     app.use(
-      morgan('dev', {
-        skip: () => !options.debug,
-        stream: {
-          write: (a) => {
-            log.debug(a.replace(/^\s+|\s+$/g, ''));
-          },
+      morgan(
+        (tokens, req, res) => {
+          // eslint-disable-next-line unicorn/consistent-function-scoping
+          const headersSent = (res) => {
+            return typeof res.headersSent !== 'boolean' ? Boolean(res._header) : res.headersSent;
+          };
+
+          const status = headersSent(res) ? res.statusCode : undefined;
+
+          const color =
+            status >= 500
+              ? 'redBright'
+              : status >= 400
+              ? 'yellowBright'
+              : status >= 300
+              ? 'cyanBright'
+              : status >= 200
+              ? 'greenBright'
+              : 'gray';
+
+          return [
+            chalk.gray(tokens.method(req, res)),
+            chalk.gray(tokens.url(req, res)),
+            chalk[color](tokens.status(req, res)),
+            chalk.gray(tokens['response-time'](req, res)),
+            chalk.gray('ms'),
+            chalk.gray('-'),
+            chalk.gray(tokens.res(req, res, 'content-length') || ''),
+          ].join(' ');
         },
-      })
+        {
+          skip: () => !options.debug,
+          stream: {
+            write: (line) => {
+              log.debug(line.replace(/^\s+|\s+$/g, ''));
+            },
+          },
+        }
+      )
     );
 
     const backupUpload = multer({
@@ -139,7 +171,7 @@ export default class App {
       })
     );
 
-    app.use(history({ index: 'index.html', verbose: options.debug }));
+    app.use(history({ index: 'index.html' }));
     app.use(express.static(path.join(__dirname, '../../interface')));
 
     return app;

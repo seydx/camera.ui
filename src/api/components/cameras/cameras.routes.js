@@ -146,6 +146,37 @@ export const routesConfig = (app) => {
    *       500:
    *         description: Internal server error
    */
+  app.get('/api/cameras/:name/feed', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
+    CamerasController.getByName,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}:
+   *   get:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get specific camera by name
+   *     parameters:
+   *       - in: path
+   *         name: name
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Name of the camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
   app.get('/api/cameras/:name', [
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),

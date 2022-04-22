@@ -13,7 +13,7 @@ const packageJson = fs.readJsonSync(path.resolve(__dirname, '../package.json'));
 let moduleName = 'camera.ui';
 let globalInstalled = '1';
 let sudoEnabled = '1';
-let debugEnabled = '0';
+let logLevel = '1';
 let logTimestamps = '1';
 let logColourful = '1';
 let storagePath = path.resolve('test', 'camera.ui');
@@ -25,7 +25,7 @@ process.env.NTBA_FIX_350 = 1;
 process.env.CUI_SERVICE_MODE = '1';
 
 process.env.CUI_LOG_COLOR = logColourful;
-process.env.CUI_LOG_DEBUG = debugEnabled;
+process.env.CUI_LOG_MODE = logLevel;
 process.env.CUI_LOG_TIMESTAMPS = logTimestamps;
 
 process.env.CUI_STORAGE_PATH = storagePath;
