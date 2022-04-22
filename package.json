@@ -16,7 +16,7 @@
   },
   "main": "src/index.js",
   "dependencies": {
-    "@aws-sdk/client-rekognition": "^3.72.0",
+    "@aws-sdk/client-rekognition": "^3.76.0",
     "@seydx/lowdb": "^3.0.2",
     "alexa-remote2": "^4.1.2",
     "axios": "^0.26.1",
@@ -53,7 +53,7 @@
     "socketio-jwt": "^4.6.2",
     "swagger-jsdoc": "^6.2.1",
     "swagger-ui-express": "^4.3.0",
-    "systeminformation": "^5.11.12",
+    "systeminformation": "^5.11.14",
     "tar": "^6.1.11",
     "web-push": "^3.4.5"
   },
