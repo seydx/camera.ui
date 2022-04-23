@@ -18,6 +18,7 @@ export default class MediaService {
     this.cameraName = camera.name;
 
     this.codecs = {
+      ffmpegVersion: null,
       probe: false,
       timedout: false,
       audio: [],
@@ -67,7 +68,7 @@ export default class MediaService {
 
       stderr.on('line', (line) => {
         if (lines === 0) {
-          ConfigService.ffmpegVersion = line.split(' ')[2];
+          this.codecs.ffmpegVersion = ConfigService.ffmpegVersion = line.split(' ')[2];
         }
 
         const bitrateLine = line.includes('start: ') && line.includes('bitrate: ') ? line.split('bitrate: ')[1] : false;
@@ -109,7 +110,7 @@ export default class MediaService {
           this.codecs.timedout = true;
           cp.kill('SIGKILL');
         }
-      }, 5000);
+      }, 10000);
     });
   }
 }

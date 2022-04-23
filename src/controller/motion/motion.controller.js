@@ -690,9 +690,10 @@ export default class MotionController {
     }
 
     if (camera) {
-      const generalSettings = await Database.interfaceDB.chain.get('settings').get('general').cloneDeep().value();
-      const atHome = generalSettings?.atHome || false;
-      const cameraExcluded = (generalSettings?.exclude || []).includes(camera.name);
+      const settingsDatabase = await Database.interfaceDB.chain.get('settings').cloneDeep().value();
+      const cameraSettings = settingsDatabase?.cameras.find((cam) => cam.name === cameraName);
+      const atHome = settingsDatabase?.general?.atHome || false;
+      const cameraExcluded = (settingsDatabase?.general?.exclude || []).includes(camera.name);
 
       if (atHome && !cameraExcluded) {
         const message = `Skip motion trigger. At Home is active and ${camera.name} is not excluded!`;
@@ -714,6 +715,22 @@ export default class MotionController {
         MotionController.#controller.emit('motion', camera.name, triggerType, state, event); // used for extern controller, like Homebridge
 
         if (camera.recordOnMovement) {
+          const mqttClient = MotionController.mqttClient;
+
+          if (mqttClient?.connected && cameraSettings?.mqttTopic) {
+            mqttClient.publish(
+              cameraSettings.mqttTopic,
+              JSON.stringify({
+                camera: camera.name,
+                state: state,
+                type: triggerType,
+                event: event,
+              })
+            );
+          } else {
+            log.debug('No MQTT Publish Topic defined, skip MQTT (motion)..');
+          }
+
           const recordingSettings = await Database.interfaceDB.chain
             .get('settings')
             .get('recordings')

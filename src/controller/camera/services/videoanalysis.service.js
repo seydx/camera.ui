@@ -47,6 +47,7 @@ export default class VideoAnalysisService {
   #controller;
   #socket;
   #prebufferService;
+  #mediaService;
 
   videoanalysisSession = null;
   killed = false;
@@ -58,13 +59,14 @@ export default class VideoAnalysisService {
 
   finishLaunching = false;
 
-  constructor(camera, prebufferService, controller, socket) {
+  constructor(camera, prebufferService, mediaService, controller, socket) {
     //log.debug('Initializing video analysis', camera.name);
 
     this.#camera = camera;
     this.#controller = controller;
     this.#socket = socket;
     this.#prebufferService = prebufferService;
+    this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
 
@@ -112,12 +114,15 @@ export default class VideoAnalysisService {
       this.resetVideoAnalysis();
 
       const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
-      let input = cameraUtils.generateInputSource(videoConfig, videoConfig.subSource).split(/\s+/);
+
+      let ffmpegInput = cameraUtils.generateInputSource(videoConfig, videoConfig.subSource).split(/\s+/);
+      ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(this.#mediaService.codecs.ffmpegVersion, ffmpegInput);
+
       let withPrebuffer = false;
 
       if (this.#camera.prebuffering && videoConfig.subSource === videoConfig.source) {
         try {
-          input = withPrebuffer = await this.#prebufferService.getVideo();
+          ffmpegInput = withPrebuffer = await this.#prebufferService.getVideo();
         } catch {
           // retry
           log.debug(
@@ -153,7 +158,7 @@ export default class VideoAnalysisService {
         }
       }
 
-      this.videoanalysisSession = await this.#startVideoAnalysis(input, videoConfig);
+      this.videoanalysisSession = await this.#startVideoAnalysis(ffmpegInput, videoConfig);
 
       if (!withPrebuffer) {
         const timer = this.#millisUntilTime('04:00');

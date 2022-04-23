@@ -150,18 +150,18 @@ export const getAndStoreSnapshot = (
     }
 
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
+    const videoWidth = videoConfig.maxWidth;
+    const videoHeight = videoConfig.maxHeight;
+    const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
+    const controller = CameraController.cameras.get(camera.name);
+
     let ffmpegInput = [
       ...cameraUtils.generateInputSource(videoConfig, fromSubSource ? videoConfig.subSource : false).split(/\s+/),
     ];
 
-    const videoWidth = videoConfig.maxWidth;
-    const videoHeight = videoConfig.maxHeight;
+    ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(controller?.media?.codecs?.ffmpegVersion, ffmpegInput);
 
-    const destination = storeSnapshot ? `${recordingPath}/${fileName}${isPlaceholder ? '@2' : ''}.jpeg` : '-';
-
-    const controller = CameraController.cameras.get(camera.name);
     if (!fromSubSource && camera.prebuffering && controller?.prebuffer) {
       try {
         ffmpegInput = await controller.prebuffer.getVideo();
@@ -296,16 +296,16 @@ export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
-
     const videoName = `${recordingPath}/${fileName}.mp4`;
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
     const vcodec = videoConfig.vcodec;
-
     const controller = CameraController.cameras.get(camera.name);
+
+    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+    ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(controller?.media?.codecs?.ffmpegVersion, ffmpegInput);
+
     if (camera.prebuffering && controller?.prebuffer) {
       try {
         ffmpegInput = await controller.prebuffer.getVideo();
@@ -400,12 +400,12 @@ export const handleFragmentsRequests = async function* (camera) {
   log.debug('Video fragments requested from interface', camera.name);
 
   const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-  let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
-
   const audioArguments = ['-acodec', 'copy'];
   const videoArguments = ['-vcodec', 'copy'];
-
   const controller = CameraController.cameras.get(camera.name);
+
+  let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+  ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(controller?.media?.codecs?.ffmpegVersion, ffmpegInput);
 
   if (camera.prebuffering && controller?.prebuffer) {
     try {

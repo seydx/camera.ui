@@ -52,7 +52,10 @@ export default class StreamService {
     const cameraSetting = Settings.find((camera) => camera && camera.name === this.cameraName);
 
     const videoConfig = cameraUtils.generateVideoConfig(this.#camera.videoConfig);
+
     let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+    ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(this.#mediaService.codecs.ffmpegVersion, ffmpegInput);
+
     let prebuffer = null;
 
     if (this.#camera.prebuffering && this.#prebufferService) {

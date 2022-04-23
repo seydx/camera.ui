@@ -31,6 +31,7 @@ export default class CameraController {
     const videoanalysisService = new VideoAnalysisService(
       camera,
       prebufferService,
+      mediaService,
       CameraController.#controller,
       CameraController.#socket
     );
@@ -96,16 +97,15 @@ export default class CameraController {
 
   static async reconfigureController(cameraName) {
     const controller = CameraController.cameras.get(cameraName);
+    const camera = ConfigService.ui.cameras.find((camera) => camera.name === cameraName);
+
+    if (camera?.disable) {
+      return;
+    }
 
     if (!controller) {
       throw new Error(`Can not reconfigure controller, controller for ${cameraName} not found!`);
     }
-
-    if (camera.disable) {
-      return;
-    }
-
-    const camera = ConfigService.ui.cameras.find((camera) => camera.name === cameraName);
 
     if (!camera) {
       throw new Error(`Unexpected error occured during reconfiguring controller for ${cameraName}`);

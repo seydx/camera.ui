@@ -168,7 +168,7 @@ export default class PrebufferService {
     let incompatibleAudio = audioSourceFound && !probeAudio.some((codec) => compatibleAudio.test(codec));
     let probeTimedOut = this.#mediaService.codecs.timedout;
 
-    const ffmpegInput = [
+    let ffmpegInput = [
       '-hide_banner',
       '-loglevel',
       'error',
@@ -176,6 +176,8 @@ export default class PrebufferService {
       '+genpts',
       ...cameraUtils.generateInputSource(videoConfig).split(/\s+/),
     ];
+
+    ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(this.#mediaService.codecs.ffmpegVersion, ffmpegInput);
 
     const audioArguments = [];
 

@@ -106,10 +106,6 @@ export default class EventController {
             endpoint: CameraSettings.webhookUrl,
           };
 
-          const mqttPublishSettings = {
-            topic: CameraSettings.mqttTopic,
-          };
-
           const webpushSettings = {
             publicKey: SettingsDB.webpush.publicKey,
             privateKey: SettingsDB.webpush.privateKey,
@@ -165,7 +161,7 @@ export default class EventController {
                 const { notification, notify } = await EventController.#handleNotification(motionInfo);
 
                 // 1)
-                await EventController.#publishMqtt(cameraName, notification, mqttPublishSettings);
+                await EventController.#publishMqtt(cameraName, notification, notificationsSettings.active);
 
                 // 2)
                 await EventController.#sendWebhook(
@@ -598,18 +594,18 @@ export default class EventController {
     }
   }
 
-  static async #publishMqtt(cameraName, notification, mqttPublishSettings) {
+  static async #publishMqtt(cameraName, notification, notificationActive) {
+    if (!notificationActive) {
+      return log.debug('Notifications not enabled, skip MQTT (notification)..', cameraName);
+    }
+
     try {
       const mqttClient = EventController.#controller.motionController?.mqttClient;
 
-      if (mqttClient && mqttClient.connected) {
-        if (!mqttPublishSettings.topic) {
-          return log.debug('No MQTT Publish Topic defined, skip MQTT..');
-        }
-
-        mqttClient.publish(mqttPublishSettings.topic, JSON.stringify(notification));
+      if (mqttClient?.connected) {
+        mqttClient.publish('camera.ui/notifications', JSON.stringify(notification));
       } else {
-        return log.debug('MQTT client not connected, skip MQTT..');
+        return log.debug('MQTT client not connected, skip MQTT (notification)..');
       }
     } catch (error) {
       log.info('An error occured during publishing mqtt message', cameraName, 'events');

@@ -1,6 +1,7 @@
 /* eslint-disable unicorn/number-literal-case */
 'use-strict';
 
+import compareVersions from 'compare-versions';
 import { createServer } from 'net';
 import { once } from 'events';
 import readline from 'readline';
@@ -353,4 +354,24 @@ export const generateVideoConfig = (videoConfig) => {
   config.packetSize = config.packetSize || 1318;
 
   return config;
+};
+
+export const checkDeprecatedFFmpegArguments = (ffmpegVersion, ffmpegArguments) => {
+  if (!ffmpegVersion) {
+    return ffmpegArguments;
+  }
+
+  let ffmpegArgumentsArray = !Array.isArray(ffmpegArguments) ? ffmpegArguments.split(' ') : [...ffmpegArguments];
+
+  if (compareVersions.compare(ffmpegVersion, '5.0.0', '>=')) {
+    ffmpegArgumentsArray = ffmpegArgumentsArray.map((argument) => {
+      if (argument === '-stimeout') {
+        argument = '-timeout';
+      }
+
+      return argument;
+    });
+  }
+
+  return ffmpegArgumentsArray;
 };
