@@ -79,6 +79,10 @@ export default class CameraController {
 
     await controller.media.probe();
 
+    if (controller.options?.disable) {
+      return;
+    }
+
     if (controller.options?.prebuffering) {
       await controller.prebuffer.start();
     }
@@ -87,7 +91,7 @@ export default class CameraController {
       await controller.videoanalysis.start();
     }
 
-    await controller.stream.configureStreamOptions();
+    //await controller.stream.configureStreamOptions();
   }
 
   static async reconfigureController(cameraName) {
@@ -95,6 +99,10 @@ export default class CameraController {
 
     if (!controller) {
       throw new Error(`Can not reconfigure controller, controller for ${cameraName} not found!`);
+    }
+
+    if (camera.disable) {
+      return;
     }
 
     const camera = ConfigService.ui.cameras.find((camera) => camera.name === cameraName);

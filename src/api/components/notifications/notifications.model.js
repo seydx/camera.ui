@@ -105,13 +105,12 @@ export const createNotification = async (data) => {
   const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
-  const cameraName = camera.name;
   const room = cameraSetting ? cameraSetting.room : 'Standard';
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
   const fileName =
-    cameraName.replace(/\s+/g, '_') +
+    camera.name.replace(/\s+/g, '_') +
     '-' +
     id +
     '-' +
@@ -124,7 +123,7 @@ export const createNotification = async (data) => {
 
   const notification = {
     id: id,
-    camera: cameraName,
+    camera: camera.name,
     fileName: `${fileName}.${extension}`,
     name: fileName,
     extension: extension,
@@ -139,7 +138,7 @@ export const createNotification = async (data) => {
 
   const notify = {
     ...notification,
-    title: cameraName,
+    title: camera.name,
     message: `${data.trigger} - ${time}`,
     subtxt: room,
     mediaSource: data.storing ? `/files/${fileName}.${extension}` : false,

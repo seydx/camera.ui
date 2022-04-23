@@ -310,7 +310,7 @@ export default class Database {
         let extension = isPlaceholder ? 'mp4' : 'jpeg';
         let id = rec.match(/(?<=-)([\dA-z]{10})(?=-)/)[0];
         let timestamp = rec.match(/(?<=-)(\d{10})(?=_)/)[0];
-        let cameraName = rec.match(/(.*?)(?=-[\dA-z]{10})/)[0];
+        let cameraName = rec.match(/(.*?)(?=-[\dA-z]{10})/)[0]?.replace(/_/g, ' ');
         let cameraSetting = cameras.find((camera) => camera?.name === cameraName);
 
         const jpeg = fs.readFileSync(filePath);
@@ -327,7 +327,7 @@ export default class Database {
 
         return {
           id: id,
-          camera: cameraName.replace(/_/g, ' '),
+          camera: cameraName,
           fileName: `${fileName}.${extension}`,
           name: fileName,
           extension: extension,

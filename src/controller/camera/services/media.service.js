@@ -22,6 +22,9 @@ export default class MediaService {
       timedout: false,
       audio: [],
       video: [],
+      bitrate: '? kb/s',
+      mapvideo: '',
+      mapaudio: '',
     };
   }
 
@@ -67,16 +70,24 @@ export default class MediaService {
           ConfigService.ffmpegVersion = line.split(' ')[2];
         }
 
+        const bitrateLine = line.includes('start: ') && line.includes('bitrate: ') ? line.split('bitrate: ')[1] : false;
+
+        if (bitrateLine) {
+          this.codecs.bitrate = bitrateLine;
+        }
+
         const audioLine = line.includes('Audio: ') ? line.split('Audio: ')[1] : false;
 
         if (audioLine) {
           this.codecs.audio = audioLine.split(', ');
+          this.codecs.mapaudio = line.split('Stream #')[1]?.split(': Audio')[0];
         }
 
         const videoLine = line.includes('Video: ') ? line.split('Video: ')[1] : false;
 
         if (videoLine) {
           this.codecs.video = videoLine.split(', ');
+          this.codecs.mapvideo = line.split('Stream #')[1]?.split(': Video')[0];
         }
 
         lines++;

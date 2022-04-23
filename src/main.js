@@ -71,6 +71,10 @@ export default class Interface extends EventEmitter {
 
         await controller[1].media.probe();
 
+        if (controller[1].options?.disable) {
+          return;
+        }
+
         if (controller[1].options.prebuffering) {
           await controller[1].prebuffer.start();
         }
@@ -79,7 +83,7 @@ export default class Interface extends EventEmitter {
           await controller[1].videoanalysis.start();
         }
 
-        await controller[1].stream.configureStreamOptions();
+        //await controller[1].stream.configureStreamOptions();
       })
     );
 

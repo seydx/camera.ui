@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.12 - 2022-04-23
+
+## Other Changes
+- Improved probe stream
+- Minor improvements
+- Bump dependencies
+
+## Bugfixes
+- Fixed an issue where recording information such as motion label was not correctly saved in the image data
+- Fixed an issue where prebuffering and/or video analysis was started for disabled cameras anyway
+- Minor bugfixes
+
 # v1.1.11 - 2022-04-23
 
 ## Notable Changes

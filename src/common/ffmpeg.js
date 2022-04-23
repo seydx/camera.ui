@@ -242,7 +242,7 @@ export const getAndStoreSnapshot = (
   });
 };
 
-export const storeSnapshotFromVideo = async (camera, recordingPath, fileName) => {
+export const storeSnapshotFromVideo = async (camera, recordingPath, fileName, label) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoName = `${recordingPath}/${fileName}.mp4`;
@@ -282,6 +282,9 @@ export const storeSnapshotFromVideo = async (camera, recordingPath, fileName) =>
         reject(new Error(errors.join(' - ')));
       } else {
         log.debug('FFmpeg snapshot process exited (expected)', camera.name, 'ffmpeg');
+
+        replaceJpegWithExifJPEG(camera.name, destination, label);
+
         resolve();
       }
     });

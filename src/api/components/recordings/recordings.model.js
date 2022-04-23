@@ -113,6 +113,7 @@ export const createRecording = async (data, fileBuffer) => {
   const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
+  const room = cameraSetting ? cameraSetting.room : 'Standard';
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
@@ -137,7 +138,7 @@ export const createRecording = async (data, fileBuffer) => {
     recordStoring: true,
     recordType: data.type,
     trigger: data.trigger,
-    room: cameraSetting.room,
+    room: room,
     time: time,
     timestamp: timestamp,
     label: label,
@@ -145,7 +146,7 @@ export const createRecording = async (data, fileBuffer) => {
 
   if (fileBuffer) {
     await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
-    await storeSnapshotFromVideo(camera, data.path, fileName);
+    await storeSnapshotFromVideo(camera, data.path, fileName, label);
   } else {
     const isPlaceholder = data.type === 'Video';
     const externRecording = false;
