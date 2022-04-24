@@ -2,8 +2,8 @@
 .tw-w-full
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
-  .tw-mb-7(v-if="!loading")
-    .page-subtitle.tw-mt-8 {{ $t('backup') }}
+  .tw-mb-7.tw-mt-5(v-if="!loading")
+    .page-subtitle {{ $t('backup') }}
     .page-subtitle-info {{ $t('create_zipped_backup_file') }}
 
     p.tw-mt-4.tw-mb-8 {{ $t('backup_info_download') }}

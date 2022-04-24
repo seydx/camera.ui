@@ -20,6 +20,7 @@ import LoggerService from '../../services/logger/logger.service.js';
 import Database from '../../api/database.js';
 
 const { log } = LoggerService;
+const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toDotNot = (input, parentKey) =>
   // eslint-disable-next-line unicorn/no-array-reduce, unicorn/prefer-object-from-entries
@@ -690,6 +691,15 @@ export default class MotionController {
     }
 
     if (camera) {
+      if (camera.motionDelay > 0) {
+        log.info(
+          `Movement delay (${camera.motionDelay}s) is active, wait before triggering the event - Trigger: ${triggerType} - State: ${state} - Event: ${event}`,
+          camera.name
+        );
+
+        await timeout(camera.motionDelay * 1000);
+      }
+
       const settingsDatabase = await Database.interfaceDB.chain.get('settings').cloneDeep().value();
       const cameraSettings = settingsDatabase?.cameras.find((cam) => cam.name === cameraName);
       const atHome = settingsDatabase?.general?.atHome || false;

@@ -2,11 +2,11 @@
 .tw-w-full
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
-  .tw-mb-7(v-if="!loading")
+  .tw-mb-7.tw-mt-5(v-if="!loading")
     v-btn.save-btn(:class="fabAbove ? 'save-btn-top' : ''" v-scroll="onScroll" v-show="fab" color="success" transition="fade-transition" width="40" height="40" fab dark fixed bottom right @click="onSave" :loading="loadingProgress")
       v-icon {{ icons['mdiCheckBold'] }}
 
-    .page-subtitle.tw-mt-8 {{ $t('server') }}
+    .page-subtitle {{ $t('server') }}
     .page-subtitle-info {{ $t('server_information') }}
 
     .tw-flex.tw-justify-between.tw-items-center.tw-my-5
@@ -87,19 +87,19 @@
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('interface') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('interface_config') }}
+            .page-subtitle-info {{ $t('interface_config') }}
         v-expansion-panel-content
-          .tw-flex.tw-justify-between.tw-items-center(v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
+          .tw-flex.tw-justify-between.tw-items-center(style="margin-top: -15px" v-if="npmPackageName === 'homebridge-camera-ui' || env === 'development'")
             label.form-input-label {{ $t('at_home_switch') }}
             v-switch(color="var(--cui-primary)" v-model="config.atHomeSwitch")
           
           label.form-input-label {{ $t('loglevel') }}
-          v-select.select(prepend-inner-icon="mdi-door" v-model="config.logLevel" :items="logLevels" background-color="var(--cui-bg-card)" solo)
+          v-select.select.tw-mb-2(hide-details prepend-inner-icon="mdi-door" v-model="config.logLevel" :items="logLevels" background-color="var(--cui-bg-card)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiConsole'] }}
 
           label.form-input-label {{ $t('port') }}
-          v-text-field(v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model.number="config.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
@@ -107,15 +107,15 @@
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('ssl') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('ssl_config') }}
+            .page-subtitle-info {{ $t('ssl_config') }}
         v-expansion-panel-content
           label.form-input-label {{ $t('path_to_certificate') }}
-          v-text-field(v-model="config.ssl.cert" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field.tw-mb-2(hide-details v-model="config.ssl.cert" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiAt'] }}
 
           label.form-input-label {{ $t('path_to_key') }}
-          v-text-field(v-model="config.ssl.key" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model="config.ssl.key" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiAt'] }}
 
@@ -123,10 +123,10 @@
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('options') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('video_processor_config') }}
+            .page-subtitle-info {{ $t('video_processor_config') }}
         v-expansion-panel-content
           label.form-input-label {{ $t('video_processor_path') }}
-          v-text-field(v-model="config.options.videoProcessor" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model="config.options.videoProcessor" prepend-inner-icon="mdi-at" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiAt'] }}
               
@@ -134,7 +134,7 @@
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('http') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('http_server_config') }}
+            .page-subtitle-info {{ $t('http_server_config') }}
         v-expansion-panel-content
           .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
@@ -149,18 +149,18 @@
             v-switch(color="var(--cui-primary)" v-model="config.http.localHttp")
 
           label.form-input-label {{ $t('port') }}
-          v-text-field(v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model.number="config.http.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!httpStatus || loadingRestart" block color="error" @click="onRestartHttp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white.tw-mb-3.tw-mt-5(:disabled="!httpStatus || loadingRestart" block color="error" @click="onRestartHttp(false)") {{ $t('stop') }}
           v-btn.tw-text-white(:disabled="!config.http.active || !config.http.port || loadingRestart || loadingSave" :loading="loadingRestartHttp" block color="success" @click="onRestartHttp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('smtp') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('smtp_server_config') }}
+            .page-subtitle-info {{ $t('smtp_server_config') }}
         v-expansion-panel-content
           .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
@@ -171,23 +171,23 @@
             v-switch(color="var(--cui-primary)" v-model="config.smtp.active")
 
           label.form-input-label {{ $t('port') }}
-          v-text-field(v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field.tw-mb-2(hide-details v-model.number="config.smtp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
           label.form-input-label {{ $t('space_replace') }}
-          v-text-field(v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model="config.smtp.space_replace" prepend-inner-icon="mdi-find-replace" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiFindReplace'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!smtpStatus || loadingRestart" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white.tw-mb-3.tw-mt-5(:disabled="!smtpStatus || loadingRestart" block color="error" @click="onRestartSmtp(false)") {{ $t('stop') }}
           v-btn.tw-text-white(:disabled="!config.smtp.active || !config.smtp.port || loadingRestart || loadingSave" :loading="loadingRestartSmtp" block color="success" @click="onRestartSmtp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('ftp') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('ftp_server_config') }}
+            .page-subtitle-info {{ $t('ftp_server_config') }}
         v-expansion-panel-content
           .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
@@ -202,18 +202,18 @@
             v-switch(color="var(--cui-primary)" v-model="config.ftp.useFile")
 
           label.form-input-label {{ $t('port') }}
-          v-text-field(v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model.number="config.ftp.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!ftpStatus || loadingRestart" block color="error" @click="onRestartFtp(false)") {{ $t('stop') }}
+          v-btn.tw-text-white.tw-mb-3.tw-mt-5(:disabled="!ftpStatus || loadingRestart" block color="error" @click="onRestartFtp(false)") {{ $t('stop') }}
           v-btn.tw-text-white(:disabled="!config.ftp.active || !config.ftp.port || loadingRestart || loadingSave" :loading="loadingRestartFtp" block color="success" @click="onRestartFtp(true)") {{ $t('restart') }}
 
       v-expansion-panel
         v-expansion-panel-header
           div
             .page-subtitle {{ $t('mqtt') }}
-            .page-subtitle-info.tw-mt-1 {{ $t('mqtt_config') }}
+            .page-subtitle-info {{ $t('mqtt_config') }}
         v-expansion-panel-content
           .tw-flex.tw-justify-between.tw-items-center
             label.form-input-label {{ $t('status') }}
@@ -224,16 +224,16 @@
             v-switch(color="var(--cui-primary)" v-model="config.mqtt.active")
 
           label.form-input-label {{ $t('host') }}
-          v-text-field(v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field.tw-mb-2(hide-details v-model="config.mqtt.host" prepend-inner-icon="mdi-web" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiWeb'] }}
 
           label.form-input-label {{ $t('port') }}
-          v-text-field(v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+          v-text-field(hide-details v-model.number="config.mqtt.port" type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
             template(v-slot:prepend-inner)
               v-icon.text-muted {{ icons['mdiNumeric'] }}
 
-          v-btn.tw-text-white.tw-mb-3(:disabled="!mqttStatus || loadingRestart" block color="error" @click="onRestartMqtt(false)") {{ $t('stop') }}
+          v-btn.tw-text-white.tw-mb-3.tw-mt-5(:disabled="!mqttStatus || loadingRestart" block color="error" @click="onRestartMqtt(false)") {{ $t('stop') }}
           v-btn.tw-text-white(:disabled="!config.mqtt.active || !config.mqtt.host || !config.mqtt.port || loadingRestart || loadingSave" :loading="loadingRestartMqtt" block color="success" @click="onRestartMqtt(true)") {{ $t('restart') }}
 
 </template>
@@ -881,5 +881,9 @@ div >>> .v-expansion-panel:not(:first-child)::after {
 
 div >>> .v-expansion-panels > *:last-child {
   border: none !important;
+}
+
+div >>> .v-expansion-panel-header {
+  line-height: unset !important;
 }
 </style>

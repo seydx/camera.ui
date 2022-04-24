@@ -357,7 +357,7 @@ export const generateVideoConfig = (videoConfig) => {
 };
 
 export const checkDeprecatedFFmpegArguments = (ffmpegVersion, ffmpegArguments) => {
-  if (!ffmpegVersion) {
+  if (!ffmpegVersion || !compareVersions.validate(ffmpegVersion)) {
     return ffmpegArguments;
   }
 

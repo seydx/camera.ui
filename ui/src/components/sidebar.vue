@@ -136,7 +136,7 @@ import {
   mdiImageMultiple,
   mdiScript,
   mdiTextBoxOutline,
-  mdiTimelineOutline,
+  mdiPuzzle,
   mdiTune,
   mdiViewDashboard,
 } from '@mdi/js';
@@ -172,8 +172,8 @@ export default {
         'mdi-console': mdiConsole,
         'mdi-grid-large': mdiGridLarge,
         'mdi-image-multiple': mdiImageMultiple,
+        'mdi-puzzle': mdiPuzzle,
         'mdi-script': mdiScript,
-        'mdi-timeline-outline': mdiTimelineOutline,
         'mdi-text-box-outline': mdiTextBoxOutline,
         'mdi-view-dashboard': mdiViewDashboard,
       },

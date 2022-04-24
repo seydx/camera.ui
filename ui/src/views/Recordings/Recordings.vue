@@ -570,4 +570,8 @@ div
   > .v-input__slot {
   border: none !important;
 }
+
+div >>> .v-input--selection-controls__input svg {
+  fill: var(--cui-text-hint) !important;
+}
 </style>

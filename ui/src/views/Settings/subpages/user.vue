@@ -2,7 +2,7 @@
 .tw-w-full.tw-mt-8
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
-  .tw-mb-5(v-if="!loading")
+  .tw-mb-5.tw-mt-5(v-if="!loading")
     .page-subtitle {{ $t('new') }}
     .page-subtitle-info {{ $t('add_new_user') }}
 

@@ -2,8 +2,8 @@
 .tw-w-full
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
-  .tw-mb-7(v-if="!loading")
-    .page-subtitle.tw-mt-8 {{ $t('general') }}
+  .tw-mb-7.tw-mt-5(v-if="!loading")
+    .page-subtitle {{ $t('general') }}
     .page-subtitle-info {{ $t('general_settings') }}
 
     .tw-flex.tw-justify-between.tw-items-center

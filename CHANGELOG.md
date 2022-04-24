@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.15 - 2022-04-24
+
+## Notable Changes
+- **Config:** 
+  - Added `"motionDelay"` parameter to the camera block. Motion Delay: The number of seconds to wait to trigger the motion sensor after a motion event is received from e.g. MQTT, SMTP, FTP or HTTP (this can be useful if you use an external motion sensor and the camera feed lags several seconds behind the event).
+
+## Other Changes
+- Minor UI improvements
+- Bump dependencies
+
+## Bugfixes
+- Fixed an issue where replacing deprecated ffmpeg args failed due to invalid ffmpeg version
+
 # v1.1.14 - 2022-04-23
 
 ## Other Changes

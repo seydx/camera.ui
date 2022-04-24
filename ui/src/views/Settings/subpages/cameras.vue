@@ -1,8 +1,8 @@
 <template lang="pug">
-.tw-w-full.tw-mt-8
+.tw-w-full
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)" style="z-index: 3;")
 
-  .tw-mb-7(v-if="!loading" ref="innerContainer")
+  .tw-mb-7.tw-mt-5(v-if="!loading" ref="innerContainer")
     label.form-input-label {{ $t('selected_camera') }}
     v-select(v-model="camera" :items="cameras" :no-data-text="$t('no_data_available')" item-text="name" prepend-inner-icon="mdi-cctv" append-outer-icon="mdi-close-thick" background-color="var(--cui-bg-card)" return-object solo)
       template(v-slot:prepend-inner)

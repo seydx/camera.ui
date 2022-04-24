@@ -8,7 +8,6 @@
       v-btn.text-default.included(@click="toggleNavi" icon height="38px" width="38px")
         v-icon {{ icons['mdiMenu'] }}
       .tw-flex.tw-ml-auto(v-if="checkLevel('notifications:access')")
-
         v-badge(:value="notSize" :dot="notSize < 1" :content="notSize" color="var(--cui-primary)" offset-x="20" offset-y="20" bordered overlap)
           template(v-slot:badge)
             .badge-text.tw-flex.tw-justify-center.tw-items-center.tw-h-full.tw-w-full

@@ -265,8 +265,8 @@ export const routes = [
     component: () => import(/* webpackChunkName: "utilization" */ '@/views/Utilization/Utilization.vue'),
   },
   {
-    path: '/timeline',
-    name: 'Timeline',
+    path: '/plugins',
+    name: 'Plugins',
     meta: {
       auth: {
         requiresAuth: true,
@@ -280,10 +280,10 @@ export const routes = [
       },
       navigation: {
         extras: true,
-        icon: 'mdi-timeline-outline',
+        icon: 'mdi-puzzle',
       },
     },
-    component: () => import(/* webpackChunkName: "timeline" */ '@/views/Timeline/Timeline.vue'),
+    component: () => import(/* webpackChunkName: "plugins" */ '@/views/Plugins/Plugins.vue'),
   },
   {
     path: '/settings',
