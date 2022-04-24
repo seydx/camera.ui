@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.7 - 2022-04-24
+
+## Bugfixes
+- Several issues that caused the process to crash have been fixed
+
 # v1.1.16 - 2022-04-24
 
 ## Notable Changes

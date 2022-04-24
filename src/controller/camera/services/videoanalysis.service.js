@@ -315,7 +315,7 @@ export default class VideoAnalysisService {
     p2p.on('pam', () => {
       restartWatchdog();
 
-      Socket.io.emit.emit('videoanalysisStatus', {
+      Socket.io.emit('videoanalysisStatus', {
         camera: this.cameraName,
         status: 'active',
       });
@@ -394,7 +394,7 @@ export default class VideoAnalysisService {
 
       log.debug('Videoanalysis process closed', this.cameraName);
 
-      Socket.io.emit.emit('videoanalysisStatus', {
+      Socket.io.emit('videoanalysisStatus', {
         camera: this.cameraName,
         status: 'inactive',
       });

@@ -587,7 +587,7 @@ export default class PrebufferService {
 
       kill();
 
-      Socket.io.emit.emit('prebufferStatus', {
+      Socket.io.emit('prebufferStatus', {
         camera: this.cameraName,
         status: 'inactive',
       });
@@ -600,7 +600,7 @@ export default class PrebufferService {
     await socketPromise;
     clearTimeout(ffmpegTimeout);
 
-    Socket.io.emit.emit('prebufferStatus', {
+    Socket.io.emit('prebufferStatus', {
       camera: this.cameraName,
       status: 'active',
     });

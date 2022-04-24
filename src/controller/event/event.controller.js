@@ -149,15 +149,17 @@ export default class EventController {
 
             if (allowStream) {
               const diskSpace = Socket.diskSpace;
-              const allowRecording = Boolean(diskSpace.free >= 1);
+              const allowRecording = Boolean(diskSpace.available >= 1) || Boolean(diskSpace.available === null);
 
               if (!allowRecording) {
                 log.warn(
-                  `The available disk space is less than 1 GB (${diskSpace.free.toFixed(
+                  `The available disk space is less than 1 GB (${diskSpace.available.toFixed(
                     2
-                  )})! Please free up disk space to be able to create new recordings!`,
+                  )} GB)! Please free up disk space to be able to create new recordings!`,
                   cameraName
                 );
+
+                log.info('Skip local storage of the recording..', cameraName);
               }
 
               if (!fileBuffer) {

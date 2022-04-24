@@ -153,7 +153,7 @@ export default class StreamService {
       let errors = [];
 
       this.streamSession.stdout.on('data', (data) => {
-        Socket.io.emit.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
+        Socket.io.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
       });
 
       this.streamSession.stderr.on('data', (data) => {
