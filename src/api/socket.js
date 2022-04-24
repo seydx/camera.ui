@@ -1,6 +1,8 @@
 /* eslint-disable unicorn/explicit-length-check */
 'use-strict';
 
+import checkDiskSpace from 'check-disk-space';
+import getFolderSize from 'get-folder-size';
 import { Server } from 'socket.io';
 import socketioJwt from 'socketio-jwt';
 import systeminformation from 'systeminformation';
@@ -22,9 +24,18 @@ export default class Socket {
     systemTime: '0m',
     processTime: '0m',
   };
+
   static #cpuLoadHistory = [];
   static #cpuTempHistory = [];
   static #memoryUsageHistory = [];
+  static #diskSpaceHistory = [];
+
+  static diskSpace = {
+    free: null,
+    total: null,
+    used: null,
+    usedRecordings: null,
+  };
 
   static io;
 
@@ -47,7 +58,7 @@ export default class Socket {
     Socket.io.on('connection', async (socket) => {
       //check if token is valid
       const token = socket.encoded_token;
-      const tokenExist = Database.tokensDB.chain.get('tokens').find({ token: token }).value();
+      const tokenExist = Database.tokensDB?.chain.get('tokens').find({ token: token }).value();
 
       if (!tokenExist) {
         log.debug(
@@ -68,11 +79,13 @@ export default class Socket {
         socket.decoded_token.permissionLevel.includes('notifications:access') ||
         socket.decoded_token.permissionLevel.includes('admin')
       ) {
-        const notifications = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
-        const systemNotifications = Database.notificationsDB.chain.get('notifications').cloneDeep().value();
-        const size = notifications.length + systemNotifications.length;
+        const notifications = await Database.interfaceDB?.chain.get('notifications').cloneDeep().value();
+        const systemNotifications = Database.notificationsDB?.chain.get('notifications').cloneDeep().value();
 
-        socket.emit('notification_size', size);
+        if (notifications && systemNotifications) {
+          const size = notifications.length + systemNotifications.length;
+          socket.emit('notification_size', size);
+        }
       } else {
         log.debug(`${socket.decoded_token.username} (${socket.conn.remoteAddress}) no access for notifications socket`);
       }
@@ -123,6 +136,10 @@ export default class Socket {
 
       socket.on('getMemory', () => {
         Socket.io.emit('memory', Socket.#memoryUsageHistory);
+      });
+
+      socket.on('getDiskSpace', () => {
+        Socket.io.emit('diskSpace', Socket.#diskSpaceHistory);
       });
 
       socket.on('getMotionServerStatus', () => {
@@ -252,8 +269,6 @@ export default class Socket {
       }
     });
 
-    Socket.watchSystem();
-
     return Socket.io;
   }
 
@@ -276,17 +291,18 @@ export default class Socket {
   }
 
   static async watchSystem() {
-    await Socket.handleUptime();
-    await Socket.handleCpuLoad();
-    await Socket.handleCpuTemperature();
-    await Socket.handleMemoryUsage();
+    await Socket.#handleUptime();
+    await Socket.#handleCpuLoad();
+    await Socket.#handleCpuTemperature();
+    await Socket.#handleMemoryUsage();
+    await Socket.handleDiskUsage();
 
     setTimeout(() => {
       Socket.watchSystem();
     }, 30000);
   }
 
-  static async handleUptime() {
+  static async #handleUptime() {
     try {
       const humaniseDuration = (seconds) => {
         if (seconds < 50) {
@@ -315,7 +331,7 @@ export default class Socket {
     Socket.io.emit('uptime', Socket.#uptime);
   }
 
-  static async handleCpuLoad() {
+  static async #handleCpuLoad() {
     try {
       const cpuLoad = await systeminformation.currentLoad();
       let processLoad = await systeminformation.processLoad(process.title);
@@ -347,7 +363,7 @@ export default class Socket {
     Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
   }
 
-  static async handleCpuTemperature() {
+  static async #handleCpuTemperature() {
     try {
       const cpuTemperatureData = await systeminformation.cpuTemperature();
 
@@ -363,7 +379,7 @@ export default class Socket {
     Socket.io.emit('cpuTemp', Socket.#cpuTempHistory);
   }
 
-  static async handleMemoryUsage() {
+  static async #handleMemoryUsage() {
     try {
       const mem = await systeminformation.mem();
       const memoryFreePercent = mem ? ((mem.total - mem.available) / mem.total) * 100 : 50;
@@ -396,5 +412,43 @@ export default class Socket {
     }
 
     Socket.io.emit('memory', Socket.#memoryUsageHistory);
+  }
+
+  static async handleDiskUsage() {
+    try {
+      const settingsDatabase = await Database.interfaceDB.chain.get('settings').cloneDeep().value();
+      const recordingsPath = settingsDatabase?.recordings.path;
+
+      if (!recordingsPath) {
+        return;
+      }
+
+      const diskSpace = await checkDiskSpace(recordingsPath);
+      const recordingsSpace = await getFolderSize.loose(recordingsPath);
+
+      Socket.diskSpace = {
+        available: diskSpace.free / 1e9,
+        total: diskSpace.size / 1e9,
+        used: (diskSpace.size - diskSpace.free) / 1e9,
+        usedRecordings: recordingsSpace / 1e9,
+        recordingsPath: recordingsPath,
+      };
+
+      const usedPercent = Socket.diskSpace.used / Socket.diskSpace.total;
+      const usedRecordingsPercent = Socket.diskSpace.usedRecordings / Socket.diskSpace.total;
+
+      Socket.#diskSpaceHistory = Socket.#diskSpaceHistory.slice(-60);
+      Socket.#diskSpaceHistory.push({
+        time: new Date(),
+        value: usedPercent * 100,
+        value2: usedRecordingsPercent * 100,
+        available: Socket.diskSpace.available.toFixed(2),
+        total: Socket.diskSpace.total.toFixed(2),
+      });
+    } catch (error) {
+      log.error(error, 'Socket');
+    }
+
+    Socket.io.emit('diskSpace', Socket.#diskSpaceHistory);
   }
 }

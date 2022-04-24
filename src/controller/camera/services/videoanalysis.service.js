@@ -16,6 +16,8 @@ import ConfigService from '../../../services/config/config.service.js';
 
 import MotionController from '../../motion/motion.controller.js';
 
+import Socket from '../../../api/socket.js';
+
 const { log } = LoggerService;
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,12 +47,12 @@ const DEFAULT_ZONE = [
 export default class VideoAnalysisService {
   #camera;
   #controller;
-  #socket;
   #prebufferService;
   #mediaService;
 
   videoanalysisSession = null;
   killed = false;
+  destroyed = false;
   cameraState = true;
   restartTimer = null;
   watchdog = null;
@@ -59,12 +61,11 @@ export default class VideoAnalysisService {
 
   finishLaunching = false;
 
-  constructor(camera, prebufferService, mediaService, controller, socket) {
+  constructor(camera, prebufferService, mediaService, controller) {
     //log.debug('Initializing video analysis', camera.name);
 
     this.#camera = camera;
     this.#controller = controller;
-    this.#socket = socket;
     this.#prebufferService = prebufferService;
     this.#mediaService = mediaService;
 
@@ -193,7 +194,16 @@ export default class VideoAnalysisService {
     this.forceCloseTimeout = null;
   }
 
+  destroy() {
+    this.destroyed = true;
+    this.resetVideoAnalysis();
+  }
+
   stop(killed) {
+    if (this.destroyed) {
+      return;
+    }
+
     if (this.videoanalysisSession) {
       if (killed) {
         this.killed = true;
@@ -305,7 +315,7 @@ export default class VideoAnalysisService {
     p2p.on('pam', () => {
       restartWatchdog();
 
-      this.#socket.emit('videoanalysisStatus', {
+      Socket.io.emit.emit('videoanalysisStatus', {
         camera: this.cameraName,
         status: 'active',
       });
@@ -384,7 +394,7 @@ export default class VideoAnalysisService {
 
       log.debug('Videoanalysis process closed', this.cameraName);
 
-      this.#socket.emit('videoanalysisStatus', {
+      Socket.io.emit.emit('videoanalysisStatus', {
         camera: this.cameraName,
         status: 'inactive',
       });

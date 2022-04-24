@@ -125,7 +125,7 @@ export default {
         gradient2.addColorStop(1, 'rgba(56, 56, 56, 0)');
 
         this.datacollection.datasets.push({
-          label: 'camera.ui',
+          label: this.dataset.label2,
           borderColor: '#383838',
           pointBackgroundColor: '#383838',
           borderWidth: 1,

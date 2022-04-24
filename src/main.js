@@ -59,11 +59,11 @@ export default class Interface extends EventEmitter {
 
     // configure motion controller
     this.log.debug('Configuring motion controller...');
-    this.motionController = new (await import('./controller/motion/motion.controller.js')).default(this, this.#socket);
+    this.motionController = new (await import('./controller/motion/motion.controller.js')).default(this);
 
     // configure camera controller
     this.log.debug('Configuring camera controller...');
-    this.cameraController = new (await import('./controller/camera/camera.controller.js')).default(this, this.#socket);
+    this.cameraController = new (await import('./controller/camera/camera.controller.js')).default(this);
 
     await Promise.all(
       [...this.cameraController.entries()].map(async (controller) => {

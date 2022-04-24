@@ -2,7 +2,7 @@
 .tw-w-full
   v-progress-linear.loader(:active="loadingProgress" :indeterminate="loadingProgress" fixed top color="var(--cui-primary)")
 
-  .tw-mb-7.tw-mt-5(v-if="!loading")
+  .tw-mb-7(v-if="!loading")
     .tw-flex.tw-justify-between.tw-items-center
       label.form-input-label {{ $t('enabled') }}
       v-switch(color="var(--cui-primary)" v-model="notifications.active")

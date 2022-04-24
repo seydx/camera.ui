@@ -165,12 +165,6 @@ export default class LoggerService {
   static formatMessage(message, name, level) {
     let formatted = '';
 
-    if (level === LogLevel.WARN) {
-      formatted += `${chalk.bgYellowBright.black.bold(' WARNING ')} `;
-    } else if (level === LogLevel.ERROR) {
-      formatted += `${chalk.bgRedBright.white.bold(' ERROR ')} `;
-    }
-
     if (name) {
       formatted += `${name}: `;
     }
@@ -183,6 +177,12 @@ export default class LoggerService {
       formatted += JSON.stringify(message);
     } else {
       formatted += message;
+    }
+
+    if (level === LogLevel.WARN) {
+      formatted = `${chalk.bgYellowBright.black.bold(' WARNING ')} ` + formatted;
+    } else if (level === LogLevel.ERROR) {
+      formatted = `${chalk.bgRedBright.white.bold(' ERROR ')} ` + formatted;
     }
 
     switch (level) {

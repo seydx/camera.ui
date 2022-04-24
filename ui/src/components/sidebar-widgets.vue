@@ -18,6 +18,7 @@ import { bus } from '@/main';
 import { CameraPlaceholder, CameraWidget } from '@/widgets/camera';
 import { ChartPlaceholder, ChartWidget } from '@/widgets/chart';
 import { ConsolePlaceholder, ConsoleWidget } from '@/widgets/console';
+import { DiskPlaceholder, DiskWidget } from '@/widgets/disk';
 import { NotificationsPlaceholder, NotificationsWidget } from '@/widgets/notifications';
 import { RssPlaceholder, RssWidget } from '@/widgets/rss';
 import { ShortcutsPlaceholder, ShortcutsWidget } from '@/widgets/shortcuts';
@@ -120,6 +121,30 @@ export default {
             disableResize: false,
           },
           items: [],
+        },
+        {
+          type: 'DiskWidget',
+          name: this.$t('disk_space'),
+          placeholderComponent: DiskPlaceholder.default,
+          widgetComponent: DiskWidget.default,
+          defaultWidgetData: {
+            w: 3,
+            h: 2,
+            minW: 3,
+            maxW: 4,
+            minH: 2,
+            maxH: 2,
+            disableDrag: false,
+            disableResize: false,
+          },
+          items: [
+            {
+              id: 'freeSpace',
+            },
+            {
+              id: 'usedByRecordings',
+            },
+          ],
         },
         {
           type: 'NotificationsWidget',

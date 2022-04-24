@@ -10,16 +10,14 @@ import VideoAnalysisService from './services/videoanalysis.service.js';
 
 export default class CameraController {
   static #controller;
-  static #socket;
 
   static cameras = new Map([]);
 
-  constructor(controller, socket) {
+  constructor(controller) {
     CameraController.#controller = controller;
-    CameraController.#socket = socket;
 
     for (const camera of ConfigService.ui.cameras) {
-      CameraController.createController(camera, socket);
+      CameraController.createController(camera);
     }
 
     return CameraController.cameras;
@@ -27,22 +25,15 @@ export default class CameraController {
 
   static createController(camera) {
     const mediaService = new MediaService(camera);
-    const prebufferService = new PrebufferService(camera, mediaService, CameraController.#socket);
+    const prebufferService = new PrebufferService(camera, mediaService);
     const videoanalysisService = new VideoAnalysisService(
       camera,
       prebufferService,
       mediaService,
-      CameraController.#controller,
-      CameraController.#socket
+      CameraController.#controller
     );
     const sessionService = new SessionService(camera);
-    const streamService = new StreamService(
-      camera,
-      prebufferService,
-      mediaService,
-      sessionService,
-      CameraController.#socket
-    );
+    const streamService = new StreamService(camera, prebufferService, mediaService, sessionService);
 
     const controller = {
       options: camera,
@@ -63,9 +54,9 @@ export default class CameraController {
       throw new Error(`Can not remove controller, controller for ${cameraName} not found!`);
     }
 
-    controller.prebuffer.stop(true);
-    controller.videoanalysis.stop(true);
-    controller.stream.stop();
+    controller.prebuffer.destroy();
+    controller.videoanalysis.destroy(true);
+    controller.stream.destroy();
     controller.session.clearSession();
 
     CameraController.cameras.delete(cameraName);

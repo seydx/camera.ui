@@ -33,9 +33,20 @@
                 v-btn(fab x-small color="var(--cui-primary)")
                   v-icon(size="20" color="white") {{ icons["mdiOpenInNew"] }}
 
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
+  )
+
 </template>
 
 <script>
+import LightBox from 'vue-it-bigger';
+import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiCogs, mdiMagnify, mdiOpenInNew } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 
@@ -45,6 +56,7 @@ export default {
   name: 'Plugins',
 
   components: {
+    LightBox,
     'vue-aspect-ratio': VueAspectRatio,
   },
 

@@ -9,6 +9,8 @@ import piexif from 'piexifjs';
 import webpush from 'web-push';
 import { Low, JSONFile, MemorySync } from '@seydx/lowdb';
 
+import Socket from './socket.js';
+
 import Cleartimer from '../common/cleartimer.js';
 
 import ConfigService from '../services/config/config.service.js';
@@ -211,6 +213,8 @@ export default class Database {
     await Database.interfaceDB.write();
 
     LoggerService.notificationsDB = Database.notificationsDB;
+
+    Socket.watchSystem();
 
     return {
       interface: Database.interfaceDB,

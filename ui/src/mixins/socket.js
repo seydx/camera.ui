@@ -58,6 +58,8 @@ export default {
       console.log('Disconnected from socket');
       //this.connected = false;
     },
+    // eslint-disable-next-line no-unused-vars
+    diskSpace(data) {},
     async unauthenticated() {
       console.log('Disconnected from socket, unauthenticated!');
       this.connected = false;

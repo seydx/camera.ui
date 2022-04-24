@@ -9,23 +9,23 @@ import ConfigService from '../../../services/config/config.service.js';
 import LoggerService from '../../../services/logger/logger.service.js';
 
 import Database from '../../../api/database.js';
+import Socket from '../../../api/socket.js';
 
 const { log } = LoggerService;
 
 export default class StreamService {
-  #socket;
   #camera;
   #prebufferService;
   #sessionService;
   #mediaService;
 
   streamSession = null;
+  destroyed = false;
 
-  constructor(camera, prebufferService, mediaService, sessionService, socket) {
+  constructor(camera, prebufferService, mediaService, sessionService) {
     //log.debug('Initializing camera stream', camera.name);
 
     this.#camera = camera;
-    this.#socket = socket;
     this.#sessionService = sessionService;
     this.#mediaService = mediaService;
     this.#prebufferService = prebufferService;
@@ -153,7 +153,7 @@ export default class StreamService {
       let errors = [];
 
       this.streamSession.stdout.on('data', (data) => {
-        this.#socket.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
+        Socket.io.emit.to(`stream/${this.cameraName}`).emit(this.cameraName, data);
       });
 
       this.streamSession.stderr.on('data', (data) => {
@@ -178,6 +178,11 @@ export default class StreamService {
     }
   }
 
+  destroy() {
+    this.destroyed = true;
+    this.stop();
+  }
+
   stop() {
     if (this.streamSession) {
       log.debug('Stopping stream..', this.cameraName);
@@ -186,6 +191,10 @@ export default class StreamService {
   }
 
   restart() {
+    if (this.destroyed) {
+      return;
+    }
+
     log.info('Restart stream session..', this.cameraName);
 
     if (this.streamSession) {

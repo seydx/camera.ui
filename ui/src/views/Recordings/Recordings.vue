@@ -189,6 +189,8 @@ export default {
           cellClass: 'tw-py-1',
         },
       ],
+
+      diskload: {},
     };
   },
 
@@ -212,7 +214,7 @@ export default {
     });
   },
 
-  mounted() {
+  async mounted() {
     this.backupHeaders = [...this.headers];
     this.listMode = this.oldSelected = localStorage.getItem('listModeRecordings') === '1';
 

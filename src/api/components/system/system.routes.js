@@ -153,6 +153,28 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/system/disk:
+   *   get:
+   *     tags: [System]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get system disk load
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/system/disk', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    SystemController.getDiskLoad,
+  ]);
+
+  /**
+   * @swagger
    * /api/system/npm:
    *   get:
    *     tags: [System]

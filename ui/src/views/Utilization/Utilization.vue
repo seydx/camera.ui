@@ -33,6 +33,16 @@
       .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white(style="top: 130px; background: rgb(56, 56, 56)") {{ memoryData.data.length ? `${Math.round(memoryData.data[memoryData.data.length-1].value2)}%` : '0%' }}
       Chart.tw-mt-5(:dataset="memoryData" :options="areaMemoryOptions")
 
+    .tw-mt-10.tw-mb-10.tw-relative
+      h3 {{ $t('disk_load') }}
+      .chart-badge-loading.tw-flex.tw-justify-center.tw-items-center(v-if="!diskSpaceData.data.length")
+        v-progress-circular(indeterminate color="var(--cui-primary)")
+      .chart-badge.tw-flex.tw-flex-col.tw-justify-center.tw-items-center
+        .tw-text-white(style="font-size: 0.8rem !important; font-weight: 100;") {{ diskSpaceData.data.length ? diskSpaceData.data[diskSpaceData.data.length-1].available : '-' }} GB /
+        .tw-text-white(style="font-size: 0.9rem !important; font-weight: bolder;") {{ diskSpaceData.data.length ? diskSpaceData.data[diskSpaceData.data.length-1].total : '-' }} GB
+      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white(style="top: 130px; background: rgb(56, 56, 56)") {{ diskSpaceData.data.length ? `${Math.round(diskSpaceData.data[diskSpaceData.data.length-1].value2)} GB` : '? GB' }}
+      Chart.tw-mt-5(:dataset="diskSpaceData" :options="areaDiskSpaceOptions")
+
   LightBox(
     ref="lightboxBanner"
     :media="notImages"
@@ -72,15 +82,22 @@ export default {
       loading: true,
 
       cpuData: {
-        label: this.$t('load'),
+        label: this.$t('system'),
+        label2: 'camera.ui',
         data: [],
       },
       memoryData: {
-        label: this.$t('memory'),
+        label: this.$t('system'),
+        label2: 'camera.ui',
         data: [],
       },
       tempData: {
-        label: this.$t('temperature'),
+        label: this.$t('system'),
+        data: [],
+      },
+      diskSpaceData: {
+        label: this.$t('system'),
+        label2: this.$t('recordings'),
         data: [],
       },
 
@@ -291,6 +308,75 @@ export default {
           ],
         },
       },
+      areaDiskSpaceOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        elements: {
+          point: {
+            radius: 0,
+            hitRadius: 20,
+            hoverRadius: 10,
+          },
+        },
+        tooltips: {
+          enabled: true,
+          mode: 'single',
+          callbacks: {
+            title: (tooltipItems) => {
+              let time = new Date(tooltipItems[0].xLabel);
+              time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+              time = time.toISOString().split('T');
+              return `${time[0]} - ${time[1].split('.')[0]}`;
+            },
+            label: (tooltipItems) => {
+              return ` ${tooltipItems.yLabel.toFixed(2)}%`;
+            },
+          },
+        },
+        scales: {
+          xAxes: [
+            {
+              display: true,
+              gridLines: {
+                display: true,
+                color: 'rgba(92,92,92, 0.3)',
+              },
+              scaleLabel: {
+                display: false,
+                //labelString: 'Month',
+              },
+              type: 'time',
+              time: {
+                unit: 'minutes',
+                displayFormats: { minutes: 'HH:mm' },
+                unitStepSize: 3,
+              },
+            },
+          ],
+          yAxes: [
+            {
+              display: true,
+              gridLines: {
+                display: true,
+                color: 'rgba(92,92,92, 0.3)',
+              },
+              scaleLabel: {
+                display: false,
+                //labelString: 'Value',
+              },
+              ticks: {
+                min: 0,
+                max: 100,
+                stepSize: 10,
+                callback: function (value) {
+                  return value + '%';
+                },
+              },
+              type: 'linear',
+            },
+          ],
+        },
+      },
     };
   },
 
@@ -298,10 +384,12 @@ export default {
     this.$socket.client.on('cpuLoad', this.cpuLoad);
     this.$socket.client.on('cpuTemp', this.cpuTemp);
     this.$socket.client.on('memory', this.memory);
+    this.$socket.client.on('diskSpace', this.diskSpace);
 
     this.$socket.client.emit('getCpuLoad');
     this.$socket.client.emit('getCpuTemp');
     this.$socket.client.emit('getMemory');
+    this.$socket.client.emit('getDiskSpace');
   },
 
   mounted() {
@@ -312,6 +400,7 @@ export default {
     this.$socket.client.off('cpuLoad', this.cpuLoad);
     this.$socket.client.off('cpuTemp', this.cpuTemp);
     this.$socket.client.off('memory', this.memory);
+    this.$socket.client.off('diskSpace', this.diskSpace);
   },
 
   methods: {
@@ -323,6 +412,9 @@ export default {
     },
     memory(data) {
       this.memoryData.data = data;
+    },
+    diskSpace(data) {
+      this.diskSpaceData.data = data;
     },
   },
 };

@@ -12,6 +12,8 @@ import Ping from '../../../common/ping.js';
 import LoggerService from '../../../services/logger/logger.service.js';
 import ConfigService from '../../../services/config/config.service.js';
 
+import Socket from '../../../api/socket.js';
+
 const { log } = LoggerService;
 
 const compatibleAudio = /(aac|mp3|mp2)/;
@@ -21,7 +23,6 @@ const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default class PrebufferService {
   #camera;
-  #socket;
   #mediaService;
 
   prebuffers = {
@@ -36,17 +37,17 @@ export default class PrebufferService {
   prevIdr = 0;
   prebufferSession = null;
   killed = false;
+  destroyed = false;
   watchdog = null;
   parsers = {};
 
   cameraState = true;
   restartTimer = null;
 
-  constructor(camera, mediaService, socket) {
+  constructor(camera, mediaService) {
     //log.debug('Initializing camera prebuffering', camera.name);
 
     this.#camera = camera;
-    this.#socket = socket;
     this.#mediaService = mediaService;
 
     this.cameraName = camera.name;
@@ -124,6 +125,11 @@ export default class PrebufferService {
     this.restartTimer = null;
   }
 
+  destroy() {
+    this.destroyed = true;
+    this.resetPrebuffer();
+  }
+
   stop(killed) {
     if (this.prebufferSession) {
       if (killed) {
@@ -145,6 +151,10 @@ export default class PrebufferService {
   }
 
   async restart() {
+    if (this.destroyed) {
+      return;
+    }
+
     log.info('Restart prebuffer session..', this.cameraName);
 
     this.stop(true);
@@ -577,7 +587,7 @@ export default class PrebufferService {
 
       kill();
 
-      this.#socket.emit('prebufferStatus', {
+      Socket.io.emit.emit('prebufferStatus', {
         camera: this.cameraName,
         status: 'inactive',
       });
@@ -590,7 +600,7 @@ export default class PrebufferService {
     await socketPromise;
     clearTimeout(ffmpegTimeout);
 
-    this.#socket.emit('prebufferStatus', {
+    Socket.io.emit.emit('prebufferStatus', {
       camera: this.cameraName,
       status: 'active',
     });

@@ -166,6 +166,18 @@ export const getChangelog = async (req, res) => {
   }
 };
 
+export const getDiskLoad = async (req, res) => {
+  try {
+    await Socket.handleDiskUsage();
+    res.status(200).send(Socket.diskSpace);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 export const getFtpServerStatus = async (req, res) => {
   try {
     const status = MotionController.ftpServer.server.listening;

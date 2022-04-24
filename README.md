@@ -73,6 +73,7 @@ sudo npm install -g camera.ui@latest
     - [Browser](#browser)
   - [Supported Cameras](#supported-cameras)
     - [Camera Settings](#camera-settings)
+  - [API](#api)
   - [FAQ](#faq)
   - [Contributing](#contributing)
   - [Troubleshooting](#troubleshooting)
@@ -365,6 +366,14 @@ You should make the following configuration for your camera via the camera's own
 * 2 Mbit variable bitrate (up to 6Mbit may work)
 * 25 FPS (30 FPS prefered). 
 * Keyframe interval is 4 seconds. Frame Interval = FPS * 4 => 30 * 4 = 120
+
+## API
+
+camera.ui has a REST API that is primarily used by the web client (i.e. the UI), but can also be consumed by other apps or personal scripts.
+
+You can access the API reference via your local instance by going to /swagger
+
+For example http://[IP]:8081/swagger
 
 ## FAQ
 

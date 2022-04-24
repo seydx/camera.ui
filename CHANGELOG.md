@@ -1,6 +1,26 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+# v1.1.16 - 2022-04-24
+
+## Notable Changes
+- **API:**
+  - New endpoint `/api/system/disk`
+- **Charts:** 
+  - Added new chart `disk load`
+- **Widgets:**
+  - Added new widget to view the available and used disk space
+
+## Other Changes
+- Added disk space information to `Settings > Recordings`
+- Added check of storage space for motion events to avoid recording when storage space is low
+- Simplified `Add Camera` through UI
+- Minor UI improvements
+
+## Bugfixes
+- Fixed an issue where removing a camera via the user interface did not destroy the camera controller
+- Minor bugfixes
+
 # v1.1.15 - 2022-04-24
 
 ## Notable Changes

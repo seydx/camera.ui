@@ -18,6 +18,7 @@ import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
 
 import Database from '../../api/database.js';
+import Socket from '../../api/socket.js';
 
 const { log } = LoggerService;
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -38,7 +39,6 @@ const toDotNot = (input, parentKey) =>
 
 export default class MotionController {
   static #controller;
-  static #socket;
   static #motionTimers = new Map();
 
   static httpServer = null;
@@ -46,9 +46,8 @@ export default class MotionController {
   static smtpServer = null;
   static ftpServer = null;
 
-  constructor(controller, socket) {
+  constructor(controller) {
     MotionController.#controller = controller;
-    MotionController.#socket = socket;
 
     if (ConfigService.ui.http) {
       MotionController.startHttpServer();
@@ -109,7 +108,7 @@ export default class MotionController {
 
       log.debug(`HTTP server for motion detection is listening on ${bind}`);
 
-      MotionController.#socket.emit('httpStatus', {
+      Socket.io.emit('httpStatus', {
         status: 'online',
       });
     });
@@ -136,7 +135,7 @@ export default class MotionController {
 
       log.error(error_, 'HTTP Server', 'motion');
 
-      MotionController.#socket.emit('httpStatus', {
+      Socket.io.emit('httpStatus', {
         status: 'offline',
       });
     });
@@ -177,7 +176,7 @@ export default class MotionController {
     MotionController.httpServer.on('close', () => {
       log.debug('HTTP Server closed');
 
-      MotionController.#socket.emit('httpStatus', {
+      Socket.io.emit('httpStatus', {
         status: 'offline',
       });
     });
@@ -213,7 +212,7 @@ export default class MotionController {
         MotionController.mqttClient.subscribe(topic + '/#');
       }
 
-      MotionController.#socket.emit('mqttStatus', {
+      Socket.io.emit('mqttStatus', {
         status: 'online',
       });
     });
@@ -342,7 +341,7 @@ export default class MotionController {
     MotionController.mqttClient.on('end', () => {
       log.debug('MQTT client disconnected');
 
-      MotionController.#socket.emit('mqttStatus', {
+      Socket.io.emit('mqttStatus', {
         status: 'offline',
       });
     });
@@ -449,7 +448,7 @@ export default class MotionController {
     MotionController.smtpServer.server.on('listening', () => {
       log.debug(`SMTP server for motion detection is listening on port ${ConfigService.ui.smtp.port}`);
 
-      MotionController.#socket.emit('smtpStatus', {
+      Socket.io.emit('smtpStatus', {
         status: 'online',
       });
     });
@@ -457,7 +456,7 @@ export default class MotionController {
     MotionController.smtpServer.server.on('close', () => {
       log.debug('SMTP Server closed');
 
-      MotionController.#socket.emit('smtpStatus', {
+      Socket.io.emit('smtpStatus', {
         status: 'offline',
       });
     });
@@ -618,7 +617,7 @@ export default class MotionController {
     MotionController.ftpServer.server.on('listening', () => {
       log.debug(`FTP server for motion detection is listening on port ${ConfigService.ui.ftp.port}`);
 
-      MotionController.#socket.emit('ftpStatus', {
+      Socket.io.emit('ftpStatus', {
         status: 'online',
       });
     });
@@ -629,7 +628,7 @@ export default class MotionController {
 
         log.debug('FTP Server closed');
 
-        MotionController.#socket.emit('ftpStatus', {
+        Socket.io.emit('ftpStatus', {
           status: 'offline',
         });
       }

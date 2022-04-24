@@ -22,10 +22,14 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
 
             label.form-input-label Video Source
               span.tw-text-red-500 *
-            v-text-field(v-model="cam.videoConfig.source" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
+            v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-
+              template(v-slot:message="{ key, message}")
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ message }}
+                  
             label.form-input-label Video Substream Source
             v-text-field(v-model="cam.videoConfig.subSource" :hint="$t('sub_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
@@ -39,60 +43,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
             v-text-field(v-model="cam.videoConfig.stillImageSource" :hint="$t('still_image_source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                   v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Motion Timeout
-            v-text-field(v-model.number="cam.motionTimeout" :hint="$t('motion_timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Max Streams
-            v-text-field(v-model.number="cam.videoConfig.maxStreams" :hint="$t('max_streams_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Video Width
-            v-text-field(v-model.number="cam.videoConfig.maxWidth" :hint="$t('width_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Video Height
-            v-text-field(v-model.number="cam.videoConfig.maxHeight" :hint="$t('height_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label FPS
-            v-text-field(v-model.number="cam.videoConfig.maxFPS" :hint="$t('fps_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Bitrate
-            v-text-field(v-model.number="cam.videoConfig.maxBitrate" :hint="$t('bitrate_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
               template(v-slot:message="{ key, message}")
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
@@ -120,15 +70,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
             v-text-field(v-model="cam.videoConfig.acodec" :hint="$t('audio_codec_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-              template(v-slot:message="{ key, message}")
-                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
-                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
-                  .input-info.tw-italic {{ message }}
-
-            label.form-input-label Stream Timeout
-            v-text-field(v-model.number="cam.videoConfig.stimeout" :hint="$t('timeout_info')" persistent-hint type="number" prepend-inner-icon="mdi-numeric" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiNumeric'] }}
               template(v-slot:message="{ key, message}")
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
@@ -183,31 +124,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ $t('videoanalysis_info') }}
               v-switch(color="var(--cui-primary)" v-model="cam.videoanalysis.active")
-
-          v-divider.tw-my-6
-
-          div
-            h2.tw-mb-5 {{ $t('mqtt') }}
-
-            label.form-input-label Motion Topic
-            v-text-field(v-model="cam.mqtt.motionTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-
-            label.form-input-label Motion Message
-            v-text-field(v-model="cam.mqtt.motionMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-
-            label.form-input-label Motion Reset Topic
-            v-text-field(v-model="cam.mqtt.motionResetTopic" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-
-            label.form-input-label Motion Reset Message
-            v-text-field(v-model="cam.mqtt.motionResetMessage" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
-              template(v-slot:prepend-inner)
-                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
           v-divider.tw-mt-3.tw-mb-6(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
 

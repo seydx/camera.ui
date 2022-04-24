@@ -12,6 +12,8 @@ import Telegram from '../../common/telegram.js';
 
 import LoggerService from '../../services/logger/logger.service.js';
 
+import Socket from '../../api/socket.js';
+
 import * as CamerasModel from '../../api/components/cameras/cameras.model.js';
 import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
 import * as RecordingsModel from '../../api/components/recordings/recordings.model.js';
@@ -36,6 +38,7 @@ export default class EventController {
 
   constructor(controller) {
     EventController.#controller = controller;
+
     EventController.#controller.on('uiMotion', (event) =>
       EventController.handle(event.triggerType, event.cameraName, event.state)
     );
@@ -132,6 +135,7 @@ export default class EventController {
 
             const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
 
+            //not used atm
             let allowStream = true;
 
             /*if (controller && !fileBuffer && recordingSettings.active && !Camera.prebuffering) {
@@ -144,74 +148,108 @@ export default class EventController {
             }
 
             if (allowStream) {
-              if (!fileBuffer) {
-                motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera, recordingSettings.active);
-                motionInfo.label = await EventController.#handleImageDetection(
-                  cameraName,
-                  awsSettings,
-                  CameraSettings.rekognition.labels,
-                  CameraSettings.rekognition.confidence,
-                  motionInfo.imgBuffer,
-                  CameraSettings.rekognition.active,
-                  recordingSettings.active
+              const diskSpace = Socket.diskSpace;
+              const allowRecording = Boolean(diskSpace.free >= 1);
+
+              if (!allowRecording) {
+                log.warn(
+                  `The available disk space is less than 1 GB (${diskSpace.free.toFixed(
+                    2
+                  )})! Please free up disk space to be able to create new recordings!`,
+                  cameraName
                 );
               }
 
-              if (motionInfo.label || motionInfo.label === null) {
+              if (!fileBuffer) {
+                if (recordingSettings.active) {
+                  if (allowRecording) {
+                    motionInfo.imgBuffer = await EventController.#handleSnapshot(Camera);
+                    motionInfo.label = await EventController.#handleImageDetection(
+                      cameraName,
+                      awsSettings,
+                      CameraSettings.rekognition.labels,
+                      CameraSettings.rekognition.confidence,
+                      motionInfo.imgBuffer,
+                      CameraSettings.rekognition.active
+                    );
+                  }
+                } else {
+                  log.debug('Recording not enabled, skip Image Rekognition..', cameraName);
+                }
+              }
+
+              if (motionInfo.label) {
                 const { notification, notify } = await EventController.#handleNotification(motionInfo);
 
                 // 1)
-                await EventController.#publishMqtt(cameraName, notification, notificationsSettings.active);
+                if (notificationsSettings.active) {
+                  await EventController.#publishMqtt(cameraName, notification);
+                } else {
+                  log.debug('Notifications not enabled, skip MQTT (notification)..', cameraName);
+                }
 
                 // 2)
-                await EventController.#sendWebhook(
-                  cameraName,
-                  notification,
-                  webhookSettings,
-                  notificationsSettings.active
-                );
+                if (notificationsSettings.active) {
+                  await EventController.#sendWebhook(cameraName, notification, webhookSettings);
+                } else {
+                  log.debug('Notifications not enabled, skip Webhook..', cameraName);
+                }
 
                 // 3)
-                if (notificationsSettings.active && !recordingSettings.active) {
-                  log.notify(notify);
+                if (!recordingSettings.active || !allowRecording) {
+                  if (notificationsSettings.active) {
+                    log.notify(notify);
 
-                  await EventController.#sendWebpush(
-                    cameraName,
-                    notification,
-                    webpushSettings,
-                    notificationsSettings.active
-                  );
+                    await EventController.#sendWebpush(cameraName, notification, webpushSettings);
+                  } else {
+                    log.debug('Notifications not enabled, skip Webpush..', cameraName);
+                  }
                 }
 
                 // 4)
-                await EventController.#sendAlexa(cameraName, alexaSettings, notificationsSettings.active);
+                if (notificationsSettings.active) {
+                  await EventController.#sendAlexa(cameraName, alexaSettings);
+                } else {
+                  log.debug('Notifications not enabled, skip Alexa..', cameraName);
+                }
 
                 // 5)
-                if (telegramSettings.type === 'Text') {
-                  await EventController.#sendTelegram(
-                    cameraName,
-                    notification,
-                    recordingSettings,
-                    telegramSettings,
-                    false,
-                    fileBuffer,
-                    notificationsSettings.active
-                  );
+                if (telegramSettings.type === 'Text' || !allowRecording) {
+                  if (notificationsSettings.active) {
+                    await EventController.#sendTelegram(
+                      cameraName,
+                      notification,
+                      recordingSettings,
+                      telegramSettings,
+                      false,
+                      fileBuffer,
+                      allowRecording
+                    );
+                  } else {
+                    log.debug('Notifications not enabled, skip Telegram..', cameraName);
+                  }
                 }
 
                 // 6)
-                await EventController.#handleRecording(cameraName, motionInfo, fileBuffer, recordingSettings.active);
+                if (recordingSettings.active) {
+                  if (allowRecording) {
+                    await EventController.#handleRecording(cameraName, motionInfo, fileBuffer);
+                  }
+                } else {
+                  log.debug('Recording not enabled, skip recording..', cameraName);
+                }
 
                 // 7)
-                if (notificationsSettings.active && recordingSettings.active) {
-                  log.notify(notify);
+                if (recordingSettings.active) {
+                  if (notificationsSettings.active) {
+                    if (allowRecording) {
+                      log.notify(notify);
 
-                  await EventController.#sendWebpush(
-                    cameraName,
-                    notification,
-                    webpushSettings,
-                    notificationsSettings.active
-                  );
+                      await EventController.#sendWebpush(cameraName, notification, webpushSettings);
+                    }
+                  } else {
+                    log.debug('Notifications not enabled, skip Webpush..', cameraName);
+                  }
                 }
 
                 // 8)
@@ -222,21 +260,30 @@ export default class EventController {
                     telegramSettings.type === 'Video') &&
                   recordingSettings.active
                 ) {
-                  await EventController.#sendTelegram(
-                    cameraName,
-                    notification,
-                    recordingSettings,
-                    telegramSettings,
-                    false,
-                    fileBuffer,
-                    notificationsSettings.active
-                  );
+                  if (notificationsSettings.active) {
+                    if (allowRecording) {
+                      await EventController.#sendTelegram(
+                        cameraName,
+                        notification,
+                        recordingSettings,
+                        telegramSettings,
+                        false,
+                        fileBuffer
+                      );
+                    }
+                  } else {
+                    log.debug('Notifications not enabled, skip Telegram..', cameraName);
+                  }
                 }
 
                 log.debug(
-                  `${recordingSettings.active ? 'Recording saved.' : 'Recording skipped.'} ${
-                    notificationsSettings.active ? 'Notification send.' : 'Notification skipped.'
-                  }`,
+                  `${
+                    recordingSettings.active && allowRecording
+                      ? 'Recording saved.'
+                      : !allowRecording
+                      ? 'Recording not allowed.'
+                      : 'Recording skipped.'
+                  } ${notificationsSettings.active ? 'Notification send.' : 'Notification skipped.'}`,
                   cameraName
                 );
               } else {
@@ -273,7 +320,7 @@ export default class EventController {
     }
   }
 
-  static async #getMotionInfo(cameraName, trigger, recordingSettings) {
+  static async #getMotionInfo(cameraName, trigger, recordingSettings, allowRecording) {
     const id = await nanoid();
     const timestamp = Math.round(Date.now() / 1000);
 
@@ -282,7 +329,7 @@ export default class EventController {
       camera: cameraName,
       label: null,
       path: recordingSettings.path,
-      storing: recordingSettings.active,
+      storing: Boolean(recordingSettings.active && allowRecording),
       type: recordingSettings.type,
       timer: recordingSettings.timer,
       timestamp: timestamp,
@@ -290,25 +337,20 @@ export default class EventController {
     };
   }
 
-  static async #handleImageDetection(cameraName, aws, labels, confidence, imgBuffer, camRekognition, recordingActive) {
-    if (!recordingActive) {
-      log.debug('Recording not enabled, skip Image Rekognition..', cameraName);
-      return null;
-    }
-
+  static async #handleImageDetection(cameraName, aws, labels, confidence, imgBuffer, camRekognition) {
     if (!aws.active || !camRekognition) {
       log.debug('Image Rekognition not enabled, skip Image Rekognition..', cameraName);
-      return null;
+      return 'no label';
     }
 
     if (aws.contingent_total <= 0) {
       log.debug('Contingent total is not greater 0, skip Image Rekognition..', cameraName);
-      return null;
+      return 'no label';
     }
 
     if (aws.contingent_left <= 0) {
       log.debug('No contingent left, skip Image Rekognition..', cameraName);
-      return null;
+      return 'no label';
     }
 
     let detected = [];
@@ -375,28 +417,15 @@ export default class EventController {
     return await NotificationsModel.createNotification(motionInfo);
   }
 
-  static async #handleRecording(cameraName, motionInfo, fileBuffer, recordingActive) {
-    if (!recordingActive) {
-      log.debug('Recording not enabled, skip recording..', cameraName);
-      return;
-    }
-
+  static async #handleRecording(cameraName, motionInfo, fileBuffer) {
     return await RecordingsModel.createRecording(motionInfo, fileBuffer);
   }
 
-  static async #handleSnapshot(camera, recordingActive) {
-    if (!recordingActive) {
-      return;
-    }
-
+  static async #handleSnapshot(camera) {
     return await CamerasModel.requestSnapshot(camera);
   }
 
-  static async #sendAlexa(cameraName, alexaSettings, notificationActive) {
-    if (!notificationActive) {
-      return log.debug('Notifications not enabled, skip Alexa..', cameraName);
-    }
-
+  static async #sendAlexa(cameraName, alexaSettings) {
     if (!alexaSettings.active || !alexaSettings.enabled) {
       return log.debug('Alexa not enabled, skip Alexa..', cameraName);
     }
@@ -458,12 +487,8 @@ export default class EventController {
     telegramSettings,
     imgBuffer,
     customBuffer,
-    notificationActive
+    allowRecording
   ) {
-    if (!notificationActive) {
-      return log.debug('Notifications not enabled, skip Telegram..', cameraName);
-    }
-
     if (!telegramSettings.active || telegramSettings.type === 'Disabled') {
       return log.debug('Telegram not enabled, skip Telegram..', cameraName);
     }
@@ -500,24 +525,30 @@ export default class EventController {
         case 'Snapshot':
         case 'Text + Snapshot': {
           //Snapshot
-          if (recordingSettings.active || imgBuffer || customBuffer) {
-            const content = {
-              fileName: notification.fileName,
-            };
+          if (recordingSettings.active || imgBuffer || customBuffer || allowRecording !== undefined) {
+            if (telegramSettings.type === 'Snapshot' && allowRecording !== undefined) {
+              return;
+            }
+
+            const content = {};
 
             if (telegramSettings.type === 'Text + Snapshot' && telegramSettings.message) {
               content.message = telegramSettings.message;
             }
 
-            if (imgBuffer) {
-              content.img = imgBuffer;
-            } else {
-              const fileName =
-                customBuffer || recordingSettings.type === 'Video'
-                  ? `${notification.name}@2.jpeg`
-                  : notification.fileName;
+            if (allowRecording === undefined) {
+              content.fileName = notification.fileName;
 
-              content.img = `${recordingSettings.path}/${fileName}`;
+              if (imgBuffer) {
+                content.img = imgBuffer;
+              } else {
+                const fileName =
+                  customBuffer || recordingSettings.type === 'Video'
+                    ? `${notification.name}@2.jpeg`
+                    : notification.fileName;
+
+                content.img = `${recordingSettings.path}/${fileName}`;
+              }
             }
 
             await Telegram.send(telegramSettings.chatID, content);
@@ -532,16 +563,24 @@ export default class EventController {
         }
         case 'Video':
         case 'Text + Video': {
-          if ((recordingSettings.active && recordingSettings.type === 'Video') || customBuffer) {
-            const content = {
-              fileName: notification.fileName,
-            };
+          if (
+            (recordingSettings.active && recordingSettings.type === 'Video') ||
+            customBuffer ||
+            allowRecording !== undefined
+          ) {
+            if (telegramSettings.type === 'Video' && allowRecording !== undefined) {
+              return;
+            }
+
+            const content = {};
 
             if (telegramSettings.type === 'Text + Video' && telegramSettings.message) {
               content.message = telegramSettings.message;
             }
 
-            content.video = customBuffer ? customBuffer : `${recordingSettings.path}/${notification.fileName}`;
+            if (allowRecording === undefined) {
+              content.video = customBuffer ? customBuffer : `${recordingSettings.path}/${notification.fileName}`;
+            }
 
             await Telegram.send(telegramSettings.chatID, content);
           }
@@ -558,11 +597,7 @@ export default class EventController {
     }
   }
 
-  static async #sendWebhook(cameraName, notification, webhookSettings, notificationActive) {
-    if (!notificationActive) {
-      return log.debug('Notifications not enabled, skip Webhook..', cameraName);
-    }
-
+  static async #sendWebhook(cameraName, notification, webhookSettings) {
     if (!webhookSettings.active) {
       return log.debug('Webhook not enabled, skip Webhook..', cameraName);
     }
@@ -594,11 +629,7 @@ export default class EventController {
     }
   }
 
-  static async #publishMqtt(cameraName, notification, notificationActive) {
-    if (!notificationActive) {
-      return log.debug('Notifications not enabled, skip MQTT (notification)..', cameraName);
-    }
-
+  static async #publishMqtt(cameraName, notification) {
     try {
       const mqttClient = EventController.#controller.motionController?.mqttClient;
 
@@ -613,11 +644,7 @@ export default class EventController {
     }
   }
 
-  static async #sendWebpush(cameraName, notification, webpushSettings, notificationActive) {
-    if (!notificationActive) {
-      return log.debug('Notifications not enabled, skip Webpush..', cameraName);
-    }
-
+  static async #sendWebpush(cameraName, notification, webpushSettings) {
     if (!webpushSettings.publicKey || !webpushSettings.privateKey || !webpushSettings.subscription) {
       return log.debug('Webpush grant expired, skip Webpush..');
     }

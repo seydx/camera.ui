@@ -2,6 +2,7 @@ import api from './index';
 
 const resource = '/system';
 const changelog_resource = 'changelog';
+const disk_resource = 'disk';
 const db_resource = 'db';
 const db_download_resource = 'db/download';
 const ftp_restart_resource = 'ftp/restart';
@@ -29,6 +30,8 @@ export const downloadLog = async () => await api.get(`${resource}/${log_download
 
 export const getChangelog = async (parameters) =>
   await api.get(`${resource}/${changelog_resource}${parameters ? parameters : ''}`);
+
+export const getDiskLoad = async () => await api.get(`${resource}/${disk_resource}`);
 
 export const getDb = async () => await api.get(`${resource}/${db_resource}`);
 
