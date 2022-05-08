@@ -196,15 +196,9 @@ export default {
     closeFullscreen() {
       this.fullscreen = false;
 
-      const videoCardContainer = this.$refs.videoCardContainer;
-  //    videoCardContainer?.removeAttribute('style');
-    //  videoCardContainer?.classList.remove('fullscreen-video');
-
-    //  window.removeEventListener('orientationchange', this.resizeFullscreenVideo);
-   //   window.removeEventListener('resize', this.resizeFullscreenVideo);
-
  
-   if (videoCardContainer.exitFullscreen) {
+ 
+   if (document.exitFullscreen) {
     document.exitFullscreen();
   } else if (document.webkitExitFullscreen) { /* Safari */
     document.webkitExitFullscreen();
