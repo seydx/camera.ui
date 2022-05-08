@@ -162,6 +162,7 @@ export default {
 
     if (!this.hideController) {
       document.addEventListener('keydown', this.logKey);
+      document.addEventListener('dblclick', this.toggleFullscreen);
     }
 
     if (this.camera.lastNotification) {
