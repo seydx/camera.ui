@@ -1,7 +1,7 @@
 <template lang="pug">
 .tw-h-full
   transition(name='overlay-fade' mode='out-in')
-    .fullscreen-video-overlay(v-if="fullscreen")
+  
 
   .video-card-container(ref="videoCardContainer" v-click-outside="{ handler: closeFullscreen, include: include }")
 
@@ -238,11 +238,7 @@ export default {
         this.audio = false;
       }
     },
-    logKey(event) {
-      if ((event.key === 'Escape' || event.keyCode === 27) && this.fullscreen) {
-        this.closeFullscreen();
-      }
-    },
+
     include() {
       return [this.$refs.videoPlayer.$el];
     },
