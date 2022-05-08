@@ -1,7 +1,7 @@
 <template lang="pug">
 .tw-h-full
   transition(name='overlay-fade' mode='out-in')
-    .fullscreen-video-overlay(v-if="fullscreen")
+  
 
   .video-card-container(ref="videoCardContainer" v-click-outside="{ handler: closeFullscreen, include: include }")
 
@@ -162,6 +162,7 @@ export default {
 
     if (!this.hideController) {
       document.addEventListener('keydown', this.logKey);
+      this.$refs.videoCardContainer.addEventListener('dblclick', this.toggleFullscreen);
     }
 
     if (this.camera.lastNotification) {
@@ -195,12 +196,15 @@ export default {
     closeFullscreen() {
       this.fullscreen = false;
 
-      const videoCardContainer = this.$refs.videoCardContainer;
-      videoCardContainer?.removeAttribute('style');
-      videoCardContainer?.classList.remove('fullscreen-video');
-
-      window.removeEventListener('orientationchange', this.resizeFullscreenVideo);
-      window.removeEventListener('resize', this.resizeFullscreenVideo);
+ 
+ 
+   if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if (document.webkitExitFullscreen) { /* Safari */
+    document.webkitExitFullscreen();
+  } else if (document.msExitFullscreen) { /* IE11 */
+    document.msExitFullscreen();
+  }
     },
     handleStartStop() {
       if (this.player) {
@@ -234,11 +238,7 @@ export default {
         this.audio = false;
       }
     },
-    logKey(event) {
-      if ((event.key === 'Escape' || event.keyCode === 27) && this.fullscreen) {
-        this.closeFullscreen();
-      }
-    },
+
     include() {
       return [this.$refs.videoPlayer.$el];
     },
@@ -302,13 +302,15 @@ export default {
     resizeFullscreenVideo() {
       const videoCardContainer = this.$refs.videoCardContainer;
 
-      let videoWidth = this.windowWidth() - 64 <= 1280 ? this.windowWidth() - 64 : 1280;
-      let videoHeight = Math.round(videoWidth / (16 / 9)) + (this.stream && !this.hideController ? 40 : 0);
+      if (videoCardContainer.requestFullscreen) {
+    videoCardContainer.requestFullscreen();
+  } else if (videoCardContainer.webkitRequestFullscreen) { /* Safari */
+    videoCardContainer.webkitRequestFullscreen();
+  } else if (videoCardContainer.msRequestFullscreen) { /* IE11 */
+    videoCardContainer.msRequestFullscreen();
+  } 
 
-      videoHeight = videoHeight <= this.windowHeight() - 64 ? videoHeight : this.windowHeight() - 64;
 
-      videoCardContainer?.classList.add('fullscreen-video');
-      videoCardContainer?.setAttribute('style', `height: ${videoHeight}px !important;`);
     },
     snapshotTimer() {
       let timerIndicator = this.$refs.snapshotTimer;
@@ -487,10 +489,7 @@ export default {
       this.fullscreen = !this.fullscreen;
 
       if (this.fullscreen) {
-        setTimeout(() => this.resizeFullscreenVideo(), 1);
-
-        window.addEventListener('orientationchange', this.resizeFullscreenVideo);
-        window.addEventListener('resize', this.resizeFullscreenVideo);
+       this.resizeFullscreenVideo();
       } else {
         this.closeFullscreen();
       }
