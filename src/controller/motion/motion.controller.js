@@ -411,14 +411,19 @@ export default class MotionController {
           let name;
 
           if (mailToCamera) {
-            log.info(`New message: Data (email to): ${JSON.stringify(session.envelope.rcptTo)}`, 'SMTP');
-            name = mailTo;
+            for (const rcptTo of session.envelope.rcptTo) {
+              log.info(`New message: Data (email to): ${JSON.stringify(rcptTo)}`, 'SMTP');
+              name = rcptTo.address.split('@')[0].replace(regex, ' ');
+              await MotionController.handleMotion('motion', name, true, 'smtp');
+            }
+            return;
+
           } else {
             log.info(`New message: Data (email from): ${JSON.stringify(session.envelope.mailFrom)}`, 'SMTP');
             name = mailFrom;
+            return await MotionController.handleMotion('motion', name, true, 'smtp');
           }
 
-          return await MotionController.handleMotion('motion', name, true, 'smtp');
         } else {
           log.info(
             'Email received but can not determine camera name through email adresse(s), checking email body...',
