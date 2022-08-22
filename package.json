@@ -1,8 +1,8 @@
 {
-  "name": "camera.ui",
-  "version": "1.1.17",
+  "name": "infraspec.ui",
+  "version": "1.0.0",
   "description": "NVR like user interface for RTSP capable cameras.",
-  "author": "SeydX (https://github.com/SeydX/camera.ui)",
+  "author": "Tech Savagery (https://github.com/TechSavagery/infraspec.ui)",
   "scripts": {
     "build": "npm run build --prefix ui",
     "lint": "concurrently \"npm run lint:server\" \"npm run lint:ui\"",
@@ -102,7 +102,7 @@
       "url": "https://github.com/sponsors/SeydX"
     }
   ],
-  "homepage": "https://github.com/SeydX/camera.ui#readme",
+  "homepage": "https://github.com/TechSavagery/infraspec.ui#readme",
   "keywords": [
     "camera.ui",
     "motion detection",

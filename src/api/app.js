@@ -156,7 +156,7 @@ export default class App {
     });
 
     app.use(
-      '/swagger',
+      '/swagger-docs',
       swaggerUi.serve,
       swaggerUi.setup(specs, {
         explorer: true,
