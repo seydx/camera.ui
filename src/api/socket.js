@@ -26,6 +26,7 @@ export default class Socket {
   };
 
   static #cpuLoadHistory = [];
+  static #cameraTempsHistory = [];
   static #cpuTempHistory = [];
   static #memoryUsageHistory = [];
   static #diskSpaceHistory = [];
@@ -128,6 +129,10 @@ export default class Socket {
 
       socket.on('getCpuLoad', () => {
         Socket.io.emit('cpuLoad', Socket.#cpuLoadHistory);
+      });
+
+      socket.on('getCameraTemps', () => {
+        Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
       });
 
       socket.on('getCpuTemp', () => {
@@ -294,12 +299,13 @@ export default class Socket {
     await Socket.#handleUptime();
     await Socket.#handleCpuLoad();
     await Socket.#handleCpuTemperature();
+    await Socket.#handleCameraTemperature();
     await Socket.#handleMemoryUsage();
     await Socket.handleDiskUsage();
 
     setTimeout(() => {
       Socket.watchSystem();
-    }, 30000);
+    }, 3000);
   }
 
   static async #handleUptime() {
@@ -329,6 +335,22 @@ export default class Socket {
     }
 
     Socket.io.emit('uptime', Socket.#uptime);
+  }
+
+  static async #handleCameraTemperature() {
+    try {
+      const cameraTemperature1 = Math.floor(Math.random() * (80 - 75 + 1)) + 80;
+      const cameraTemperature2 = Math.floor(Math.random() * (82 - 76 + 1)) + 82;
+      Socket.#cameraTempsHistory.push({
+        time: new Date(),
+        value: cameraTemperature1,
+        value2: cameraTemperature2,
+      });
+    } catch (error) {
+      log.error(error, 'Socket');
+    }
+
+    Socket.io.emit('camTemps', Socket.#cameraTempsHistory);
   }
 
   static async #handleCpuLoad() {

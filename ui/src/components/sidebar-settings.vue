@@ -20,6 +20,7 @@ import {
   mdiImageMultipleOutline,
   mdiPencilRuler,
   mdiTune,
+  mdiThermometer,
 } from '@mdi/js';
 
 import { bus } from '@/main';
@@ -36,6 +37,7 @@ export default {
       'mdi-backup-restore': mdiBackupRestore,
       'mdi-bell-outline': mdiBellOutline,
       'mdi-cctv': mdiCctv,
+      'mdi-temps': mdiThermometer,
       'mdi-face-recognition': mdiFaceRecognition,
       'mdi-image-multiple-outline': mdiImageMultipleOutline,
       'mdi-pencil-ruler': mdiPencilRuler,

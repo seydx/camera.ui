@@ -73,6 +73,10 @@ export default class App {
             'mediastream:',
             'https://registry.npmjs.org',
             'https://unpkg.com',
+            'http://localhost:8083',
+            'http://localhost:2000',
+            'http://192.168.0.88',
+            'http://192.168.0.88:2000',
             "'unsafe-eval'",
             "'unsafe-inline'",
             "'self'",
@@ -156,7 +160,7 @@ export default class App {
     });
 
     app.use(
-      '/swagger-docs',
+      '/swagger',
       swaggerUi.serve,
       swaggerUi.setup(specs, {
         explorer: true,

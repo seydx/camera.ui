@@ -139,6 +139,7 @@ import {
   mdiPuzzle,
   mdiTune,
   mdiViewDashboard,
+  mdiThermometer,
 } from '@mdi/js';
 import { version } from '../../../package.json';
 
@@ -167,6 +168,7 @@ export default {
         mdiTune,
         'mdi-bell': mdiBell,
         'mdi-cctv': mdiCctv,
+        'mdi-temps': mdiThermometer,
         'mdi-chart-arc': mdiChartArc,
         'mdi-cog': mdiCog,
         'mdi-console': mdiConsole,

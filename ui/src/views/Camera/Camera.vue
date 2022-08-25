@@ -10,6 +10,10 @@
           vue-aspect-ratio(ar="16:9" width="100%")
             VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
           
+    .tw-flex.tw-flex-wrap
+      v-row.tw-w-full.tw-h-full
+        v-col.tw-mb-3(:cols="cols")
+          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
     v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="12")
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
@@ -71,56 +75,121 @@ import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiOpenInNew, mdiPlusCircle } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
-
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
-
 import VideoCard from '@/components/camera-card.vue';
-
+import Chart from '@/components/utilization-charts.vue';
 import socket from '@/mixins/socket';
-
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export default {
   name: 'Camera',
-
   components: {
     LightBox,
     VideoCard,
+    Chart,
     'vue-aspect-ratio': VueAspectRatio,
   },
-
   mixins: [socket],
-
   beforeRouteLeave(to, from, next) {
     this.loading = true;
     next();
   },
-
-  data: () => ({
-    camera: {},
-    cols: 12,
-    icons: {
-      mdiOpenInNew,
-      mdiPlusCircle,
-    },
-    images: [],
-    loading: true,
-    notifications: [],
-    notificationsPanel: [0],
-    showNotifications: false,
-  }),
-
+  data() {
+    return {
+      camera: {},
+      cols: 12,
+      icons: {
+        mdiOpenInNew,
+        mdiPlusCircle,
+      },
+      images: [],
+      loading: true,
+      notifications: [],
+      notificationsPanel: [0],
+      showNotifications: false,
+      camTempData: {
+        label: this.$t('Camera 1 - Preset 1 - Region 2'),
+        label2: this.$t('Camera 1 - Preset 1 - Region 3'),
+        data: [],
+      },
+      camTempsOptions: {
+        responsive: true,
+        maintainAspectRatio: true,
+        elements: {
+          point: {
+            radius: 0,
+            hitRadius: 10,
+            hoverRadius: 10,
+          },
+        },
+        tooltips: {
+          enabled: true,
+          mode: 'single',
+          callbacks: {
+            title: (tooltipItems) => {
+              let time = new Date(tooltipItems[0].xLabel);
+              time.setTime(time.getTime() - new Date().getTimezoneOffset() * 60 * 1000);
+              time = time.toISOString().split('T');
+              return `${time[0]} - ${time[1].split('.')[0]}`;
+            },
+            label: (tooltipItems) => {
+              return ` ${tooltipItems.yLabel.toFixed(0)}°`;
+            },
+          },
+        },
+        scales: {
+          xAxes: [
+            {
+              display: true,
+              gridLines: {
+                display: true,
+                color: 'rgba(92,92,92, 0.3)',
+              },
+              scaleLabel: {
+                display: false,
+                //labelString: 'Month',
+              },
+              type: 'time',
+              time: {
+                unit: 'minutes',
+                displayFormats: { minutes: 'HH:mm' },
+                unitStepSize: 10,
+              },
+            },
+          ],
+          yAxes: [
+            {
+              display: true,
+              gridLines: {
+                display: true,
+                color: 'rgba(92,92,92, 0.3)',
+              },
+              scaleLabel: {
+                display: false,
+                //labelString: 'Value',
+              },
+              ticks: {
+                min: 70,
+                max: 120,
+                stepSize: 10,
+                callback: function (value) {
+                  return value + '°';
+                },
+              },
+              type: 'linear',
+            },
+          ],
+        },
+      },
+    };
+  },
   async mounted() {
     try {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
-
       camera.data.settings = settings.data;
-
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
       this.notifications = lastNotifications.data.result;
-
       this.images = lastNotifications.data.result.map((notification) => {
         if (notification.recordStoring) {
           let mediaContainer = {
@@ -130,10 +199,8 @@ export default {
             src: `/files/${notification.fileName}`,
             thumb: `/files/${notification.fileName}`,
           };
-
           if (notification.recordType === 'Video') {
             delete mediaContainer.src;
-
             mediaContainer = {
               ...mediaContainer,
               type: 'video',
@@ -149,22 +216,24 @@ export default {
               autoplay: false,
             };
           }
-
           return mediaContainer;
         }
       });
-
       this.camera = camera.data;
-
       this.loading = false;
-
       await timeout(10);
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
     }
   },
-
+  created() {
+    this.$socket.client.on('camTemps', this.camTemps);
+    this.$socket.client.emit('getCameraTemps');
+  },
+  beforeDestroy() {
+    this.$socket.client.off('getCameraTemps', this.camTemps);
+  },
   methods: {
     openGallery(notification) {
       if (notification.recordStoring) {
@@ -174,12 +243,14 @@ export default {
     },
     toggleNotificationsPanel() {
       this.showNotifications = !this.showNotifications;
-
       if (this.showNotifications) {
         this.notificationsPanel = [0];
       } else {
         this.notificationsPanel = [];
       }
+    },
+    camTemps(data) {
+      this.camTempData.data = data;
     },
   },
 };
@@ -189,38 +260,30 @@ export default {
 .subtitle {
   color: rgba(var(--cui-text-third-rgb)) !important;
 }
-
 .notifications-panel {
   background: rgba(var(--cui-bg-card-rgb)) !important;
 }
-
 .notifications-panel-title {
   /*border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);*/
 }
-
 .notifications-panel-content {
   color: rgba(var(--cui-text-default-rgb));
 }
-
 .notification-item {
   border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
 }
-
 div >>> .v-badge__badge {
   font-size: 8px;
   height: 15px;
   min-width: 15px;
   padding: 3px 3px;
 }
-
 div >>> .theme--light.v-btn.v-btn--disabled .v-icon {
   color: rgba(var(--cui-text-default-rgb), 0.4) !important;
 }
-
 div >>> .v-expansion-panel-content__wrap {
   padding: 0;
 }
-
 div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
   color: rgba(var(--cui-text-default-rgb)) !important;
 }

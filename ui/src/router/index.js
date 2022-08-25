@@ -244,6 +244,27 @@ export const routes = [
     component: () => import(/* webpackChunkName: "config" */ '@/views/Config/Config.vue'),
   },
   {
+    path: '/Temperatures',
+    name: 'Temperatures',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['admin'],
+      },
+      config: {
+        fixedNavbar: true,
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+      navigation: {
+        extras: true,
+        icon: 'mdi-temps',
+      },
+    },
+    component: () => import(/* webpackChunkName: "Temperatures" */ '@/views/Temperatures/Temperatures.vue'),
+  },
+  {
     path: '/utilization',
     name: 'Utilization',
     meta: {

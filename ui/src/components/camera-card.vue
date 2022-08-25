@@ -58,6 +58,20 @@
             .tw-block.tw-p-2
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleStartStop") {{ !play ? icons['mdiPlay'] : icons['mdiPause'] }}
             .tw-ml-auto
+                   v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handlePanLeft") {{ icons['mdiArrowLeftThick'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handlePanRight") {{ icons['mdiArrowRightThick'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleTiltUp") {{ icons['mdiArrowUpThick'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleTiltDown") {{ icons['mdiArrowDownThick'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleResetPtz") {{ icons['mdiCursorMove'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleZoomIn") {{ icons['mdiMagnifyPlus'] }}
+            .tw-ml-auto
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleZoomOut") {{ icons['mdiMagnifyMinus'] }}
+            .tw-ml-auto
             .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorReload")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
             .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio && !hideIndicatorAudio")
@@ -88,19 +102,26 @@
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import JSMpeg from '@seydx/jsmpeg/lib/index.js';
+const axios = require('axios').default;
 import JSMpegWritableSource from '@/common/jsmpeg-source.js';
 import {
   mdiArrowExpand,
   mdiArrowCollapse,
   mdiPause,
   mdiPlay,
+  mdiArrowLeftThick,
+  mdiArrowRightThick,
+  mdiArrowUpThick,
+  mdiArrowDownThick,
+  mdiCursorMove,
+  mdiMagnifyPlus,
+  mdiMagnifyMinus,
   mdiReload,
   mdiRefresh,
   mdiVideoOff,
   mdiVolumeHigh,
   mdiVolumeOff,
 } from '@mdi/js';
-
 import { getCameraSnapshot, getCameraStatus } from '@/api/cameras.api';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -136,6 +157,13 @@ export default {
       mdiArrowCollapse,
       mdiPause,
       mdiPlay,
+      mdiArrowLeftThick,
+      mdiArrowRightThick,
+      mdiArrowUpThick,
+      mdiArrowDownThick,
+      mdiCursorMove,
+      mdiMagnifyPlus,
+      mdiMagnifyMinus,
       mdiReload,
       mdiRefresh,
       mdiVideoOff,
@@ -216,6 +244,111 @@ export default {
       } else {
         this.play = false;
       }
+    },
+    handlePanLeft() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/left?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handlePanRight() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/right?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handleTiltUp() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/up?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handleTiltDown() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/down?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handleResetPtz() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/reset?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handleZoomIn() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/zoomin?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
+    },
+    handleZoomOut() {
+      axios
+        .get(`http://192.168.0.88:2000/ptz/zoomout?address=${this.camera.manufacturer}&id=${this.camera.model}`)
+        .then(function (response) {
+          // handle success
+          console.log(response);
+        })
+        .catch(function (error) {
+          // handle error
+          console.log(error);
+        })
+        .then(function () {
+          // always executed
+        });
     },
     handleVolume() {
       if (this.player) {
