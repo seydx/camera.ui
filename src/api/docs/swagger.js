@@ -11,11 +11,11 @@ export default {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'camera.ui API',
+      title: 'infraspec.ui API',
       description: '',
       version: packageJson.version,
       contact: {
-        name: 'camera.ui',
+        name: 'infraspec.ui',
         url: 'https://github.com/SeydX/camera.ui',
       },
     },

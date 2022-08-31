@@ -2,27 +2,27 @@
   /* Pink */
   --cui-primary-0: #ffffff;
   --cui-primary-0-rgb: 255, 255, 255;
-  --cui-primary-50: #fceef2;
+  --cui-primary-50: #ffe9e6;
   --cui-primary-50-rgb: 252, 238, 242;
-  --cui-primary-100: #fadee4;
+  --cui-primary-100: #ffd3cc;
   --cui-primary-100-rgb: 250, 222, 228;
-  --cui-primary-200: #f5bcc9;
+  --cui-primary-200: #ffbdb3;
   --cui-primary-200-rgb: 245, 188, 201;
-  --cui-primary-300: #ef9baf;
+  --cui-primary-300: #ff9180;
   --cui-primary-300-rgb: 239, 155, 175;
-  --cui-primary-400: #e86986;
+  --cui-primary-400: #FF2000;
   --cui-primary-400-rgb: 232, 105, 134;
   --cui-primary-500: #e0375e;
   --cui-primary-500-rgb: 224, 55, 94;
-  --cui-primary-600: #c11e44;
+  --cui-primary-600: #e61f00;
   --cui-primary-600-rgb: 193, 30, 68;
-  --cui-primary-700: #b21c3f;
+  --cui-primary-700: #b31800;
   --cui-primary-700-rgb: 178, 28, 63;
-  --cui-primary-800: #941734;
+  --cui-primary-800: #991400;
   --cui-primary-800-rgb: 148, 23, 52;
-  --cui-primary-900: #85152f;
+  --cui-primary-900: #660e00;
   --cui-primary-900-rgb: 133, 21, 47;
-  --cui-primary: #d12049;
+  --cui-primary: #FF2000;
   --cui-primary-rgb: 209, 32, 73;
 
   /* Light */
