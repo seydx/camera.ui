@@ -349,7 +349,7 @@ export default class Socket {
     } catch (error) {
       log.error(error, 'Socket');
     }
-
+    Socket.#cameraTempsHistory = Socket.#cameraTempsHistory.slice(-360);
     Socket.io.emit('camTemps', Socket.#cameraTempsHistory);
   }
 

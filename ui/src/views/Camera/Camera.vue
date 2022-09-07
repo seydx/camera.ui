@@ -153,7 +153,7 @@ export default {
               time: {
                 unit: 'minutes',
                 displayFormats: { minutes: 'HH:mm' },
-                unitStepSize: 10,
+                unitStepSize: 15,
               },
             },
           ],
@@ -171,7 +171,7 @@ export default {
               ticks: {
                 min: 70,
                 max: 120,
-                stepSize: 10,
+                stepSize: 5,
                 callback: function (value) {
                   return value + '°';
                 },
