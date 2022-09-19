@@ -108,8 +108,10 @@ export default {
       notificationsPanel: [0],
       showNotifications: false,
       camTempData: {
-        label: this.$t('Camera 1 - Preset 1 - Region 2'),
-        label2: this.$t('Camera 1 - Preset 1 - Region 3'),
+        label: this.$t('Camera 1 - Preset 1 - Region 1'),
+        label2: this.$t('Camera 1 - Preset 2 - Region 2'),
+        label3: this.$t('Camera 1 - Preset 3 - Region 3'),
+        label4: this.$t('Camera 1 - Preset 4 - Region 4'),
         data: [],
       },
       camTempsOptions: {
@@ -169,9 +171,9 @@ export default {
                 //labelString: 'Value',
               },
               ticks: {
-                min: 70,
-                max: 120,
-                stepSize: 5,
+                min: 80,
+                max: 90,
+                stepSize: 1,
                 callback: function (value) {
                   return value + '°';
                 },
