@@ -1,9 +1,9 @@
 <template lang="pug">
-v-footer.footer.tw-text-xs.tw-z-0(padless app absolute)
-  .footer-wrapper.tw-flex.tw-items-center.tw-justify-end
-    a.footer-link(href="https://github.com/SeydX" target="blank") {{ new Date().getFullYear() }} - 
-      strong (c) seydx
-</template>
+  v-footer.footer.tw-text-xs.tw-z-0(padless app absolute)
+    .footer-wrapper.tw-flex.tw-items-center.tw-justify-end
+      a.footer-link(href="https://github.com/infrared-inspection-systems" target="blank") {{ new Date().getFullYear() }} - 
+        strong (c) IIS 
+  </template>
 
 <script>
 export default {

@@ -31,7 +31,7 @@ const hook_writestream = (stream, callback) => {
 };
 
 export default class LoggerService {
-  static #prefix = 'camera.ui';
+  static #prefix = 'infraspec.ui';
   static #logger = console;
   static #customLogger = false;
   static #withPrefix = true;
