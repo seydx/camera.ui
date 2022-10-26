@@ -3,7 +3,7 @@
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
   .pl-safe.pr-safe
-
+  Sidebar(camerasSelect datePicker presetSelect regionSelect intervalSelect @filter="filter")
     .header.tw-justify-between.tw-items-center.header.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
         .page-title {{ $t($route.name) }}
@@ -31,11 +31,15 @@ import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import socket from '@/mixins/socket';
 import Chart from '@/components/utilization-charts.vue';
+import Sidebar from '@/components/sidebar-filter.vue';
+import VDigitalTimePicker from 'v-digital-time-picker';
 export default {
   name: 'Temperatures',
   components: {
     Chart,
     LightBox,
+    Sidebar,
+    VDigitalTimePicker,
   },
   mixins: [socket],
   beforeRouteLeave(to, from, next) {
