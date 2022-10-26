@@ -32,14 +32,12 @@ import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import socket from '@/mixins/socket';
 import Chart from '@/components/utilization-charts.vue';
 import Sidebar from '@/components/sidebar-filter.vue';
-import VDigitalTimePicker from 'v-digital-time-picker';
 export default {
   name: 'Temperatures',
   components: {
     Chart,
     LightBox,
     Sidebar,
-    VDigitalTimePicker,
   },
   mixins: [socket],
   beforeRouteLeave(to, from, next) {
