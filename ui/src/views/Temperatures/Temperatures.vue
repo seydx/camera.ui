@@ -2,18 +2,22 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .pl-safe.pr-safe
+  .tw-flex.tw-relative.pl-safe.pr-safe
   Sidebar(camerasSelect datePicker presetSelect regionSelect intervalSelect @filter="filter")
-    .header.tw-justify-between.tw-items-center.header.tw-relative.tw-z-10.tw-items-stretch
+  .overlay(v-if="showOverlay")
+
+  .filter-content.filter-included.tw-w-full.tw-relative
+      .tw-flex.tw-justify-between
+      .header.tw-justify-between.tw-items-center.header.tw-relative.tw-z-10.tw-items-stretch
       .tw-block
         .page-title {{ $t($route.name) }}
 
-    .tw-mt-10.tw-relative
-      h3 {{ $t('cpu_temperature') }}
-      .chart-badge-loading.tw-flex.tw-justify-center.tw-items-center(v-if="!camTempData.data.length")
-        v-progress-circular(indeterminate color="var(--cui-primary)")
-      .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ camTempData.data.length ? `${Math.round(camTempData.data[tempData.data.length-1].value)}°` : '0°' }}
-      Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
+  .tw-mt-10.tw-relative
+    h3 {{ $t('cpu_temperature') }}
+    .chart-badge-loading.tw-flex.tw-justify-center.tw-items-center(v-if="!camTempData.data.length")
+      v-progress-circular(indeterminate color="var(--cui-primary)")
+    .chart-badge.tw-flex.tw-justify-center.tw-items-center.tw-text-white {{ camTempData.data.length ? `${Math.round(camTempData.data[tempData.data.length-1].value)}°` : '0°' }}
+    Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
 
   LightBox(
     ref="lightboxBanner"

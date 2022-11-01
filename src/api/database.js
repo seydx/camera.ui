@@ -23,6 +23,7 @@ const defaultDatabase = {
   firstStart: true,
   cameras: [],
   notifications: [],
+  temperatures: [],
   users: [],
   settings: {
     aws: {
@@ -111,6 +112,10 @@ const defaultRecordingsDatabase = {
   recordings: [],
 };
 
+const defaultTemperaturesDatabase = {
+  temperatures: [],
+};
+
 const defaultCameraSettingsEntry = {
   name: '',
   room: 'Standard',
@@ -156,9 +161,20 @@ const defaultCameraSettingsEntry = {
   },
 };
 
+const defaultTemperaturesEntry = {
+  id: 0,
+  cameraName: '',
+  preset: '',
+  region: '',
+  minTemp: 0,
+  maxTemp: 0,
+  avgTemp: 0,
+};
+
 export default class Database {
   static interfaceDB;
   static notificationsDB;
+  static temperaturesDB;
   static recordingsDB;
   static tokensDB;
 
@@ -185,21 +201,25 @@ export default class Database {
     Database.tokensDB = new Low(new MemorySync());
     Database.recordingsDB = new Low(new MemorySync());
     Database.notificationsDB = new Low(new MemorySync()); //used for system events (errors)
+    Database.temperaturesDB = new Low(new MemorySync());
 
     await Database.interfaceDB.read();
     Database.recordingsDB.read();
     Database.tokensDB.read();
     Database.notificationsDB.read();
+    Database.temperaturesDB.read();
 
     Database.interfaceDB.data = Database.interfaceDB.data || defaultDatabase;
     Database.tokensDB.data = Database.tokensDB.data || defaultTokensDatabase;
     Database.recordingsDB.data = Database.recordingsDB.data || defaultRecordingsDatabase;
     Database.notificationsDB.data = Database.notificationsDB.data || defaultNotificationsDatabase;
+    Database.temperaturesDB.data = Database.temperaturesDB.data || defaultTemperaturesDatabase;
 
     Database.interfaceDB.chain = lodash.chain(Database.interfaceDB.data);
     Database.tokensDB.chain = lodash.chain(Database.tokensDB.data);
     Database.recordingsDB.chain = lodash.chain(Database.recordingsDB.data);
     Database.notificationsDB.chain = lodash.chain(Database.notificationsDB.data);
+    Database.temperaturesDB.chain = lodash.chain(Database.temperaturesDB.data);
 
     await Database.#ensureDatabaseValues();
     await Database.#initializeUser();
@@ -221,6 +241,7 @@ export default class Database {
       tokens: Database.tokensDB,
       recordings: Database.recordingsDB,
       notifications: Database.notificationsDB,
+      temperatures: Database.temperaturesDB,
     };
   }
 
@@ -372,6 +393,10 @@ export default class Database {
 
     if (!Array.isArray(database?.notifications)) {
       database.notifications = defaultDatabase.notifications;
+    }
+
+    if (!Array.isArray(database?.temperatures)) {
+      database.temperatures = defaultDatabase.temperatures;
     }
 
     if (!Array.isArray(database?.users)) {
@@ -589,6 +614,10 @@ export default class Database {
     await Database.interfaceDB.chain.get('settings').get('cameras').push(cameraSettingsEntry).value();
 
     return camera;
+  }
+
+  static async addTemperatureReadingToDB(temperature) {
+    return temperature;
   }
 
   static async writeConfigCamerasToDB() {
