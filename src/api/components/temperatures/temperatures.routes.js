@@ -96,8 +96,6 @@ export const routesConfig = (app) => {
    *          schema:
    *            type: object
    *            properties:
-   *              id:
-   *                type: number
    *              cameraName:
    *                type: string
    *              preset:
