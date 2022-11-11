@@ -87,13 +87,13 @@ export const findById = async (id) => {
 
 export const createTemperature = async (data) => {
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
-  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+  //const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
   if (!camera) {
     throw new Error('Can not assign notification to camera!');
   }
 
-  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+  //const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
   const preset = data.preset;

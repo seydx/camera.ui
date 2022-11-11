@@ -161,15 +161,15 @@ const defaultCameraSettingsEntry = {
   },
 };
 
-const defaultTemperaturesEntry = {
-  id: 0,
-  cameraName: '',
-  preset: '',
-  region: '',
-  minTemp: 0,
-  maxTemp: 0,
-  avgTemp: 0,
-};
+// const defaultTemperaturesEntry = {
+//   id: 0,
+//   cameraName: '',
+//   preset: '',
+//   region: '',
+//   minTemp: 0,
+//   maxTemp: 0,
+//   avgTemp: 0,
+// };
 
 export default class Database {
   static interfaceDB;
