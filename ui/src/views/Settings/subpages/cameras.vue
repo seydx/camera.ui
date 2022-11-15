@@ -42,6 +42,15 @@
                   .page-subtitle {{ $t('interface') }}
                   .page-header-info.tw-mt-1 {{ $t('camera_interface_info') }}
               v-expansion-panel-content
+
+                .tw-flex.tw-justify-between.tw-items-center
+                  .tw-block.tw-w-full.tw-pr-2
+                    label.form-input-label {{ `Type` }}
+                    .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                      v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                      .input-info.tw-italic {{ 'camera type' }}
+                  v-select.select(v-model="camera.type" :items="types" background-color="var(--cui-bg-card)" solo)
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label {{ `${$t('dashboard')} ${$t('livestream')}` }}
@@ -919,6 +928,7 @@ export default {
         { value: 'Text + Video', text: `${this.$t('text')} + ${this.$t('video')}` },
         { value: 'Disabled', text: this.$t('disabled') },
       ],
+      types: ['hikivision', 'Sunnel', 'Savgood'],
 
       prebufferingStates: {},
       videoanalysisStates: {},

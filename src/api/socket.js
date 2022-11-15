@@ -338,23 +338,27 @@ export default class Socket {
   }
 
   static async #handleCameraTemperature() {
-    try {
-      const cameraTemperature1 = Math.floor(Math.random() * (80.25 - 80.75 + 1)) + 80;
-      const cameraTemperature2 = Math.floor(Math.random() * (82.25 - 82.75 + 1)) + 82;
-      const cameraTemperature3 = Math.floor(Math.random() * (83.25 - 83.75 + 1)) + 83;
-      const cameraTemperature4 = Math.floor(Math.random() * (84.25 - 84.75 + 1)) + 84;
-      Socket.#cameraTempsHistory.push({
-        time: new Date(),
-        value: cameraTemperature1,
-        value2: cameraTemperature2,
-        value3: cameraTemperature3,
-        value4: cameraTemperature4,
-      });
-    } catch (error) {
-      log.error(error, 'Socket');
+    const cameras = ConfigService.ui.cameras;
+    for (const camera of cameras) {
+      switch (camera.type) {
+        case 'Sunnel':
+          // GET Presets
+          // Loop Through Presets
+          // GET Regions
+          // Loop Through Regions
+          // GET Thermal Data for each Region
+          // Emit Socket Message with following data: camera.name, preset.id, region.id, temp, dateTime (round up to nearest minute)
+          break;
+        case 'Savgood':
+          // code block
+          break;
+        case 'Hikvision':
+          // code block
+          break;
+        default:
+        // code block
+      }
     }
-    Socket.#cameraTempsHistory = Socket.#cameraTempsHistory.slice(-360);
-    Socket.io.emit('camTemps', Socket.#cameraTempsHistory);
   }
 
   static async #handleCpuLoad() {

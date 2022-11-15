@@ -20,6 +20,12 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
+            label.form-input-label Type
+              span.tw-text-red-500 *
+            v-select.select(prepend-inner-icon="mdiAlphabetical" v-model="cam.type" :items="types" background-color="var(--cui-bg-card)" solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
             label.form-input-label Video Source
               span.tw-text-red-500 *
             v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
@@ -265,6 +271,7 @@ export default {
 
       cam: {
         name: '',
+        type: '',
         motionTimeout: 15,
         recordOnMovement: false,
         prebuffering: false,
@@ -285,6 +292,7 @@ export default {
       },
 
       camReset: {},
+      types: ['hikivision', 'Sunnel', 'Savgood'],
     };
   },
 
@@ -331,7 +339,6 @@ export default {
 
         camera.videoConfig.subSource = camera.videoConfig.subSource || camera.videoConfig.source;
         camera.videoConfig.stillImageSource = camera.videoConfig.stillImageSource || camera.videoConfig.source;
-
         camera.smtp.email = camera.name;
 
         try {
