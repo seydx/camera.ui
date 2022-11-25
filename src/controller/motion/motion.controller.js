@@ -16,6 +16,7 @@ import Stream from 'stream';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
+import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
 
 import Database from '../../api/database.js';
 import Socket from '../../api/socket.js';
@@ -147,6 +148,15 @@ export default class MotionController {
       };
 
       log.info(`New message: URL: ${request.url}`, 'HTTP');
+      let notification;
+      let body = '';
+      request.on('data', async (chunk) => {
+        if (chunk) {
+          body += chunk.toString(); // convert Buffer to string
+          console.log(body);
+          notification = await NotificationsModel.createNotification(body);
+        }
+      });
 
       let cameraName;
 

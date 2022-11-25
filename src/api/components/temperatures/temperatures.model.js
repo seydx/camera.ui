@@ -8,7 +8,6 @@ import Cleartimer from '../../../common/cleartimer.js';
 import Database from '../../database.js';
 
 const nanoid = customAlphabet('1234567890abcdef', 10);
-const temperaturesLimit = 100;
 
 export const list = async (query) => {
   // eslint-disable-next-line unicorn/consistent-function-scoping
@@ -24,7 +23,7 @@ export const list = async (query) => {
   };
 
   let temperatures = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
-  temperatures.push(...Database.notificationsDB.chain.get('temperatures').cloneDeep().value());
+  temperatures.push(...Database.temperaturesDB.chain.get('temperatures').cloneDeep().value());
   temperatures.sort(GetSortOrder('timestamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
@@ -86,18 +85,18 @@ export const findById = async (id) => {
 };
 
 export const createTemperature = async (data) => {
-  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
+  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.cameraName }).cloneDeep().value();
   //const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
   if (!camera) {
-    throw new Error('Can not assign notification to camera!');
+    throw new Error('Can not create temp for camera!');
   }
 
   //const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
   const id = data.id || (await nanoid());
-  const preset = data.preset;
-  const region = data.preset;
+  const preset = data.presetId;
+  const region = data.regionId;
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
@@ -106,32 +105,36 @@ export const createTemperature = async (data) => {
     camera: camera.name,
     region: region,
     preset: preset,
+    minTemp: data.minTemp,
+    maxTemp: data.maxTemp,
+    avgTemp: data.avgTemp,
     time: time,
     timestamp: timestamp,
   };
 
-  const temperartureSettings = await Database.interfaceDB.chain.get('settings').get('temperatures').cloneDeep().value();
+  //Loop back to setup temp settings for total number of temp readings. Will want to convert this to a time range i.e Remove all temp data older than 30 days.
+  // const temperartureSettings = await Database.interfaceDB.chain.get('settings').get('temperatures').cloneDeep().value();
 
-  if (temperartureSettings.active) {
-    //Check notification size, if we exceed more than {100} notifications, remove the latest
-    const temperatureList = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
+  // if (temperartureSettings.active) {
+  //   //Check notification size, if we exceed more than {100} notifications, remove the latest
+  //   const temperatureList = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
 
-    if (temperatureList.length > temperaturesLimit) {
-      const diff = temperatureList.length - temperaturesLimit;
-      const diffTemperatures = temperatureList.slice(-diff);
+  //   if (temperatureList.length > temperaturesLimit) {
+  //     const diff = temperatureList.length - temperaturesLimit;
+  //     const diffTemperatures = temperatureList.slice(-diff);
 
-      for (const temperature of diffTemperatures) {
-        Cleartimer.removeNotificationTimer(temperature.id);
-      }
+  //     for (const temperature of diffTemperatures) {
+  //       Cleartimer.removeNotificationTimer(temperature.id);
+  //     }
 
-      await Database.interfaceDB.chain.get('temperatures').dropRight(temperatureList, diff).value();
-    }
+  //     await Database.interfaceDB.chain.get('temperatures').dropRight(temperatureList, diff).value();
+  //   }
 
-    await Database.interfaceDB.chain.get('temperatures').push(temperature).value();
+  //   await Database.interfaceDB.chain.get('temperatures').push(temperature).value();
 
-    Cleartimer.setNotification(id, timestamp);
-  }
-
+  //   Cleartimer.setNotification(id, timestamp);
+  // }
+  await Database.interfaceDB.chain.get('temperatures').push(temperature).value();
   return {
     temperature: temperature,
   };

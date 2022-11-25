@@ -95,6 +95,7 @@ export const findById = async (id) => {
 };
 
 export const createNotification = async (data) => {
+  console.log(data.camera);
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
   const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 

@@ -52,7 +52,7 @@ export default class CameraUI {
     process.env.CUI_STORAGE_DATABASE_USER_PATH = path.resolve(storagePath, 'database', 'user');
     process.env.CUI_STORAGE_DATABASE_FILE = path.resolve(storagePath, 'database', 'database.json');
     process.env.CUI_STORAGE_LOG_PATH = path.resolve(storagePath, 'logs');
-    process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'camera.ui.log');
+    process.env.CUI_STORAGE_LOG_FILE = path.resolve(storagePath, 'logs', 'infraspec.ui.log');
     process.env.CUI_STORAGE_RECORDINGS_PATH = path.resolve(storagePath, 'recordings');
     process.env.CUI_STORAGE_REPORTS_PATH = path.resolve(storagePath, 'reports');
 

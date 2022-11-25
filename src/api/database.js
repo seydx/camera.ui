@@ -235,6 +235,7 @@ export default class Database {
     LoggerService.notificationsDB = Database.notificationsDB;
 
     Socket.watchSystem();
+    Socket.watchTemps();
 
     return {
       interface: Database.interfaceDB,

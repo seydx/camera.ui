@@ -5,7 +5,6 @@ import * as TemperaturesController from './temperatures.controller.js';
 import * as PaginationMiddleware from '../../middlewares/pagination.middleware.js';
 import * as PermissionMiddleware from '../../middlewares/auth.permission.middleware.js';
 import * as ValidationMiddleware from '../../middlewares/auth.validation.middleware.js';
-import * as NotificationsValidationMiddleware from '../../middlewares/notifications.validation.middleware.js';
 
 /**
  * @swagger
@@ -119,7 +118,6 @@ export const routesConfig = (app) => {
   app.post('/api/temperatures', [
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.minimumPermissionLevelRequired('notifications:edit'),
-    NotificationsValidationMiddleware.hasValidFields,
     TemperaturesController.insert,
   ]);
 

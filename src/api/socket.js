@@ -14,6 +14,9 @@ import Database from './database.js';
 
 import CameraController from '../controller/camera/camera.controller.js';
 import MotionController from '../controller/motion/motion.controller.js';
+import * as TemperaturesModel from '../api/components/temperatures/temperatures.model.js';
+
+import fetch from 'node-fetch';
 
 const { log } = LoggerService;
 
@@ -299,13 +302,19 @@ export default class Socket {
     await Socket.#handleUptime();
     await Socket.#handleCpuLoad();
     await Socket.#handleCpuTemperature();
-    await Socket.#handleCameraTemperature();
     await Socket.#handleMemoryUsage();
     await Socket.handleDiskUsage();
 
     setTimeout(() => {
       Socket.watchSystem();
     }, 3000);
+  }
+  static async watchTemps() {
+    await Socket.#handleCameraTemperature();
+
+    setTimeout(() => {
+      Socket.watchTemps();
+    }, 60000);
   }
 
   static async #handleUptime() {
@@ -342,11 +351,41 @@ export default class Socket {
     for (const camera of cameras) {
       switch (camera.type) {
         case 'Sunnel':
-          // GET Presets
-          // Loop Through Presets
-          // GET Regions
-          // Loop Through Regions
-          // GET Thermal Data for each Region
+          {
+            var regex = /=(.*)/;
+            var goods = [];
+            var formatted = [];
+            const response = await fetch(
+              'http://192.168.0.135/cgi-bin/param.cgi?userName=admin&password=MIUtrailer123&action=get&type=areaTemperature&AreaID=-1',
+              {
+                method: 'GET', // *GET, POST, PUT, DELETE, etc.
+              }
+            )
+              .then((response) => response.text())
+              .then((data) => {
+                //console.log(data.split(/\r?\n/));
+                goods = data.split(/\r?\n/);
+                for (var index = 0; index < goods.length; index++) {
+                  if (goods[index].startsWith('areaID')) {
+                    data = {
+                      cameraName: camera.name,
+                      regionId: goods[index].match(regex)[1],
+                      presetId: '1',
+                      maxTemp: goods[index + 4].match(regex)[1],
+                      minTemp: goods[index + 7].match(regex)[1],
+                      avgTemp: goods[index + 8].match(regex)[1],
+                    };
+                    formatted.push(data);
+                    Socket.#cameraTempsHistory.push(data);
+                    TemperaturesModel.createTemperature(data);
+                  }
+                  //Do something
+                }
+                console.log(JSON.stringify(formatted, null, 2));
+                console.log(response);
+                Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
+              });
+          }
           // Emit Socket Message with following data: camera.name, preset.id, region.id, temp, dateTime (round up to nearest minute)
           break;
         case 'Savgood':

@@ -33,6 +33,7 @@ import * as SettingsRouter from './components/settings/settings.routes.js';
 import * as SubscribeRouter from './components/subscribe/subscribe.routes.js';
 import * as SystemRouter from './components/system/system.routes.js';
 import * as UsersRouter from './components/users/users.routes.js';
+import * as TemperaturesRouter from './components/temperatures/temperatures.routes.js';
 
 const { log } = LoggerService;
 
@@ -152,6 +153,7 @@ export default class App {
     SubscribeRouter.routesConfig(app);
     SystemRouter.routesConfig(app);
     UsersRouter.routesConfig(app);
+    TemperaturesRouter.routesConfig(app);
 
     app.get('/version', (req, res) => {
       res.status(200).send({

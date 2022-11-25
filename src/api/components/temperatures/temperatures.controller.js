@@ -5,7 +5,7 @@ import * as TemperaturesModel from './temperatures.model.js';
 
 export const insert = async (req, res) => {
   try {
-    let temperature = await TemperaturesModel.createNotification(req.body);
+    let temperature = await TemperaturesModel.createTemperature(req.body);
 
     res.status(201).send(temperature);
   } catch (error) {
