@@ -157,6 +157,7 @@ export default class MotionController {
           //notification = await NotificationsModel.createNotification(body);
         }
       });
+      console.log(JSON.stringify(request.headers));
 
       let cameraName;
 
