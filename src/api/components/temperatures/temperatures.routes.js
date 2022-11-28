@@ -74,8 +74,8 @@ export const routesConfig = (app) => {
    *         description: Internal server error
    */
   app.get('/api/temperatures', [
-    ValidationMiddleware.validJWTNeeded,
-    PermissionMiddleware.minimumPermissionLevelRequired('notifications:access'),
+    //ValidationMiddleware.validJWTNeeded,
+    //PermissionMiddleware.minimumPermissionLevelRequired('notifications:access'),
     TemperaturesController.list,
     PaginationMiddleware.pages,
   ]);
