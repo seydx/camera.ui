@@ -382,7 +382,6 @@ export default class Socket {
                   //Do something
                 }
                 console.log(JSON.stringify(formatted, null, 2));
-                console.log(response);
                 Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
               });
           }
