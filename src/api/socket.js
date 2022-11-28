@@ -355,7 +355,7 @@ export default class Socket {
             var regex = /=(.*)/;
             var goods = [];
             var formatted = [];
-            const response = await fetch(
+            await fetch(
               'http://192.168.0.135/cgi-bin/param.cgi?userName=admin&password=MIUtrailer123&action=get&type=areaTemperature&AreaID=-1',
               {
                 method: 'GET', // *GET, POST, PUT, DELETE, etc.
