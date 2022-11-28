@@ -158,6 +158,7 @@ export default class MotionController {
         }
       });
       console.log(JSON.stringify(request.headers));
+      console.log(request.body);
 
       let cameraName;
 
