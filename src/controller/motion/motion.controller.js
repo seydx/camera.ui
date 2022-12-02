@@ -145,6 +145,7 @@ export default class MotionController {
       let result = {
         error: true,
         message: `Malformed URL ${request.url}`,
+        data: JSON.stringify(request.headers),
       };
 
       log.info(`New message: URL: ${request.url}`, 'HTTP');
@@ -167,14 +168,18 @@ export default class MotionController {
 
         if (parseurl.pathname && parseurl.query) {
           cameraName = decodeURIComponent(parseurl.query);
+          console.log(cameraName);
 
           // => /motion
           // => /motion/reset
           // => /doorbell
 
           let triggerType = parseurl.pathname.includes('/reset') ? 'reset' : parseurl.pathname.split('/')[1];
+
           let state = triggerType === 'dorbell' ? true : triggerType === 'reset' ? false : true;
           triggerType = triggerType === 'reset' ? 'motion' : triggerType;
+          triggerType = triggerType.split('&')[0];
+          console.log(`triggerType: ${triggerType}`);
 
           result = await MotionController.handleMotion(triggerType, cameraName, state, 'http', result);
         }
@@ -693,7 +698,9 @@ export default class MotionController {
 
   static async handleMotion(triggerType, cameraName, state, event, result = {}) {
     // result = {} is used as http response
-    let camera = ConfigService.ui.cameras.find((camera) => camera?.name === cameraName);
+    let camera = ConfigService.ui.cameras.find(
+      (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
+    );
 
     if (event === 'smtp') {
       camera = ConfigService.ui.cameras.find(
@@ -779,6 +786,7 @@ export default class MotionController {
                 triggerType: triggerType,
                 cameraName: camera.name,
                 state: state,
+                data: result.data,
               });
             }
           } else {
@@ -795,12 +803,14 @@ export default class MotionController {
               triggerType: triggerType,
               cameraName: camera.name,
               state: state,
+              data: result.data,
             });
           }
         } else {
           result = {
             error: false,
             message: 'Handling through extern controller..',
+            data: result,
           };
         }
       }

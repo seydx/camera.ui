@@ -40,14 +40,14 @@ export default class EventController {
     EventController.#controller = controller;
 
     EventController.#controller.on('uiMotion', (event) =>
-      EventController.handle(event.triggerType, event.cameraName, event.state)
+      EventController.handle(event.triggerType, event.cameraName, event.state, event.data)
     );
 
     this.triggerEvent = EventController.handle;
   }
 
   // eslint-disable-next-line no-unused-vars
-  static async handle(trigger, cameraName, active, fileBuffer, type) {
+  static async handle(trigger, cameraName, active, data = {}, fileBuffer, type) {
     if (active) {
       try {
         const database = await SettingsModel.show(true);
