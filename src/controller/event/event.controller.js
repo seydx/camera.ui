@@ -133,7 +133,12 @@ export default class EventController {
 
             log.debug(`New ${trigger} alert`, cameraName);
 
-            const motionInfo = await EventController.#getMotionInfo(cameraName, trigger, recordingSettings);
+            const motionInfo = await EventController.#getMotionInfo(
+              cameraName,
+              trigger,
+              recordingSettings,
+              recordingSettings.active
+            );
 
             //not used atm
             let allowStream = true;

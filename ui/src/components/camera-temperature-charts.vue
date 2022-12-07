@@ -7,7 +7,7 @@ area-chart(ref="chart" :chart-data="datacollection" :options="options" style="wi
 import AreaChart from '@/charts/area-chart';
 
 export default {
-  name: 'TemperatureCharts',
+  name: 'CameraTemperatureCharts',
 
   components: {
     AreaChart,

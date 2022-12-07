@@ -350,7 +350,7 @@ export default class Socket {
     const cameras = ConfigService.ui.cameras;
     for (const camera of cameras) {
       switch (camera.type) {
-        case 'Sunn888el':
+        case 'Sunell':
           {
             var regex = /=(.*)/;
             var goods = [];

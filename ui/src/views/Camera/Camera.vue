@@ -77,8 +77,9 @@ import { mdiOpenInNew, mdiPlusCircle } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
+import { getTemperatures } from '@/api/temperatures.api';
 import VideoCard from '@/components/camera-card.vue';
-import Chart from '@/components/utilization-charts.vue';
+import Chart from '@/components/camera-temperature-chart.vue';
 import socket from '@/mixins/socket';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
@@ -189,6 +190,8 @@ export default {
     try {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
+      const temperatures = await getTemperatures(`?cameras=${camera.data.name}`);
+      console.log(temperatures);
       camera.data.settings = settings.data;
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
       this.notifications = lastNotifications.data.result;
@@ -215,7 +218,7 @@ export default {
               thumb: `/files/${notification.name}@2.jpeg`,
               width: '100%',
               height: 'auto',
-              autoplay: false,
+              autoplay: true,
             };
           }
           return mediaContainer;

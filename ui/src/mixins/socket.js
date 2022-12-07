@@ -100,7 +100,8 @@ export default {
               ],
               width: '100%',
               height: 'auto',
-              autoplay: false,
+              autoplay: true,
+              thumb: notification.thumbnail || notification.mediaSource,
             };
           }
 
