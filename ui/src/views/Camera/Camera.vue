@@ -79,7 +79,7 @@ import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 import { getTemperatures } from '@/api/temperatures.api';
 import VideoCard from '@/components/camera-card.vue';
-import Chart from '@/components/camera-temperature-chart.vue';
+import Chart from '@/components/camera-temperature-charts.vue';
 import socket from '@/mixins/socket';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
