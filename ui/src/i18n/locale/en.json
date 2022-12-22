@@ -286,7 +286,7 @@
     "no_username_defined": "No username defined",
     "notfound_message": "Sorry, the page you're looking for doesn't exist.",
     "notification": "Notification",
-    "notification_text": "@ detected a new movement in room %",
+    "notification_text": "@ detected a new thermal alert in room %",
     "notifications": "Notifications",
     "notifications_alert": "You have a total of % notifications",
     "notifications_nav_info": "Manage the Alexa, Telegram and Webhook settings",

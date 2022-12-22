@@ -149,17 +149,17 @@ export default {
           this.page += 1;
           this.notifications.push(...response.data.result);
 
-          this.notifications = this.notifications.map((not) => {
-            if (!not.message) {
-              if (not.camera && not.room) {
-                not.message = this.$t('notification_text').replace('@', not.camera).replace('%', not.room);
-              } else {
-                not.message = this.$t('movement_detected');
-              }
-            }
+          // this.notifications = this.notifications.map((not) => {
+          //   if (!not.message) {
+          //     if (not.camera && not.room) {
+          //       not.message = this.$t('notification_text').replace('@', not.camera).replace('%', not.room);
+          //     } else {
+          //       not.message = this.$t('movement_detected');
+          //     }
+          //   }
 
-            return not;
-          });
+          //   return not;
+          // });
 
           this.images = this.notifications
             .map((notification) => {

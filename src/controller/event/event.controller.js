@@ -40,14 +40,14 @@ export default class EventController {
     EventController.#controller = controller;
 
     EventController.#controller.on('uiMotion', (event) =>
-      EventController.handle(event.triggerType, event.cameraName, event.state, event.data)
+      EventController.handle(event.triggerType, event.cameraName, event.state, event.data, event.message)
     );
 
     this.triggerEvent = EventController.handle;
   }
 
   // eslint-disable-next-line no-unused-vars
-  static async handle(trigger, cameraName, active, data = {}, fileBuffer, type) {
+  static async handle(trigger, cameraName, active, data = {}, message = '', fileBuffer, type) {
     if (active) {
       try {
         const database = await SettingsModel.show(true);
@@ -152,6 +152,8 @@ export default class EventController {
               motionInfo.type = type || 'Video';
             }
 
+            motionInfo.label = trigger || 'no label';
+
             if (allowStream) {
               const diskSpace = Socket.diskSpace;
               const allowRecording = Boolean(diskSpace.available >= 1) || Boolean(diskSpace.available === null);
@@ -184,8 +186,11 @@ export default class EventController {
                   log.debug('Recording not enabled, skip Image Rekognition..', cameraName);
                 }
               }
-
+              if (motionInfo.label === 'no label') {
+                motionInfo.label = trigger;
+              }
               if (motionInfo.label) {
+                motionInfo.message = message;
                 const { notification, notify } = await EventController.#handleNotification(motionInfo);
 
                 // 1)

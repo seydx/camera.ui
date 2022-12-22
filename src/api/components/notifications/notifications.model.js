@@ -123,6 +123,7 @@ export const createNotification = async (data) => {
   const label = (data.label || 'no label').toString();
 
   const notification = {
+    message: data.message,
     id: id,
     camera: camera.name,
     fileName: `${fileName}.${extension}`,

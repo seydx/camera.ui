@@ -144,11 +144,11 @@ export default {
 
       if (this.isPage('Notifications')) {
         if (notification.isNotification) {
-          let message = this.$t('notification_text').replace('@', notification.camera).replace('%', notification.room);
+          //let message = this.$t('notification_text').replace('@', notification.camera).replace('%', notification.room);
 
           this.notifications?.unshift({
             ...notification,
-            message: message,
+            //message: message,
           });
 
           if (notification.recordStoring) {

@@ -56,7 +56,7 @@ export default {
       this.notifications = this.notifications.map((not) => {
         if (!not.message) {
           if (not.camera && not.room) {
-            not.message = this.$t('notification_text').replace('@', not.camera).replace('%', not.room);
+            not.message = 'ghjghjg';
           } else {
             not.message = this.$t('movement_detected');
           }

@@ -181,7 +181,39 @@ export default class MotionController {
           triggerType = triggerType.split('&')[0];
           console.log(`triggerType: ${triggerType}`);
 
-          result = await MotionController.handleMotion(triggerType, cameraName, state, 'http', result);
+          var filteredAlertData = [];
+          var alertData = result.data.toString().match(/\(([^)]+)\)/g);
+
+          // eslint-disable-next-line unicorn/no-for-loop
+          for (let index = 0; index < alertData.length; index++) {
+            alertData[index].replace('(', '').replace(')', '');
+            switch (true) {
+              case alertData[index].includes('MaxTemperature='):
+                filteredAlertData.push(alertData[index]);
+                break;
+              case alertData[index].includes('MinTemperature='):
+                filteredAlertData.push(alertData[index]);
+                break;
+              case alertData[index].includes('WarningValue='):
+                filteredAlertData.push(alertData[index]);
+                break;
+              case alertData[index].includes('TemperatureThreshold='):
+                filteredAlertData.push(alertData[index]);
+                break;
+              default:
+            }
+          }
+
+          console.log(filteredAlertData);
+
+          result = await MotionController.handleMotion(
+            triggerType,
+            cameraName,
+            state,
+            'http',
+            result,
+            filteredAlertData
+          );
         }
       }
 
@@ -696,7 +728,7 @@ export default class MotionController {
     }
   }
 
-  static async handleMotion(triggerType, cameraName, state, event, result = {}) {
+  static async handleMotion(triggerType, cameraName, state, event, result = {}, message) {
     // result = {} is used as http response
     let camera = ConfigService.ui.cameras.find(
       (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
@@ -740,7 +772,7 @@ export default class MotionController {
 
         log.debug(result, camera.name);
 
-        MotionController.#controller.emit('motion', camera.name, triggerType, state, event); // used for extern controller, like Homebridge
+        MotionController.#controller.emit('motion', camera.name, triggerType, state, message); // used for extern controller, like Homebridge
 
         if (camera.recordOnMovement) {
           const mqttClient = MotionController.mqttClient;
@@ -787,6 +819,7 @@ export default class MotionController {
                 cameraName: camera.name,
                 state: state,
                 data: result.data,
+                message: message.toString(),
               });
             }
           } else {
@@ -804,6 +837,7 @@ export default class MotionController {
               cameraName: camera.name,
               state: state,
               data: result.data,
+              message: message.toString(),
             });
           }
         } else {
