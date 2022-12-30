@@ -3,7 +3,7 @@
   
   .tw-flex.tw-flex-row.tw-justify-between.pt-safe.pl-safe
     .logo.tw-cursor-pointer(@click="$router.push('/dashboard')")
-      inline-svg(:src="require('../assets/img/logo_animated.svg')" title="camera.ui" aria-label="camera.ui" width="38px" height="44px")
+      inline-svg(:src="require('../assets/img/logo_animated.svg')" title="infraspec.ui" aria-label="infraspec.ui" width="38px" height="44px")
 
     .tw-block.tw-ml-auto(v-if="showSidebarContent")
       v-menu.included.tw-z-30(v-model="showProfileMenu" transition="slide-y-transition" min-width="220px" :close-on-content-click="false" offset-y bottom left nudge-top="-15" z-index="999" content-class="light-shadow")

@@ -292,7 +292,7 @@ export default {
       },
 
       camReset: {},
-      types: ['hikivision', 'Sunnel', 'Savgood'],
+      types: ['PTZ', 'Fixed', 'Other'],
     };
   },
 

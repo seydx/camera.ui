@@ -928,7 +928,7 @@ export default {
         { value: 'Text + Video', text: `${this.$t('text')} + ${this.$t('video')}` },
         { value: 'Disabled', text: this.$t('disabled') },
       ],
-      types: ['hikivision', 'Sunnel', 'Savgood'],
+      types: ['PTZ', 'Fixed', 'Other'],
 
       prebufferingStates: {},
       videoanalysisStates: {},
