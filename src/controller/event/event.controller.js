@@ -35,7 +35,7 @@ const stringIsAValidUrl = (s) => {
 export default class EventController {
   static #controller;
   static #movementHandler = {};
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
   constructor(controller) {
     EventController.#controller = controller;
     //

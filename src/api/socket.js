@@ -413,7 +413,6 @@ export default class Socket {
 
             const creds = credsRaw.split(':');
 
-            var regexPresets = /=(.*)/;
             var presets = [];
             var rawPresets = [];
             await fetch(
