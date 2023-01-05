@@ -5,6 +5,7 @@ import * as CamerasModel from './cameras.model.js';
 
 import CameraController from '../../../controller/camera/camera.controller.js';
 import MotionController from '../../../controller/motion/motion.controller.js';
+import fetch from 'node-fetch';
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -66,6 +67,78 @@ export const getByName = async (req, res) => {
     }
 
     res.status(200).send(camera);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const changeCameraPosition = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const ip = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('@') + 1,
+      camera.videoConfig.source.lastIndexOf(':')
+    );
+
+    const credsRaw = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('/') + 2,
+      camera.videoConfig.source.lastIndexOf('@')
+    );
+
+    const creds = credsRaw.split(':');
+    var positions = [];
+
+    await fetch(
+      `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=getPosition`,
+      {
+        method: 'GET', // *GET, POST, PUT, DELETE, etc.
+      }
+    )
+      .then((response) => response.text())
+      .then((data) => {
+        for (const position of data.split(/\r?\n/)) {
+          positions.push(position.split('=')[1]);
+        }
+      })
+      .catch(function (error) {
+        // handle error
+        console.log(error);
+      })
+      .then(function () {
+        // always executed
+      });
+    await fetch(
+      `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=setPosition&pan=${
+        Number.parseFloat(positions[0]) + Number.parseInt(req.params.pan)
+      }&tilt=${positions[1] + req.params.tilt}&zoom=${positions[2] + req.params.zoom}`,
+      {
+        method: 'GET', // *GET, POST, PUT, DELETE, etc.
+      }
+    )
+      .then(function (response) {
+        // handle success
+        console.log(response);
+      })
+      .catch(function (error) {
+        // handle error
+        console.log(error);
+      })
+      .then(function () {
+        // always executed
+      });
+
+    res.status(200);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

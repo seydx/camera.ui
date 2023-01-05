@@ -182,6 +182,36 @@ export const routesConfig = (app) => {
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
     CamerasController.getByName,
   ]);
+  /**
+   * @swagger
+   * /api/cameras/{name}:
+   *   get:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Adjust camera postions
+   *     parameters:
+   *       - in: path
+   *         name: name
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Name of the camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/cameras/:name/position/:pan/:tilt/:zoom', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
+    CamerasController.changeCameraPosition,
+  ]);
 
   /**
    * @swagger

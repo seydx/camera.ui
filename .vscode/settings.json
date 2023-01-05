@@ -7,8 +7,5 @@
     "source.fixAll.eslint": true
   },
   "editor.formatOnSave": true,
-  "eslint.workingDirectories": [
-    ".", 
-    "./ui"
-  ]
+  "eslint.workingDirectories": [".", "./ui"]
 }

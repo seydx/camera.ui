@@ -53,6 +53,14 @@
 
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
+                    label.form-input-label {{ `${$t('thermal')} ${$t('reporting')}` }}
+                    .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                      v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                      .input-info.tw-italic {{ $t('livestream_snapshot') }}
+                  v-switch(color="var(--cui-primary)" v-model="camera.thermalReporting")
+
+                .tw-flex.tw-justify-between.tw-items-center
+                  .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label {{ `${$t('dashboard')} ${$t('livestream')}` }}
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}

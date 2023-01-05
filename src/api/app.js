@@ -77,6 +77,7 @@ export default class App {
             'http://localhost:8083',
             'http://localhost:2000',
             'http://192.168.0.88',
+            'http://192.168.0.121',
             'http://192.168.0.88:2000',
             "'unsafe-eval'",
             "'unsafe-inline'",

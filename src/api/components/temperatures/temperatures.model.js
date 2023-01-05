@@ -50,7 +50,7 @@ export const list = async (query) => {
 
   if (query.cameras) {
     const cameras = query.cameras.split(',');
-    temperatures = temperatures.filter((temperature) => cameras.includes(temperature.cameraName));
+    temperatures = temperatures.filter((temperature) => cameras.includes(temperature.camera));
   }
 
   if (query.presets) {

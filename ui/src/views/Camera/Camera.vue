@@ -109,11 +109,17 @@ export default {
       notificationsPanel: [0],
       showNotifications: false,
       camTempData: {
-        label: this.$t('Camera 1 - Preset 1 - Region 1'),
-        label2: this.$t('Camera 1 - Preset 2 - Region 2'),
-        label3: this.$t('Camera 1 - Preset 3 - Region 3'),
-        label4: this.$t('Camera 1 - Preset 4 - Region 4'),
-        data: [],
+        labels: [],
+        datasets: [
+          {
+            label: 'Preset 1 - Region 1',
+            data: [
+              { x: '2022-01-05 12:30:00', y: 72.2 },
+              { x: '2022-01-05 12:35:00', y: 72.5 },
+              { x: '2022-01-05 12:40:00', y: 73.2 },
+            ],
+          },
+        ],
       },
       camTempsOptions: {
         responsive: true,
@@ -172,8 +178,8 @@ export default {
                 //labelString: 'Value',
               },
               ticks: {
-                min: 80,
-                max: 90,
+                min: 0,
+                max: 120,
                 stepSize: 1,
                 callback: function (value) {
                   return value + '°';
@@ -191,6 +197,8 @@ export default {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
       const temperatures = await getTemperatures(`?cameras=${camera.data.name}`);
+      console.log(temperatures);
+      console.log(temperatures);
       console.log(temperatures);
       camera.data.settings = settings.data;
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
@@ -233,11 +241,10 @@ export default {
     }
   },
   created() {
-    this.$socket.client.on('camTemps', this.camTemps);
-    this.$socket.client.emit('getCameraTemps');
+    this.interval = setInterval(() => this.getTemps(), 1000);
   },
   beforeDestroy() {
-    this.$socket.client.off('getCameraTemps', this.camTemps);
+    //this.$socket.client.off('getCameraTemps', this.camTemps);
   },
   methods: {
     openGallery(notification) {
@@ -256,6 +263,9 @@ export default {
     },
     camTemps(data) {
       this.camTempData.data = data;
+    },
+    async getTemps() {
+      this.temperatures = await getTemperatures(`?cameras=${this.camera.data.name}&pageSize=5000`);
     },
   },
 };

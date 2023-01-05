@@ -26,6 +26,15 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
+                label.form-input-label Thermal Montioring
+                .tw-flex.tw-justify-between.tw-items-center.tw-mt-3
+              .tw-block.tw-w-full.tw-pr-2
+                label.form-input-label Enable Thermal Monitoring
+                .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
+                  v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
+                  .input-info.tw-italic {{ 'enables cameras to record temperature readings' }}
+              v-switch(color="var(--cui-primary)" v-model="cam.thermalMonitoring")
+
             label.form-input-label Video Source
               span.tw-text-red-500 *
             v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)

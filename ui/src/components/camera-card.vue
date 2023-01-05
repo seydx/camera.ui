@@ -58,13 +58,13 @@
             .tw-block.tw-p-2
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleStartStop") {{ !play ? icons['mdiPlay'] : icons['mdiPause'] }}
             .tw-ml-auto
-                   v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handlePanLeft") {{ icons['mdiArrowLeftThick'] }}
+                   v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ'" size="22" @click="handlePanLeft") {{ icons['mdiArrowLeftThick'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handlePanRight") {{ icons['mdiArrowRightThick'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button( v-if="this.camera.type === 'PTZ'" size="22" @click="handlePanRight") {{ icons['mdiArrowRightThick'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleTiltUp") {{ icons['mdiArrowUpThick'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ'" size="22" @click="handleTiltUp") {{ icons['mdiArrowUpThick'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleTiltDown") {{ icons['mdiArrowDownThick'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ'" size="22" @click="handleTiltDown") {{ icons['mdiArrowDownThick'] }}
             .tw-ml-auto
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleResetPtz") {{ icons['mdiCursorMove'] }}
             .tw-ml-auto
@@ -75,7 +75,7 @@
             .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorReload")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
             .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio && !hideIndicatorAudio")
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleVolume") {{ audio ? icons['mdiVolumeHigh'] : icons['mdiVolumeOff'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'Other'" size="22" @click="handleVolume") {{ audio ? icons['mdiVolumeHigh'] : icons['mdiVolumeOff'] }}
             .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorFullscreen")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="toggleFullscreen") {{ !fullscreen ? icons['mdiArrowExpand'] : icons['mdiArrowCollapse'] }}
             .tw-pr-3
@@ -122,7 +122,7 @@ import {
   mdiVolumeHigh,
   mdiVolumeOff,
 } from '@mdi/js';
-import { getCameraSnapshot, getCameraStatus } from '@/api/cameras.api';
+import { getCameraSnapshot, getCameraStatus, changeCameraPosition } from '@/api/cameras.api';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -245,65 +245,17 @@ export default {
         this.play = false;
       }
     },
-    handlePanLeft() {
-      axios
-        .get(`http://192.168.0.88:2000/ptz/left?address=${this.camera.manufacturer}&id=${this.camera.model}`)
-        .then(function (response) {
-          // handle success
-          console.log(response);
-        })
-        .catch(function (error) {
-          // handle error
-          console.log(error);
-        })
-        .then(function () {
-          // always executed
-        });
+    async handlePanLeft() {
+      await changeCameraPosition(this.camera.name, -5, 0, 0);
     },
-    handlePanRight() {
-      axios
-        .get(`http://192.168.0.88:2000/ptz/right?address=${this.camera.manufacturer}&id=${this.camera.model}`)
-        .then(function (response) {
-          // handle success
-          console.log(response);
-        })
-        .catch(function (error) {
-          // handle error
-          console.log(error);
-        })
-        .then(function () {
-          // always executed
-        });
+    async handlePanRight() {
+      await changeCameraPosition(this.camera.name, 5, 0, 0);
     },
-    handleTiltUp() {
-      axios
-        .get(`http://192.168.0.88:2000/ptz/up?address=${this.camera.manufacturer}&id=${this.camera.model}`)
-        .then(function (response) {
-          // handle success
-          console.log(response);
-        })
-        .catch(function (error) {
-          // handle error
-          console.log(error);
-        })
-        .then(function () {
-          // always executed
-        });
+    async handleTiltUp() {
+      await changeCameraPosition(this.camera.name, 0, 5, 0);
     },
-    handleTiltDown() {
-      axios
-        .get(`http://192.168.0.88:2000/ptz/down?address=${this.camera.manufacturer}&id=${this.camera.model}`)
-        .then(function (response) {
-          // handle success
-          console.log(response);
-        })
-        .catch(function (error) {
-          // handle error
-          console.log(error);
-        })
-        .then(function () {
-          // always executed
-        });
+    async handleTiltDown() {
+      await changeCameraPosition(this.camera.name, 0, -5, 0);
     },
     handleResetPtz() {
       axios

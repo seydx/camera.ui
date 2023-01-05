@@ -46,3 +46,6 @@ export const stopVideoanalysis = async (cameraName) =>
   await api.put(`${resource}/${cameraName}/${videoanalysis_stop_resource}`);
 
 export const resetMotion = async (cameraName) => await api.put(`${resource}/${cameraName}/${motion_reset_resource}`);
+
+export const changeCameraPosition = async (cameraName, pan, tilt, zoom) =>
+  await api.get(`${resource}/${cameraName}/position/${pan}/${tilt}/${zoom}`);
