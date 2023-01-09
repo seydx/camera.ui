@@ -91,6 +91,7 @@ export default {
   methods: {
     fill() {
       const chartEl = this.$refs.chart;
+      var datasets = [];
 
       const gradient = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
       gradient.addColorStop(0, `rgba(${this.chartColorRGB}, 0.5)`);
@@ -98,80 +99,84 @@ export default {
       gradient.addColorStop(1, `rgba(${this.chartColorRGB}, 0)`);
 
       this.datacollection = {
-        labels: this.dataset.data.map((data) => {
+        labels: this.dataset.datasets[0].data.map((data) => {
           return data.time;
         }),
-        datasets: [
-          {
-            label: this.dataset.label,
-            borderColor: `rgb(${this.chartColorRGB})`,
-            pointBackgroundColor: this.chartPointerColorRGB,
-            borderWidth: 1,
-            pointBorderColor: this.chartPointerColorRGB,
-            backgroundColor: gradient,
-            data: this.dataset.data.map((data) => {
-              return data.value;
-            }),
-          },
-        ],
       };
 
-      const value2 = this.dataset.data.map((data) => data.value2).filter((data) => data);
-
-      if (value2.length > 1) {
-        const gradient2 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-        gradient2.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-        gradient2.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-        gradient2.addColorStop(1, 'rgba(56, 56, 56, 0)');
-
-        this.datacollection.datasets.push({
-          label: this.dataset.label2,
-          borderColor: '#383838',
-          pointBackgroundColor: '#383838',
+      for (var i = 0; i < this.dataset.datasets.length; i++) {
+        var d = {
+          label: this.dataset.datasets[i].label,
+          borderColor: `rgb(${this.chartColorRGB})`,
+          pointBackgroundColor: this.chartPointerColorRGB,
           borderWidth: 1,
-          pointBorderColor: '#383838',
-          backgroundColor: gradient2,
-          data: value2,
-        });
+          pointBorderColor: this.chartPointerColorRGB,
+          backgroundColor: gradient,
+          data: this.dataset.datasets[i].data.map((data) => {
+            return data.value;
+          }),
+        };
+        datasets.push(d);
       }
 
-      const value3 = this.dataset.data.map((data) => data.value3).filter((data) => data);
+      this.datacollection.datasets = datasets;
 
-      if (value3.length > 1) {
-        const gradient3 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-        gradient3.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-        gradient3.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-        gradient3.addColorStop(1, 'rgba(56, 56, 56, 0)');
+      // const value2 = this.dataset.data.map((data) => data.value2).filter((data) => data);
 
-        this.datacollection.datasets.push({
-          label: this.dataset.label3,
-          borderColor: '#383838',
-          pointBackgroundColor: '#383838',
-          borderWidth: 1,
-          pointBorderColor: '#383838',
-          backgroundColor: gradient3,
-          data: value3,
-        });
-      }
+      // if (value2.length > 1) {
+      //   const gradient2 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+      //   gradient2.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
+      //   gradient2.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
+      //   gradient2.addColorStop(1, 'rgba(56, 56, 56, 0)');
 
-      const value4 = this.dataset.data.map((data) => data.value4).filter((data) => data);
+      //   this.datacollection.datasets.push({
+      //     label: this.dataset.label2,
+      //     borderColor: '#383838',
+      //     pointBackgroundColor: '#383838',
+      //     borderWidth: 1,
+      //     pointBorderColor: '#383838',
+      //     backgroundColor: gradient2,
+      //     data: value2,
+      //   });
+      // }
 
-      if (value4.length > 1) {
-        const gradient4 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-        gradient4.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-        gradient4.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-        gradient4.addColorStop(1, 'rgba(56, 56, 56, 0)');
+      // const value3 = this.dataset.data.map((data) => data.value3).filter((data) => data);
 
-        this.datacollection.datasets.push({
-          label: this.dataset.label4,
-          borderColor: '#383838',
-          pointBackgroundColor: '#383838',
-          borderWidth: 1,
-          pointBorderColor: '#383838',
-          backgroundColor: gradient4,
-          data: value3,
-        });
-      }
+      // if (value3.length > 1) {
+      //   const gradient3 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+      //   gradient3.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
+      //   gradient3.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
+      //   gradient3.addColorStop(1, 'rgba(56, 56, 56, 0)');
+
+      //   this.datacollection.datasets.push({
+      //     label: this.dataset.label3,
+      //     borderColor: '#383838',
+      //     pointBackgroundColor: '#383838',
+      //     borderWidth: 1,
+      //     pointBorderColor: '#383838',
+      //     backgroundColor: gradient3,
+      //     data: value3,
+      //   });
+      // }
+
+      // const value4 = this.dataset.data.map((data) => data.value4).filter((data) => data);
+
+      // if (value4.length > 1) {
+      //   const gradient4 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+      //   gradient4.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
+      //   gradient4.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
+      //   gradient4.addColorStop(1, 'rgba(56, 56, 56, 0)');
+
+      //   this.datacollection.datasets.push({
+      //     label: this.dataset.label4,
+      //     borderColor: '#383838',
+      //     pointBackgroundColor: '#383838',
+      //     borderWidth: 1,
+      //     pointBorderColor: '#383838',
+      //     backgroundColor: gradient4,
+      //     data: value3,
+      //   });
+      // }
     },
   },
 };

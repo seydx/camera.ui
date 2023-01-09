@@ -97,6 +97,7 @@ export default {
   },
   data() {
     return {
+      temperatures: null,
       camera: {},
       cols: 12,
       icons: {
@@ -112,11 +113,19 @@ export default {
         labels: [],
         datasets: [
           {
-            label: 'Preset 1 - Region 1',
+            label: 'Preset 100 - Region 1',
             data: [
-              { x: '2022-01-05 12:30:00', y: 72.2 },
-              { x: '2022-01-05 12:35:00', y: 72.5 },
-              { x: '2022-01-05 12:40:00', y: 73.2 },
+              { time: '2022-01-09 15:20:00', value: 72.2 },
+              { time: '2022-01-09 15:22:00', value: 82.5 },
+              { time: '2022-01-09 15:23:00', value: 93.2 },
+            ],
+          },
+          {
+            label: 'Preset 100 - Region 2',
+            data: [
+              { time: '2022-01-09 15:20:00', value: 32.2 },
+              { time: '2022-01-09 15:22:00', value: 42.5 },
+              { time: '2022-01-09 15:23:00', value: 53.2 },
             ],
           },
         ],
@@ -190,6 +199,7 @@ export default {
           ],
         },
       },
+      polling: null,
     };
   },
   async mounted() {
@@ -241,7 +251,7 @@ export default {
     }
   },
   created() {
-    this.interval = setInterval(() => this.getTemps(), 1000);
+    this.pollData();
   },
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
@@ -264,8 +274,12 @@ export default {
     camTemps(data) {
       this.camTempData.data = data;
     },
-    async getTemps() {
-      this.temperatures = await getTemperatures(`?cameras=${this.camera.data.name}&pageSize=5000`);
+    pollData() {
+      this.polling = setInterval(async () => {
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000`);
+        console.log(this.temperatures);
+        console.log(this.camTempData.datasets.length);
+      }, 3000);
     },
   },
 };
