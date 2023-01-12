@@ -113,20 +113,8 @@ export default {
         labels: [],
         datasets: [
           {
-            label: 'Preset 100 - Region 1',
-            data: [
-              { time: '2022-01-09 15:20:00', value: 72.2 },
-              { time: '2022-01-09 15:22:00', value: 82.5 },
-              { time: '2022-01-09 15:23:00', value: 93.2 },
-            ],
-          },
-          {
-            label: 'Preset 100 - Region 2',
-            data: [
-              { time: '2022-01-09 15:20:00', value: 32.2 },
-              { time: '2022-01-09 15:22:00', value: 42.5 },
-              { time: '2022-01-09 15:23:00', value: 53.2 },
-            ],
+            label: '',
+            data: [],
           },
         ],
       },
@@ -187,8 +175,8 @@ export default {
                 //labelString: 'Value',
               },
               ticks: {
-                min: 0,
-                max: 120,
+                min: 20,
+                max: 35,
                 stepSize: 1,
                 callback: function (value) {
                   return value + '°';
@@ -206,10 +194,6 @@ export default {
     try {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
-      const temperatures = await getTemperatures(`?cameras=${camera.data.name}`);
-      console.log(temperatures);
-      console.log(temperatures);
-      console.log(temperatures);
       camera.data.settings = settings.data;
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
       this.notifications = lastNotifications.data.result;
@@ -255,8 +239,20 @@ export default {
   },
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
+    clearInterval(this.poll);
   },
   methods: {
+    groupBy(array, f) {
+      let groups = {};
+      array.forEach(function (o) {
+        var group = JSON.stringify(f(o));
+        groups[group] = groups[group] || [];
+        groups[group].push(o);
+      });
+      return Object.keys(groups).map(function (group) {
+        return groups[group];
+      });
+    },
     openGallery(notification) {
       if (notification.recordStoring) {
         const index = this.images.findIndex((el) => el.id === notification.id);
@@ -272,13 +268,31 @@ export default {
       }
     },
     camTemps(data) {
-      this.camTempData.data = data;
+      this.camTempData.datasets = [];
+      this.camTempData.datasets = data;
     },
     pollData() {
       this.polling = setInterval(async () => {
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000`);
-        console.log(this.temperatures);
-        console.log(this.camTempData.datasets.length);
+        let yourDate = new Date();
+        let currentDay = yourDate.toISOString().split('T')[0];
+        var results = [];
+        var datasets = [];
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${currentDay}
+        `);
+        results = this.groupBy(this.temperatures.data.result, function (item) {
+          return [item.preset, item.region];
+        });
+        for (let index = 0; index < results.length; index++) {
+          const element = results[index];
+          var d = {
+            label: `Preset: ${element[0].preset} - Region: ${element[0].region}`,
+            data: element.map(function (i) {
+              return { time: i.time, value: i.maxTemp };
+            }),
+          };
+          datasets.push(d);
+          this.camTemps(datasets);
+        }
       }, 3000);
     },
   },

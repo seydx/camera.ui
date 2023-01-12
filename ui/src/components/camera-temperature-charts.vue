@@ -23,50 +23,10 @@ export default {
   }),
 
   computed: {
-    chartColorRGB() {
+    chartColorRGB2: function () {
       const color = localStorage.getItem('theme-color') || 'pink';
 
       switch (color) {
-        case 'blue':
-          return '10, 132, 255';
-        case 'blgray':
-          return '96, 125, 139';
-        case 'brown':
-          return '121, 85, 72';
-        case 'green':
-          return '102, 206, 102';
-        case 'gray':
-          return '98, 99, 101';
-        case 'orange':
-          return '255, 149, 0';
-        case 'pink':
-          return '209, 32, 73';
-        case 'purple':
-          return '124, 72, 194';
-        default:
-          return '209, 32, 73';
-      }
-    },
-    chartColorRGB2() {
-      const color = localStorage.getItem('theme-color') || 'pink';
-
-      switch (color) {
-        case 'blue':
-          return '4, 53, 102';
-        case 'blgray':
-          return '37, 49, 55';
-        case 'brown':
-          return '48, 34, 29';
-        case 'green':
-          return '41, 82, 41';
-        case 'gray':
-          return '39, 40, 40';
-        case 'orange':
-          return '102, 60, 0';
-        case 'pink':
-          return '133, 21, 47';
-        case 'purple':
-          return '50, 29, 78';
         default:
           return '133, 21, 47';
       }
@@ -89,14 +49,49 @@ export default {
   },
 
   methods: {
+    chartColorRGB: function (value) {
+      //const color = localStorage.getItem('theme-color') || 'pink';
+
+      switch (value) {
+        case 0:
+          return '50, 29, 78';
+        case 'blue-alt' || 1:
+          return '50, 29, 78';
+        case 'blgray' || 2:
+          return '96, 125, 139';
+        case 'blgray-alt' || 3:
+          return '37, 49, 55';
+        case 'brown' || 4:
+          return '121, 85, 72';
+        case 'brown-alt' || 5:
+          return '48, 34, 29';
+        case 'green' || 6:
+          return '102, 206, 102';
+        case 'green-alt' || 7:
+          return '41, 82, 41';
+        case 'gray' || 8:
+          return '98, 99, 101';
+        case 'gray-alt' || 9:
+          return '39, 40, 40';
+        case 'orange' || 10:
+          return '255, 149, 0';
+        case 'orange-alt' || 11:
+          return '102, 60, 0';
+        case 'pink' || 12:
+          return '209, 32, 73';
+        case 'pink-alt' || 13:
+          return '133, 21, 47';
+        case 'purple' || 14:
+          return '124, 72, 194';
+        case 'purple-alt' || 15:
+          return '50, 29, 78';
+        default:
+          return '209, 32, 73';
+      }
+    },
     fill() {
       const chartEl = this.$refs.chart;
       var datasets = [];
-
-      const gradient = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-      gradient.addColorStop(0, `rgba(${this.chartColorRGB}, 0.5)`);
-      gradient.addColorStop(0.5, `rgba(${this.chartColorRGB}, 0.25)`);
-      gradient.addColorStop(1, `rgba(${this.chartColorRGB}, 0)`);
 
       this.datacollection = {
         labels: this.dataset.datasets[0].data.map((data) => {
@@ -105,9 +100,13 @@ export default {
       };
 
       for (var i = 0; i < this.dataset.datasets.length; i++) {
+        const gradient = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
+        gradient.addColorStop(0, `rgba(${this.chartColorRGB(i)}, 0.5)`);
+        gradient.addColorStop(0.5, `rgba(${this.chartColorRGB(i)}, 0.25)`);
+        gradient.addColorStop(1, `rgba(${this.chartColorRGB(i)}, 0)`);
         var d = {
           label: this.dataset.datasets[i].label,
-          borderColor: `rgb(${this.chartColorRGB})`,
+          borderColor: `rgb(${this.chartColorRGB(9)})`,
           pointBackgroundColor: this.chartPointerColorRGB,
           borderWidth: 1,
           pointBorderColor: this.chartPointerColorRGB,
