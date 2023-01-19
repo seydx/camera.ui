@@ -2,19 +2,20 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .tw-max-w-4xl.pl-safe.pr-safe
+  .tw-max-w-7xl.pl-safe.pr-safe
         
+    .tw-flex.tw-flex-wrap
+      v-row.tw-w-full.tw-h-full
+        v-col.tw-mb-3(:cols="cols")
+          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
+
     .tw-flex.tw-flex-wrap
       v-row.tw-w-full.tw-h-full
         v-col.tw-mb-3(:cols="cols")
           vue-aspect-ratio(ar="16:9" width="100%")
             VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
-          
-    .tw-flex.tw-flex-wrap
-      v-row.tw-w-full.tw-h-full
-        v-col.tw-mb-3(:cols="cols")
-          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
-    v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="12")
+
+    v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="cols")
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
           h2.tw-leading-6 {{ $route.params.name }}
@@ -159,7 +160,7 @@ export default {
               time: {
                 unit: 'minutes',
                 displayFormats: { minutes: 'HH:mm' },
-                unitStepSize: 15,
+                unitStepSize: 30,
               },
             },
           ],
@@ -239,7 +240,7 @@ export default {
   },
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
-    clearInterval(this.poll);
+    clearInterval(this.polling);
   },
   methods: {
     groupBy(array, f) {
@@ -273,11 +274,14 @@ export default {
     },
     pollData() {
       this.polling = setInterval(async () => {
-        let yourDate = new Date();
-        let currentDay = yourDate.toISOString().split('T')[0];
+        let date = new Date();
+        const offset = date.getTimezoneOffset();
+        date = new Date(date.getTime() - offset * 60 * 1000).toISOString().split('T')[0];
+
+        console.log(date);
         var results = [];
         var datasets = [];
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${currentDay}
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${date}
         `);
         results = this.groupBy(this.temperatures.data.result, function (item) {
           return [item.preset, item.region];
@@ -285,7 +289,7 @@ export default {
         for (let index = 0; index < results.length; index++) {
           const element = results[index];
           var d = {
-            label: `Preset: ${element[0].preset} - Region: ${element[0].region}`,
+            label: `${element[0].preset == 1 ? '' : element[0].preset + '-'} ${element[0].region}`,
             data: element.map(function (i) {
               return { time: i.time, value: i.maxTemp };
             }),
@@ -293,7 +297,7 @@ export default {
           datasets.push(d);
           this.camTemps(datasets);
         }
-      }, 3000);
+      }, 1000);
     },
   },
 };

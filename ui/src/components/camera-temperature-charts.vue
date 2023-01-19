@@ -54,37 +54,31 @@ export default {
 
       switch (value) {
         case 0:
-          return '50, 29, 78';
-        case 'blue-alt' || 1:
-          return '50, 29, 78';
-        case 'blgray' || 2:
-          return '96, 125, 139';
-        case 'blgray-alt' || 3:
-          return '37, 49, 55';
-        case 'brown' || 4:
-          return '121, 85, 72';
-        case 'brown-alt' || 5:
-          return '48, 34, 29';
-        case 'green' || 6:
-          return '102, 206, 102';
-        case 'green-alt' || 7:
-          return '41, 82, 41';
-        case 'gray' || 8:
-          return '98, 99, 101';
-        case 'gray-alt' || 9:
-          return '39, 40, 40';
-        case 'orange' || 10:
-          return '255, 149, 0';
-        case 'orange-alt' || 11:
-          return '102, 60, 0';
-        case 'pink' || 12:
-          return '209, 32, 73';
-        case 'pink-alt' || 13:
-          return '133, 21, 47';
-        case 'purple' || 14:
-          return '124, 72, 194';
-        case 'purple-alt' || 15:
-          return '50, 29, 78';
+          return '236,87,133';
+        case 1:
+          return '79,165,246';
+        case 2:
+          return '221, 221, 221';
+        case 3:
+          return '125,189,81';
+        case 4:
+          return '221,160,55';
+        case 5:
+          return '236,84,39';
+        case 6:
+          return '108,210,210';
+        case 7:
+          return '102,49,166';
+        case 8:
+          return '38,7,124';
+        case 9:
+          return '250,250,70';
+        case 10:
+          return '132,191,237';
+        case 11:
+          return '0,82,109';
+        case 12:
+          return '248,31,10';
         default:
           return '209, 32, 73';
       }
@@ -106,11 +100,12 @@ export default {
         gradient.addColorStop(1, `rgba(${this.chartColorRGB(i)}, 0)`);
         var d = {
           label: this.dataset.datasets[i].label,
-          borderColor: `rgb(${this.chartColorRGB(9)})`,
+          fill: false,
+          borderColor: `rgb(${this.chartColorRGB(i)})`,
+          backgroundColor: `rgb(${this.chartColorRGB(i)})`,
           pointBackgroundColor: this.chartPointerColorRGB,
           borderWidth: 1,
           pointBorderColor: this.chartPointerColorRGB,
-          backgroundColor: gradient,
           data: this.dataset.datasets[i].data.map((data) => {
             return data.value;
           }),

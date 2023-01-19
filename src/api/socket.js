@@ -354,11 +354,11 @@ export default class Socket {
           switch (camera.type) {
             case 'Fixed':
               {
-                const ip = camera.videoConfig.source.slice(
-                  camera.videoConfig.source.indexOf('@') + 1,
-                  camera.videoConfig.source.lastIndexOf(':')
-                );
-
+                var rawNames = [];
+                var regions = [];
+                var regex = /=(.*)/;
+                var goods = [];
+                var formatted = [];
                 const credsRaw = camera.videoConfig.source.slice(
                   camera.videoConfig.source.indexOf('/') + 2,
                   camera.videoConfig.source.lastIndexOf('@')
@@ -366,9 +366,33 @@ export default class Socket {
 
                 const creds = credsRaw.split(':');
 
-                var regex = /=(.*)/;
-                var goods = [];
-                var formatted = [];
+                const ip = camera.videoConfig.source.slice(
+                  camera.videoConfig.source.indexOf('@') + 1,
+                  camera.videoConfig.source.lastIndexOf(':')
+                );
+
+                await fetch(
+                  `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=0&areaID=-1`,
+                  {
+                    method: 'GET', // *GET, POST, PUT, DELETE, etc.
+                  }
+                )
+                  .then((response) => response.text())
+                  .then((data) => {
+                    //console.log(data.split(/\r?\n/));
+                    rawNames = data.split(/\r?\n/);
+                    console.log(rawNames);
+                    for (const [index, rawName] of rawNames.entries()) {
+                      if (rawName.startsWith('areaId')) {
+                        data = {
+                          regionId: rawNames[index].match(regex)[1],
+                          regionName: rawNames[index + 1].match(regex)[1],
+                        };
+                        regions.push(data);
+                      }
+                      //Do something
+                    }
+                  });
 
                 await fetch(
                   `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&AreaID=-1`,
@@ -379,12 +403,16 @@ export default class Socket {
                   .then((response) => response.text())
                   .then((data) => {
                     //console.log(data.split(/\r?\n/));
+                    console.log();
+
                     goods = data.split(/\r?\n/);
                     for (var index = 0; index < goods.length; index++) {
                       if (goods[index].startsWith('areaID')) {
                         data = {
                           cameraName: camera.name,
-                          regionId: goods[index].match(regex)[1],
+                          regionId: `${regions.find((x) => x.regionId == goods[index].match(regex)[1]).regionName}[${
+                            regions.find((x) => x.regionId == goods[index].match(regex)[1]).regionId
+                          }]`,
                           presetId: '1',
                           maxTemp: goods[index + 4].match(regex)[1],
                           minTemp: goods[index + 7].match(regex)[1],
@@ -427,10 +455,15 @@ export default class Socket {
                   .then((response) => response.text())
                   .then((data) => {
                     rawPresets = data.split(/\r?\n/);
-                    for (const rawPreset of rawPresets) {
-                      if (rawPreset.startsWith('presetID')) {
-                        presets.push(rawPreset.split('=')[1]);
+                    for (var index = 0; index < rawPresets.length; index++) {
+                      if (rawPresets[index].startsWith('presetID')) {
+                        data = {
+                          presetName: rawPresets[index + 1].match(regex)[1],
+                          presetId: rawPresets[index].match(regex)[1],
+                        };
+                        presets.push(data);
                       }
+                      //Do something
                     }
                   });
                 console.log(presets);
@@ -462,7 +495,7 @@ export default class Socket {
                           data = {
                             cameraName: camera.name,
                             regionId: goodsPTZ[index].match(regexPTZ)[1],
-                            presetId: preset,
+                            presetId: `${preset.presetName}[${preset.presetId}]`,
                             maxTemp: goodsPTZ[index + 4].match(regexPTZ)[1],
                             minTemp: goodsPTZ[index + 7].match(regexPTZ)[1],
                             avgTemp: goodsPTZ[index + 8].match(regexPTZ)[1],
