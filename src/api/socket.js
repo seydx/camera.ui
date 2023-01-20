@@ -471,6 +471,29 @@ export default class Socket {
                   var regexPTZ = /=(.*)/;
                   var goodsPTZ = [];
                   var formattedPTZ = [];
+                  var regionList = [];
+
+                  await fetch(
+                    `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${preset.presetId}&areaID=-1`,
+                    {
+                      method: 'GET', // *GET, POST, PUT, DELETE, etc.
+                    }
+                  )
+                    .then((response) => response.text())
+                    .then((data) => {
+                      var rawNames = data.split(/\r?\n/);
+                      for (const [index, rawName] of rawNames.entries()) {
+                        if (rawName.startsWith('areaId')) {
+                          data = {
+                            regionId: rawNames[index].match(regex)[1],
+                            regionName: rawNames[index + 1].match(regex)[1],
+                          };
+                          regionList.push(data);
+                        }
+                        //Do something
+                      }
+                    });
+
                   await fetch(
                     `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=presetInvoke&presetID=${preset}`,
                     {
@@ -494,7 +517,9 @@ export default class Socket {
                         if (goodsPTZ[index].startsWith('areaID')) {
                           data = {
                             cameraName: camera.name,
-                            regionId: goodsPTZ[index].match(regexPTZ)[1],
+                            regionId: `${
+                              regionList.find((x) => x.regionId == goodsPTZ[index].match(regex)[1]).regionName
+                            }[${regions.find((x) => x.regionId == goodsPTZ[index].match(regex)[1]).regionId}]`,
                             presetId: `${preset.presetName}[${preset.presetId}]`,
                             maxTemp: goodsPTZ[index + 4].match(regexPTZ)[1],
                             minTemp: goodsPTZ[index + 7].match(regexPTZ)[1],

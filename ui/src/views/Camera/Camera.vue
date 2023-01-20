@@ -272,13 +272,31 @@ export default {
       this.camTempData.datasets = [];
       this.camTempData.datasets = data;
     },
+
+    tempLimits(data) {
+      var minTemp;
+      var maxTemp;
+      for (let index = 0; index < data.length; index++) {
+        var instanceMax = Math.max(...data.map((x) => x.value));
+        var instanceMin = Math.min(...data.map((x) => x.value));
+        if (instanceMax > maxTemp) {
+          maxTemp = instanceMax;
+        }
+        if (instanceMin < minTemp) {
+          minTemp = instanceMax;
+        }
+      }
+      console.log(`${minTemp} - ${maxTemp}`);
+      this.camTempsOptions.scales.yAxes[0].ticks.min = minTemp - 3;
+      this.camTempsOptions.scales.yAxes[0].ticks.max = maxTemp + 3;
+
+      console.log(`${this.camTempsOptions}`);
+    },
     pollData() {
       this.polling = setInterval(async () => {
         let date = new Date();
         const offset = date.getTimezoneOffset();
         date = new Date(date.getTime() - offset * 60 * 1000).toISOString().split('T')[0];
-
-        console.log(date);
         var results = [];
         var datasets = [];
         this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${date}
@@ -295,6 +313,7 @@ export default {
             }),
           };
           datasets.push(d);
+          //this.tempLimits(datasets);
           this.camTemps(datasets);
         }
       }, 1000);
@@ -310,9 +329,7 @@ export default {
 .notifications-panel {
   background: rgba(var(--cui-bg-card-rgb)) !important;
 }
-.notifications-panel-title {
-  /*border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);*/
-}
+
 .notifications-panel-content {
   color: rgba(var(--cui-text-default-rgb));
 }
