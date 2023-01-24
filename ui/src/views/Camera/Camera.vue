@@ -10,7 +10,7 @@
           Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
 
     .tw-flex.tw-flex-wrap
-      v-row.tw-w-full.tw-h-full
+      v-row.tw-w-full.max-h-screen
         v-col.tw-mb-3(:cols="cols")
           vue-aspect-ratio(ar="16:9" width="100%")
             VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
@@ -40,8 +40,8 @@
                             .tw-flex.tw-justify-center.tw-items-center.tw-h-full
                               v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${$t('movement_detected')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
-                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
+                      v-list-item-title.text-default.tw-font-semibold {{ `${this.camera.thermalReporting == true ? `Temperature Alarm` : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time} Readings:${notification.message}`}}
                     v-list-item-action
                       v-btn.text-muted(icon @click="openGallery(notification)")
                         v-icon {{ icons['mdiPlusCircle'] }}
@@ -299,6 +299,7 @@ export default {
         date = new Date(date.getTime() - offset * 60 * 1000).toISOString().split('T')[0];
         var results = [];
         var datasets = [];
+        console.log(this.camera);
         this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${date}
         `);
         results = this.groupBy(this.temperatures.data.result, function (item) {

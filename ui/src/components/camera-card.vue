@@ -66,11 +66,11 @@
             .tw-ml-auto
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ'" size="22" @click="handleTiltDown") {{ icons['mdiArrowDownThick'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleResetPtz") {{ icons['mdiCursorMove'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ' && this.camera.thermalReporting == false" size="22" @click="handleResetPtz") {{ icons['mdiCursorMove'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleZoomIn") {{ icons['mdiMagnifyPlus'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ' && this.camera.thermalReporting == false" size="22" @click="handleZoomIn") {{ icons['mdiMagnifyPlus'] }}
             .tw-ml-auto
-              v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleZoomOut") {{ icons['mdiMagnifyMinus'] }}
+              v-icon.tw-p-1.tw-cursor-pointer.controller-button(v-if="this.camera.type === 'PTZ' && this.camera.thermalReporting == false" size="22" @click="handleZoomOut") {{ icons['mdiMagnifyMinus'] }}
             .tw-ml-auto
             .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorReload")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
