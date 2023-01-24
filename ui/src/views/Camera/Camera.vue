@@ -177,7 +177,7 @@ export default {
               },
               ticks: {
                 min: 20,
-                max: 35,
+                max: 45,
                 stepSize: 1,
                 callback: function (value) {
                   return value + '°';
