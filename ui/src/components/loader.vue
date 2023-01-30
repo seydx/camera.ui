@@ -1,6 +1,6 @@
 <template lang="pug">
-.loader.tw-flex.tw-justify-center.tw-align-center
-  inline-svg(:src="require('../assets/img/logo_loading_circle.svg')" title="camera.ui" aria-label="camera.ui" width="200px")
+.loader.tw-flex.tw-justify-center.tw-align-center.tw-items-center
+  inline-svg(:src="require('../assets/img/logo_loading_circle.svg')" title="infraspec.ui" aria-label="infraspec.ui" width="200px")
 </template>
 
 <script>

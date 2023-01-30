@@ -46,6 +46,7 @@ export default {
   mounted() {
     this.fill();
     this.$watch('dataset', this.fill, { deep: true });
+    this.$watch('options', this.fill, { deep: true });
   },
 
   methods: {
@@ -114,63 +115,6 @@ export default {
       }
 
       this.datacollection.datasets = datasets;
-
-      // const value2 = this.dataset.data.map((data) => data.value2).filter((data) => data);
-
-      // if (value2.length > 1) {
-      //   const gradient2 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-      //   gradient2.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-      //   gradient2.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-      //   gradient2.addColorStop(1, 'rgba(56, 56, 56, 0)');
-
-      //   this.datacollection.datasets.push({
-      //     label: this.dataset.label2,
-      //     borderColor: '#383838',
-      //     pointBackgroundColor: '#383838',
-      //     borderWidth: 1,
-      //     pointBorderColor: '#383838',
-      //     backgroundColor: gradient2,
-      //     data: value2,
-      //   });
-      // }
-
-      // const value3 = this.dataset.data.map((data) => data.value3).filter((data) => data);
-
-      // if (value3.length > 1) {
-      //   const gradient3 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-      //   gradient3.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-      //   gradient3.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-      //   gradient3.addColorStop(1, 'rgba(56, 56, 56, 0)');
-
-      //   this.datacollection.datasets.push({
-      //     label: this.dataset.label3,
-      //     borderColor: '#383838',
-      //     pointBackgroundColor: '#383838',
-      //     borderWidth: 1,
-      //     pointBorderColor: '#383838',
-      //     backgroundColor: gradient3,
-      //     data: value3,
-      //   });
-      // }
-
-      // const value4 = this.dataset.data.map((data) => data.value4).filter((data) => data);
-
-      // if (value4.length > 1) {
-      //   const gradient4 = chartEl.$refs.canvas.getContext('2d').createLinearGradient(0, 0, 0, 450);
-      //   gradient4.addColorStop(0, 'rgba(56, 56, 56, 0.5)');
-      //   gradient4.addColorStop(0.5, 'rgba(56, 56, 56, 0.25)');
-      //   gradient4.addColorStop(1, 'rgba(56, 56, 56, 0)');
-
-      //   this.datacollection.datasets.push({
-      //     label: this.dataset.label4,
-      //     borderColor: '#383838',
-      //     pointBackgroundColor: '#383838',
-      //     borderWidth: 1,
-      //     pointBorderColor: '#383838',
-      //     backgroundColor: gradient4,
-      //     data: value3,
-      //   });
-      // }
     },
   },
 };

@@ -23,10 +23,16 @@ import ToastOptions from '@/common/toast.defaults.js';
 import socket from '@/common/socket-instance';
 import VueSocketIOExt from 'vue-socket.io-extended';
 
+import JsonExcel from 'vue-json-excel';
+import VueHtml2Canvas from 'vue-html2canvas';
+
 Vue.use(Toast, ToastOptions);
 Vue.use(VueSocketIOExt, socket, { store });
+Vue.use(VueHtml2Canvas);
 
 Vue.component('Loader', Loader);
+
+Vue.component('DownloadExcel', JsonExcel);
 
 Vue.mixin(permission);
 

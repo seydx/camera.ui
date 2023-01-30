@@ -2,20 +2,29 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-  .tw-max-w-7xl.pl-safe.pr-safe
+    .tw-max-w-7xl.pl-safe.pr-safe
+      Sidebar(datePicker @filter="filter" :temperaturesJson="camTempData.datasets")
+
+    .overlay(v-if="showOverlay")
+
+    .filter-content.filter-included.tw-w-full.tw-relative
+      .tw-flex.tw-justify-between
+        .header-title.tw-flex.tw-items-center
+          v-btn.included.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
+            v-icon {{ icons['mdiFilter'] }}
         
-    .tw-flex.tw-flex-wrap
+    .filter-content.filter-included.tw-flex.tw-flex-wrap
       v-row.tw-w-full.tw-h-full
-        v-col.tw-mb-3(:cols="cols")
+        v-col.tw-mb-3(:cols="cols" ref="chart")
           Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
 
-    .tw-flex.tw-flex-wrap
+    .filter-content.filter-included.tw-flex.tw-flex-wrap
       v-row.tw-w-full.max-h-screen
         v-col.tw-mb-3(:cols="cols")
           vue-aspect-ratio(ar="16:9" width="100%")
             VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
 
-    v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(cols="cols")
+    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
           h2.tw-leading-6 {{ $route.params.name }}
@@ -24,34 +33,34 @@
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-    v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
+    .filter-content.filter-included.v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
       v-expansion-panels(v-model="notificationsPanel" multiple)
         v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
           v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
-          v-expansion-panel-content.notifications-panel-content
-            v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
-              template(v-slot:default="{ item }")
-                v-list.tw-p-0(two-line dense)
-                  v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
-                    v-list-item-avatar
-                      v-avatar(size="40" color="black")
-                        v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
-                          template(v-slot:placeholder)
-                            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
-                              v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
+            v-expansion-panel-content.notifications-panel-content
+              v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
+                template(v-slot:default="{ item }")
+                  v-list.tw-p-0(two-line dense)
+                    v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
+                      v-list-item-avatar
+                        v-avatar(size="40" color="black")
+                          v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
+                            template(v-slot:placeholder)
+                              .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                                v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
                       v-list-item-title.text-default.tw-font-semibold {{ `${this.camera.thermalReporting == true ? `Temperature Alarm` : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time} Readings:${notification.message}`}}
                     v-list-item-action
                       v-btn.text-muted(icon @click="openGallery(notification)")
                         v-icon {{ icons['mdiPlusCircle'] }}
-            .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
+            .filter-content.tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
               v-list.tw-p-0(dense)
                 v-list-item
                   v-list-item-content
                     v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
-  LightBox(
+    LightBox(
     ref="lightbox"
     :media="images"
     :showLightBox="false"
@@ -60,7 +69,7 @@
     disableScroll
   )
 
-  LightBox(
+    LightBox(
     ref="lightboxBanner"
     :media="notImages"
     :showLightBox="false"
@@ -74,7 +83,7 @@
 <script>
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import { mdiOpenInNew, mdiPlusCircle } from '@mdi/js';
+import { mdiOpenInNew, mdiPlusCircle, mdiFilter } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -82,6 +91,8 @@ import { getTemperatures } from '@/api/temperatures.api';
 import VideoCard from '@/components/camera-card.vue';
 import Chart from '@/components/camera-temperature-charts.vue';
 import socket from '@/mixins/socket';
+import Sidebar from '@/components/sidebar-temp-graph-filter.vue';
+import { bus } from '@/main';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
   name: 'Camera',
@@ -90,6 +101,7 @@ export default {
     VideoCard,
     Chart,
     'vue-aspect-ratio': VueAspectRatio,
+    Sidebar,
   },
   mixins: [socket],
   beforeRouteLeave(to, from, next) {
@@ -104,6 +116,7 @@ export default {
       icons: {
         mdiOpenInNew,
         mdiPlusCircle,
+        mdiFilter,
       },
       images: [],
       loading: true,
@@ -177,7 +190,7 @@ export default {
               },
               ticks: {
                 min: 20,
-                max: 45,
+                max: 55,
                 stepSize: 1,
                 callback: function (value) {
                   return value + '°';
@@ -189,7 +202,17 @@ export default {
         },
       },
       polling: null,
+      showOverlay: true,
+      query: '',
+      selectedFilter: [],
     };
+  },
+  watch: {
+    query: {
+      handler() {
+        this.selectedFilter = this.query.split('&').filter((query) => query);
+      },
+    },
   },
   async mounted() {
     try {
@@ -234,6 +257,7 @@ export default {
       console.log(err);
       this.$toast.error(err.message);
     }
+    //this.getCurrentDate();
   },
   created() {
     this.pollData();
@@ -241,8 +265,25 @@ export default {
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
     clearInterval(this.polling);
+    bus.$off('showFilterOverlay', this.triggerFilterOverlay);
   },
   methods: {
+    triggerFilterOverlay(state) {
+      this.showOverlay = state;
+    },
+    toggleFilterNavi() {
+      this.showOverlay = !this.showOverlay;
+      bus.$emit('showFilterNavi', true);
+    },
+    filter(filterQuery) {
+      if (this.query !== filterQuery) {
+        this.loading = true;
+        this.page = 1;
+        this.query = filterQuery;
+        this.infiniteId = Date.now();
+        this.loading = false;
+      }
+    },
     groupBy(array, f) {
       let groups = {};
       array.forEach(function (o) {
@@ -277,8 +318,9 @@ export default {
       var minTemp;
       var maxTemp;
       for (let index = 0; index < data.length; index++) {
-        var instanceMax = Math.max(...data.map((x) => x.value));
-        var instanceMin = Math.min(...data.map((x) => x.value));
+        var instanceMax = Math.max(...data.map((x) => x.value.toFixed()));
+        var instanceMin = Math.min(...data.map((x) => x.value.toFixed()));
+        console.log(`Min Temp: ${instanceMin} - Max Temp:${instanceMax}`);
         if (instanceMax > maxTemp) {
           maxTemp = instanceMax;
         }
@@ -286,11 +328,13 @@ export default {
           minTemp = instanceMax;
         }
       }
-      console.log(`${minTemp} - ${maxTemp}`);
-      this.camTempsOptions.scales.yAxes[0].ticks.min = minTemp - 3;
-      this.camTempsOptions.scales.yAxes[0].ticks.max = maxTemp + 3;
+      console.log(`Min Temp: ${minTemp} - Max Temp:${maxTemp}`);
+      this.camTempsOptions.scales.yAxes[0].ticks.min = 60 - 3;
+      this.camTempsOptions.scales.yAxes[0].ticks.max = 10 + 3;
+      this.camTempsOptions.scales.yAxes[0].ticks.stepSize = 1;
+      this.camTempsOptions.scales.yAxes[0].display = true;
 
-      console.log(`${this.camTempsOptions}`);
+      console.log(`${this.camTempsOptions.scales.yAxes[0]}`);
     },
     pollData() {
       this.polling = setInterval(async () => {
@@ -300,7 +344,7 @@ export default {
         var results = [];
         var datasets = [];
         console.log(this.camera);
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${date}
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
         `);
         results = this.groupBy(this.temperatures.data.result, function (item) {
           return [item.preset, item.region];
@@ -314,16 +358,28 @@ export default {
             }),
           };
           datasets.push(d);
-          //this.tempLimits(datasets);
+          this.tempLimits(datasets);
           this.camTemps(datasets);
         }
       }, 1000);
+    },
+    getCurrentDate() {
+      let today = new Date();
+      const offset = today.getTimezoneOffset();
+      today = new Date(today.getTime() - offset * 60 * 1000);
+      this.query = `&from=${today.toISOString().split('T')[0]}&to${today.toISOString().split('T')[0]}`;
     },
   },
 };
 </script>
 
 <style scoped>
+.filter-content {
+  @media all and (min-width: 1000px) {
+    padding-left: 320px;
+  }
+}
+
 .subtitle {
   color: rgba(var(--cui-text-third-rgb)) !important;
 }
