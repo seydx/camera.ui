@@ -1,9 +1,9 @@
 <template lang="pug">
 .settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
-  .tw-p-5
+  .tw-p-5.tw-grid.tw-place-content-between
     .tw-block.tw-mb-5
       h4.tw-mb-4 {{ $t('timerange') }}
-      v-icon.text-muted(@click="hideNavi") {{ icons['mdiCalendarRange'] }}
+      v-icon.text-muted(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
 
       v-menu(v-model="dateModalFrom" content-class="datePicker" close-on-content-click transition="scroll-y-transition" offset-y bottom max-width="280px" min-width="auto")
         template(v-slot:activator="{ on, attrs }")
@@ -25,19 +25,22 @@
 
       v-divider.tw-mb-3.tw-mt-6
 
-      <download-excel :data="temperaturesJson">
-        v-btn.tw-text-white.tw-py-6(@click="" color="var(--cui-primary)" block elevation="1") Download Data
-      </download-excel>
+      .tw-block.tw-mb-5
+        <download-excel :data="temperaturesJson">
+          v-btn.tw-text-white.tw-py-6(@click="" color="var(--cui-primary)" block elevation="1") Download Data
+        </download-excel>
 
+      .tw-block.tw-mb-5
         v-btn.tw-text-white.tw-py-6(@click="printGraph" color="var(--cui-primary)" block elevation="1") Download Graph
 
         //https://stackoverflow.com/questions/49390314/how-to-use-html2canvas-with-vue-js
+      .tw-block.tw-mb-5
         v-btn.tw-text-white.tw-py-6(@click="clearFilter" color="var(--cui-primary)" block elevation="1") Reset
 
 </template>
 
 <script>
-import { mdiCalendarRange, mdiCamera, mdiDoorOpen, mdiLabel, mdiImageMultiple } from '@mdi/js';
+import { mdiCalendarRange, mdiCamera, mdiDoorOpen, mdiLabel, mdiImageMultiple, mdiCloseCircleOutline } from '@mdi/js';
 
 import { bus } from '@/main';
 export default {
@@ -71,6 +74,7 @@ export default {
         mdiDoorOpen,
         mdiLabel,
         mdiImageMultiple,
+        mdiCloseCircleOutline,
       },
       extendSidebar: false,
       extendSidebarTimeout: null,

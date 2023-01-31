@@ -344,6 +344,7 @@ export default {
         var results = [];
         var datasets = [];
         console.log(this.camera);
+        console.log(this.query);
         this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
         `);
         results = this.groupBy(this.temperatures.data.result, function (item) {
@@ -358,7 +359,7 @@ export default {
             }),
           };
           datasets.push(d);
-          this.tempLimits(datasets);
+          //this.tempLimits(datasets);
           this.camTemps(datasets);
         }
       }, 1000);
@@ -367,7 +368,7 @@ export default {
       let today = new Date();
       const offset = today.getTimezoneOffset();
       today = new Date(today.getTime() - offset * 60 * 1000);
-      this.query = `&from=${today.toISOString().split('T')[0]}&to${today.toISOString().split('T')[0]}`;
+      this.query = `&from=${today.toISOString().split('T')[0]}&to=${today.toISOString().split('T')[0]}`;
     },
   },
 };
