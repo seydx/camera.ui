@@ -1,5 +1,5 @@
 <template lang="pug">
-area-chart(ref="chart" :chart-data="datacollection" :options="options" style="width: 100%; height: 100%")
+area-chart(ref="chart" :chart-data="datacollection" :options="options" style="width: 100%; height: 40%")
 </template>
 
 <script>

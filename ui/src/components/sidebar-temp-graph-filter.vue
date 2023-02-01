@@ -2,8 +2,8 @@
 .settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
   .tw-p-5.tw-grid.tw-place-content-between
     .tw-block.tw-mb-5
+      v-icon.text-muted.close-button(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
       h4.tw-mb-4 {{ $t('timerange') }}
-      v-icon.text-muted(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
 
       v-menu(v-model="dateModalFrom" content-class="datePicker" close-on-content-click transition="scroll-y-transition" offset-y bottom max-width="280px" min-width="auto")
         template(v-slot:activator="{ on, attrs }")
@@ -25,22 +25,28 @@
 
       v-divider.tw-mb-3.tw-mt-6
 
+      label.form-input-label {{ 'Time Interval' }}
+      v-select(ref="sessionTimer" :suffix="$t('minutes')" :value="30" :items="intervalSelect" @change="intervalModifier" v-model="intervalValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
+      v-divider.tw-mb-3.tw-mt-6
+
       .tw-block.tw-mb-5
-        <download-excel :data="temperaturesJson">
+        <download-excel :data="temperaturesJson" name="Temperature_Data.xls">
           v-btn.tw-text-white.tw-py-6(@click="" color="var(--cui-primary)" block elevation="1") Download Data
         </download-excel>
 
       .tw-block.tw-mb-5
         v-btn.tw-text-white.tw-py-6(@click="printGraph" color="var(--cui-primary)" block elevation="1") Download Graph
 
-        //https://stackoverflow.com/questions/49390314/how-to-use-html2canvas-with-vue-js
       .tw-block.tw-mb-5
         v-btn.tw-text-white.tw-py-6(@click="clearFilter" color="var(--cui-primary)" block elevation="1") Reset
 
 </template>
-
 <script>
 import { mdiCalendarRange, mdiCamera, mdiDoorOpen, mdiLabel, mdiImageMultiple, mdiCloseCircleOutline } from '@mdi/js';
+import * as html2canvas from 'html2canvas';
 
 import { bus } from '@/main';
 export default {
@@ -55,7 +61,6 @@ export default {
     typeSelect: Boolean,
     presetSelect: Boolean,
     regionsSelect: Boolean,
-    intervalSelect: Boolean,
     temperaturesJson: {
       type: Array,
       default: () => [],
@@ -94,7 +99,7 @@ export default {
 
       page: 1,
       query: '',
-      showFilter: false,
+      showFilter: true,
 
       selected: [],
 
@@ -109,6 +114,8 @@ export default {
 
       availableTypes: [this.$t('snapshot'), this.$t('video')],
       selectedTypes: [],
+      intervalSelect: [5, 15, 30, 60, 180, 360],
+      intervalValue: 30,
     };
   },
 
@@ -165,28 +172,27 @@ export default {
       this.extendSidebar = state;
     },
     clearFilter() {
-      this.dateFrom = '';
-      this.dateTo = '';
+      let today = new Date();
+      const offset = today.getTimezoneOffset();
+      today = new Date(today.getTime() - offset * 60 * 1000);
+      this.dateFrom = today.toISOString().split('T')[0];
+      this.dateTo = today.toISOString().split('T')[0];
 
       this.saveDateRange();
       this.watchItems();
       this.hideNavi();
     },
     async printGraph() {
-      console.log('printing..');
-      const el = this.$refs.chart;
+      const el = this.$parent.$refs.chartExport;
 
       const options = {
         type: 'dataURL',
       };
-      const printCanvas = await this.$html2canvas(el, options);
-
+      const printCanvas = await html2canvas(el, options);
       const link = document.createElement('a');
-      link.setAttribute('download', 'chart.png');
+      link.setAttribute('download', `${this.dateFrom} - ${this.dateTo}.png`);
       link.setAttribute('href', printCanvas.toDataURL('image/png').replace('image/png', 'image/octet-stream'));
       link.click();
-
-      console.log('done');
     },
     filterQuery() {
       if (this.selected && this.selected.length) {
@@ -260,6 +266,9 @@ export default {
       this.dateFrom = today.toISOString().split('T')[0];
       this.dateTo = today.toISOString().split('T')[0];
     },
+    intervalModifier() {
+      this.$emit('intervalModifier', this.intervalValue);
+    },
   },
 };
 </script>
@@ -269,6 +278,11 @@ export default {
   font-weight: 500;
   font-size: 0.875rem;
   line-height: 2;
+}
+.close-button {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
 }
 
 .datePicker {

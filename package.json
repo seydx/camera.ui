@@ -12,6 +12,7 @@
     "watch": "concurrently \"npm run watch:server\" \"npm run watch:ui\"",
     "watch:server": "nodemon",
     "watch:ui": "npm run serve --prefix ui",
+    "dev": "npm run build --prefix ui ; npm run watch",
     "prepublishOnly": "npm i --package-lock-only && npm run lint && npm run build"
   },
   "main": "src/index.js",

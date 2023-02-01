@@ -3,7 +3,7 @@
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
     .tw-max-w-7xl.pl-safe.pr-safe
-      Sidebar(datePicker @filter="filter" :temperaturesJson="camTempData.datasets")
+      Sidebar(datePicker @intervalModifier="modifyInterval" @filter="filter" :temperaturesJson="exportData" :camera="camera")
 
     .overlay(v-if="showOverlay")
 
@@ -14,9 +14,9 @@
             v-icon {{ icons['mdiFilter'] }}
         
     .filter-content.filter-included.tw-flex.tw-flex-wrap
-      v-row.tw-w-full.tw-h-full
-        v-col.tw-mb-3(:cols="cols" ref="chart")
-          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions")
+      v-row.tw-w-full.tw-max-h-400
+        v-col.tw-mb-3(:cols="cols" ref="chartExport")
+          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
     .filter-content.filter-included.tw-flex.tw-flex-wrap
       v-row.tw-w-full.max-h-screen
@@ -33,7 +33,7 @@
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-    .filter-content.filter-included.v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
+    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
       v-expansion-panels(v-model="notificationsPanel" multiple)
         v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
           v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
@@ -205,6 +205,7 @@ export default {
       showOverlay: true,
       query: '',
       selectedFilter: [],
+      exportData: [],
     };
   },
   watch: {
@@ -313,24 +314,38 @@ export default {
       this.camTempData.datasets = [];
       this.camTempData.datasets = data;
     },
+    exportDataEngine(data) {
+      this.exportData = [];
+      data.forEach((region) => {
+        region.data.forEach((point) => {
+          var temp = {
+            averageTemperature: point.value,
+            time: point.time,
+            regionName: region.label,
+          };
+          this.exportData.push(temp);
+        });
+      });
+    },
 
-    tempLimits(data) {
-      var minTemp;
-      var maxTemp;
-      for (let index = 0; index < data.length; index++) {
-        var instanceMax = Math.max(...data.map((x) => x.value.toFixed()));
-        var instanceMin = Math.min(...data.map((x) => x.value.toFixed()));
-        console.log(`Min Temp: ${instanceMin} - Max Temp:${instanceMax}`);
+    tempLimits(tempLists) {
+      var minTemp = 100;
+      var maxTemp = 0;
+      tempLists.forEach((tempList) => {
+        var instanceMax = Math.max(...tempList.data.map((x) => parseInt(x.value, 10)));
+        var instanceMin = Math.min(...tempList.data.map((x) => parseInt(x.value, 10)));
         if (instanceMax > maxTemp) {
           maxTemp = instanceMax;
+          console.log(`Found the max temp ${maxTemp}`);
         }
         if (instanceMin < minTemp) {
-          minTemp = instanceMax;
+          minTemp = instanceMin;
+          console.log(`Found the min temp ${minTemp}`);
         }
-      }
-      console.log(`Min Temp: ${minTemp} - Max Temp:${maxTemp}`);
-      this.camTempsOptions.scales.yAxes[0].ticks.min = 60 - 3;
-      this.camTempsOptions.scales.yAxes[0].ticks.max = 10 + 3;
+      });
+
+      this.camTempsOptions.scales.yAxes[0].ticks.min = minTemp - 3;
+      this.camTempsOptions.scales.yAxes[0].ticks.max = maxTemp + 3;
       this.camTempsOptions.scales.yAxes[0].ticks.stepSize = 1;
       this.camTempsOptions.scales.yAxes[0].display = true;
 
@@ -345,8 +360,15 @@ export default {
         var datasets = [];
         console.log(this.camera);
         console.log(this.query);
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
+        if (!this.query) {
+          this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${
+            date.toISOString().split('T')[0]
+          }&to=${date.toISOString().split('T')[0]}
         `);
+        } else {
+          this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
+        `);
+        }
         results = this.groupBy(this.temperatures.data.result, function (item) {
           return [item.preset, item.region];
         });
@@ -359,9 +381,11 @@ export default {
             }),
           };
           datasets.push(d);
-          //this.tempLimits(datasets);
-          this.camTemps(datasets);
         }
+        console.log(datasets);
+        this.tempLimits(datasets);
+        this.camTemps(datasets);
+        this.exportDataEngine(datasets);
       }, 1000);
     },
     getCurrentDate() {
@@ -370,15 +394,16 @@ export default {
       today = new Date(today.getTime() - offset * 60 * 1000);
       this.query = `&from=${today.toISOString().split('T')[0]}&to=${today.toISOString().split('T')[0]}`;
     },
+    modifyInterval(value) {
+      this.camTempsOptions.scales.xAxes[0].time.unitStepSize = value;
+    },
   },
 };
 </script>
 
 <style scoped>
 .filter-content {
-  @media all and (min-width: 1000px) {
-    padding-left: 320px;
-  }
+  padding-left: 320px;
 }
 
 .subtitle {
