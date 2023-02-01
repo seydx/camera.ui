@@ -4,6 +4,9 @@
 
 # camera.ui
 
+Custom chart js legend
+https://codepen.io/michiel-huiskens/pen/RRaRRv
+
 [![npm](https://img.shields.io/npm/v/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/camera.ui)
 [![npm](https://img.shields.io/npm/v/camera.ui/beta.svg?style=flat-square)](https://www.npmjs.com/package/camera.ui)
 [![npm](https://img.shields.io/npm/dt/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/camera.ui)
