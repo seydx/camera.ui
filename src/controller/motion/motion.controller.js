@@ -185,20 +185,23 @@ export default class MotionController {
           var alertData = result.data.toString().match(/\(([^)]+)\)/g);
 
           // eslint-disable-next-line unicorn/no-for-loop
-          for (let index = 0; index < alertData.length; index++) {
-            alertData[index].replace('(', '').replace(')', '');
+          if (alertData == null) {
+            return;
+          }
+          for (const alertDatum of alertData) {
+            alertDatum.replace('(', '').replace(')', '');
             switch (true) {
-              case alertData[index].includes('MaxTemperature='):
-                filteredAlertData.push(alertData[index]);
+              case alertDatum.includes('MaxTemperature='):
+                filteredAlertData.push(alertDatum);
                 break;
-              case alertData[index].includes('MinTemperature='):
-                filteredAlertData.push(alertData[index]);
+              case alertDatum.includes('MinTemperature='):
+                filteredAlertData.push(alertDatum);
                 break;
-              case alertData[index].includes('WarningValue='):
-                filteredAlertData.push(alertData[index]);
+              case alertDatum.includes('WarningValue='):
+                filteredAlertData.push(alertDatum);
                 break;
-              case alertData[index].includes('TemperatureThreshold='):
-                filteredAlertData.push(alertData[index]);
+              case alertDatum.includes('TemperatureThreshold='):
+                filteredAlertData.push(alertDatum);
                 break;
               default:
             }
