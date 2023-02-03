@@ -49,7 +49,7 @@
                               .tw-flex.tw-justify-center.tw-items-center.tw-h-full
                                 v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${this.camera.thermalReporting == true ? `Temperature Alarm` : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-title.text-default.tw-font-semibold {{ `${this.camera.data.settings.thermalReporting == true ? 'Temperature Alarm' : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time} Readings:${notification.message}`}}
                     v-list-item-action
                       v-btn.text-muted(icon @click="openGallery(notification)")
@@ -172,7 +172,17 @@ export default {
               type: 'time',
               time: {
                 unit: 'minutes',
-                displayFormats: { day: 'MMM DD', minutes: 'HH:mm' },
+                displayFormats: {
+                  millisecond: 'MMM DD HH:mm',
+                  second: 'MMM DD HH:mm',
+                  minute: 'MMM DD HH:mm',
+                  hour: 'MMM DD HH:mm',
+                  day: 'MMM DD HH:mm',
+                  week: 'MMM DD HH:mm',
+                  month: 'MMM DD HH:mm',
+                  quarter: 'MMM DD HH:mm',
+                  year: 'MMM DD HH:mm',
+                },
                 unitStepSize: 30,
               },
             },

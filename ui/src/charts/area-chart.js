@@ -12,7 +12,7 @@ export default {
   watch: {
     options: {
       handler() {
-        this._chart.destroy();
+        this._data._chart.destroy();
         this.renderChart(this.chartData, this.options);
       },
       deep: true,
