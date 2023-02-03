@@ -28,7 +28,6 @@
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
           h2.tw-leading-6 {{ $route.params.name }}
-          span.subtitle {{ camera.settings.room }}
         .tw-block
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
@@ -49,7 +48,7 @@
                               .tw-flex.tw-justify-center.tw-items-center.tw-h-full
                                 v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${this.camera.data.settings.thermalReporting == true ? 'Temperature Alarm' : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-title.text-default.tw-font-semibold {{ `${true ? 'Temperature Alarm' : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
                       v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time} Readings:${notification.message}`}}
                     v-list-item-action
                       v-btn.text-muted(icon @click="openGallery(notification)")
@@ -230,6 +229,7 @@ export default {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
       camera.data.settings = settings.data;
+      console.log(camera);
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=50`);
       this.notifications = lastNotifications.data.result;
       console.log(this.notifications);

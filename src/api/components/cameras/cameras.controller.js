@@ -126,9 +126,13 @@ export const changeCameraPosition = async (req, res) => {
         method: 'GET', // *GET, POST, PUT, DELETE, etc.
       }
     )
-      .then(function (response) {
+      .then(function () {
         // handle success
-        console.log(response);
+        console.log(
+          `Sucessfully moved ${camera.name} pan=${
+            Number.parseFloat(positions[0]) + Number.parseInt(req.params.pan)
+          }&tilt=${positions[1] + req.params.tilt}&zoom=${positions[2] + req.params.zoom}`
+        );
       })
       .catch(function (error) {
         // handle error

@@ -26,7 +26,7 @@
       v-divider.tw-mb-3.tw-mt-6
 
       label.form-input-label {{ 'Time Interval' }}
-      v-select(ref="sessionTimer" :suffix="$t('minutes')" :value="30" :items="intervalSelect" @change="intervalModifier" v-model="intervalValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+      v-select(ref="sessionTimer" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="intervalSelect" @change="intervalModifier" v-model="intervalValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
@@ -114,8 +114,17 @@ export default {
 
       availableTypes: [this.$t('snapshot'), this.$t('video')],
       selectedTypes: [],
-      intervalSelect: [5, 15, 30, 60, 180, 360],
-      intervalValue: 30,
+      intervalSelect: [
+        { text: 5, value: 5, prepend: 'Minutes' },
+        { text: 15, value: 15, prepend: 'Minutes' },
+        { text: 30, value: 30, prepend: 'Minutes' },
+        { text: 1, value: 60, prepend: 'Hour' },
+        { text: 3, value: 180, prepend: 'Hours' },
+        { text: 6, value: 360, prepend: 'Hours' },
+        { text: 12, value: 720, prepend: 'Hours' },
+        { text: 24, value: 1440, prepend: 'Hours' },
+      ],
+      intervalValue: { text: 30, value: 30, prepend: 'Minutes' },
     };
   },
 
@@ -177,6 +186,7 @@ export default {
       today = new Date(today.getTime() - offset * 60 * 1000);
       this.dateFrom = today.toISOString().split('T')[0];
       this.dateTo = today.toISOString().split('T')[0];
+      this.intervalValue = { text: 30, value: 30, prepend: 'Minutes' };
 
       this.saveDateRange();
       this.watchItems();

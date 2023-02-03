@@ -381,7 +381,6 @@ export default class Socket {
                   .then((data) => {
                     //console.log(data.split(/\r?\n/));
                     rawNames = data.split(/\r?\n/);
-                    console.log(rawNames);
                     for (const [index, rawName] of rawNames.entries()) {
                       if (rawName.startsWith('areaId')) {
                         data = {
@@ -402,9 +401,6 @@ export default class Socket {
                 )
                   .then((response) => response.text())
                   .then((data) => {
-                    //console.log(data.split(/\r?\n/));
-                    console.log();
-
                     goods = data.split(/\r?\n/);
                     for (var index = 0; index < goods.length; index++) {
                       if (goods[index].startsWith('areaID')) {
@@ -424,7 +420,7 @@ export default class Socket {
                       }
                       //Do something
                     }
-                    console.log(JSON.stringify(formatted, null, 2));
+                    console.log(`Temperatures Log Create Successfully for ${camera.name}`);
                     Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
                   });
               }
@@ -466,7 +462,6 @@ export default class Socket {
                       //Do something
                     }
                   });
-                console.log(presets);
                 for (const preset of presets) {
                   var regexPTZ = /=(.*)/;
                   var goodsPTZ = [];
@@ -511,7 +506,6 @@ export default class Socket {
                   )
                     .then((response) => response.text())
                     .then((data) => {
-                      //console.log(data.split(/\r?\n/));
                       goodsPTZ = data.split(/\r?\n/);
                       for (var index = 0; index < goodsPTZ.length; index++) {
                         if (goodsPTZ[index].startsWith('areaID')) {
@@ -531,7 +525,7 @@ export default class Socket {
                         }
                         //Do something
                       }
-                      console.log(JSON.stringify(formattedPTZ, null, 2));
+                      console.log(`Temperatures Log Create Successfully for ${camera.name}`);
                       Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
                     });
                 }
