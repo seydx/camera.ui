@@ -171,7 +171,7 @@ export default {
               },
               type: 'time',
               time: {
-                unit: 'minutes',
+                unit: 'minute',
                 displayFormats: {
                   millisecond: 'MMM DD HH:mm',
                   second: 'MMM DD HH:mm',
