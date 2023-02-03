@@ -24,7 +24,7 @@
         template(v-slot:item.name="{ item }")
           b {{ item.name }}
         template(v-slot:item.model="{ item }")
-          .text-font-disabled {{ item.model || 'IP Camera' }}
+          .text-font-disabled {{ item.type || 'IP Camera' }}
         template(v-slot:item.address="{ item }")
           .text-font-disabled {{ item.url }}
         template(v-slot:item.lastNotification="{ item }")
@@ -156,7 +156,7 @@ export default {
         cellClass: 'tw-pl-3 tw-pr-1',
       },
       {
-        text: 'Last Motion',
+        text: 'Last Alert',
         value: 'lastNotification',
         align: 'start',
         sortable: true,

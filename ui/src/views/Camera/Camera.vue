@@ -172,7 +172,7 @@ export default {
               type: 'time',
               time: {
                 unit: 'minutes',
-                displayFormats: { minutes: 'HH:mm' },
+                displayFormats: { day: 'MMM DD', minutes: 'HH:mm' },
                 unitStepSize: 30,
               },
             },
@@ -220,8 +220,9 @@ export default {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
       camera.data.settings = settings.data;
-      const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=5`);
+      const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=50`);
       this.notifications = lastNotifications.data.result;
+      console.log(this.notifications);
       this.images = lastNotifications.data.result.map((notification) => {
         if (notification.recordStoring) {
           let mediaContainer = {
@@ -353,17 +354,17 @@ export default {
     },
     pollData() {
       this.polling = setInterval(async () => {
-        let date = new Date();
-        const offset = date.getTimezoneOffset();
-        date = new Date(date.getTime() - offset * 60 * 1000).toISOString().split('T')[0];
+        let today = new Date();
+        const offset = today.getTimezoneOffset();
+        today = new Date(today.getTime() - offset * 60 * 1000);
         var results = [];
         var datasets = [];
         console.log(this.camera);
         console.log(this.query);
         if (!this.query) {
           this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${
-            date.toISOString().split('T')[0]
-          }&to=${date.toISOString().split('T')[0]}
+            today.toISOString().split('T')[0]
+          }&to=${today.toISOString().split('T')[0]}
         `);
         } else {
           this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
