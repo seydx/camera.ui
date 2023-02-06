@@ -185,25 +185,24 @@ export default class MotionController {
           var alertData = result.data.toString().match(/\(([^)]+)\)/g);
 
           // eslint-disable-next-line unicorn/no-for-loop
-          if (alertData == null) {
-            return;
-          }
-          for (const alertDatum of alertData) {
-            alertDatum.replace('(', '').replace(')', '');
-            switch (true) {
-              case alertDatum.includes('MaxTemperature='):
-                filteredAlertData.push(alertDatum);
-                break;
-              case alertDatum.includes('MinTemperature='):
-                filteredAlertData.push(alertDatum);
-                break;
-              case alertDatum.includes('WarningValue='):
-                filteredAlertData.push(alertDatum);
-                break;
-              case alertDatum.includes('TemperatureThreshold='):
-                filteredAlertData.push(alertDatum);
-                break;
-              default:
+          if (alertData != null) {
+            for (const alertDatum of alertData) {
+              alertDatum.replace('(', '').replace(')', '');
+              switch (true) {
+                case alertDatum.includes('MaxTemperature='):
+                  filteredAlertData.push(alertDatum);
+                  break;
+                case alertDatum.includes('MinTemperature='):
+                  filteredAlertData.push(alertDatum);
+                  break;
+                case alertDatum.includes('WarningValue='):
+                  filteredAlertData.push(alertDatum);
+                  break;
+                case alertDatum.includes('TemperatureThreshold='):
+                  filteredAlertData.push(alertDatum);
+                  break;
+                default:
+              }
             }
           }
 

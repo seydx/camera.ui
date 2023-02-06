@@ -36,24 +36,25 @@
       v-expansion-panels(v-model="notificationsPanel" multiple)
         v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
           v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
-            v-expansion-panel-content.notifications-panel-content
-              v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
-                template(v-slot:default="{ item }")
-                  v-list.tw-p-0(two-line dense)
-                    v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
-                      v-list-item-avatar
-                        v-avatar(size="40" color="black")
-                          v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
-                            template(v-slot:placeholder)
-                              .tw-flex.tw-justify-center.tw-items-center.tw-h-full
-                                v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
+          v-expansion-panel-content.notifications-panel-content
+            v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
+              template(v-slot:default="{ item }")
+                v-list.tw-p-0(two-line dense)
+                  v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
+                    v-list-item-avatar
+                      v-avatar(size="40" color="black")
+                        v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
+                          template(v-slot:placeholder)
+                            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                              v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                     v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${true ? 'Temperature Alarm' : ''} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
-                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time} Readings:${notification.message}`}}
+                      v-list-item-title.text-default.tw-font-semibold {{ `${$t('camera_alarm')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
+                      v-list-item-subtitle.text-muted {{ `Alert Info: ${notification.message}` }}
                     v-list-item-action
                       v-btn.text-muted(icon @click="openGallery(notification)")
                         v-icon {{ icons['mdiPlusCircle'] }}
-            .filter-content.tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
+            .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
               v-list.tw-p-0(dense)
                 v-list-item
                   v-list-item-content
@@ -413,8 +414,10 @@ export default {
 </script>
 
 <style scoped>
-.filter-content {
-  padding-left: 320px;
+@media screen and (min-device-width: 1025px) {
+  .filter-content {
+    padding-left: 320px;
+  }
 }
 
 .subtitle {

@@ -71,6 +71,7 @@
     "brown": "Brown",
     "browse": "Browse",
     "camera": "Camera",
+    "camera_alarm": "Camera Alert",
     "camera_alarm_info": "Motion Detection Settings",
     "camera_already_exists": "Camera already exists",
     "camera_ffmpeg_stream_info": "FFmpeg und Stream Settings",
