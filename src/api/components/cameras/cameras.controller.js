@@ -151,6 +151,122 @@ export const changeCameraPosition = async (req, res) => {
   }
 };
 
+//getCameraPresets
+export const getCameraPresets = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    } else if (!camera.type.includes('PTZ')) {
+      return res.status(404).send({
+        statusCode: 400,
+        message: 'Camera does not have PTZ features',
+      });
+    }
+
+    var presets = [];
+    var rawPresets = [];
+    var regex = /=(.*)/;
+
+    const ip = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('@') + 1,
+      camera.videoConfig.source.lastIndexOf(':')
+    );
+
+    const credsRaw = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('/') + 2,
+      camera.videoConfig.source.lastIndexOf('@')
+    );
+
+    const creds = credsRaw.split(':');
+
+    await fetch(`http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`, {
+      method: 'GET', // *GET, POST, PUT, DELETE, etc.
+    })
+      .then((response) => response.text())
+      .then((data) => {
+        rawPresets = data.split(/\r?\n/);
+        for (var index = 0; index < rawPresets.length; index++) {
+          if (rawPresets[index].startsWith('presetID')) {
+            data = {
+              presetName: rawPresets[index + 1].match(regex)[1],
+              presetId: rawPresets[index].match(regex)[1],
+            };
+            presets.push(data);
+          }
+          //Do something
+        }
+      });
+
+    res.status(200).send({
+      presets,
+    });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const goToCameraPreset = async (req, res) => {
+  try {
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    } else if (!camera.type.includes('PTZ')) {
+      return res.status(404).send({
+        statusCode: 400,
+        message: 'Camera does not have PTZ features',
+      });
+    }
+    const camera = await CamerasModel.findByName(req.params.name);
+    const ip = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('@') + 1,
+      camera.videoConfig.source.lastIndexOf(':')
+    );
+
+    const credsRaw = camera.videoConfig.source.slice(
+      camera.videoConfig.source.indexOf('/') + 2,
+      camera.videoConfig.source.lastIndexOf('@')
+    );
+
+    const creds = credsRaw.split(':');
+    var response = '';
+
+    await fetch(
+      `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=presetInvoke&presetID=${req.params.id}`,
+      {
+        method: 'GET', // *GET, POST, PUT, DELETE, etc.
+      }
+    )
+      .then((response) => response.text())
+      .then((data) => {
+        response = data;
+      })
+      .catch(function (error) {
+        // handle error
+        console.log(error);
+      })
+      .then(function () {
+        // always executed
+      });
+
+    res.status(200).send({ response });
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 export const patchByName = async (req, res) => {
   try {
     if (req.body === undefined || Object.keys(req?.body).length === 0) {

@@ -10,13 +10,17 @@
     .filter-content.filter-included.tw-w-full.tw-relative
       .tw-flex.tw-justify-between
         .header-title.tw-flex.tw-items-center
-          v-btn.included.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
+          v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
             v-icon {{ icons['mdiFilter'] }}
         
     .filter-content.filter-included.tw-flex.tw-flex-wrap
       v-row.tw-w-full.tw-max-h-400
         v-col.tw-mb-3(:cols="cols" ref="chartExport")
           Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
+    .filter-content  
+      <v-row class="ma-4 justify-space-around">
+        <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" color="red" outlined>{{ item.presetName }}[{{ item.presetId }}]</v-btn>
+      </v-row>
 
     .filter-content.filter-included.tw-flex.tw-flex-wrap
       v-row.tw-w-full.max-h-screen
@@ -85,7 +89,7 @@ import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import { mdiOpenInNew, mdiPlusCircle, mdiFilter } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
-import { getCamera, getCameraSettings } from '@/api/cameras.api';
+import { getCamera, getCameraSettings, getCameraPresets, goToCameraPreset } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 import { getTemperatures } from '@/api/temperatures.api';
 import VideoCard from '@/components/camera-card.vue';
@@ -135,6 +139,12 @@ export default {
       camTempsOptions: {
         responsive: true,
         maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+          },
+        },
         elements: {
           point: {
             radius: 0,
@@ -216,6 +226,7 @@ export default {
       query: '',
       selectedFilter: [],
       exportData: [],
+      cameraPresets: [],
     };
   },
   watch: {
@@ -274,6 +285,7 @@ export default {
   },
   created() {
     this.pollData();
+    //this.getPresets();
   },
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
@@ -409,14 +421,25 @@ export default {
     modifyInterval(value) {
       this.camTempsOptions.scales.xAxes[0].time.unitStepSize = value;
     },
+
+    getPresets() {
+      getCameraPresets(this.camera.name);
+    },
+
+    goToPreset(id) {
+      goToCameraPreset(this.camera.name, id);
+    },
   },
 };
 </script>
 
 <style scoped>
-@media screen and (min-device-width: 1025px) {
+@media screen and (min-width: 960px) {
   .filter-content {
     padding-left: 320px;
+  }
+  .filter-cleanup {
+    display: none;
   }
 }
 

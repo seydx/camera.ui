@@ -2,7 +2,7 @@
 .settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
   .tw-p-5.tw-grid.tw-place-content-between
     .tw-block.tw-mb-5
-      v-icon.text-muted.close-button(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
+      v-icon.text-muted.close-button.filter-cleanup.tw-flex.tw-justify-end(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
       h4.tw-mb-4 {{ $t('timerange') }}
 
       v-menu(v-model="dateModalFrom" content-class="datePicker" close-on-content-click transition="scroll-y-transition" offset-y bottom max-width="280px" min-width="auto")
@@ -398,7 +398,7 @@ export default {
   align-items: flex-start !important;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .settings-navi {
     /*position: fixed;*/
     left: -1000px;
@@ -426,5 +426,14 @@ export default {
 
 .selector >>> .v-chip__content {
   color: #fff !important;
+}
+
+@media screen and (min-device-width: 1025px) {
+  .filter-content {
+    padding-left: 320px;
+  }
+  .filter-cleanup {
+    display: none !important;
+  }
 }
 </style>

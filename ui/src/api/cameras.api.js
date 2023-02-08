@@ -49,3 +49,8 @@ export const resetMotion = async (cameraName) => await api.put(`${resource}/${ca
 
 export const changeCameraPosition = async (cameraName, pan, tilt, zoom) =>
   await api.get(`${resource}/${cameraName}/position/${pan}/${tilt}/${zoom}`);
+
+export const getCameraPresets = async (cameraName) => await api.get(`${resource}/${cameraName}/presets`);
+
+export const goToCameraPreset = async (cameraName, presetId) =>
+  await api.get(`${resource}/${cameraName}/presets/${presetId}`);

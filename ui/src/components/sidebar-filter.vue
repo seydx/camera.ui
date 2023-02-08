@@ -32,12 +32,6 @@
           v-icon.text-muted {{ icons['mdiCamera'] }}
 
       v-divider.tw-mb-3.tw-mt-6
-
-      v-select.selector(dense small-chips deletable-chips hide-details multiple :no-data-text="$t('no_data_available')" v-model="selectedTypes" item-value="title" item-text="title" :items="availableTypes" label="..." prepend-inner-icon="mdi-security" background-color="var(--cui-bg-card)" solo @change="watchItems")
-        template(v-slot:prepend-inner)
-          v-icon.text-muted {{ icons['mdiImageMultiple'] }}
-
-      v-divider.tw-mb-3.tw-mt-6
   
     .tw-block.tw-mb-5(v-if="labelSelect")
       h4.tw-mb-4 {{ $t('labels') }}

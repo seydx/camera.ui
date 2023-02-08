@@ -314,7 +314,7 @@ export default class Socket {
 
     setTimeout(() => {
       Socket.watchTemps();
-    }, 60000 * 5);
+    }, 60000 * 2.5);
   }
 
   static async #handleUptime() {
