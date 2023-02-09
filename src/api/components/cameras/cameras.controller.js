@@ -184,20 +184,12 @@ export const getCameraPresets = async (req, res) => {
 
     const creds = credsRaw.split(':');
 
-    if (true) {
-      presets = [
-        { presetName: 'dsfasdfds', presetId: 1 },
-        { presetName: 'fgdgrtdsgh', presetId: 2 },
-        { presetName: 'ewrwerew', presetId: 3 },
-        { presetName: 'fgdgrtfsdfsddsgh', presetId: 4 },
-        { presetName: 'ffsdfert', presetId: 5 },
-        { presetName: 'fgdgrtdsgh', presetId: 6 },
-      ];
-    } else {
+    try {
       await fetch(
         `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`,
         {
           method: 'GET', // *GET, POST, PUT, DELETE, etc.
+          signal: AbortSignal.timeout(1500),
         }
       )
         .then((response) => response.text())
@@ -214,7 +206,7 @@ export const getCameraPresets = async (req, res) => {
             //Do something
           }
         });
-    }
+    } catch {}
 
     res.status(200).send(presets);
   } catch (error) {

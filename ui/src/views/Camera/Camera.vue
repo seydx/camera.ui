@@ -290,7 +290,7 @@ export default {
       });
       this.camera = camera.data;
       this.loading = false;
-      if (presets.data.length > 0) {
+      if (presets.data.statusCode == null) {
         console.log(presets.data);
         this.cameraPresets = presets.data;
       }
