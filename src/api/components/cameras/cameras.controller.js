@@ -206,7 +206,9 @@ export const getCameraPresets = async (req, res) => {
             //Do something
           }
         });
-    } catch {}
+    } catch {
+      console.log('PTZPresets Timeout');
+    }
 
     res.status(200).send(presets);
   } catch (error) {
