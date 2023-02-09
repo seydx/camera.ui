@@ -4,6 +4,14 @@
 .tw-py-6.tw-px-4(v-else)
     .tw-max-w-7xl.pl-safe.pr-safe
       Sidebar(datePicker @intervalModifier="modifyInterval" @filter="filter" :temperaturesJson="exportData" :camera="camera")
+      
+    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
+      .tw-w-full.tw-flex.tw-justify-between.tw-items-center
+        .tw-block
+          h2.tw-leading-6 {{ $route.params.name }}
+        .tw-block
+          v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+            v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
     .overlay(v-if="showOverlay")
 
@@ -17,9 +25,9 @@
       v-row.tw-w-full.tw-max-h-400
         v-col.tw-mb-3(:cols="cols" ref="chartExport")
           Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
-    .filter-content  
+    .filter-content
       <v-row class="ma-4 justify-space-around">
-        <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" color="red" outlined>{{ item.presetName }}[{{ item.presetId }}]</v-btn>
+        <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
       </v-row>
 
     .filter-content.filter-included.tw-flex.tw-flex-wrap
@@ -31,7 +39,7 @@
     .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
-          h2.tw-leading-6 {{ $route.params.name }}
+          h2.tw-leading-6
         .tw-block
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
@@ -240,8 +248,14 @@ export default {
     try {
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
+      let presets;
+      if (camera.data.type == 'PTZ') {
+        presets = await getCameraPresets(this.$route.params.name);
+      }
+
       camera.data.settings = settings.data;
       console.log(camera);
+
       const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=50`);
       this.notifications = lastNotifications.data.result;
       console.log(this.notifications);
@@ -276,16 +290,18 @@ export default {
       });
       this.camera = camera.data;
       this.loading = false;
+      if (presets.data.length > 0) {
+        console.log(presets.data);
+        this.cameraPresets = presets.data;
+      }
       await timeout(10);
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
     }
-    //this.getCurrentDate();
   },
   created() {
     this.pollData();
-    //this.getPresets();
   },
   beforeDestroy() {
     //this.$socket.client.off('getCameraTemps', this.camTemps);
@@ -421,13 +437,8 @@ export default {
     modifyInterval(value) {
       this.camTempsOptions.scales.xAxes[0].time.unitStepSize = value;
     },
-
-    getPresets() {
-      getCameraPresets(this.camera.name);
-    },
-
     goToPreset(id) {
-      goToCameraPreset(this.camera.name, id);
+      goToCameraPreset(this.$route.params.name, id);
     },
   },
 };

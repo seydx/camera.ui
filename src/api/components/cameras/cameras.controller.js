@@ -162,7 +162,7 @@ export const getCameraPresets = async (req, res) => {
         message: 'Camera not exists',
       });
     } else if (!camera.type.includes('PTZ')) {
-      return res.status(404).send({
+      return res.status(400).send({
         statusCode: 400,
         message: 'Camera does not have PTZ features',
       });
@@ -184,27 +184,39 @@ export const getCameraPresets = async (req, res) => {
 
     const creds = credsRaw.split(':');
 
-    await fetch(`http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`, {
-      method: 'GET', // *GET, POST, PUT, DELETE, etc.
-    })
-      .then((response) => response.text())
-      .then((data) => {
-        rawPresets = data.split(/\r?\n/);
-        for (var index = 0; index < rawPresets.length; index++) {
-          if (rawPresets[index].startsWith('presetID')) {
-            data = {
-              presetName: rawPresets[index + 1].match(regex)[1],
-              presetId: rawPresets[index].match(regex)[1],
-            };
-            presets.push(data);
-          }
-          //Do something
+    if (true) {
+      presets = [
+        { presetName: 'dsfasdfds', presetId: 1 },
+        { presetName: 'fgdgrtdsgh', presetId: 2 },
+        { presetName: 'ewrwerew', presetId: 3 },
+        { presetName: 'fgdgrtfsdfsddsgh', presetId: 4 },
+        { presetName: 'ffsdfert', presetId: 5 },
+        { presetName: 'fgdgrtdsgh', presetId: 6 },
+      ];
+    } else {
+      await fetch(
+        `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`,
+        {
+          method: 'GET', // *GET, POST, PUT, DELETE, etc.
         }
-      });
+      )
+        .then((response) => response.text())
+        .then((data) => {
+          rawPresets = data.split(/\r?\n/);
+          for (var index = 0; index < rawPresets.length; index++) {
+            if (rawPresets[index].startsWith('presetID')) {
+              data = {
+                presetName: rawPresets[index + 1].match(regex)[1],
+                presetId: rawPresets[index].match(regex)[1],
+              };
+              presets.push(data);
+            }
+            //Do something
+          }
+        });
+    }
 
-    res.status(200).send({
-      presets,
-    });
+    res.status(200).send(presets);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

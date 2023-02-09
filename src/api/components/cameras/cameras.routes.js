@@ -185,7 +185,7 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
-   * /api/cameras/{name}:
+   * /api/cameras/{name}/position/{pan}/{tilt}/{zoom}:
    *   get:
    *     tags: [Cameras]
    *     security:
@@ -216,43 +216,12 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
-   * /api/cameras/{name}/presets
-   *   get:
-   *     tags: [Cameras]
-   *     security:
-   *       - bearerAuth: []
-   *     summary: Get PTZ Presets
-   *     parameters:
-   *       - in: path
-   *         name: name
-   *         schema:
-   *           type: string
-   *         required: true
-   *         description: Name of the camera
-   *     responses:
-   *       200:
-   *         description: Successfull
-   *       401:
-   *         description: Unauthorized
-   *       404:
-   *         description: Not found
-   *       500:
-   *         description: Internal server error
-   */
-  app.get('/api/cameras/:name/presets', [
-    ValidationMiddleware.validJWTNeeded,
-    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
-    CamerasController.getCameraPresets,
-  ]);
-
-  /**
-   * @swagger
    * /api/cameras/{name}/presets/{id}:
    *   get:
    *     tags: [Cameras]
    *     security:
    *       - bearerAuth: []
-   *     summary: Go to camera pt
+   *     summary: Go to camera presets
    *     parameters:
    *       - in: path
    *         name: name
@@ -280,6 +249,38 @@ export const routesConfig = (app) => {
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
     CamerasController.goToCameraPreset,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/presets:
+   *   get:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get PTZ Presets
+   *     parameters:
+   *       - in: path
+   *         name: name
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Name of the camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+
+  app.get('/api/cameras/:name/presets', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
+    CamerasController.getCameraPresets,
   ]);
 
   /**
