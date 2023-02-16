@@ -2,83 +2,90 @@
 .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
-    .tw-max-w-7xl.pl-safe.pr-safe
-      Sidebar(datePicker @intervalModifier="modifyInterval" @filter="filter" :temperaturesJson="exportData" :camera="camera")
-      
-    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
-      .tw-w-full.tw-flex.tw-justify-between.tw-items-center
-        .tw-block
-          h2.tw-leading-6 {{ $route.params.name }}
-        .tw-block
-          v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
-            v-icon(size="20") {{ icons['mdiOpenInNew'] }}
+  .tw-max-w-7xl.pl-safe.pr-safe
+    Sidebar(datePicker @intervalModifier="modifyInterval" @filter="filter" :temperaturesJson="exportData" :camera="camera")
 
-    .overlay(v-if="showOverlay")
+  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
+    .tw-w-full.tw-flex.tw-justify-between.tw-items-center
+      .tw-block
+        h2.tw-leading-6 {{ $route.params.name }}
+      .tw-block
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+          v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-    .filter-content.filter-included.tw-w-full.tw-relative
-      .tw-flex.tw-justify-between
-        .header-title.tw-flex.tw-items-center
-          v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
-            v-icon {{ icons['mdiFilter'] }}
-        
-    .filter-content.filter-included.tw-flex.tw-flex-wrap
-      v-row.tw-w-full.tw-max-h-400
-        v-col.tw-mb-3(:cols="cols" ref="chartExport")
-          Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
-    .filter-content
-      <v-row class="ma-4 justify-space-around">
-        <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
-      </v-row>
+  .overlay(v-if="showOverlay")
 
-    .filter-content.filter-included.tw-flex.tw-flex-wrap
-      v-row.tw-w-full.max-h-screen
-        v-col.tw-mb-3(:cols="cols")
-          vue-aspect-ratio(ar="16:9" width="100%")
-            VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
+  .filter-content.filter-included.tw-w-full.tw-relative
+    .tw-flex.tw-justify-between
+      .header-title.tw-flex.tw-items-center
+        v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
+          v-icon {{ icons['mdiFilter'] }}
 
-    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
-      .tw-w-full.tw-flex.tw-justify-between.tw-items-center
-        .tw-block
-          h2.tw-leading-6
-        .tw-block
-          v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
-            v-icon(size="20") {{ icons['mdiOpenInNew'] }}
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
+    v-row.tw-w-full.tw-max-h-400
+      v-col.tw-mb-3(:cols="cols" ref="chartExport")
+        Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
-    .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
-      v-expansion-panels(v-model="notificationsPanel" multiple)
-        v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
-          v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
-          v-expansion-panel-content.notifications-panel-content
-            v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
-              template(v-slot:default="{ item }")
-                v-list.tw-p-0(two-line dense)
-                  v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
-                    v-list-item-avatar
-                      v-avatar(size="40" color="black")
-                        v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
-                          template(v-slot:placeholder)
-                            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
-                              v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
-                    v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${$t('camera_alarm')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
-                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
-                      v-list-item-subtitle.text-muted {{ `Alert Info: ${notification.message}` }}
-                    v-list-item-action
-                      v-btn.text-muted(icon @click="openGallery(notification)")
-                        v-icon {{ icons['mdiPlusCircle'] }}
-            .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
-              v-list.tw-p-0(dense)
-                v-list-item
+  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.data.settings.type === 'PTZ'")
+    v-row.tw-w-full.tw-max-h-400
+      v-col.tw-mb-3(:cols="cols" ref="chartExport2")
+        Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
+
+
+  .filter-content
+    <v-row class="ma-4 justify-space-around">
+      <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
+    </v-row>
+
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
+    v-row.tw-w-full.max-h-screen
+      v-col.tw-mb-3(:cols="cols")
+        vue-aspect-ratio(ar="16:9" width="100%")
+          VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
+
+  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
+    .tw-w-full.tw-flex.tw-justify-between.tw-items-center
+      .tw-block
+        h2.tw-leading-6
+      .tw-block
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+          v-icon(size="20") {{ icons['mdiOpenInNew'] }}
+
+  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
+    v-expansion-panels(v-model="notificationsPanel" multiple)
+      v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
+        v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
+        v-expansion-panel-content.notifications-panel-content
+          v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
+            template(v-slot:default="{ item }")
+              v-list.tw-p-0(two-line dense)
+                v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
+                  v-list-item-avatar
+                    v-avatar(size="40" color="black")
+                      v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
+                        template(v-slot:placeholder)
+                          .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                            v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                   v-list-item-content
-                    v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
+                    v-list-item-title.text-default.tw-font-semibold {{ `${$t('camera_alarm')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                    v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
+                    v-list-item-subtitle.text-muted {{ `Alert Info: ${notification.message}` }}
+                  v-list-item-action
+                    v-btn.text-muted(icon @click="openGallery(notification)")
+                      v-icon {{ icons['mdiPlusCircle'] }}
+          .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
+            v-list.tw-p-0(dense)
+              v-list-item
+                v-list-item-content
+                  v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
-    LightBox(
-    ref="lightbox"
-    :media="images"
-    :showLightBox="false"
-    :showThumbs="false"
-    showCaption
-    disableScroll
+  LightBox(
+  ref="lightbox"
+  :media="images"
+  :showLightBox="false"
+  :showThumbs="false"
+  showCaption
+  disableScroll
   )
 
     LightBox(
@@ -449,6 +456,7 @@ export default {
   .filter-content {
     padding-left: 320px;
   }
+
   .filter-cleanup {
     display: none;
   }
@@ -457,6 +465,7 @@ export default {
 .subtitle {
   color: rgba(var(--cui-text-third-rgb)) !important;
 }
+
 .notifications-panel {
   background: rgba(var(--cui-bg-card-rgb)) !important;
 }
@@ -464,21 +473,26 @@ export default {
 .notifications-panel-content {
   color: rgba(var(--cui-text-default-rgb));
 }
+
 .notification-item {
   border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
 }
+
 div >>> .v-badge__badge {
   font-size: 8px;
   height: 15px;
   min-width: 15px;
   padding: 3px 3px;
 }
+
 div >>> .theme--light.v-btn.v-btn--disabled .v-icon {
   color: rgba(var(--cui-text-default-rgb), 0.4) !important;
 }
+
 div >>> .v-expansion-panel-content__wrap {
   padding: 0;
 }
+
 div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
   color: rgba(var(--cui-text-default-rgb)) !important;
 }

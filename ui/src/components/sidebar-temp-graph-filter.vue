@@ -2,7 +2,7 @@
 .settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
   .tw-p-5.tw-grid.tw-place-content-between
     .tw-block.tw-mb-5
-      v-icon.text-muted.close-button.filter-cleanup.tw-flex.tw-justify-end(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
+      v-icon.text-muted.close-button(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
       h4.tw-mb-4 {{ $t('timerange') }}
 
       v-menu(v-model="dateModalFrom" content-class="datePicker" close-on-content-click transition="scroll-y-transition" offset-y bottom max-width="280px" min-width="auto")
@@ -43,9 +43,29 @@
       .tw-block.tw-mb-5
         v-btn.tw-text-white.tw-py-6(@click="clearFilter" color="var(--cui-primary)" block elevation="1") Reset
 
+      v-divider.tw-mb-6.tw-mt-9
+      h4.tw-mb-4 Regions
+        v-select.selector(dense small-chips deletable-chips hide-details multiple :no-data-text="$t('no_data_available')" v-model="selectedRegions" item-value="title" item-text="title" :items="availableRegions" label="..." prepend-inner-icon="mdi-security" background-color="var(--cui-bg-card)" solo @change="")
+          template(v-slot:prepend-inner)     
+            v-icon.text-muted {{ icons['mdiCamera'] }}
+
+      h4.tw-mb-4 Prests 
+        <v-btn v-for="(item, index) in cameraPresets" @click="" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
+
+
+
+
 </template>
 <script>
-import { mdiCalendarRange, mdiCamera, mdiDoorOpen, mdiLabel, mdiImageMultiple, mdiCloseCircleOutline } from '@mdi/js';
+import {
+  mdiCalendarRange,
+  mdiSecurity,
+  mdiCamera,
+  mdiDoorOpen,
+  mdiLabel,
+  mdiImageMultiple,
+  mdiCloseCircleOutline,
+} from '@mdi/js';
 import * as html2canvas from 'html2canvas';
 
 import { bus } from '@/main';
@@ -80,6 +100,7 @@ export default {
         mdiLabel,
         mdiImageMultiple,
         mdiCloseCircleOutline,
+        mdiSecurity,
       },
       extendSidebar: false,
       extendSidebarTimeout: null,
@@ -125,6 +146,39 @@ export default {
         { text: 24, value: 1440, prepend: 'Hours' },
       ],
       intervalValue: { text: 30, value: 30, prepend: 'Minutes' },
+      cameraPresets: [
+        {
+          presetName: 'Preset 1 ',
+          presetId: 1,
+        },
+        {
+          presetName: 'Preset 2 ',
+          presetId: 2,
+        },
+        {
+          presetName: 'Preset 3 ',
+          presetId: 3,
+        },
+      ],
+      availableRegions: [
+        {
+          title: 'Region 1',
+        },
+        {
+          title: 'Region 2',
+        },
+        {
+          title: 'Region 3',
+        },
+        {
+          title: 'Region 4',
+        },
+      ],
+      selecteRegions: [
+        {
+          title: 'Region 1',
+        },
+      ],
     };
   },
 
@@ -289,6 +343,7 @@ export default {
   font-size: 0.875rem;
   line-height: 2;
 }
+
 .close-button {
   display: flex;
   flex-direction: row;
@@ -398,11 +453,12 @@ export default {
   align-items: flex-start !important;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 960px) {
   .settings-navi {
     /*position: fixed;*/
     left: -1000px;
   }
+
   .filter-navi-show {
     left: 0 !important;
   }
@@ -412,9 +468,11 @@ export default {
   .subnavi-toggle {
     display: none;
   }
+
   .extended-sidebar {
     left: 280px !important;
   }
+
   .settings-navi {
     width: calc(320px + env(safe-area-inset-left, 0px)) !important;
     min-width: calc(320px + env(safe-area-inset-left, 0px)) !important;
@@ -426,14 +484,5 @@ export default {
 
 .selector >>> .v-chip__content {
   color: #fff !important;
-}
-
-@media screen and (min-device-width: 1025px) {
-  .filter-content {
-    padding-left: 320px;
-  }
-  .filter-cleanup {
-    display: none !important;
-  }
 }
 </style>
