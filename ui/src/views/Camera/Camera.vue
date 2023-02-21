@@ -26,11 +26,10 @@
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.data.settings.type === 'PTZ'")
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
     v-row.tw-w-full.tw-max-h-400
       v-col.tw-mb-3(:cols="cols" ref="chartExport2")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
-
 
   .filter-content
     <v-row class="ma-4 justify-space-around">
@@ -226,7 +225,7 @@ export default {
               ticks: {
                 min: 20,
                 max: 55,
-                stepSize: 1,
+                stepSize: 2,
                 callback: function (value) {
                   return value + '°';
                 },

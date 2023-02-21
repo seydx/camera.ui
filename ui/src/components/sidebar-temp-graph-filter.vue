@@ -30,18 +30,23 @@
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
+      label.form-input-label {{ 'Temp Value' }}
+      v-select(ref="sessionTimer2" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="tempValueSelect" @change="tempValueModifier" v-model="tempValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
       v-divider.tw-mb-3.tw-mt-6
 
-      .tw-block.tw-mb-5
+      label.form-input-label {{ 'Export' }}  
+      .tw-block.tw-mb-5.tw-px-2
         <download-excel :data="temperaturesJson" name="Temperature_Data.xls">
-          v-btn.tw-text-white.tw-py-6(@click="" color="var(--cui-primary)" block elevation="1") Download Data
+          v-btn.tw-mr-2(fab x-small color="var(--cui-primary)")
+            v-icon(size="20" color="white") {{ icons["mdiDownload"] }}
         </download-excel>
-
-      .tw-block.tw-mb-5
-        v-btn.tw-text-white.tw-py-6(@click="printGraph" color="var(--cui-primary)" block elevation="1") Download Graph
-
-      .tw-block.tw-mb-5
-        v-btn.tw-text-white.tw-py-6(@click="clearFilter" color="var(--cui-primary)" block elevation="1") Reset
+        v-btn(fab x-small color="var(--cui-primary)" @click="printGraph")
+          v-icon(size="20" color="white") {{ icons["mdiFullscreen"] }}
+        v-btn(fab x-small color="var(--cui-primary)" @click="clearFilter")
+          v-icon(size="20" color="white") {{ icons["mdiRefresh"] }}
 
       v-divider.tw-mb-6.tw-mt-9
       h4.tw-mb-4 Regions
@@ -49,10 +54,8 @@
           template(v-slot:prepend-inner)     
             v-icon.text-muted {{ icons['mdiCamera'] }}
 
-      h4.tw-mb-4 Prests 
-        <v-btn v-for="(item, index) in cameraPresets" @click="" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
-
-
+      h4.tw-mb-4 Presets     
+        <div class="py-2" v-for="(item, index) in cameraPresets"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
 
 
 </template>
@@ -61,6 +64,9 @@ import {
   mdiCalendarRange,
   mdiSecurity,
   mdiCamera,
+  mdiDownload,
+  mdiRefresh,
+  mdiFullscreen,
   mdiDoorOpen,
   mdiLabel,
   mdiImageMultiple,
@@ -101,6 +107,9 @@ export default {
         mdiImageMultiple,
         mdiCloseCircleOutline,
         mdiSecurity,
+        mdiDownload,
+        mdiRefresh,
+        mdiFullscreen,
       },
       extendSidebar: false,
       extendSidebarTimeout: null,
@@ -146,6 +155,12 @@ export default {
         { text: 24, value: 1440, prepend: 'Hours' },
       ],
       intervalValue: { text: 30, value: 30, prepend: 'Minutes' },
+      tempValueSelect: [
+        { text: 'Min Temp', value: 0, prepend: '°C' },
+        { text: 'Avg Temp', value: 1, prepend: '°C' },
+        { text: 'Max Temp', value: 2, prepend: '°C' },
+      ],
+      tempValue: { text: 'Avg Temp', value: 1, prepend: '°C' },
       cameraPresets: [
         {
           presetName: 'Preset 1 ',
@@ -241,6 +256,7 @@ export default {
       this.dateFrom = today.toISOString().split('T')[0];
       this.dateTo = today.toISOString().split('T')[0];
       this.intervalValue = { text: 30, value: 30, prepend: 'Minutes' };
+      this.tempValue = { text: 'Avg Temp', value: 1, prepend: '°C' };
 
       this.saveDateRange();
       this.watchItems();
@@ -332,6 +348,9 @@ export default {
     },
     intervalModifier() {
       this.$emit('intervalModifier', this.intervalValue);
+    },
+    tempValueModifier() {
+      this.$emit('tempValueModifier', this.tempValue);
     },
   },
 };
