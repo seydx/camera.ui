@@ -21,7 +21,7 @@
         v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
           v-icon {{ icons['mdiFilter'] }}
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap
+  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.includes('ptz')")
     v-row.tw-w-full.tw-max-h-400
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")

@@ -140,6 +140,8 @@ import {
   mdiTune,
   mdiViewDashboard,
   mdiThermometer,
+  mdiChartMultiple,
+  mdiRecordCircle,
 } from '@mdi/js';
 import { version } from '../../../package.json';
 
@@ -178,6 +180,8 @@ export default {
         'mdi-script': mdiScript,
         'mdi-text-box-outline': mdiTextBoxOutline,
         'mdi-view-dashboard': mdiViewDashboard,
+        'mdi-chart-multiple': mdiChartMultiple,
+        'mdi-record-circle': mdiRecordCircle,
       },
 
       navigation: routes

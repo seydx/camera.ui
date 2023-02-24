@@ -99,7 +99,7 @@ export const routes = [
       },
       navigation: {
         main: true,
-        icon: 'mdi-cctv',
+        icon: 'mdi-chart-multiple',
       },
     },
     component: () => import(/* webpackChunkName: "cameras" */ '@/views/Cameras/Cameras.vue'),
@@ -154,7 +154,7 @@ export const routes = [
       },
       navigation: {
         main: true,
-        icon: 'mdi-image-multiple',
+        icon: 'mdi-record-circle',
       },
     },
     component: () => import(/* webpackChunkName: "recordings" */ '@/views/Recordings/Recordings.vue'),
@@ -196,7 +196,7 @@ export const routes = [
       },
       navigation: {
         main: true,
-        icon: 'mdi-grid-large',
+        icon: 'mdi-cctv',
       },
     },
     component: () => import(/* webpackChunkName: "camview" */ '@/views/Camview/Camview.vue'),
@@ -216,7 +216,7 @@ export const routes = [
         showSidebar: true,
       },
       navigation: {
-        extras: true,
+        extras: false,
         icon: 'mdi-console',
       },
     },
@@ -300,7 +300,7 @@ export const routes = [
         showSidebar: true,
       },
       navigation: {
-        extras: true,
+        extras: false,
         icon: 'mdi-puzzle',
       },
     },

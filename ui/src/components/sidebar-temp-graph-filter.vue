@@ -38,7 +38,7 @@
       v-divider.tw-mb-3.tw-mt-6
 
       label.form-input-label {{ 'Export' }}  
-      .tw-block.tw-mb-5.tw-px-2
+      .tw-flex.tw-mb-5.tw-space-x-4
         <download-excel :data="temperaturesJson" name="Temperature_Data.xls">
           v-btn.tw-mr-2(fab x-small color="var(--cui-primary)")
             v-icon(size="20" color="white") {{ icons["mdiDownload"] }}
@@ -56,7 +56,6 @@
 
       h4.tw-mb-4 Presets     
         <div class="py-2" v-for="(item, index) in cameraPresets"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
-
 
 </template>
 <script>
