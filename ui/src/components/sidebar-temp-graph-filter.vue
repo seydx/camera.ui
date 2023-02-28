@@ -1,5 +1,5 @@
 <template lang="pug">
-.settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }")
+.settings-navi.pl-safe.pb-safe.tw-flex.tw-flex-col.tw-h-full(key="filterSidebar" :class="(showSidebar ? 'filter-navi-show ' : '') + (extendSidebar ? 'extended-sidebar' : '')" v-click-outside="{ handler: hideNavi, include: include }" v-if="camera.name.toLowerCase().includes('thermal')")
   .tw-p-5.tw-grid.tw-place-content-between
     .tw-block.tw-mb-5
       v-icon.text-muted.close-button(@click="hideNavi") {{ icons['mdiCloseCircleOutline'] }}
@@ -30,8 +30,13 @@
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
-      label.form-input-label {{ 'Temp Value' }}
-      v-select(ref="sessionTimer2" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="tempValueSelect" @change="tempValueModifier" v-model="tempValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+      //- label.form-input-label {{ 'Temp Value' }}
+      //- v-select(ref="sessionTimer2" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="tempValueSelect" @change="tempValueModifier" v-model="tempValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
+      //-   template(v-slot:prepend-inner)
+      //-     v-icon.text-muted {{ icons['mdiTimelapse'] }}
+
+      label.form-input-label {{ 'Temp Axis Units' }}
+      v-select(ref="temp-axis-units" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="tempAxisSelect" @change="tempAxisModifier" v-model="tempAxis" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
@@ -54,8 +59,8 @@
           template(v-slot:prepend-inner)     
             v-icon.text-muted {{ icons['mdiCamera'] }}
 
-      h4.tw-mb-4 Presets     
-        <div class="py-2" v-for="(item, index) in cameraPresets"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
+      h4.tw-mb-4(v-if="camera.name.includes('ptz')") Presets     
+        <div class="py-2" v-for="(item, index) in cameraPresetsList"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
 
 </template>
 <script>
@@ -93,6 +98,10 @@ export default {
     camera: {
       type: Object,
       default: () => ({}),
+    },
+    cameraPresets: {
+      type: Array,
+      default: () => [],
     },
   },
 
@@ -155,25 +164,18 @@ export default {
       ],
       intervalValue: { text: 30, value: 30, prepend: 'Minutes' },
       tempValueSelect: [
-        { text: 'Min Temp', value: 0, prepend: '°C' },
-        { text: 'Avg Temp', value: 1, prepend: '°C' },
-        { text: 'Max Temp', value: 2, prepend: '°C' },
+        { text: 'Min Temp', value: 'minTemp', prepend: '°C' },
+        { text: 'Avg Temp', value: 'avgTemp', prepend: '°C' },
+        { text: 'Max Temp', value: 'maxTemp', prepend: '°C' },
       ],
-      tempValue: { text: 'Avg Temp', value: 1, prepend: '°C' },
-      cameraPresets: [
-        {
-          presetName: 'Preset 1 ',
-          presetId: 1,
-        },
-        {
-          presetName: 'Preset 2 ',
-          presetId: 2,
-        },
-        {
-          presetName: 'Preset 3 ',
-          presetId: 3,
-        },
+      tempAxisSelect: [
+        { text: '2', value: 2, prepend: '°C' },
+        { text: '5', value: 5, prepend: '°C' },
+        { text: '10', value: 10, prepend: '°C' },
       ],
+      tempAxis: { text: '5', value: 5, prepend: '°C' },
+      tempValue: { text: 'Avg Temp', value: 'avgTemp', prepend: '°C' },
+      cameraPresetsList: this.cameraPresets,
       availableRegions: [
         {
           title: 'Region 1',
@@ -350,6 +352,9 @@ export default {
     },
     tempValueModifier() {
       this.$emit('tempValueModifier', this.tempValue);
+    },
+    tempAxisModifier() {
+      this.$emit('tempAxisModifier', this.tempAxis);
     },
   },
 };

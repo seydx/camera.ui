@@ -84,26 +84,27 @@ export const routes = [
     component: () => import(/* webpackChunkName: "dashboard" */ '@/views/Dashboard/Dashboard.vue'),
   },
   {
-    path: '/cameras',
-    name: 'Cameras',
+    path: '/camview',
+    name: 'Camview',
     meta: {
       auth: {
         requiresAuth: true,
-        requiredLevel: ['cameras:access'],
+        requiredLevel: [/*"cameras:access", */ 'camview:access'],
       },
       config: {
-        fixedNavbar: true,
-        showFooter: true,
+        showFooter: false,
+        showMinifiedNavbar: true,
         showNavbar: true,
         showSidebar: true,
       },
       navigation: {
         main: true,
-        icon: 'mdi-chart-multiple',
+        icon: 'mdi-cctv',
       },
     },
-    component: () => import(/* webpackChunkName: "cameras" */ '@/views/Cameras/Cameras.vue'),
+    component: () => import(/* webpackChunkName: "camview" */ '@/views/Camview/Camview.vue'),
   },
+
   {
     path: '/cameras/:name',
     name: 'Camera',
@@ -181,25 +182,25 @@ export const routes = [
     component: () => import(/* webpackChunkName: "notifications" */ '@/views/Notifications/Notifications.vue'),
   },
   {
-    path: '/camview',
-    name: 'Camview',
+    path: '/cameras',
+    name: 'Graph',
     meta: {
       auth: {
         requiresAuth: true,
-        requiredLevel: [/*"cameras:access", */ 'camview:access'],
+        requiredLevel: ['cameras:access'],
       },
       config: {
-        showFooter: false,
-        showMinifiedNavbar: true,
+        fixedNavbar: true,
+        showFooter: true,
         showNavbar: true,
         showSidebar: true,
       },
       navigation: {
         main: true,
-        icon: 'mdi-cctv',
+        icon: 'mdi-chart-multiple',
       },
     },
-    component: () => import(/* webpackChunkName: "camview" */ '@/views/Camview/Camview.vue'),
+    component: () => import(/* webpackChunkName: "cameras" */ '@/views/Cameras/Cameras.vue'),
   },
   {
     path: '/console',

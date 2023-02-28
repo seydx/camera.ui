@@ -3,7 +3,7 @@
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
   .tw-max-w-7xl.pl-safe.pr-safe
-    Sidebar(datePicker @intervalModifier="modifyInterval" @filter="filter" :temperaturesJson="exportData" :camera="camera")
+    Sidebar(datePicker @intervalModifier="modifyInterval" @tempAxisModifier="modifyTempAxis" @tempValueModifier="modifyTempValue" @filter="filter" :temperaturesJson="exportData" :camera="camera" :cameraPresets="cameraPresets")
 
   .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
     .tw-w-full.tw-flex.tw-justify-between.tw-items-center
@@ -26,7 +26,7 @@
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap
+  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
     v-row.tw-w-full.tw-max-h-400
       v-col.tw-mb-3(:cols="cols" ref="chartExport2")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
@@ -241,6 +241,7 @@ export default {
       selectedFilter: [],
       exportData: [],
       cameraPresets: [],
+      tempValue: 'avgTemp',
     };
   },
   watch: {
@@ -392,7 +393,6 @@ export default {
 
       this.camTempsOptions.scales.yAxes[0].ticks.min = minTemp - 3;
       this.camTempsOptions.scales.yAxes[0].ticks.max = maxTemp + 3;
-      this.camTempsOptions.scales.yAxes[0].ticks.stepSize = 1;
       this.camTempsOptions.scales.yAxes[0].display = true;
 
       console.log(`${this.camTempsOptions.scales.yAxes[0]}`);
@@ -442,6 +442,12 @@ export default {
     },
     modifyInterval(value) {
       this.camTempsOptions.scales.xAxes[0].time.unitStepSize = value;
+    },
+    modifyTempAxis(value) {
+      this.camTempsOptions.scales.yAxes[0].ticks.stepSize = value;
+    },
+    modifyTempValue(value) {
+      this.tempValue = value.bind(this);
     },
     goToPreset(id) {
       goToCameraPreset(this.$route.params.name, id);
