@@ -417,6 +417,7 @@ export default class Socket {
                         formatted.push(data);
                         Socket.#cameraTempsHistory.push(data);
                         TemperaturesModel.createTemperature(data);
+                        //Add to mongo here
                       }
                       //Do something
                     }
@@ -522,6 +523,7 @@ export default class Socket {
                           formattedPTZ.push(data);
                           Socket.#cameraTempsHistory.push(data);
                           TemperaturesModel.createTemperature(data);
+                          //add to mongo here
                         }
                         //Do something
                       }

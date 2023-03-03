@@ -225,7 +225,7 @@ export default {
               ticks: {
                 min: 20,
                 max: 55,
-                stepSize: 2,
+                stepSize: 5,
                 callback: function (value) {
                   return value + '°';
                 },
@@ -242,6 +242,7 @@ export default {
       exportData: [],
       cameraPresets: [],
       tempValue: 'avgTemp',
+      tempAxisValue: 5,
     };
   },
   watch: {
@@ -376,6 +377,9 @@ export default {
     },
 
     tempLimits(tempLists) {
+      function round(input, roundNum) {
+        return Math.ceil(input / roundNum) * roundNum;
+      }
       var minTemp = 100;
       var maxTemp = 0;
       tempLists.forEach((tempList) => {
@@ -391,8 +395,8 @@ export default {
         }
       });
 
-      this.camTempsOptions.scales.yAxes[0].ticks.min = minTemp - 3;
-      this.camTempsOptions.scales.yAxes[0].ticks.max = maxTemp + 3;
+      this.camTempsOptions.scales.yAxes[0].ticks.min = round(minTemp - 5, this.tempAxisValue);
+      this.camTempsOptions.scales.yAxes[0].ticks.max = round(maxTemp - 5, this.tempAxisValue);
       this.camTempsOptions.scales.yAxes[0].display = true;
 
       console.log(`${this.camTempsOptions.scales.yAxes[0]}`);
@@ -444,6 +448,7 @@ export default {
       this.camTempsOptions.scales.xAxes[0].time.unitStepSize = value;
     },
     modifyTempAxis(value) {
+      this.tempAxisValue = value;
       this.camTempsOptions.scales.yAxes[0].ticks.stepSize = value;
     },
     modifyTempValue(value) {
