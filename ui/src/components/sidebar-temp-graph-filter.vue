@@ -48,19 +48,19 @@
           v-btn.tw-mr-2(fab x-small color="var(--cui-primary)")
             v-icon(size="20" color="white") {{ icons["mdiDownload"] }}
         </download-excel>
-        v-btn(fab x-small color="var(--cui-primary)" @click="printGraph")
-          v-icon(size="20" color="white") {{ icons["mdiFullscreen"] }}
-        v-btn(fab x-small color="var(--cui-primary)" @click="clearFilter")
-          v-icon(size="20" color="white") {{ icons["mdiRefresh"] }}
+        //- v-btn(fab x-small color="var(--cui-primary)" @click="printGraph")
+        //-   v-icon(size="20" color="white") {{ icons["mdiFullscreen"] }}
+        //- v-btn(fab x-small color="var(--cui-primary)" @click="clearFilter")
+        //-   v-icon(size="20" color="white") {{ icons["mdiRefresh"] }}
 
-      v-divider.tw-mb-6.tw-mt-9
-      h4.tw-mb-4 Regions
-        v-select.selector(dense small-chips deletable-chips hide-details multiple :no-data-text="$t('no_data_available')" v-model="selectedRegions" item-value="title" item-text="title" :items="availableRegions" label="..." prepend-inner-icon="mdi-security" background-color="var(--cui-bg-card)" solo @change="")
-          template(v-slot:prepend-inner)     
-            v-icon.text-muted {{ icons['mdiCamera'] }}
+      //- v-divider.tw-mb-6.tw-mt-9
+      //- h4.tw-mb-4 Regions
+      //-   v-select.selector(dense small-chips deletable-chips hide-details multiple :no-data-text="$t('no_data_available')" v-model="selectedRegions" item-value="title" item-text="title" :items="availableRegions" label="..." prepend-inner-icon="mdi-security" background-color="var(--cui-bg-card)" solo @change="")
+      //-     template(v-slot:prepend-inner)     
+      //-       v-icon.text-muted {{ icons['mdiCamera'] }}
 
-      h4.tw-mb-4(v-if="camera.name.includes('ptz')") Presets     
-        <div class="py-2" v-for="(item, index) in cameraPresetsList"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
+      //- h4.tw-mb-4(v-if="camera.name.includes('ptz')") Presets     
+      //-   <div class="py-2" v-for="(item, index) in cameraPresetsList"><v-btn @click="" :key="item.presetId" block=true color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn></div>
 
 </template>
 <script>

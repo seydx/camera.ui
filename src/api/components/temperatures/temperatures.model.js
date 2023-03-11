@@ -7,6 +7,28 @@ import Cleartimer from '../../../common/cleartimer.js';
 
 import Database from '../../database.js';
 
+import mongoose from 'mongoose';
+
+mongoose.connect('mongodb://localhost:27017/infraspec', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const temperatureSchema = {
+  id: String,
+  camera: String,
+  region: String,
+  preset: String,
+  maxTemp: String,
+  minTemp: String,
+  avgTemp: String,
+  time: String,
+  timeStamp: Number,
+};
+
+const Temperature = mongoose.model('Temperature', temperatureSchema);
+await Temperature.createCollection();
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
 export const list = async (query) => {
@@ -22,13 +44,16 @@ export const list = async (query) => {
     };
   };
 
-  let temperatures = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
-  temperatures.push(...Database.temperaturesDB.chain.get('temperatures').cloneDeep().value());
-  temperatures.sort(GetSortOrder('timestamp'));
+  let temperatures = await Temperature.find();
+
+  //let temperatures = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
+  // temperatures.push(...Database.temperaturesDB.chain.get('temperatures').cloneDeep().value());
+  await temperatures.push(...(await Temperature.find()));
+  temperatures.sort(GetSortOrder('timeStamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
-    temperatures = temperatures.filter((notification) => {
-      const date = moment.unix(notification.timestamp).format('YYYY-MM-DD');
+    temperatures = temperatures.filter((temperature) => {
+      const date = moment.unix(temperature.timeStamp).format('YYYY-MM-DD');
       const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
 
       let fromDate = query.from;
@@ -100,7 +125,7 @@ export const createTemperature = async (data) => {
   const timestamp = data.timestamp || moment().unix();
   const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
-  const temperature = {
+  const temperature = new Temperature({
     id: id,
     camera: camera.name,
     region: region,
@@ -109,8 +134,8 @@ export const createTemperature = async (data) => {
     maxTemp: data.maxTemp,
     avgTemp: data.avgTemp,
     time: time,
-    timestamp: timestamp,
-  };
+    timeStamp: timestamp,
+  });
 
   //Loop back to setup temp settings for total number of temp readings. Will want to convert this to a time range i.e Remove all temp data older than 30 days.
   // const temperartureSettings = await Database.interfaceDB.chain.get('settings').get('temperatures').cloneDeep().value();
@@ -134,7 +159,7 @@ export const createTemperature = async (data) => {
 
   //   Cleartimer.setNotification(id, timestamp);
   // }
-  await Database.interfaceDB.chain.get('temperatures').push(temperature).value();
+  temperature.save();
   return {
     temperature: temperature,
   };
