@@ -39,6 +39,7 @@
     "vue-toastification": "^1.7.14",
     "vuedraggable": "^2.24.3",
     "vuetify": "^2.6.4",
+    "vuetify-datetime-picker": "^2.1.1",
     "vuex": "3.6.2",
     "xterm": "^4.18.0",
     "xterm-addon-attach": "^0.6.0",

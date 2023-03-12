@@ -1,4 +1,7 @@
 {
+  "events": {
+    "restart": "npm run build ;; npm run watch"
+  },
   "restartable": "rs",
   "verbose": true,
   "watch": ["src"],

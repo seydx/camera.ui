@@ -25,6 +25,7 @@ import VueSocketIOExt from 'vue-socket.io-extended';
 
 import JsonExcel from 'vue-json-excel';
 import VueHtml2Canvas from 'vue-html2canvas';
+import DatetimePicker from 'vuetify-datetime-picker';
 
 Vue.use(Toast, ToastOptions);
 Vue.use(VueSocketIOExt, socket, { store });
@@ -33,7 +34,7 @@ Vue.use(VueHtml2Canvas);
 Vue.component('Loader', Loader);
 
 Vue.component('DownloadExcel', JsonExcel);
-
+Vue.use(DatetimePicker);
 Vue.mixin(permission);
 
 Vue.config.productionTip = false;

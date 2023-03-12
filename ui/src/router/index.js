@@ -183,7 +183,7 @@ export const routes = [
   },
   {
     path: '/cameras',
-    name: 'Graph',
+    name: 'graphs',
     meta: {
       auth: {
         requiresAuth: true,
