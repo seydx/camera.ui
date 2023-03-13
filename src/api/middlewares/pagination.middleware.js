@@ -2,7 +2,7 @@
 'use-strict';
 
 export const pages = (req, res) => {
-  const maxPageSize = req.path === '/api/cameras' ? 50 : 1000;
+  const maxPageSize = req.path === '/api/cameras' ? 50 : 10000;
   const minPage = 1;
 
   let start = Number.parseInt(req.query.start); //for infinite scroll
