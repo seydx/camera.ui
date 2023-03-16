@@ -34,7 +34,6 @@
   //-     <v-btn v-for="(item, index) in cameraPresets" @click="goToPreset(item.presetId)" :key="item.presetId" color="red" outlined>{{item.presetName}}[{{ item.presetId}}]</v-btn>
   //-   </v-row>
 
-
   .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
     v-row.tw-w-full.max-h-screen
       v-col.tw-mb-3(:cols="cols")
@@ -46,7 +45,6 @@
       v-col.tw-mb-3(:cols="cols")
         vue-aspect-ratio(ar="16:9" width="100%")
           VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
-
 
   .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
     .tw-w-full.tw-flex.tw-justify-between.tw-items-center
