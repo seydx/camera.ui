@@ -12,7 +12,7 @@ services:
         max-size: "10mb"
         max-file: "1"
   mongo:
-    image: dubc/mongodb-4.0
+    image: mongo:4.4.19-focal
     restart: always
     ports:
       - 27018:27017
