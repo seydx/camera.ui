@@ -12,7 +12,7 @@ services:
         max-size: "10mb"
         max-file: "1"
   mongo:
-    image: mongo:4.4.19-focal
+    image: mongo:4.1.13-bionic
     restart: always
     ports:
       - 27018:27017
