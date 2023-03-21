@@ -213,7 +213,6 @@ export default {
     } else if (this.snapshot || this.refreshSnapshot) {
       this.startSnapshot();
     }
-    this.handleStartStop();
   },
 
   beforeDestroy() {
