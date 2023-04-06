@@ -9,6 +9,10 @@ import fetch from 'node-fetch';
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
+function getIndex(str, char, n) {
+  return str.split(char).slice(0, n).join(char).length;
+}
+
 export const insert = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.body.name);
