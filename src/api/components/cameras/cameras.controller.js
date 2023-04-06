@@ -76,6 +76,9 @@ export const getByName = async (req, res) => {
 };
 
 export const changeCameraPosition = async (req, res) => {
+  function getIndex(str, char, n) {
+    return str.split(char).slice(0, n).join(char).length;
+  }
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 

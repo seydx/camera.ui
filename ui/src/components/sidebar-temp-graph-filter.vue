@@ -30,7 +30,6 @@
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
-
       label.form-input-label Graph Labels
         v-switch(color="var(--cui-primary)" v-model="labels" @change="toggleLabels")
 
@@ -81,8 +80,6 @@ import {
   mdiCloseCircleOutline,
 } from '@mdi/js';
 import * as html2canvas from 'html2canvas';
-import { ref } from 'vue';
-
 import { bus } from '@/main';
 export default {
   name: 'SidebarTempGraphFilter',

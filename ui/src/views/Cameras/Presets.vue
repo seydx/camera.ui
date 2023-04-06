@@ -18,7 +18,6 @@
         template(v-slot:item.liveGraph="{ item }")
           v-chip(color="var(--cui-primary)" dark small style="cursor: pointer" @click="$router.push(`/cameras/${this.$route.params.name}/preset/${encodeURIComponent(item.presetName)}--${item.presetId}`)") Graph
 
-
       //- div(v-for="room in rooms" :key="room" v-if="!listMode && ((room === 'Standard' && cameras.find((cam) => cam.settings.room === room)) || room !== 'Standard')")
       //-   .tw-mt-7(v-if="room !== 'Standard'")
         

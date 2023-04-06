@@ -24,7 +24,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
             v-select.select(prepend-inner-icon="mdiAlphabetical" v-model="cam.type" :items="types" background-color="var(--cui-bg-card)" solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-
             
             .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
@@ -33,8 +32,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ 'enables cameras to record temperature readings' }}
               v-switch(color="var(--cui-primary)" v-model="cam.thermalReporting")
-
-            
 
             label.form-input-label Username
               span.tw-text-red-500 *
@@ -47,7 +44,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
             v-text-field(v-model="cam.password" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" type="password" required solo)
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
-                
 
             label.form-input-label Video Stream
               span.tw-text-red-500 *

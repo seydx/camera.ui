@@ -127,8 +127,6 @@ export const createTemperature = async (data) => {
 
   //const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
-  var date = new Date();
-
   const id = data.id || (await nanoid());
   const preset = data.presetId;
   const region = data.regionId;

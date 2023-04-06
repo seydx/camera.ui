@@ -347,8 +347,8 @@ export default class Socket {
   }
 
   static async #handleCameraTemperature() {
-    function getIndex(str, char, n) {
-      return str.split(char).slice(0, n).join(char).length;
+    function getIndex(string_, char, n) {
+      return string_.split(char).slice(0, n).join(char).length;
     }
     const cameras = ConfigService.ui.cameras;
     for (const camera of cameras) {
@@ -446,10 +446,6 @@ export default class Socket {
               break;
             case 'PTZ':
               {
-                var regexPTZ = /=(.*)/;
-                var ip;
-                var credsRaw;
-
                 if (camera.iis) {
                   ip = camera.videoConfig.source.slice(
                     camera.videoConfig.source.indexOf('@') + 1,
