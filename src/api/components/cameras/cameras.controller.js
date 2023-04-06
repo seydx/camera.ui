@@ -86,15 +86,30 @@ export const changeCameraPosition = async (req, res) => {
       });
     }
 
-    const ip = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('@') + 1,
-      camera.videoConfig.source.lastIndexOf(':')
-    );
+    var ip;
+    var credsRaw;
 
-    const credsRaw = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('/') + 2,
-      camera.videoConfig.source.lastIndexOf('@')
-    );
+    if (camera.iis) {
+      ip = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('@') + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
+
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        camera.videoConfig.source.lastIndexOf('@')
+      );
+    } else {
+      ip = camera.videoConfig.source.slice(
+        getIndex(camera.videoConfig.source, '@', 2) + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
+
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        getIndex(camera.videoConfig.source, '@', 2)
+      );
+    }
 
     const creds = credsRaw.split(':');
     var positions = [];
@@ -153,6 +168,9 @@ export const changeCameraPosition = async (req, res) => {
 
 //getCameraPresets
 export const getCameraPresets = async (req, res) => {
+  function getIndex(str, char, n) {
+    return str.split(char).slice(0, n).join(char).length;
+  }
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -171,16 +189,30 @@ export const getCameraPresets = async (req, res) => {
     var presets = [];
     var rawPresets = [];
     var regex = /=(.*)/;
+    var ip;
+    var credsRaw;
 
-    const ip = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('@') + 1,
-      camera.videoConfig.source.lastIndexOf(':')
-    );
+    if (camera.iis) {
+      ip = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('@') + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
 
-    const credsRaw = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('/') + 2,
-      camera.videoConfig.source.lastIndexOf('@')
-    );
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        camera.videoConfig.source.lastIndexOf('@')
+      );
+    } else {
+      ip = camera.videoConfig.source.slice(
+        getIndex(camera.videoConfig.source, '@', 2) + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
+
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        getIndex(camera.videoConfig.source, '@', 2)
+      );
+    }
 
     const creds = credsRaw.split(':');
 
@@ -189,7 +221,6 @@ export const getCameraPresets = async (req, res) => {
         `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`,
         {
           method: 'GET', // *GET, POST, PUT, DELETE, etc.
-          signal: AbortSignal.timeout(1500),
         }
       )
         .then((response) => response.text())
@@ -220,7 +251,12 @@ export const getCameraPresets = async (req, res) => {
 };
 
 export const goToCameraPreset = async (req, res) => {
+  function getIndex(str, char, n) {
+    return str.split(char).slice(0, n).join(char).length;
+  }
   try {
+    const camera = await CamerasModel.findByName(req.params.name);
+
     if (!camera) {
       return res.status(404).send({
         statusCode: 404,
@@ -232,16 +268,27 @@ export const goToCameraPreset = async (req, res) => {
         message: 'Camera does not have PTZ features',
       });
     }
-    const camera = await CamerasModel.findByName(req.params.name);
-    const ip = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('@') + 1,
-      camera.videoConfig.source.lastIndexOf(':')
-    );
+    if (camera.iis) {
+      ip = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('@') + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
 
-    const credsRaw = camera.videoConfig.source.slice(
-      camera.videoConfig.source.indexOf('/') + 2,
-      camera.videoConfig.source.lastIndexOf('@')
-    );
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        camera.videoConfig.source.lastIndexOf('@')
+      );
+    } else {
+      ip = camera.videoConfig.source.slice(
+        getIndex(camera.videoConfig.source, '@', 2) + 1,
+        camera.videoConfig.source.lastIndexOf(':')
+      );
+
+      credsRaw = camera.videoConfig.source.slice(
+        camera.videoConfig.source.indexOf('/') + 2,
+        getIndex(camera.videoConfig.source, '@', 2)
+      );
+    }
 
     const creds = credsRaw.split(':');
     var response = '';

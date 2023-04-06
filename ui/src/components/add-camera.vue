@@ -12,7 +12,6 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
           v-progress-circular(indeterminate color="var(--cui-primary)")
         .tw-block(v-else)
           div
-            h2.tw-mb-5 {{ $t('general') }}
 
             label.form-input-label Name
               span.tw-text-red-500 *
@@ -26,16 +25,31 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
               template(v-slot:prepend-inner)
                 v-icon.text-muted {{ icons['mdiAlphabetical'] }}
 
-                label.form-input-label Thermal Montioring
-                .tw-flex.tw-justify-between.tw-items-center.tw-mt-3
+            
+            .tw-flex.tw-justify-between.tw-items-center
               .tw-block.tw-w-full.tw-pr-2
-                label.form-input-label Enable Thermal Monitoring
+                label.form-input-label Thermal Montioring
                 .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                   v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                   .input-info.tw-italic {{ 'enables cameras to record temperature readings' }}
-              v-switch(color="var(--cui-primary)" v-model="cam.thermalMonitoring")
+              v-switch(color="var(--cui-primary)" v-model="cam.thermalReporting")
 
-            label.form-input-label Video Source
+            
+
+            label.form-input-label Username
+              span.tw-text-red-500 *
+            v-text-field(v-model="cam.username" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" required solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+            
+            label.form-input-label Password
+              span.tw-text-red-500 *
+            v-text-field(v-model="cam.password" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" type="password" required solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+                
+
+            label.form-input-label Video Stream
               span.tw-text-red-500 *
             v-text-field(v-model="cam.videoConfig.source" :hint="$t('source_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.string" required solo)
               template(v-slot:prepend-inner)

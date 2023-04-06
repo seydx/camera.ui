@@ -8,7 +8,7 @@
     v-card.video-card.card.tw-flex.tw-flex-col.fill-height.tw-relative(ref="videoPlayer" :class="(blank ? 'no-radius ' : ' ') + (fullscreen ? 'tw-h-full' : '')")
 
       // Video Title (top)
-      .tw-z-10(v-if="title && titlePosition === 'top' && !fullscreen" @click="$router.push(`cameras/${camera.name}`)")
+      .tw-z-10(v-if="title && titlePosition === 'top' && !fullscreen" @click="$router.push(`cameras/${camera.name}/presets`)")
         v-card-title.video-card-top-title.tw-flex.tw-justify-between.tw-items-center
           span.font-weight-bold.text-truncate {{ camera.name }}
           v-badge(dot inline v-if="status" :color="loading || offline ? 'red' : 'green'")
@@ -16,7 +16,7 @@
 
       // Video Title (inner-top)
       .tw-z-10.tw-flex.tw-justify-center.tw-items-center.tw-w-full.tw-relative(v-if="title && titlePosition === 'inner-top' && !fullscreen")
-        .video-card-inner-top-title(@click="$router.push(`cameras/${camera.name}`)") {{ camera.name }}
+        .video-card-inner-top-title(@click="$router.push(`cameras/${camera.name}/presets`)") {{ camera.name }}
 
       // Video Container
       .tw-flex.tw-flex-col.tw-justify-center.tw-items-center.video-card-content
@@ -33,7 +33,7 @@
           .tw-font-bold.tw-text-xs.tw-mt-2.text-muted {{ $t('offline') }}
 
         // Stream Canvas / Img Container
-        .tw-w-full.tw-h-full(@click="!noLink && !blank ? $router.push(`cameras/${camera.name}`) : null" :class="!noLink && !blank ? 'tw-cursor-pointer' : ''")
+        .tw-w-full.tw-h-full(@click="!noLink && !blank ? $router.push(`cameras/${camera.name}/presets`) : null" :class="!noLink && !blank ? 'tw-cursor-pointer' : ''")
           .tw-bg-black.tw-absolute.tw-inset-0(v-if="loading || false" style="border-radius: 10px;")
           canvas.main.tw-w-full.tw-h-full(v-if="stream" ref="streamBox" width="1280" height="720")
           .tw-w-full.tw-h-full(v-else)
@@ -357,6 +357,7 @@ export default {
       if (!this.stream) {
         return;
       }
+      this.$socket.client.emit('refresh_stream', { feed: this.camera.name });
 
       if (this.streamTimeout) {
         clearTimeout(this.streamTimeout);

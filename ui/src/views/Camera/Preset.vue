@@ -8,9 +8,9 @@
   .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
     .tw-w-full.tw-flex.tw-justify-between.tw-items-center
       .tw-block
-        h2.tw-leading-6 {{ $route.params.name }}
+        h2.tw-leading-6 {{ $route.params.name }} - {{ decodeURI($route.params.presetId.split("--")[0]) }}
       .tw-block
-        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId.split('--')[1]}`)")
           v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
   .overlay(v-if="showOverlay")
@@ -145,7 +145,7 @@ import Sidebar from '@/components/sidebar-temp-graph-filter.vue';
 import { bus } from '@/main';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
-  name: 'Camera',
+  name: 'Preset',
   components: {
     LightBox,
     VideoCard,
@@ -186,7 +186,7 @@ export default {
         responsive: true,
         maintainAspectRatio: false,
         legend: {
-          display: false,
+          display: true,
         },
         elements: {
           point: {
@@ -283,6 +283,7 @@ export default {
   },
   async mounted() {
     try {
+      console.log(`Hopefully this returns something${this.$route.params.presetId.split[1]}`);
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
       let presets;
@@ -292,8 +293,11 @@ export default {
 
       camera.data.settings = settings.data;
       console.log(camera);
+      await this.grabTemps();
 
-      const lastNotifications = await getNotifications(`?cameras=${camera.data.name}&pageSize=50`);
+      const lastNotifications = await getNotifications(
+        `?cameras=${camera.data.name}&presets=${this.$route.params.presetId.split[1]}&pageSize=50`
+      );
       this.notifications = lastNotifications.data.result;
       console.log(this.notifications);
       this.images = lastNotifications.data.result.map((notification) => {
@@ -338,7 +342,6 @@ export default {
     }
   },
   async created() {
-    await this.grabTemps();
     this.pollData();
   },
   beforeDestroy() {
@@ -417,21 +420,15 @@ export default {
         var instanceMin = Math.min(...tempList.data.map((x) => parseInt(x.value, 10)));
         if (instanceMax > maxTemp) {
           maxTemp = instanceMax;
-          console.log(`Found the max temp ${maxTemp}`);
         }
         if (instanceMin < minTemp) {
           minTemp = instanceMin;
-          console.log(`Found the min temp ${minTemp}`);
         }
       });
 
       this.camTempsOptions.scales.yAxes[0].ticks.min = round(minTemp - 5, this.tempAxisValue);
       this.camTempsOptions.scales.yAxes[0].ticks.max = round(maxTemp + 5, this.tempAxisValue);
       this.camTempsOptions.scales.yAxes[0].display = true;
-
-      this.camTempsOptions.legend.display = false;
-
-      console.log(`${this.camTempsOptions.scales.yAxes[0]}`);
     },
     async grabTemps() {
       let today = new Date();
@@ -442,9 +439,9 @@ export default {
       console.log(this.camera);
       console.log(this.query);
       if (!this.query) {
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${
-          today.toISOString().split('T')[0]
-        }&to=${today.toISOString().split('T')[0]}
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&presets=${
+          this.$route.params.presetId.split('--')[1]
+        }&pageSize=5000&from=${today.toISOString().split('T')[0]}&to=${today.toISOString().split('T')[0]}
         `);
       } else {
         this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
@@ -456,7 +453,7 @@ export default {
       for (let index = 0; index < results.length; index++) {
         const element = results[index];
         var d = {
-          label: `${element[0].preset == 1 ? '' : element[0].preset + '-'} ${element[0].region}`,
+          label: `${element[0].region}`,
           data: element.map(function (i) {
             return { time: i.time, value: i.maxTemp };
           }),
@@ -471,7 +468,7 @@ export default {
     pollData() {
       this.polling = setInterval(async () => {
         return this.grabTemps();
-      }, 1 * 1000);
+      }, 60 * 1000);
     },
     getCurrentDate() {
       let today = new Date();

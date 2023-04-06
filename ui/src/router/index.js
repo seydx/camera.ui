@@ -122,6 +122,41 @@ export const routes = [
     },
     component: () => import(/* webpackChunkName: "camera" */ '@/views/Camera/Camera.vue'),
   },
+
+  {
+    path: '/cameras/:name/preset/:presetId',
+    name: 'Camera',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        fixedNavbar: true,
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+    },
+    component: () => import(/* webpackChunkName: "preset" */ '@/views/Camera/Preset.vue'),
+  },
+  {
+    path: '/cameras/:name/presets',
+    name: 'Presets',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        fixedNavbar: true,
+        showFooter: true,
+        showNavbar: true,
+        showSidebar: true,
+      },
+    },
+    component: () => import(/* webpackChunkName: "cameraPresets" */ '@/views/Cameras/Presets.vue'),
+  },
   {
     path: '/cameras/:name/feed',
     name: 'CameraFeed',
@@ -138,6 +173,23 @@ export const routes = [
       },
     },
     component: () => import(/* webpackChunkName: "cameraFeed" */ '@/views/Camera/CameraFeed.vue'),
+  },
+  {
+    path: '/cameras/:name/feed/:presetId',
+    name: 'PresetFeed',
+    meta: {
+      auth: {
+        requiresAuth: true,
+        requiredLevel: ['cameras:access'],
+      },
+      config: {
+        fixedNavbar: false,
+        showFooter: false,
+        showNavbar: false,
+        showSidebar: false,
+      },
+    },
+    component: () => import(/* webpackChunkName: "presetFeed" */ '@/views/Camera/PresetFeed.vue'),
   },
   {
     path: '/recordings',

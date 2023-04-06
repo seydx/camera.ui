@@ -22,6 +22,7 @@ const temperatureSchema = {
   maxTemp: String,
   minTemp: String,
   avgTemp: String,
+  date: Date,
   time: String,
   timeStamp: Number,
 };
@@ -44,7 +45,14 @@ export const list = async (query) => {
     };
   };
 
-  let temperatures = await Temperature.find();
+  let temperatures = await Temperature.find({
+    date: {
+      $gte: new Date(moment(query.from, 'YYYY-MM-DD')),
+      $lte: new Date(moment(query.to, 'YYYY-MM-DD')),
+    },
+    preset: `/[${query.presets}]/`,
+    camera: `/${query.cameras}/`,
+  });
 
   //let temperatures = await Database.interfaceDB.chain.get('temperatures').cloneDeep().value();
   // temperatures.push(...Database.temperaturesDB.chain.get('temperatures').cloneDeep().value());
@@ -80,7 +88,7 @@ export const list = async (query) => {
 
   if (query.presets) {
     const presets = query.presets.split(',');
-    temperatures = temperatures.filter((temperature) => presets.includes(temperature.preset));
+    temperatures = temperatures.filter((temperature) => temperature.preset.includes(`[${presets[0]}]`));
   }
 
   if (query.regions) {
@@ -119,6 +127,8 @@ export const createTemperature = async (data) => {
 
   //const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
 
+  var date = new Date();
+
   const id = data.id || (await nanoid());
   const preset = data.presetId;
   const region = data.regionId;
@@ -133,6 +143,7 @@ export const createTemperature = async (data) => {
     minTemp: data.minTemp,
     maxTemp: data.maxTemp,
     avgTemp: data.avgTemp,
+    date: Date.now(),
     time: time,
     timeStamp: timestamp,
   });

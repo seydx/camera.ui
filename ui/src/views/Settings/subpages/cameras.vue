@@ -53,11 +53,21 @@
 
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
-                    label.form-input-label {{ `${$t('thermal')} ${$t('reporting')}` }}
+                    label.form-input-label {{ `Thermal Reporting` }}
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('livestream_snapshot') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.thermalReporting")
+                
+                label.form-input-label {{ 'Username' }}
+                  v-text-field(v-model="camera.username" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiLink'] }}
+                
+                label.form-input-label {{ 'Password' }}
+                  v-text-field(v-model="camera.password" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" type="password" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiLink'] }}
 
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
