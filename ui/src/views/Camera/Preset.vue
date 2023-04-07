@@ -10,7 +10,7 @@
       .tw-block
         h2.tw-leading-6 {{ $route.params.name }} - {{ decodeURI($route.params.presetId.split("--")[0]) }}
       .tw-block
-        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId.split('--')[1]}`)")
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
           v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
   .overlay(v-if="showOverlay")
@@ -278,6 +278,7 @@ export default {
     query: {
       handler() {
         this.selectedFilter = this.query.split('&').filter((query) => query);
+        this.grabTemps();
       },
     },
   },
@@ -444,7 +445,9 @@ export default {
         }&pageSize=5000&from=${today.toISOString().split('T')[0]}&to=${today.toISOString().split('T')[0]}
         `);
       } else {
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&presets=${
+          this.$route.params.presetId.split('--')[1]
+        }&pageSize=5000${this.query}
         `);
       }
       results = this.groupBy(this.temperatures.data.result, function (item) {

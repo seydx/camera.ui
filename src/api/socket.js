@@ -443,9 +443,6 @@ export default class Socket {
               break;
             case 'PTZ':
               {
-                function str_pad_left(string, pad, length) {
-                  return (new Array(length + 1).join(pad) + string).slice(-length);
-                }
                 const start = performance.now();
                 var regexPTZ = /=(.*)/;
                 if (camera.iis) {
@@ -523,9 +520,9 @@ export default class Socket {
                     {
                       method: 'GET', // *GET, POST, PUT, DELETE, etc.
                     }
-                  );
-
-                  setTimeout(() => 1500);
+                  ).then(() => {
+                    setTimeout(() => {}, 1500);
+                  });
 
                   await fetch(
                     `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&AreaID=-1`,
@@ -562,11 +559,10 @@ export default class Socket {
                     });
                 }
                 const end = performance.now();
-                const minutes = Math.floor((end - start) / 60000);
-                const seconds = (end - start - minutes) * 60000;
-                var elapsed = str_pad_left(minutes, '0', 2) + ':' + str_pad_left(seconds, '0', 2);
                 console.log(
-                  `Temperatures Logs Created Successfully for ${camera.name}. Scanned ${presets.length} presets in ${elapsed}`
+                  `Temperatures Logs Created Successfully for ${camera.name}. Scanned ${presets.length} presets in ${
+                    end - start / 10000
+                  } seconds`
                 );
               }
               break;

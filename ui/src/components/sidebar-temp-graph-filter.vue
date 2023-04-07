@@ -30,8 +30,8 @@
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiTimelapse'] }}
 
-      label.form-input-label Graph Labels
-        v-switch(color="var(--cui-primary)" v-model="labels" @change="toggleLabels")
+      //- label.form-input-label Graph Labels
+      //-   v-switch(color="var(--cui-primary)" v-model="labels" @change="toggleLabels")
 
       //- label.form-input-label {{ 'Temp Value' }}
       //- v-select(ref="sessionTimer2" :item-text="item => item.text +' '+ item.prepend" item-value="value" :items="tempValueSelect" @change="tempValueModifier" v-model="tempValue" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
