@@ -293,11 +293,10 @@ export default {
 
       camera.data.settings = settings.data;
       console.log(camera);
-      await this.grabTemps();
-
       const lastNotifications = await getNotifications(
         `?cameras=${camera.data.name}&presets=${this.$route.params.presetId.split[1]}&pageSize=50`
       );
+
       this.notifications = lastNotifications.data.result;
       console.log(this.notifications);
       this.images = lastNotifications.data.result.map((notification) => {
@@ -330,6 +329,7 @@ export default {
         }
       });
       this.camera = camera.data;
+      await this.grabTemps();
       this.loading = false;
       if (presets.data.statusCode == null) {
         console.log(presets.data);

@@ -4,7 +4,7 @@
 .tw-w-full.mh-100(v-else)
   .tw-h-full.tw-flex.tw-justify-center.tw-items-center
     vue-aspect-ratio(ar="16:9" :width="`${width}px`")
-      v-btn.tw-text-white(style="top: 10px" absolute top left fab x-small color="rgba(0, 0, 0, 0.5)" @click="$router.push(`/cameras/${camera.name}`)")
+      v-btn.tw-text-white(style="top: 10px" absolute top left fab x-small color="rgba(0, 0, 0, 0.5)" @click="$router.push(`/cameras/${camera.name}/${$route.params.presetId.split('--')[1]}`)")
         v-icon(size="20") {{ icons['mdiChevronLeft'] }}
       VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
 </template>
@@ -52,7 +52,7 @@ export default {
       camera.data.settings = settings.data;
       this.camera = camera.data;
 
-      await goToCameraPreset(this.camera.name, this.$route.params.presetId);
+      goToCameraPreset(this.camera.name, this.$route.params.presetId.split('--')[1]);
 
       [('resize', 'orientationchange')].forEach((event) => {
         window.addEventListener(event, this.onResize);

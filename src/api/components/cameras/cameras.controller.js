@@ -9,6 +9,9 @@ import fetch from 'node-fetch';
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
+var ip;
+var credsRaw;
+
 function getIndex(str, char, n) {
   return str.split(char).slice(0, n).join(char).length;
 }
@@ -80,9 +83,6 @@ export const getByName = async (req, res) => {
 };
 
 export const changeCameraPosition = async (req, res) => {
-  function getIndex(str, char, n) {
-    return str.split(char).slice(0, n).join(char).length;
-  }
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -92,9 +92,6 @@ export const changeCameraPosition = async (req, res) => {
         message: 'Camera not exists',
       });
     }
-
-    var ip;
-    var credsRaw;
 
     if (camera.iis) {
       ip = camera.videoConfig.source.slice(
@@ -175,9 +172,6 @@ export const changeCameraPosition = async (req, res) => {
 
 //getCameraPresets
 export const getCameraPresets = async (req, res) => {
-  function getIndex(str, char, n) {
-    return str.split(char).slice(0, n).join(char).length;
-  }
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 
@@ -196,8 +190,6 @@ export const getCameraPresets = async (req, res) => {
     var presets = [];
     var rawPresets = [];
     var regex = /=(.*)/;
-    var ip;
-    var credsRaw;
 
     if (camera.iis) {
       ip = camera.videoConfig.source.slice(
@@ -258,9 +250,6 @@ export const getCameraPresets = async (req, res) => {
 };
 
 export const goToCameraPreset = async (req, res) => {
-  function getIndex(str, char, n) {
-    return str.split(char).slice(0, n).join(char).length;
-  }
   try {
     const camera = await CamerasModel.findByName(req.params.name);
 

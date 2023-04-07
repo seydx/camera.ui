@@ -314,7 +314,7 @@ export default class Socket {
 
     setTimeout(() => {
       Socket.watchTemps();
-    }, 60000 * 10);
+    }, 60000 * 5);
   }
 
   static async #handleUptime() {
@@ -347,9 +347,6 @@ export default class Socket {
   }
 
   static async #handleCameraTemperature() {
-    function getIndex(string_, char, n) {
-      return string_.split(char).slice(0, n).join(char).length;
-    }
     const cameras = ConfigService.ui.cameras;
     for (const camera of cameras) {
       if (camera.thermalReporting == true) {
@@ -446,6 +443,11 @@ export default class Socket {
               break;
             case 'PTZ':
               {
+                function str_pad_left(string, pad, length) {
+                  return (new Array(length + 1).join(pad) + string).slice(-length);
+                }
+                const start = performance.now();
+                var regexPTZ = /=(.*)/;
                 if (camera.iis) {
                   ip = camera.videoConfig.source.slice(
                     camera.videoConfig.source.indexOf('@') + 1,
@@ -470,8 +472,6 @@ export default class Socket {
 
                 const creds = credsRaw.split(':');
 
-                console.log(`Current Creds:${creds[0]}   ${creds[1]}  ${ip}`);
-
                 var presets = [];
                 var rawPresets = [];
                 await fetch(
@@ -491,11 +491,9 @@ export default class Socket {
                         };
                         presets.push(data);
                       }
-                      //Do something
                     }
                   });
                 for (const preset of presets) {
-                  var regexPTZ = /=(.*)/;
                   var goodsPTZ = [];
                   var formattedPTZ = [];
                   var regionList = [];
@@ -527,6 +525,8 @@ export default class Socket {
                     }
                   );
 
+                  setTimeout(() => 1500);
+
                   await fetch(
                     `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&AreaID=-1`,
                     {
@@ -551,16 +551,22 @@ export default class Socket {
                           formattedPTZ.push(data);
                           Socket.#cameraTempsHistory.push(data);
                           TemperaturesModel.createTemperature(data);
+                          console.log(
+                            `Temperatures Logged for ${camera.name}:${preset.presetName}[${preset.presetId}] - ${data.regionId} maxTemp: ${data.maxTemp}`
+                          );
                           //add to mongo here
                         }
                         //Do something
                       }
-                      console.log(`Temperatures Log Create Successfully for ${preset.presetName}[${preset.presetId}]`);
                       Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
                     });
                 }
+                const end = performance.now();
+                const minutes = Math.floor((end - start) / 60000);
+                const seconds = (end - start - minutes) * 60000;
+                var elapsed = str_pad_left(minutes, '0', 2) + ':' + str_pad_left(seconds, '0', 2);
                 console.log(
-                  `Temperatures Logs Created Successfully for ${camera.name}. Scanned ${presets.length} presets`
+                  `Temperatures Logs Created Successfully for ${camera.name}. Scanned ${presets.length} presets in ${elapsed}`
                 );
               }
               break;
@@ -694,4 +700,7 @@ export default class Socket {
 
     Socket.io.emit('diskSpace', Socket.#diskSpaceHistory);
   }
+}
+function getIndex(string_, char, n) {
+  return string_.split(char).slice(0, n).join(char).length;
 }
