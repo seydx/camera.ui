@@ -229,7 +229,7 @@ export const getCameraPresets = async (req, res) => {
               data = {
                 presetName: rawPresets[index + 1].match(regex)[1],
                 presetId: rawPresets[index].match(regex)[1],
-                image: `${presetName.split(' ').join('')}.jpg`,
+                image: `${rawPresets[index + 1].match(regex)[1].split(' ').join('')}.jpg`,
               };
               presets.push(data);
             }
