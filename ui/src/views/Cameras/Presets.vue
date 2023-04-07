@@ -4,12 +4,16 @@
 .tw-py-6.tw-px-4(v-else)
   .pl-safe.pr-safe
     
-    .tw-flex.tw-justify-between
-      .header-title.tw-flex.tw-items-center
-        .page-title Presets
-      .header-utils.tw-flex.tw-justify-center.tw-items-center
+  .tw-w-full.tw-flex.tw-justify-between.tw-items-center
+      .tw-block
+        h2.tw-leading-6 {{ $route.params.name }} - Presets
+      .tw-block
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras`)")
+          v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+          v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-    .tw-mt-5
+  .tw-mt-5
       v-data-table.tw-w-full(v-if="listMode && presets.length" @click:row="clickRow" :items-per-page="-1" calculate-widths disable-pagination hide-default-footer :loading="loading" :headers="headers" :items="presets" :no-data-text="$t('no_data_available')" item-key="name" class="elevation-1" mobile-breakpoint="0")
         template(v-slot:item.name="{ item }")
           b {{ item.presetName }} ({{ item.presetId }})

@@ -4,7 +4,7 @@
 .tw-w-full.mh-100(v-else)
   .tw-h-full.tw-flex.tw-justify-center.tw-items-center
     vue-aspect-ratio(ar="16:9" :width="`${width}px`")
-      v-btn.tw-text-white(style="top: 10px" absolute top left fab x-small color="rgba(0, 0, 0, 0.5)" @click="$router.push(`/cameras/${camera.name}`)")
+      v-btn.tw-text-white(style="top: 10px" absolute top left fab x-small color="rgba(0, 0, 0, 0.5)" @click="$router.push(`/cameras/${camera.name}/presets`)")
         v-icon(size="20") {{ icons['mdiChevronLeft'] }}
       VideoCard(:ref="camera.name" :camera="camera" stream noLink hideNotifications)
 </template>

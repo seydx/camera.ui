@@ -10,6 +10,8 @@
       .tw-block
         h2.tw-leading-6 {{ $route.params.name }} - {{ decodeURI($route.params.presetId.split("--")[0]) }}
       .tw-block
+      v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/presets/`)")
+          v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
         v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
           v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
@@ -133,7 +135,7 @@
 <script>
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import { mdiOpenInNew, mdiPlusCircle, mdiFilter } from '@mdi/js';
+import { mdiOpenInNew, mdiPlusCircle, mdiFilter, mdiArrowLeftCircleOutline } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 import { getCamera, getCameraSettings, getCameraPresets, goToCameraPreset } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
@@ -167,6 +169,7 @@ export default {
         mdiOpenInNew,
         mdiPlusCircle,
         mdiFilter,
+        mdiArrowLeftCircleOutline,
       },
       images: [],
       loading: true,

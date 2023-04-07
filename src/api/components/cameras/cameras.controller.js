@@ -170,7 +170,6 @@ export const changeCameraPosition = async (req, res) => {
   }
 };
 
-//getCameraPresets
 export const getCameraPresets = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);
@@ -230,6 +229,7 @@ export const getCameraPresets = async (req, res) => {
               data = {
                 presetName: rawPresets[index + 1].match(regex)[1],
                 presetId: rawPresets[index].match(regex)[1],
+                image: `${presetName.split(' ').join('')}.jpg`,
               };
               presets.push(data);
             }
