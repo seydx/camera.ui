@@ -12,8 +12,8 @@
       .tw-block
       v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/presets/`)")
           v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
-        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
-          v-icon(size="20") {{ icons['mdiOpenInNew'] }}
+      v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
+        v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
   .overlay(v-if="showOverlay")
 

@@ -33,11 +33,11 @@
       //-       vue-aspect-ratio(ar="4:3")
       //-         VideoCard(:camera="camera" title titlePosition="bottom" snapshot)
 
-    infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
-      div(slot="spinner")
-        v-progress-circular(indeterminate color="var(--cui-primary)")
-      .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_cameras") }}
-      .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_cameras") }} :(
+  infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
+    div(slot="spinner")
+      v-progress-circular(indeterminate color="var(--cui-primary)")
+    .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_cameras") }}
+    .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_cameras") }} :(
 
   LightBox(
     ref="lightboxBanner"
