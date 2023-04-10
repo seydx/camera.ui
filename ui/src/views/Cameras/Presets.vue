@@ -140,8 +140,6 @@ export default {
     this.rooms = response.data.rooms;
     this.listMode = this.oldSelected = localStorage.getItem('listModeCameras') === '1';
     this.backupHeaders = [...this.headers];
-    const presetsResponse = await getCameraPresets(this.$route.params.name);
-    this.presets = presetsResponse.data;
     this.loading = false;
 
     ['resize', 'orientationchange'].forEach((event) => {
