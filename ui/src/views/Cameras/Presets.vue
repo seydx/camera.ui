@@ -10,7 +10,7 @@
       .tw-block
         v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras`)")
           v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
-        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
+        v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${this.$route.params.name}/feed`)")
           v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
   .tw-mt-5
@@ -33,12 +33,6 @@
       //-       vue-aspect-ratio(ar="4:3")
       //-         VideoCard(:camera="camera" title titlePosition="bottom" snapshot)
 
-  infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
-    div(slot="spinner")
-      v-progress-circular(indeterminate color="var(--cui-primary)")
-    .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_cameras") }}
-    .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_cameras") }} :(
-
   LightBox(
     ref="lightboxBanner"
     :media="notImages"
@@ -54,7 +48,14 @@
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
 import InfiniteLoading from 'vue-infinite-loading';
-import { mdiCircle, mdiPlus, mdiFormatListBulleted, mdiViewModule } from '@mdi/js';
+import {
+  mdiCircle,
+  mdiPlus,
+  mdiFormatListBulleted,
+  mdiViewModule,
+  mdiArrowLeftCircleOutline,
+  mdiOpenInNew,
+} from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 
 import { getSetting } from '@/api/settings.api';
@@ -89,6 +90,8 @@ export default {
       mdiPlus,
       mdiFormatListBulleted,
       mdiViewModule,
+      mdiArrowLeftCircleOutline,
+      mdiOpenInNew,
     },
 
     presets: [],
@@ -137,7 +140,8 @@ export default {
     this.rooms = response.data.rooms;
     this.listMode = this.oldSelected = localStorage.getItem('listModeCameras') === '1';
     this.backupHeaders = [...this.headers];
-
+    const presetsResponse = await getCameraPresets(this.$route.params.name);
+    this.presets = presetsResponse.data;
     this.loading = false;
 
     ['resize', 'orientationchange'].forEach((event) => {
