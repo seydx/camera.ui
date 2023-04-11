@@ -28,8 +28,11 @@
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
+  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="!loading && graphLoading")
+    v-progress-circular(indeterminate color="var(--cui-primary)")
+
   .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
-      Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
+      Chart.tw-mt-5(v-if="!graphLoading" :dataset="camTempData" :options="camTempsOptions" ref="chart")
 
   //- .filter-content
   //-   <v-row class="ma-4 justify-space-around">
@@ -173,6 +176,7 @@ export default {
       },
       images: [],
       loading: true,
+      graphLoading: true,
       notifications: [],
       notificationsPanel: [0],
       showNotifications: false,
@@ -290,19 +294,16 @@ export default {
       console.log(`Hopefully this returns something${this.$route.params.presetId.split[1]}`);
       const camera = await getCamera(this.$route.params.name);
       const settings = await getCameraSettings(this.$route.params.name);
+      this.loading = false;
       let presets;
-      if (camera.data.type == 'PTZ') {
-        presets = await getCameraPresets(this.$route.params.name);
-      }
 
       camera.data.settings = settings.data;
-      console.log(camera);
+
       const lastNotifications = await getNotifications(
         `?cameras=${camera.data.name}&presets=${this.$route.params.presetId.split[1]}&pageSize=50`
       );
 
       this.notifications = lastNotifications.data.result;
-      console.log(this.notifications);
       this.images = lastNotifications.data.result.map((notification) => {
         if (notification.recordStoring) {
           let mediaContainer = {
@@ -334,7 +335,10 @@ export default {
       });
       this.camera = camera.data;
       await this.grabTemps();
-      this.loading = false;
+      this.graphLoading = false;
+      if (camera.data.type == 'PTZ') {
+        presets = await getCameraPresets(this.$route.params.name);
+      }
       if (presets.data.statusCode == null) {
         console.log(presets.data);
         this.cameraPresets = presets.data;
@@ -342,8 +346,11 @@ export default {
       await timeout(10);
     } catch (err) {
       console.log(err);
-      //this.$toast.error(err.message);
+      this.loading = false;
+      this.$toast.error(err.message);
     }
+
+    this.loading = false;
   },
   async created() {
     this.pollData();
@@ -461,7 +468,7 @@ export default {
         var d = {
           label: `${element[0].region}`,
           data: element.map(function (i) {
-            return { time: i.time, value: i.maxTemp };
+            return { time: i.time, value: i.avgTemp };
           }),
         };
         datasets.push(d);

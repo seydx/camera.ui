@@ -521,7 +521,7 @@ export default class Socket {
                       method: 'GET', // *GET, POST, PUT, DELETE, etc.
                     }
                   ).then(() => {
-                    setTimeout(() => {}, 1500);
+                    setTimeout(() => {}, 3000);
                   });
 
                   await fetch(
