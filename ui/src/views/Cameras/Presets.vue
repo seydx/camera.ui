@@ -42,7 +42,6 @@
 <script>
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import InfiniteLoading from 'vue-infinite-loading';
 import { mdiCircle, mdiPlus, mdiFormatListBulleted, mdiViewModule } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 import { getSetting } from '@/api/settings.api';
@@ -55,7 +54,6 @@ export default {
   components: {
     LightBox,
     FilterCard,
-    InfiniteLoading,
     VideoCard,
     'vue-aspect-ratio': VueAspectRatio,
   },
