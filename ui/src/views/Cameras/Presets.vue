@@ -27,11 +27,6 @@
         //-     v-flex.tw-mb-3.tw-px-2(v-if="!listMode && camera.settings.room === room" xs12 sm6 md4 lg3 v-for="camera in cameras" :key="camera.name")
         //-       vue-aspect-ratio(ar="4:3")
         //-         VideoCard(:camera="camera" title titlePosition="bottom" snapshot)
-      infinite-loading(:identifier="infiniteId", @infinite="infiniteHandler")
-        div(slot="spinner")
-          v-progress-circular(indeterminate color="var(--cui-primary)")
-        .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_cameras") }}
-        .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_cameras") }} :(
   
     LightBox(
       ref="lightboxBanner"
@@ -77,7 +72,7 @@ export default {
       mdiViewModule,
     },
     presets: [],
-    loading: false,
+    loading: true,
     infiniteId: Date.now(),
     page: 1,
     query: '',
@@ -113,6 +108,9 @@ export default {
     });
   },
   async mounted() {
+    const presetsResponse = await getCameraPresets(this.$route.params.name);
+    this.presets = presetsResponse.data;
+    this.loading = false;
     const response = await getSetting('general');
     this.rooms = response.data.rooms;
     this.listMode = this.oldSelected = localStorage.getItem('listModeCameras') === '1';
@@ -145,23 +143,6 @@ export default {
       this.query = filterQuery;
       this.infiniteId = Date.now();
       this.loading = false;
-    },
-    async infiniteHandler($state) {
-      try {
-        const response = await getCameraPresets(this.$route.params.name);
-        console.log(response);
-        if (response.data.length > 0) {
-          this.page += 1;
-          this.presets = response.data;
-          console.log(this.presets);
-          $state.loaded();
-        } else {
-          $state.complete();
-        }
-      } catch (err) {
-        console.log(err);
-        this.$toast.error(err.message);
-      }
     },
     onResize() {
       const removeHeaders = [];

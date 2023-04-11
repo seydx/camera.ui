@@ -307,7 +307,7 @@ export default class Socket {
 
     setTimeout(() => {
       Socket.watchSystem();
-    }, 3000);
+    }, 4000);
   }
   static async watchTemps() {
     await Socket.#handleCameraTemperature();

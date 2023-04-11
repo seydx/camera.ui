@@ -1,0 +1,198 @@
+{
+  "name": "CameraUI",
+  "port": 8081,
+  "atHomeSwitch": false,
+  "logLevel": "info",
+  "mqtt": {
+    "active": false,
+    "tls": false,
+    "port": 1883
+  },
+  "http": {
+    "active": true,
+    "port": 8590,
+    "localhttp": false
+  },
+  "smtp": {
+    "active": false,
+    "port": 2727,
+    "space_replace": "+"
+  },
+  "ftp": {
+    "active": false,
+    "useFile": false,
+    "port": 5050
+  },
+  "ssl": {
+    "active": false
+  },
+  "options": {
+    "videoProcessor": "/homebridge/node_modules/homebridge-infraspec-ui/node_modules/ffmpeg-for-homebridge/ffmpeg"
+  },
+  "cameras": [
+    {
+      "name": "Mini Thermal Left",
+      "thermalReporting": false,
+      "motion": true,
+      "motionTimeout": 5,
+      "unbridge": true,
+      "hsv": true,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://admin:@SECskid1@192.168.0.121:554/snl/live/1/1",
+        "subSource": "-i rtsp://admin:@SECskid1@192.168.0.121:554/snl/live/1/2",
+        "rtspTransport": "tcp",
+        "stillImageSource": "-i rtsp://admin:@SECskid1@192.168.0.121:554/snl/live/1/1",
+        "vcodec": "copy",
+        "acodec": "libfdk_aac",
+        "audio": false,
+        "debug": true,
+        "readRate": true
+      },
+      "smtp": {
+        "email": "Mini Thermal Left"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    },
+    {
+      "name": "Mini Optical Left",
+      "thermalReporting": false,
+      "motion": true,
+      "motionTimeout": 15,
+      "unbridge": true,
+      "hsv": true,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://admin:@SECskid1@192.168.0.122:554/snl/live/1/2",
+        "subSource": "-i rtsp://admin:@SECskid1@192.168.0.122:554/snl/live/1/2",
+        "stillImageSource": "-i rtsp://admin:@SECskid1@192.168.0.122:554/snl/live/1/1",
+        "rtspTransport": "tcp",
+        "vcodec": "copy",
+        "acodec": "libfdk_aac",
+        "audio": false
+      },
+      "smtp": {
+        "email": "Mini Optical Left"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    },
+    {
+      "name": "Mini Thermal Right",
+      "thermalReporting": false,
+      "motion": true,
+      "motionTimeout": 15,
+      "unbridge": true,
+      "hsv": true,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.123:554/snl/live/1/1",
+        "subSource": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.123:554/snl/live/1/2",
+        "stillImageSource": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.123:554/snl/live/1/1",
+        "rtspTransport": "tcp",
+        "vcodec": "copy",
+        "acodec": "libfdk_aac",
+        "audio": false
+      },
+      "smtp": {
+        "email": "Mini Thermal Right"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    },
+    {
+      "name": "Mini Optical Right",
+      "motion": true,
+      "motionTimeout": 15,
+      "unbridge": true,
+      "hsv": true,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.124:554/snl/live/1/2",
+        "subSource": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.124:554/snl/live/1/2",
+        "rtspTransport": "tcp",
+        "stillImageSource": "-i rtsp://buzz:@Buzzsolutions1@192.168.0.124:554/snl/live/1/1",
+        "vcodec": "copy",
+        "acodec": "libfdk_aac",
+        "audio": false
+      },
+      "smtp": {
+        "email": "Mini Optical Right"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    },
+    {
+      "name": "Mile Thermal",
+      "type": "PTZ",
+      "thermalReporting": true,
+      "motion": true,
+      "motionTimeout": 15,
+      "unbridge": true,
+      "hsv": false,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://admin:@SECskid1@192.168.0.111:554/snl/live/1/1",
+        "subSource": "-i rtsp://admin:@SECskid1@192.168.0.111:554/snl/live/1/2",
+        "stillImageSource": "-i rtsp://admin:@SECskid1@192.168.0.111:554/snl/live/1/1",
+        "vcodec": "copy",
+        "rtspTransport": "tcp",
+        "acodec": "libfdk_aac",
+        "audio": false
+      },
+      "smtp": {
+        "email": "Mile Thermal"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    },
+    {
+      "name": "Mile Optical",
+      "motion": true,
+      "motionTimeout": 15,
+      "unbridge": true,
+      "hsv": false,
+      "prebuffering": false,
+      "forcePrebuffering": false,
+      "prebufferLength": 4,
+      "videoConfig": {
+        "source": "-i rtsp://admin:@SECskid1@192.168.0.112:554/snl/live/1/1",
+        "subSource": "-i rtsp://admin:@SECskid1@192.168.0.112:554/snl/live/1/2",
+        "stillImageSource": "-i rtsp://admin:@SECskid1@192.168.0.112:554/snl/live/1/1",
+        "rtspTransport": "tcp",
+        "vcodec": "copy",
+        "acodec": "libfdk_aac",
+        "audio": false
+      },
+      "smtp": {
+        "email": "Mile Optical"
+      },
+      "videoanalysis": {
+        "active": false
+      },
+      "mqtt": {}
+    }
+  ],
+  "platform": "CameraUI"
+}

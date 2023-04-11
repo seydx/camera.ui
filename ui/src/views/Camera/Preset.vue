@@ -8,12 +8,13 @@
   .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(cols="cols")
     .tw-w-full.tw-flex.tw-justify-between.tw-items-center
       .tw-block
-        h2.tw-leading-6 {{ $route.params.name }} - {{ decodeURI($route.params.presetId.split("--")[0]) }}
-      .tw-block
-      v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/presets/`)")
-          v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
-      v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
-        v-icon(size="20") {{ icons['mdiOpenInNew'] }}
+        span
+          h2.tw-px-4.tw-leading-6 {{ $route.params.name }} - {{ decodeURI($route.params.presetId.split("--")[0]) }}
+          span.tw-leading-6
+            v-btn.tw-px-4.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/presets/`)")
+              v-icon(size="20") {{ icons['mdiArrowLeftCircleOutline'] }}
+            v-btn.tw-px-4.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed/${$route.params.presetId}`)")
+              v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
   .overlay(v-if="showOverlay")
 
@@ -28,8 +29,8 @@
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="!loading && graphLoading")
-    v-progress-circular(indeterminate color="var(--cui-primary)")
+  .filter-content.filter-included.tw-flex.tw-flex.tw-justify-center.tw-items-center(v-if="!loading && graphLoading")
+        v-progress-circular(indeterminate color="var(--cui-primary)")
 
   .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
       Chart.tw-mt-5(v-if="!graphLoading" :dataset="camTempData" :options="camTempsOptions" ref="chart")
@@ -148,6 +149,7 @@ import Chart from '@/components/camera-temperature-charts.vue';
 import socket from '@/mixins/socket';
 import Sidebar from '@/components/sidebar-temp-graph-filter.vue';
 import { bus } from '@/main';
+import moment from 'moment';
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export default {
   name: 'Preset',
@@ -468,7 +470,7 @@ export default {
         var d = {
           label: `${element[0].region}`,
           data: element.map(function (i) {
-            return { time: i.time, value: i.avgTemp };
+            return { time: moment.unix(i.timeStamp).format('YYYY-MM-DD HH:mm:ss'), value: i.avgTemp };
           }),
         };
         datasets.push(d);
