@@ -665,9 +665,9 @@ export default class MotionController {
       });
     });
 
-    MotionController.ftpServer.on('STOR', ({ connection, filename, metadata }, uploadStream, resolve) => {
+    MotionController.ftpServer.on('STOR', ({ filename }, uploadStream, resolve) => {
       // Handle file upload
-      const videoName = `${ConfigService.recordingsPath}/${fileName}`;
+      const videoName = `${ConfigService.recordingsPath}/${filename}`;
       const fileStream = fs.createWriteStream(videoName);
       uploadStream.pipe(fileStream);
       resolve();
