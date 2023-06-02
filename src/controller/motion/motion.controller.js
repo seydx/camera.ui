@@ -739,7 +739,7 @@ export default class MotionController {
     }
   }
 
-  static async handleMotion(triggerType, cameraName, state, event, result = {}, message) {
+  static async handleMotion(triggerType, cameraName, state, event, result = {}, message = {}) {
     // result = {} is used as http response
     let camera = ConfigService.ui.cameras.find(
       (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
