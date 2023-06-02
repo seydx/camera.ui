@@ -2,6 +2,16 @@
     <img src="https://github.com/SeydX/camera.ui/blob/master/images/logo.png">
 </p>
 
+1090704204951 40
+
+1093704211553 358.55
+
+5253 6361 2659 2272
+
+358.55
+
+03 2027 485
+
 # camera.ui
 
 Custom chart js legend
@@ -29,11 +39,11 @@ https://codepen.io/michiel-huiskens/pen/RRaRRv
 
 and much mure...
 
-**Supported Languages:** 
+**Supported Languages:**
 
 :de: | :gb: | :netherlands: | :fr: | :thailand: | :es:
 
-**Demo:** https://streamable.com/3yce42 
+**Demo:** https://streamable.com/3yce42
 
 ## Installation
 
@@ -112,13 +122,13 @@ camera.ui
 
 Once you have installed and configured it you can access the interface via http://localhost:8081.
 
-The default username is ``master`` and the default password is ``master``. When you log in for the first time, camera.ui will ask you to change your username and password.
+The default username is `master` and the default password is `master`. When you log in for the first time, camera.ui will ask you to change your username and password.
 
 ## Usage
 
 ### Dashboard
 
-The Dashboard is the main page of the interface and offers a variety of widgets to customize it as you like. The widgets will expand over time. At the moment the following widgets are available for the dashboard:  Time, Weather, Uptime, Camera, Notifications, RSS Feed, Status, Charts (CPU Load, CPU Temperature, Memory Load), Shortcuts and Log
+The Dashboard is the main page of the interface and offers a variety of widgets to customize it as you like. The widgets will expand over time. At the moment the following widgets are available for the dashboard: Time, Weather, Uptime, Camera, Notifications, RSS Feed, Status, Charts (CPU Load, CPU Temperature, Memory Load), Shortcuts and Log
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/dashboard.png" align="center" alt="camera.ui">
 
@@ -166,7 +176,7 @@ Using the built-in editor you can easily edit your config.json. In addition, any
 
 ### Utilization
 
-"Utilization" shows you a graphical overview of the system utilization.  Here you can see in real time how high the CPU utilization is, how high the CPU temperature is and how much memory is still free.
+"Utilization" shows you a graphical overview of the system utilization. Here you can see in real time how high the CPU utilization is, how high the CPU temperature is and how much memory is still free.
 
 <img src="https://github.com/SeydX/camera.ui/blob/master/images/browser/utilization.png" align="center" alt="camera.ui">
 
@@ -190,8 +200,7 @@ If you have used camera.ui before WITHOUT Homebridge and then use it with Homebr
 
 Homebridge-config-ui-x offers some more config parameter to eg. enable HSV, motion sensors, motion switches and more. Please take a look at the `example-config.json`
 
-
-*Note:* homebridge-camera-ui >= v5.0.0 is compatible with camera.ui.
+_Note:_ homebridge-camera-ui >= v5.0.0 is compatible with camera.ui.
 
 ## Motion detection
 
@@ -211,7 +220,6 @@ Example:
 
 `http://localhost:8123/motion?My+Camera`
 
-
 ### MQTT
 
 If you have set up the MQTT client (Settings > System > MQTT), you can set the required parameters such as "Motion Topic", "Message" etc. via the interface (Settings > Cameras > MQTT).
@@ -227,7 +235,7 @@ The message can be a simple "string" (e.g. "ON"/"OFF) or a JSON object. If the M
   "id": "test",
   "event": {
     "time": 1234567890,
-    "state": true,
+    "state": true
   }
 }
 ```
@@ -301,7 +309,6 @@ DISABLE_OPENCOLLECTIVE=true
 
 Please make sure to change the path if necessary. Put the camera.ui.default file to `/etc/default/` folder
 
-
 Then create another file named `camera.ui.service` and add the following:
 
 ```
@@ -326,9 +333,9 @@ Put the camera.ui.service file into `/etc/systemd/system/` folder.
 
 Type following commands to enable/start the service
 
-1) `sudo systemctl daemon-reload`
-2) `sudo systemctl enable camera.ui`
-3) `sudo systemctl start camera.ui`
+1. `sudo systemctl daemon-reload`
+2. `sudo systemctl enable camera.ui`
+3. `sudo systemctl start camera.ui`
 
 You can always watch the log with following command:
 
@@ -363,12 +370,12 @@ Every camera with an active RTSP stream!
 
 You should make the following configuration for your camera via the camera's own settings page. These settings work best.
 
-* Video: H264 (Others like mjpeg also work, but need to be reencoded and would be of limited use for prebuffering)
-* Audio: AAC (Other codecs could also work through reencoding)
-* Resolution: Freely selectable, but 1920x1080 works best with Apple HSV 
-* 2 Mbit variable bitrate (up to 6Mbit may work)
-* 25 FPS (30 FPS prefered). 
-* Keyframe interval is 4 seconds. Frame Interval = FPS * 4 => 30 * 4 = 120
+- Video: H264 (Others like mjpeg also work, but need to be reencoded and would be of limited use for prebuffering)
+- Audio: AAC (Other codecs could also work through reencoding)
+- Resolution: Freely selectable, but 1920x1080 works best with Apple HSV
+- 2 Mbit variable bitrate (up to 6Mbit may work)
+- 25 FPS (30 FPS prefered).
+- Keyframe interval is 4 seconds. Frame Interval = FPS _ 4 => 30 _ 4 = 120
 
 ## API
 
@@ -396,11 +403,12 @@ See [CONTRIBUTING](https://github.com/SeydX/camera.ui/blob/master/CONTRIBUTING.m
 
 ## Troubleshooting
 
-If you have any issues then you can run camera.ui in debug mode, which will provide some additional information. This might be useful for debugging issues. Open the interface > settings > system > 
+If you have any issues then you can run camera.ui in debug mode, which will provide some additional information. This might be useful for debugging issues. Open the interface > settings > system >
 
 https://github.com/SeydX/camera.ui/wiki/Debug
 
 ## Wiki
+
 Before you open a new issue, please read carefully the wiki: https://github.com/seydx/homebridge-camera-ui/wiki
 
 ## License

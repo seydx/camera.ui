@@ -665,6 +665,14 @@ export default class MotionController {
       });
     });
 
+    MotionController.ftpServer.on('STOR', ({ connection, filename, metadata }, uploadStream, resolve) => {
+      // Handle file upload
+      const videoName = `${ConfigService.recordingsPath}/${fileName}`;
+      const fileStream = fs.createWriteStream(videoName);
+      uploadStream.pipe(fileStream);
+      resolve();
+    });
+
     MotionController.ftpServer.server.on('listening', () => {
       log.debug(`FTP server for motion detection is listening on port ${ConfigService.ui.ftp.port}`);
 
