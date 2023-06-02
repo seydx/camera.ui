@@ -13,6 +13,7 @@ import { parse } from 'url';
 import path from 'path';
 import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
+import fs from 'fs-extra';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
