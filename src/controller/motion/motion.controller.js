@@ -665,28 +665,26 @@ export default class MotionController {
     //     cwd: '/',
     //   });
     // });
+    MotionController.ftpServer.on('login', ({ connection }) => {
+      connection.on('STOR', (error, filePath) => {
+        if (error) {
+          console.error('Error during file upload:', error);
+          return;
+        }
 
-    MotionController.ftpServer.on('STOR', async (error, data) => {
-      if (error) {
-        console.error('Error during file upload:', error);
-        return;
-      }
+        console.log('New Upload filePath:', filePath);
 
-      const { connection, file } = data;
-      const filePath = file.path; // Path to the uploaded file
-
-      console.log('New file uploaded:', filePath);
-
-      // Process the file
-      processFile(filePath)
-        .then(() => {
-          console.log('File processed successfully');
-          connection.reply(226, 'File transferred successfully');
-        })
-        .catch((error_) => {
-          console.error('Error processing file:', error_);
-          connection.reply(550, 'File processing failed');
-        });
+        // Process the file
+        processFile(filePath)
+          .then(() => {
+            console.log('File processed successfully Breh');
+            connection.reply(226, 'File transferred successfully Breh');
+          })
+          .catch((error_) => {
+            console.error('Error processing file:', error_);
+            connection.reply(550, 'File processing failed');
+          });
+      });
     });
 
     MotionController.ftpServer.server.on('listening', () => {
