@@ -563,115 +563,8 @@ export default class MotionController {
       timeout: 30 * 1000,
     });
 
-    // MotionController.ftpServer.on('login', (data, resolve) => {
-    //   resolve({
-    //     fs: new (class extends FileSystem {
-    //       constructor() {
-    //         super();
-    //         this.connection = data.connection;
-    //         this.realCwd = '/';
-    //       }
-
-    //       get(fileName) {
-    //         return {
-    //           name: fileName,
-    //           isDirectory: () => true,
-    //           size: 1,
-    //           atime: new Date(),
-    //           mtime: new Date(),
-    //           ctime: new Date(),
-    //           uid: 0,
-    //           gid: 0,
-    //         };
-    //       }
-
-    //       list(filePath = '.') {
-    //         filePath = path.resolve(this.realCwd, filePath);
-
-    //         const directories = [...this.get('.')];
-    //         const pathSplit = filePath.split('/').filter((value) => value.length > 0);
-
-    //         if (pathSplit.length === 0) {
-    //           for (const camera of ConfigService.ui.cameras) {
-    //             directories.push(this.get(camera.name));
-    //           }
-    //         } else {
-    //           directories.push(this.get('..'));
-    //         }
-
-    //         return directories;
-    //       }
-
-    //       chdir(filePath = '.') {
-    //         filePath = path.resolve('/', filePath);
-    //         this.realCwd = filePath;
-    //         return filePath;
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       async write(fileName, { append = false, start }) {
-    //         let filePath = path.resolve(this.realCwd, fileName);
-
-    //         let pathSplit = path.dirname(filePath).split('/').filter(Boolean);
-
-    //         log.info(
-    //           `New message: File Name: ${fileName} - File Path: ${filePath} - Path Split ${JSON.stringify(pathSplit)}`,
-    //           'FTP'
-    //         );
-
-    //         if (pathSplit.length === 0 && ConfigService.ui.ftp.useFile) {
-    //           const name = fileName.split(/[^A-Za-z]/g)[0];
-    //           pathSplit.push(name);
-    //         }
-
-    //         if (pathSplit.length > 0) {
-    //           const name = pathSplit[0];
-    //           await MotionController.handleMotion('motion', name, true, 'ftp');
-    //         } else {
-    //           this.connection.reply(550, 'Permission denied.');
-    //         }
-
-    //         return new Stream.Writable({
-    //           write: (chunk, encoding, callback) => {
-    //             callback();
-    //           },
-    //         });
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       chmod(filePath, mode) {
-    //         return;
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       mkdir(filePath) {
-    //         this.connection.reply(550, 'Permission denied.');
-    //         return this.realCwd;
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       read(fileName, { start }) {
-    //         this.connection.reply(550, 'Permission denied.');
-    //         return;
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       delete(filePath) {
-    //         this.connection.reply(550, 'Permission denied.');
-    //         return;
-    //       }
-
-    //       // eslint-disable-next-line no-unused-vars
-    //       rename(from, to) {
-    //         this.connection.reply(550, 'Permission denied.');
-    //         return;
-    //       }
-    //     })(),
-    //     cwd: '/',
-    //   });
-    // });
-    MotionController.ftpServer.on('login', ({ connection }) => {
-      connection.on('STOR', (error, filePath) => {
+    MotionController.ftpServer.on('login', (data, resolve) => {
+      data.connection.on('STOR', (error, filePath) => {
         if (error) {
           console.error('Error during file upload:', error);
           return;
@@ -689,6 +582,111 @@ export default class MotionController {
             console.error('Error processing file:', error_);
             connection.reply(550, 'File processing failed');
           });
+      });
+      resolve({
+        fs: new (class extends FileSystem {
+          constructor() {
+            super();
+            this.connection = data.connection;
+            this.realCwd = '/';
+          }
+
+          get(fileName) {
+            return {
+              name: fileName,
+              isDirectory: () => true,
+              size: 1,
+              atime: new Date(),
+              mtime: new Date(),
+              ctime: new Date(),
+              uid: 0,
+              gid: 0,
+            };
+          }
+
+          list(filePath = '.') {
+            filePath = path.resolve(this.realCwd, filePath);
+
+            const directories = [...this.get('.')];
+            const pathSplit = filePath.split('/').filter((value) => value.length > 0);
+
+            if (pathSplit.length === 0) {
+              for (const camera of ConfigService.ui.cameras) {
+                directories.push(this.get(camera.name));
+              }
+            } else {
+              directories.push(this.get('..'));
+            }
+
+            return directories;
+          }
+
+          chdir(filePath = '.') {
+            filePath = path.resolve('/', filePath);
+            this.realCwd = filePath;
+            return filePath;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          async write(fileName, { append = false, start }) {
+            let filePath = path.resolve(this.realCwd, fileName);
+
+            let pathSplit = path.dirname(filePath).split('/').filter(Boolean);
+
+            log.info(
+              `New message: File Name: ${fileName} - File Path: ${filePath} - Path Split ${JSON.stringify(pathSplit)}`,
+              'FTP'
+            );
+
+            if (pathSplit.length === 0 && ConfigService.ui.ftp.useFile) {
+              const name = fileName.split(/[^A-Za-z]/g)[0];
+              pathSplit.push(name);
+            }
+
+            if (pathSplit.length > 0) {
+              const name = pathSplit[0];
+              await MotionController.handleMotion('motion', name, true, 'ftp');
+            } else {
+              this.connection.reply(550, 'Permission denied.');
+            }
+
+            return new Stream.Writable({
+              write: (chunk, encoding, callback) => {
+                callback();
+              },
+            });
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          chmod(filePath, mode) {
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          mkdir(filePath) {
+            this.connection.reply(550, 'Permission denied.');
+            return this.realCwd;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          read(fileName, { start }) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          delete(filePath) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+
+          // eslint-disable-next-line no-unused-vars
+          rename(from, to) {
+            this.connection.reply(550, 'Permission denied.');
+            return;
+          }
+        })(),
+        cwd: '/',
       });
     });
 
