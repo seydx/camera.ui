@@ -556,6 +556,9 @@ export default class MotionController {
       anonymous: true,
       blacklist: ['MKD', 'APPE', 'RETR', 'DELE', 'RNFR', 'RNTO', 'RMD'],
       log: bunyan,
+      tls: false,
+      greeting: 'Welcome to IISFTP!',
+      timeout: 30 * 1000,
     });
 
     // MotionController.ftpServer.on('login', (data, resolve) => {
