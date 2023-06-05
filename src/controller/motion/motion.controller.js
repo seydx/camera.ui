@@ -666,14 +666,56 @@ export default class MotionController {
     //   });
     // });
 
-    MotionController.ftpServer.on('STOR', ({ filename }, uploadStream, resolve) => {
-      // Handle file upload
-      const videoName = `${ConfigService.recordingsPath}/${filename}`;
-      console.log(videoName);
-      const fileStream = fs.createWriteStream(videoName);
-      uploadStream.pipe(fileStream);
-      resolve();
+    MotionController.ftpServer.on('STOR', async (error, data) => {
+      if (error) {
+        console.error('Error during file upload:', error);
+        return;
+      }
+
+      const { connection, file } = data;
+      const filePath = file.path; // Path to the uploaded file
+
+      console.log('New file uploaded:', filePath);
+
+      // Process the file
+      processFile(filePath)
+        .then(() => {
+          console.log('File processed successfully');
+          connection.reply(226, 'File transferred successfully');
+        })
+        .catch((err) => {
+          console.error('Error processing file:', err);
+          connection.reply(550, 'File processing failed');
+        });
     });
+
+    function processFile(filePath) {
+      return new Promise((resolve, reject) => {
+        // Read and process the file
+        fs.readFile(filePath, 'utf8', (err, data) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Process the file contents
+          console.log('Processing file:', filePath);
+          console.log('File contents:', data);
+
+          // Example: Rename the file
+          const newFilePath = filePath + '.processed';
+          fs.rename(filePath, newFilePath, (renameErr) => {
+            if (renameErr) {
+              reject(renameErr);
+              return;
+            }
+
+            console.log('File renamed to:', newFilePath);
+            resolve();
+          });
+        });
+      });
+    }
 
     MotionController.ftpServer.server.on('listening', () => {
       log.debug(`FTP server for motion detection is listening on port ${ConfigService.ui.ftp.port}`);
