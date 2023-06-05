@@ -523,34 +523,6 @@ export default class MotionController {
    *
    **/
   static startFtpServer() {
-    function processFile(filePath) {
-      return new Promise((resolve, reject) => {
-        // Read and process the file
-        fs.readFile(filePath, 'utf8', (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          // Process the file contents
-          console.log('Processing file:', filePath);
-          console.log('File contents:', data);
-
-          // Example: Rename the file
-          const newFilePath = filePath + '.processed';
-          fs.rename(filePath, newFilePath, (renameErr) => {
-            if (renameErr) {
-              reject(renameErr);
-              return;
-            }
-
-            console.log('File renamed to:', newFilePath);
-            resolve();
-          });
-        });
-      });
-    }
-
     log.debug('Setting up FTP server for motion detection...');
 
     const ipAddr = ip.address('public', 'ipv4');
@@ -711,8 +683,8 @@ export default class MotionController {
           console.log('File processed successfully');
           connection.reply(226, 'File transferred successfully');
         })
-        .catch((err) => {
-          console.error('Error processing file:', err);
+        .catch((error_) => {
+          console.error('Error processing file:', error_);
           connection.reply(550, 'File processing failed');
         });
     });
@@ -915,4 +887,32 @@ export default class MotionController {
 
     return result;
   }
+}
+
+function processFile(filePath) {
+  return new Promise((resolve, reject) => {
+    // Read and process the file
+    fs.readFile(filePath, 'utf8', (error, data) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      // Process the file contents
+      console.log('Processing file:', filePath);
+      console.log('File contents:', data);
+
+      // Example: Rename the file
+      const newFilePath = filePath + '.processed';
+      fs.rename(filePath, newFilePath, (renameError) => {
+        if (renameError) {
+          reject(renameError);
+          return;
+        }
+
+        console.log('File renamed to:', newFilePath);
+        resolve();
+      });
+    });
+  });
 }
