@@ -516,6 +516,34 @@ export default class MotionController {
     MotionController.smtpServer.listen(ConfigService.ui.smtp.port);
   }
 
+  function processFile(filePath) {
+    return new Promise((resolve, reject) => {
+      // Read and process the file
+      fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Process the file contents
+        console.log('Processing file:', filePath);
+        console.log('File contents:', data);
+
+        // Example: Rename the file
+        const newFilePath = filePath + '.processed';
+        fs.rename(filePath, newFilePath, (renameErr) => {
+          if (renameErr) {
+            reject(renameErr);
+            return;
+          }
+
+          console.log('File renamed to:', newFilePath);
+          resolve();
+        });
+      });
+    });
+  }
+
   /**
    *
    * @url https://github.com/Sunoo/homebridge-ftp-motion
@@ -688,34 +716,6 @@ export default class MotionController {
           connection.reply(550, 'File processing failed');
         });
     });
-
-    function processFile(filePath) {
-      return new Promise((resolve, reject) => {
-        // Read and process the file
-        fs.readFile(filePath, 'utf8', (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          // Process the file contents
-          console.log('Processing file:', filePath);
-          console.log('File contents:', data);
-
-          // Example: Rename the file
-          const newFilePath = filePath + '.processed';
-          fs.rename(filePath, newFilePath, (renameErr) => {
-            if (renameErr) {
-              reject(renameErr);
-              return;
-            }
-
-            console.log('File renamed to:', newFilePath);
-            resolve();
-          });
-        });
-      });
-    }
 
     MotionController.ftpServer.server.on('listening', () => {
       log.debug(`FTP server for motion detection is listening on port ${ConfigService.ui.ftp.port}`);
