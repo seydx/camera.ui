@@ -563,7 +563,8 @@ export default class MotionController {
       timeout: 30 * 1000,
     });
 
-    MotionController.ftpServer.on('login', (data) => {
+    MotionController.ftpServer.on('login', (data, resolve) => {
+      resolve({ root: '/' });
       data.connection.on('STOR', (error, filePath) => {
         if (error) {
           console.error('Error during file upload:', error);
