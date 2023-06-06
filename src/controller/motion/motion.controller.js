@@ -4,7 +4,7 @@ import Bunyan from 'bunyan';
 import escapeRegExp from 'lodash/escapeRegExp.js';
 import has from 'lodash/has.js';
 import get from 'lodash/get.js';
-import { FtpSrv } from 'ftp-srv';
+import { FileSystem, FtpSrv } from 'ftp-srv';
 import http from 'http';
 import ip from 'ip';
 import { simpleParser } from 'mailparser';
@@ -14,6 +14,7 @@ import { parse } from 'url';
 import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
 import fs from 'fs-extra';
+import path from 'path';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
@@ -576,11 +577,11 @@ export default class MotionController {
         processFile(filePath)
           .then(() => {
             console.log('File processed successfully Breh');
-            connection.reply(226, 'File transferred successfully Breh');
+            data.connection.reply(226, 'File transferred successfully Breh');
           })
           .catch((error_) => {
             console.error('Error processing file:', error_);
-            connection.reply(550, 'File processing failed');
+            data.connection.reply(550, 'File processing failed');
           });
       });
       resolve({
