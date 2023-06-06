@@ -563,7 +563,7 @@ export default class MotionController {
     });
 
     MotionController.ftpServer.on('login', (data, resolve) => {
-      resolve({ root: '/var/lib/homebridge/camera.ui/recordings' });
+      resolve({ root: '/' });
       data.connection.on('STOR', (error, filePath) => {
         if (error) {
           console.error('Error during file upload:', error);
@@ -893,7 +893,7 @@ export default class MotionController {
 function processFile(filePath) {
   return new Promise((resolve, reject) => {
     // Read and process the file
-    fs.readFile('/' + filePath, 'utf8', (error, data) => {
+    fs.readFile('/' + filePath, 'utf8', (error) => {
       if (error) {
         reject(error);
         return;
@@ -901,7 +901,7 @@ function processFile(filePath) {
 
       // Process the file contents
       console.log('Processing file:', filePath);
-      console.log('File contents:', data);
+      //console.log('File contents:', data);
 
       // Example: Rename the file
       const newFilePath = '/' + filePath + '.processed';
