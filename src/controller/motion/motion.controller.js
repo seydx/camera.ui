@@ -556,7 +556,6 @@ export default class MotionController {
       pasv_max: 6000,
       pasv_min: 5000,
       anonymous: true,
-      blacklist: ['MKD', 'APPE', 'RETR', 'DELE', 'RNFR', 'RNTO', 'RMD'],
       log: bunyan,
       tls: false,
       greeting: 'Welcome to IISFTP!',
@@ -564,7 +563,7 @@ export default class MotionController {
     });
 
     MotionController.ftpServer.on('login', (data, resolve) => {
-      resolve({ root: '/' });
+      resolve({ root: '/var/lib/homebridge/camera.ui/recordings' });
       data.connection.on('STOR', (error, filePath) => {
         if (error) {
           console.error('Error during file upload:', error);
