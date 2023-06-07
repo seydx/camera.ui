@@ -59,6 +59,11 @@
                       .input-info.tw-italic {{ $t('livestream_snapshot') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.thermalReporting")
                 
+                  label.form-input-label {{ 'IP Address' }}
+                  v-text-field(v-model="camera.ipaddress" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
+                  template(v-slot:prepend-inner)
+                    v-icon.text-muted {{ icons['mdiLink'] }}
+                
                 label.form-input-label {{ 'Username' }}
                   v-text-field(v-model="camera.username" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)

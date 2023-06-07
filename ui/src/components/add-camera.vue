@@ -33,6 +33,12 @@ v-dialog(v-model="dialog" width="600" scrollable @click:outside="closeDialog")
                   .input-info.tw-italic {{ 'enables cameras to record temperature readings' }}
               v-switch(color="var(--cui-primary)" v-model="cam.thermalReporting")
 
+            label.form-input-label IP Address
+              span.tw-text-red-500 *
+            v-text-field(v-model="cam.ipaddress" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" required solo)
+              template(v-slot:prepend-inner)
+                v-icon.text-muted {{ icons['mdiAlphabetical'] }}
+
             label.form-input-label Username
               span.tw-text-red-500 *
             v-text-field(v-model="cam.username" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.camera" required solo)

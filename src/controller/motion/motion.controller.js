@@ -903,8 +903,40 @@ function processFile(filePath) {
       console.log('Processing file:', filePath);
       //console.log('File contents:', data);
 
+      let filename = filePath.replace('/var/lib/homebridge/camera.ui/recordings/', '');
+
+      //camera stores under /{cameraip}/{YYYYMMDD}/{YYYYMMDDHHMMSS_Channel(1)_IntrusionDetectAlarm}
+      //cameraui stores as Camera_Name-UniqueId-UNIXTimeStamp_recordingType_CUI.fileext Mile_Thermal-d020aa264b-1682541074_c_CUI_Test.mp4
+
+      const cameras = ConfigService.ui.cameras.map((camera) => {
+        return {
+          name: camera.name,
+          ip: ip,
+        };
+      });
+
+      const fileExtension = filePath.split('.').pop();
+
+      let cameraIp = filename.split('/')[0];
+
+      let alertType = filename.split('/')[array.length - 1].split('_')[2];
+
+      let cameraName = cameras.find((x) => x.ipaddress == cameraIp).name.replace(/ /g, '_');
+
       // Example: Rename the file
-      const newFilePath = '/' + filePath + '.processed';
+      const newFilePath =
+        '/var/lib/homebridge/camera.ui/recordings/' +
+        cameraName +
+        '-' +
+        nanoid() +
+        '-' +
+        Math.floor(Date.now() / 1000) +
+        '_' +
+        alertType +
+        '_CUI' +
+        ',' +
+        '.' +
+        fileExtension;
       fs.rename(filePath, newFilePath, (renameError) => {
         if (renameError) {
           reject(renameError);
