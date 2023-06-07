@@ -14,6 +14,7 @@ import { parse } from 'url';
 import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
 import fs from 'fs-extra';
+import { customAlphabet } from 'nanoid/async';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
@@ -24,6 +25,7 @@ import Socket from '../../api/socket.js';
 
 const { log } = LoggerService;
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const toDotNot = (input, parentKey) =>
   // eslint-disable-next-line unicorn/no-array-reduce, unicorn/prefer-object-from-entries
@@ -893,7 +895,7 @@ export default class MotionController {
 function processFile(filePath) {
   return new Promise((resolve, reject) => {
     // Read and process the file
-    fs.readFile('/' + filePath, 'utf8', (error) => {
+    fs.readFile('/' + filePath, 'utf8', async (error) => {
       if (error) {
         reject(error);
         return;
@@ -919,7 +921,7 @@ function processFile(filePath) {
 
       let cameraIp = filename.split('/')[0];
 
-      let alertType = filename.split('/')[array.length - 1].split('_')[2];
+      let alertType = filename.split('/')[array.filename - 1].split('_')[2];
 
       let cameraName = cameras.find((x) => x.ipaddress == cameraIp).name.replace(/ /g, '_');
 
@@ -928,7 +930,7 @@ function processFile(filePath) {
         '/var/lib/homebridge/camera.ui/recordings/' +
         cameraName +
         '-' +
-        nanoid() +
+        (await nanoid()) +
         '-' +
         Math.floor(Date.now() / 1000) +
         '_' +
