@@ -921,7 +921,7 @@ function processFile(filePath) {
 
       let cameraIp = filename.split('/')[0];
 
-      let alertType = filename.split('/')[array.filename - 1].split('_')[2];
+      let alertType = filename.split('/')[filename.length - 1].split('_')[2];
 
       let cameraName = cameras.find((x) => x.ipaddress == cameraIp).name.replace(/ /g, '_');
 
