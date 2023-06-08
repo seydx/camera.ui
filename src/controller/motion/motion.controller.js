@@ -5,7 +5,6 @@ import escapeRegExp from 'lodash/escapeRegExp.js';
 import has from 'lodash/has.js';
 import get from 'lodash/get.js';
 import { FtpSrv } from 'ftp-srv';
-import fs from 'fs-extra';
 import http from 'http';
 import ip from 'ip';
 import { simpleParser } from 'mailparser';
