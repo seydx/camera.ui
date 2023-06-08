@@ -5,6 +5,7 @@ import escapeRegExp from 'lodash/escapeRegExp.js';
 import has from 'lodash/has.js';
 import get from 'lodash/get.js';
 import { FtpSrv } from 'ftp-srv';
+import fs from 'fs-extra';
 import http from 'http';
 import ip from 'ip';
 import { simpleParser } from 'mailparser';
@@ -15,6 +16,7 @@ import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
 import fs from 'fs-extra';
 import { customAlphabet } from 'nanoid/async';
+import { path } from 'path';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
@@ -566,13 +568,25 @@ export default class MotionController {
 
     MotionController.ftpServer.on('login', (data, resolve) => {
       resolve({ root: '/' });
-      data.connection.on('STOR', (error, filePath) => {
+      data.connection.on('STOR', async (error, filePath) => {
         if (error) {
           console.error('Error during file upload:', error);
           return;
         }
 
         console.log('New Upload filePath:', filePath);
+
+        // Extract the directory path from the filename
+        const dirPath = path.dirname(filePath);
+
+        try {
+          // Create the directory path recursively if it doesn't exist
+          await fs.promises.mkdir(dirPath, { recursive: true });
+        } catch (mkdirError) {
+          console.error(`Error creating directory ${dirPath}:`, mkdirError);
+          connection.reply(550, `Failed to create directory ${dirPath}`);
+          return;
+        }
 
         // Process the file
         processFile(filePath)
