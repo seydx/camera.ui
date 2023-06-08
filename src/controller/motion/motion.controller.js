@@ -10,12 +10,11 @@ import ip from 'ip';
 import { simpleParser } from 'mailparser';
 import mqtt from 'mqtt';
 import { parse } from 'url';
-//import path from 'path';
+import path from 'path';
 import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
 import fs from 'fs-extra';
 import { customAlphabet } from 'nanoid/async';
-import { path } from 'path';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
@@ -576,14 +575,14 @@ export default class MotionController {
         console.log('New Upload filePath:', filePath);
 
         // Extract the directory path from the filename
-        const dirPath = path.dirname(filePath);
+        const directoryPath = path.dirname(filePath);
 
         try {
           // Create the directory path recursively if it doesn't exist
-          await fs.promises.mkdir(dirPath, { recursive: true });
+          await fs.promises.mkdir(directoryPath, { recursive: true });
         } catch (mkdirError) {
           console.error(`Error creating directory ${dirPath}:`, mkdirError);
-          connection.reply(550, `Failed to create directory ${dirPath}`);
+          data.connection.reply(550, `Failed to create directory ${dirPath}`);
           return;
         }
 
