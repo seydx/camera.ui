@@ -921,18 +921,20 @@ function processFile(filePath) {
 
       let originalFilePath = filename.split('/');
 
-      let cameraIp = originalFilePath[0];
+      let cameraName = originalFilePath[0];
 
-      let originalFileName = originalFilePath[2];
+      let originalFileName = originalFilePath[3];
 
       let alertType = originalFileName.split('_')[2];
 
-      let cameraName = cameras.find((x) => x.ipaddress == cameraIp).name.replace(/ /g, '_');
+      let camera = ConfigService.ui.cameras.find(
+        (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
+      );
 
       // Example: Rename the file
       const newFilePath =
         '/var/lib/homebridge/camera.ui/recordings/' +
-        cameraName +
+        camera.name +
         '-' +
         (await nanoid()) +
         '-' +
