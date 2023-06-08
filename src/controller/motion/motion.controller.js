@@ -917,11 +917,15 @@ function processFile(filePath) {
         };
       });
 
-      const fileExtension = filePath.split('.').pop();
+      let fileExtension = filePath.split('.').pop();
 
-      let cameraIp = filename.split('/')[0];
+      let originalFilePath = filename.split('/');
 
-      let alertType = filename.split('/')[filename.length - 1].split('_')[2];
+      let cameraIp = originalFilePath[0];
+
+      let originalFileName = originalFilePath[2];
+
+      let alertType = originalFileName.split('_')[2];
 
       let cameraName = cameras.find((x) => x.ipaddress == cameraIp).name.replace(/ /g, '_');
 
