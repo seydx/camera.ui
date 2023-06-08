@@ -920,12 +920,18 @@ function processFile(filePath) {
 
       let alertType = originalFileName.split('_')[2];
 
+      if (alertType.includes('.ts')) {
+        alertType = alertType.replace('.ts', '');
+      }
+
       let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
 
-      // Example: Rename the file
+      let cameraName = camera?.name.replace('', '_');
+
+      //Rename the file
       const newFilePath =
         '/var/lib/homebridge/camera.ui/recordings/' +
-        camera?.name +
+        cameraName +
         '-' +
         (await nanoid()) +
         '-' +
@@ -933,7 +939,6 @@ function processFile(filePath) {
         '_' +
         alertType +
         '_CUI' +
-        ',' +
         '.' +
         fileExtension;
       fs.rename(filePath, newFilePath, (renameError) => {
