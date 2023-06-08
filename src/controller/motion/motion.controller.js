@@ -910,13 +910,6 @@ function processFile(filePath) {
       //camera stores under /{cameraip}/{YYYYMMDD}/{YYYYMMDDHHMMSS_Channel(1)_IntrusionDetectAlarm}
       //cameraui stores as Camera_Name-UniqueId-UNIXTimeStamp_recordingType_CUI.fileext Mile_Thermal-d020aa264b-1682541074_c_CUI_Test.mp4
 
-      const cameras = ConfigService.ui.cameras.map((camera) => {
-        return {
-          name: camera.name,
-          ip: ip,
-        };
-      });
-
       let fileExtension = filePath.split('.').pop();
 
       let originalFilePath = filename.split('/');
