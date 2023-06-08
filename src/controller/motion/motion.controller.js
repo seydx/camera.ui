@@ -926,7 +926,7 @@ function processFile(filePath) {
 
       let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
 
-      let cameraName = camera?.name.replace('', '_');
+      let cameraName = camera?.name.replace(' ', '_');
 
       //Rename the file
       const newFilePath =
