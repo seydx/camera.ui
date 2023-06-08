@@ -581,8 +581,8 @@ export default class MotionController {
           // Create the directory path recursively if it doesn't exist
           await fs.promises.mkdir(directoryPath, { recursive: true });
         } catch (mkdirError) {
-          console.error(`Error creating directory ${dirPath}:`, mkdirError);
-          data.connection.reply(550, `Failed to create directory ${dirPath}`);
+          console.error(`Error creating directory ${directoryPath}:`, mkdirError);
+          data.connection.reply(550, `Failed to create directory ${directoryPath}`);
           return;
         }
 
