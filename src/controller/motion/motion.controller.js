@@ -910,24 +910,29 @@ function processFile(filePath) {
       //camera stores under /{cameraip}/{YYYYMMDD}/{YYYYMMDDHHMMSS_Channel(1)_IntrusionDetectAlarm}
       //cameraui stores as Camera_Name-UniqueId-UNIXTimeStamp_recordingType_CUI.fileext Mile_Thermal-d020aa264b-1682541074_c_CUI_Test.mp4
 
+      const cameras = ConfigService.ui.cameras.map((camera) => {
+        return {
+          name: camera.name,
+          ip: ip,
+        };
+      });
+
       let fileExtension = filePath.split('.').pop();
 
       let originalFilePath = filename.split('/');
 
-      let cameraName = originalFilePath[0];
+      let cameraIp = originalFilePath[0];
 
-      let originalFileName = originalFilePath[3];
+      let originalFileName = originalFilePath[2];
 
       let alertType = originalFileName.split('_')[2];
 
-      let camera = ConfigService.ui.cameras.find(
-        (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
-      );
+      let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
 
       // Example: Rename the file
       const newFilePath =
         '/var/lib/homebridge/camera.ui/recordings/' +
-        camera.name +
+        camera?.name +
         '-' +
         (await nanoid()) +
         '-' +
