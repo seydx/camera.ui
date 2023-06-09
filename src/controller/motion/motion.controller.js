@@ -22,6 +22,8 @@ import LoggerService from '../../services/logger/logger.service.js';
 // import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
 
 import Database from '../../api/database.js';
+
+import * as RecordingsModel from '../../api/components/recordings/recordings.model.js';
 import Socket from '../../api/socket.js';
 
 export const refresh = async () => {
@@ -945,7 +947,7 @@ function processFile(filePath) {
 
       let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
 
-      let cameraName = camera?.name.replace(' ', '_');
+      let cameraName = camera?.name.replace(/\s+/g, '_');
 
       const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
@@ -964,12 +966,11 @@ function processFile(filePath) {
         '-' +
         id +
         '-' +
-        Math.floor(Date.now() / 1000) +
-        '_' +
-        alertType +
+        timestamp +
+        '_c' +
         '_CUI' +
         '.' +
-        fileExtension;
+        'mp4';
 
       const newFileName =
         cameraName + '-' + id + '-' + Math.floor(Date.now() / 1000) + '_' + alertType + '_CUI' + '.' + fileExtension;
@@ -990,16 +991,18 @@ function processFile(filePath) {
           extension: fileExtension,
           recordStoring: true,
           recordType: 'Video',
-          trigger: 'Intrusion',
+          trigger: 'intrusion_detection',
           room: room,
+          timeStamp: timestamp,
           time: time,
-          timestamp: timestamp,
-          label: 'Security',
+          label: 'Intrusion_Detection',
+          type: 'Video',
+          ftp: true,
         };
 
-        Database.recordingsDB.chain.push(recording).value();
+        console.log(recording);
 
-        Socket.io.emit('recording', recording);
+        RecordingsModel.createRecording(recording);
 
         console.log('File renamed to:', newFilePath);
         resolve();

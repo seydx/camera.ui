@@ -144,6 +144,8 @@ export const createRecording = async (data, fileBuffer) => {
     label: label,
   };
 
+  console.log(recording);
+
   if (fileBuffer) {
     await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
     await storeSnapshotFromVideo(camera, data.path, fileName, label);
@@ -159,7 +161,7 @@ export const createRecording = async (data, fileBuffer) => {
       await getAndStoreSnapshot(camera, false, data.path, fileName, label, isPlaceholder, storeSnapshot);
     }
 
-    if (data.type === 'Video') {
+    if (data.type === 'Video' && data.ftp == false) {
       if (camera.prebuffering) {
         let filebuffer = Buffer.alloc(0);
 
