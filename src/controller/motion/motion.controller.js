@@ -15,6 +15,7 @@ import { SMTPServer } from 'smtp-server';
 import Stream from 'stream';
 import fs from 'fs-extra';
 import { customAlphabet } from 'nanoid/async';
+import moment from 'moment';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
@@ -953,7 +954,7 @@ function processFile(filePath) {
       );
 
       const room = cameraSetting ? cameraSetting.room : 'Standard';
-      const timestamp = data.timestamp || moment().unix();
+      const timestamp = moment().unix();
       const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
 
       //Rename the file
@@ -973,7 +974,7 @@ function processFile(filePath) {
       const newFileName =
         cameraName + '-' + id + '-' + Math.floor(Date.now() / 1000) + '_' + alertType + '_CUI' + '.' + fileExtension;
 
-      const newFilenameNoExt = newFileName.replace(fileExtension, '');
+      const newFilenameNoExtension = newFileName.replace(fileExtension, '');
 
       fs.rename(filePath, newFilePath, (renameError) => {
         if (renameError) {
@@ -985,7 +986,7 @@ function processFile(filePath) {
           id: id,
           camera: camera.name,
           fileName: newFileName,
-          name: newFilenameNoExt,
+          name: newFilenameNoExtension,
           extension: fileExtension,
           recordStoring: true,
           recordType: 'Video',
