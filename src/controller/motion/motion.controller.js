@@ -23,6 +23,10 @@ import LoggerService from '../../services/logger/logger.service.js';
 import Database from '../../api/database.js';
 import Socket from '../../api/socket.js';
 
+export const refresh = async () => {
+  return await Database.refreshRecordingsDatabase();
+};
+
 const { log } = LoggerService;
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const nanoid = customAlphabet('1234567890abcdef', 10);
@@ -932,6 +936,8 @@ function processFile(filePath) {
 
       let alertType = originalFileName.split('_')[2];
 
+      var id = await nanoid();
+
       if (alertType.includes('.ts')) {
         alertType = alertType.replace('.ts', '');
       }
@@ -940,12 +946,22 @@ function processFile(filePath) {
 
       let cameraName = camera?.name.replace(' ', '_');
 
+      const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+
+      const cameraSetting = camerasSettings.find(
+        (cameraSetting) => cameraSetting && cameraSetting.name === camera.name
+      );
+
+      const room = cameraSetting ? cameraSetting.room : 'Standard';
+      const timestamp = data.timestamp || moment().unix();
+      const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+
       //Rename the file
       const newFilePath =
         '/var/lib/homebridge/camera.ui/recordings/' +
         cameraName +
         '-' +
-        (await nanoid()) +
+        id +
         '-' +
         Math.floor(Date.now() / 1000) +
         '_' +
@@ -953,11 +969,36 @@ function processFile(filePath) {
         '_CUI' +
         '.' +
         fileExtension;
+
+      const newFileName =
+        cameraName + '-' + id + '-' + Math.floor(Date.now() / 1000) + '_' + alertType + '_CUI' + '.' + fileExtension;
+
+      const newFilenameNoExt = newFileName.replace(fileExtension, '');
+
       fs.rename(filePath, newFilePath, (renameError) => {
         if (renameError) {
           reject(renameError);
           return;
         }
+
+        const recording = {
+          id: id,
+          camera: camera.name,
+          fileName: newFileName,
+          name: newFilenameNoExt,
+          extension: fileExtension,
+          recordStoring: true,
+          recordType: 'Video',
+          trigger: 'Intrusion',
+          room: room,
+          time: time,
+          timestamp: timestamp,
+          label: 'Security',
+        };
+
+        Database.recordingsDB.chain.push(recording).value();
+
+        Socket.io.emit('recording', recording);
 
         console.log('File renamed to:', newFilePath);
         resolve();
