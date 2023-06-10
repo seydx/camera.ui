@@ -1002,7 +1002,7 @@ function processFile(filePath) {
 
         console.log(recording);
 
-        RecordingsModel.createRecording(recording);
+        RecordingsModel.createRecording(recording, null, true);
 
         console.log('File renamed to:', newFilePath);
         resolve();

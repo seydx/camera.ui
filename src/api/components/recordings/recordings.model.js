@@ -100,7 +100,7 @@ export const findById = (id) => {
   return Database.recordingsDB.chain.get('recordings').find({ id: id }).cloneDeep().value();
 };
 
-export const createRecording = async (data, fileBuffer) => {
+export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
 
   if (!camera) {
@@ -146,42 +146,44 @@ export const createRecording = async (data, fileBuffer) => {
 
   console.log(recording);
 
-  if (fileBuffer && data.ftp === null) {
-    await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
-    await storeSnapshotFromVideo(camera, data.path, fileName, label);
-  } else {
-    const isPlaceholder = data.type === 'Video';
-    const externRecording = false;
-    const storeSnapshot = true;
-
-    // eslint-disable-next-line unicorn/prefer-ternary
-    if (data.imgBuffer) {
-      await storeBuffer(camera, data.imgBuffer, data.path, fileName, label, isPlaceholder, externRecording);
+  if (!skipffmpeg) {
+    if (fileBuffer) {
+      await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
+      await storeSnapshotFromVideo(camera, data.path, fileName, label);
     } else {
-      await getAndStoreSnapshot(camera, false, data.path, fileName, label, isPlaceholder, storeSnapshot);
-    }
+      const isPlaceholder = data.type === 'Video';
+      const externRecording = false;
+      const storeSnapshot = true;
 
-    if (data.type === 'Video' && data.ftp === null) {
-      if (camera.prebuffering) {
-        let filebuffer = Buffer.alloc(0);
-
-        let generator = handleFragmentsRequests(camera);
-
-        setTimeout(async () => {
-          if (generator) {
-            generator.throw();
-          }
-        }, recordingsSettings.timer * 1000);
-
-        for await (const fileBuffer of generator) {
-          filebuffer = Buffer.concat([filebuffer, Buffer.concat(fileBuffer)]);
-        }
-
-        generator = null;
-
-        await storeVideoBuffer(camera, filebuffer, data.path, fileName);
+      // eslint-disable-next-line unicorn/prefer-ternary
+      if (data.imgBuffer) {
+        await storeBuffer(camera, data.imgBuffer, data.path, fileName, label, isPlaceholder, externRecording);
       } else {
-        await storeVideo(camera, data.path, fileName, data.timer);
+        await getAndStoreSnapshot(camera, false, data.path, fileName, label, isPlaceholder, storeSnapshot);
+      }
+
+      if (data.type === 'Video') {
+        if (camera.prebuffering) {
+          let filebuffer = Buffer.alloc(0);
+
+          let generator = handleFragmentsRequests(camera);
+
+          setTimeout(async () => {
+            if (generator) {
+              generator.throw();
+            }
+          }, recordingsSettings.timer * 1000);
+
+          for await (const fileBuffer of generator) {
+            filebuffer = Buffer.concat([filebuffer, Buffer.concat(fileBuffer)]);
+          }
+
+          generator = null;
+
+          await storeVideoBuffer(camera, filebuffer, data.path, fileName);
+        } else {
+          await storeVideo(camera, data.path, fileName, data.timer);
+        }
       }
     }
   }
