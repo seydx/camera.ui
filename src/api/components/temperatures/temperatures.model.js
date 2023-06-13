@@ -30,6 +30,8 @@ const temperatureSchema = new Schema({
 
 const Temperature = mongoose.model('Temperature', temperatureSchema);
 
+const nanoid = customAlphabet('1234567890abcdef', 10);
+
 export const list = async (query) => {
   // eslint-disable-next-line unicorn/consistent-function-scoping
   const GetSortOrder = (property) => {
