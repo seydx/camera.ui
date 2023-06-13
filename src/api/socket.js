@@ -314,7 +314,7 @@ export default class Socket {
 
     setTimeout(() => {
       Socket.watchTemps();
-    }, 60000 * 10);
+    }, 60000 * 60);
   }
 
   static async #handleUptime() {
@@ -521,7 +521,7 @@ export default class Socket {
                       method: 'GET', // *GET, POST, PUT, DELETE, etc.
                     }
                   ).then(() => {
-                    setTimeout(() => {}, 3000);
+                    setTimeout(() => {}, 60000 * 1);
                   });
 
                   await fetch(

@@ -194,6 +194,16 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 
   Cleartimer.setRecording(id, timestamp);
 
+  const loggedRecording = Database.recordingsDB.chain
+    .get('recordings')
+    .find((rec) => rec.id === recording.id)
+    .cloneDeep()
+    .value();
+
+  console.log('Recording Saved Successfully');
+
+  console.log(loggedRecording);
+
   return recording;
 };
 
