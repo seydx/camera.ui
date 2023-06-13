@@ -8,6 +8,7 @@ import Cleartimer from '../../../common/cleartimer.js';
 
 import Database from '../../database.js';
 import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 import {
   getAndStoreSnapshot,
@@ -23,7 +24,7 @@ mongoose.connect('mongodb://localhost:27017/infraspec', {
   useUnifiedTopology: true,
 });
 
-const recordingSchema = {
+const recordingSchema = new Schema({
   id: String,
   camera: String,
   fileName: String,
@@ -33,10 +34,10 @@ const recordingSchema = {
   recordType: String,
   room: String,
   time: String,
-  date: Date,
+  date: { type: Date, expires: 604800 },
   timeStamp: Number,
   label: String,
-};
+});
 
 const Recording = mongoose.model('Recording', recordingSchema);
 await Recording.createCollection();

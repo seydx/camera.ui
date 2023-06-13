@@ -8,13 +8,14 @@ import Cleartimer from '../../../common/cleartimer.js';
 import Database from '../../database.js';
 
 import mongoose from 'mongoose';
+const { Schema } = mongoose;
 
 mongoose.connect('mongodb://localhost:27017/infraspec', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-const temperatureSchema = {
+const temperatureSchema = new Schema({
   id: String,
   camera: String,
   region: String,
@@ -22,13 +23,12 @@ const temperatureSchema = {
   maxTemp: String,
   minTemp: String,
   avgTemp: String,
-  date: Date,
+  date: { type: Date, expires: 604800 },
   time: String,
   timeStamp: Number,
-};
+});
 
 const Temperature = mongoose.model('Temperature', temperatureSchema);
-await Temperature.createCollection();
 
 Temperature.createIndex({ date: 1 }, { expireAfterSeconds: 604800 });
 
