@@ -7,7 +7,7 @@ import { customAlphabet } from 'nanoid/async';
 import Cleartimer from '../../../common/cleartimer.js';
 
 import Database from '../../database.js';
-import Socket from '../../socket.js';
+import mongoose from 'mongoose';
 
 import {
   getAndStoreSnapshot,
@@ -18,15 +18,38 @@ import {
   storeVideoBuffer,
 } from '../../../common/ffmpeg.js';
 
+mongoose.connect('mongodb://localhost:27017/infraspec', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const recordingSchema = {
+  id: String,
+  camera: String,
+  fileName: String,
+  name: String,
+  extension: String,
+  recordStoring: Boolean,
+  recordType: String,
+  room: String,
+  time: String,
+  date: Date,
+  timeStamp: Number,
+  label: String,
+};
+
+const Recording = mongoose.model('Recording', recordingSchema);
+await Recording.createCollection();
+
+Recording.createIndex({ date: 1 }, { expireAfterSeconds: 604800 });
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
 export const refresh = async () => {
   return await Database.refreshRecordingsDatabase();
 };
 
-export const list = (query) => {
-  let recordings = Database.recordingsDB.chain.get('recordings').cloneDeep().value();
-
+export const list = async (query) => {
   // eslint-disable-next-line unicorn/consistent-function-scoping
   const GetSortOrder = (property) => {
     return (a, b) => {
@@ -39,11 +62,14 @@ export const list = (query) => {
     };
   };
 
-  recordings.sort(GetSortOrder('timestamp'));
+  let recordings = await Recording.find();
+
+  await recordings.push(...(await recordings.find()));
+  recordings.sort(GetSortOrder('timeStamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
     recordings = recordings.filter((recording) => {
-      const date = moment.unix(recording.timestamp).format('YYYY-MM-DD');
+      const date = moment.unix(recording.timeStamp).format('YYYY-MM-DD');
       const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
 
       let fromDate = query.from;
@@ -129,7 +155,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
   const extension = data.type === 'Video' ? 'mp4' : 'jpeg';
   const label = (data.label || 'no label').toString();
 
-  const recording = {
+  const recording = new Recording({
     id: id,
     camera: camera.name,
     fileName: `${fileName}.${extension}`,
@@ -142,7 +168,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
     time: time,
     timestamp: timestamp,
     label: label,
-  };
+  });
 
   console.log(recording);
 
@@ -188,21 +214,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
     }
   }
 
-  Database.recordingsDB.chain.push(recording).value();
-
-  Socket.io.emit('recording', recording);
-
-  Cleartimer.setRecording(id, timestamp);
-
-  const loggedRecording = Database.recordingsDB.chain
-    .get('recordings')
-    .find((rec) => rec.id === recording.id)
-    .cloneDeep()
-    .value();
-
-  console.log('Recording Saved Successfully');
-
-  console.log(loggedRecording);
+  recording.save();
 
   return recording;
 };

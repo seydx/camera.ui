@@ -30,6 +30,8 @@ const temperatureSchema = {
 const Temperature = mongoose.model('Temperature', temperatureSchema);
 await Temperature.createCollection();
 
+Temperature.createIndex({ date: 1 }, { expireAfterSeconds: 604800 });
+
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
 export const list = async (query) => {
