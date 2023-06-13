@@ -42,8 +42,6 @@ const recordingSchema = new Schema({
 const Recording = mongoose.model('Recording', recordingSchema);
 await Recording.createCollection();
 
-Recording.createIndex({ date: 1 }, { expireAfterSeconds: 604800 });
-
 const nanoid = customAlphabet('1234567890abcdef', 10);
 
 export const refresh = async () => {
