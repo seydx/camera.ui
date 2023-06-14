@@ -19,7 +19,7 @@ import {
   storeVideoBuffer,
 } from '../../../common/ffmpeg.js';
 
-mongoose.connect('mongodb://localhost:27017/infraspec', {
+mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -61,9 +61,8 @@ export const list = async (query) => {
     };
   };
 
-  let recordings = await Recording.find();
+  let recordings = await Recording.find({});
 
-  await recordings.push(...(await recordings.find()));
   recordings.sort(GetSortOrder('timeStamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
@@ -122,7 +121,7 @@ export const listByCameraName = (name) => {
 };
 
 export const findById = (id) => {
-  return Database.recordingsDB.chain.get('recordings').find({ id: id }).cloneDeep().value();
+  return Recording.find({ id: id });
 };
 
 export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
@@ -165,6 +164,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
     trigger: data.trigger,
     room: room,
     time: time,
+    date: Date.now(),
     timestamp: timestamp,
     label: label,
   });
@@ -221,37 +221,21 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 export const removeById = async (id) => {
   const recPath = Database.recordingsDB.chain.get('path').cloneDeep().value();
 
-  const recording = Database.recordingsDB.chain
-    .get('recordings')
-    .find((rec) => rec.id === id)
-    .cloneDeep()
-    .value();
+  const recording = await Recording.find({ id: id });
 
   if (recording) {
     await fs.remove(recPath + '/' + recording.fileName);
 
     if (recording.recordType === 'Video') {
-      let placehoalder = recording.fileName.split('.')[0] + '@2.jpeg';
       await fs.remove(recPath + '/' + placehoalder);
     }
   }
 
   Cleartimer.removeRecordingTimer(id);
 
-  return Database.recordingsDB.chain
-    .get('recordings')
-    .remove((rec) => rec.id === id)
-    .value();
+  return await Recording.findOneAndDelete({ id: id });
 };
 
 export const removeAll = async () => {
-  const recPath = Database.recordingsDB.chain.get('path').cloneDeep().value();
-
-  await fs.emptyDir(recPath);
-  Cleartimer.stopRecordings();
-
-  return Database.recordingsDB.chain
-    .get('recordings')
-    .remove(() => true)
-    .value();
+  await Recording.deleteMany();
 };

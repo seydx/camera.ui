@@ -36,7 +36,7 @@ export const list = async (req, res, next) => {
     return next();
   } catch (error) {
     res.status(500).send({
-      statusCode: 500,
+      statusCode: 600,
       message: error.message,
     });
   }
