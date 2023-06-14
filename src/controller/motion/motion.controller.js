@@ -995,9 +995,10 @@ function processFile(filePath) {
           room: room,
           timeStamp: timestamp,
           time: time,
-          label: 'Intrusion_Detection',
+          label: 'Intrusion Detection',
           type: 'Video',
           ftp: true,
+          path: '/var/lib/homebridge/camera.ui/recordings/',
         };
 
         console.log(recording);

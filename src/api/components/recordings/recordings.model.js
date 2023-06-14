@@ -171,6 +171,8 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 
   console.log(recording);
 
+  await storeSnapshotFromVideo(camera, data.path, fileName, label);
+
   if (!skipffmpeg) {
     if (fileBuffer) {
       await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
@@ -225,6 +227,7 @@ export const removeById = async (id) => {
 
   if (recording) {
     await fs.remove(recPath + '/' + recording.fileName);
+    let placehoalder = recording.fileName.split('.')[0] + '@2.jpeg';
 
     if (recording.recordType === 'Video') {
       await fs.remove(recPath + '/' + placehoalder);
