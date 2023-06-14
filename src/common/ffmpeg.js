@@ -245,7 +245,7 @@ export const getAndStoreSnapshot = (
 export const storeSnapshotFromVideo = async (camera, recordingPath, fileName, label) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const videoName = `${recordingPath}/${fileName}.mp4`;
+    const videoName = `${recordingPath}/${fileName}.ts`;
     const destination = `${recordingPath}/${fileName}@2.jpeg`;
 
     const ffmpegArguments = [
