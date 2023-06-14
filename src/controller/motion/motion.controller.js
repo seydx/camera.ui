@@ -970,7 +970,7 @@ function processFile(filePath) {
         '_c' +
         '_CUI' +
         '.' +
-        'mp4';
+        'ts';
 
       const newFileName =
         cameraName + '-' + id + '-' + Math.floor(Date.now() / 1000) + '_' + alertType + '_CUI' + '.' + fileExtension;
@@ -988,7 +988,7 @@ function processFile(filePath) {
           camera: camera.name,
           fileName: newFileName,
           name: newFilenameNoExtension,
-          extension: fileExtension,
+          extension: 'ts',
           recordStoring: true,
           recordType: 'Video',
           trigger: 'intrusion_detection',

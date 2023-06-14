@@ -150,7 +150,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
     (data.trigger === 'motion' ? '_m' : data.trigger === 'doorbell' ? '_d' : '_c') +
     '_CUI';
 
-  const extension = data.type === 'Video' ? 'mp4' : 'jpeg';
+  const extension = data.extension;
   const label = (data.label || 'no label').toString();
 
   const recording = new Recording({
