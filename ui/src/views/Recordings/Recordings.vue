@@ -254,16 +254,16 @@ export default {
 
       if (isSafari) {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', url);
+        xhr.open('GET', '/files/' + item.fileName);
         xhr.responseType = 'blob';
 
         xhr.onload = function () {
-          saveAs(xhr.response, fileName);
+          saveAs(xhr.response, item.fileName);
           downloadFinished();
         };
 
         xhr.onerror = function () {
-          console.error('download failed', url);
+          console.error('download failed', '/files/' + item.fileName);
           this.$toast.error(`${this.$t('download_failed')}`);
           downloadFinished();
         };
@@ -275,7 +275,7 @@ export default {
       // Create download link.
       const link = document.createElement('a');
 
-      if (fileName) {
+      if (item.fileName) {
         link.download = item.name;
       }
 
