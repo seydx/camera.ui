@@ -77,7 +77,7 @@ export default {
   },
 
   methods: {
-    download({ url, fileName }) {
+    download(item) {
       this.downloading = true;
 
       const isSafari = navigator.appVersion.indexOf('Safari/') !== -1 && navigator.appVersion.indexOf('Chrome') === -1;
@@ -110,10 +110,10 @@ export default {
       const link = document.createElement('a');
 
       if (fileName) {
-        link.download = fileName;
+        link.download = item.name;
       }
 
-      link.href = url;
+      link.href = '/files/' + item.fileName;
       link.style.display = 'none';
 
       document.body.appendChild(link);
