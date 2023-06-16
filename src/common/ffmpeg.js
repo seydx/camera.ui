@@ -291,6 +291,46 @@ export const storeSnapshotFromVideo = async (camera, recordingPath, fileName, la
   });
 };
 
+export const convertToMp4 = async (camera, recordingPath, fileName) => {
+  return new Promise((resolve, reject) => {
+    const videoProcessor = ConfigService.ui.options.videoProcessor;
+    const videoName = `${recordingPath}/${fileName}.ts`;
+
+    const ffmpegArguments = ['-i', videoName, '-c:v copy', '-c:a copy', `${recordingPath}/${fileName}.mp4`];
+
+    log.debug(`ts to mp4 conversion requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
+
+    let errors = [];
+
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
+    });
+
+    ffmpeg.on('error', (error) => reject(error));
+
+    ffmpeg.on('exit', (code, signal) => {
+      if (code === 1) {
+        errors.unshift(`FFmpeg ts to mp4 process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
+      } else {
+        fs.unlink(videoName, (err) => {
+          if (err) {
+            console.error('Error deleting ts file: ' + err);
+          } else {
+            console.log('ts file deleted');
+          }
+        });
+        log.debug('FFmpeg ts to mp4 process exited (expected)', camera.name, 'ffmpeg');
+
+        resolve();
+      }
+    });
+  });
+};
+
 // eslint-disable-next-line no-unused-vars
 export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
   // eslint-disable-next-line no-async-promise-executor

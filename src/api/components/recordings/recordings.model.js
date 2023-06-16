@@ -17,6 +17,7 @@ import {
   storeSnapshotFromVideo,
   storeVideo,
   storeVideoBuffer,
+  convertToMp4,
 } from '../../../common/ffmpeg.js';
 
 mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
@@ -156,7 +157,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
   const recording = new Recording({
     id: id,
     camera: camera.name,
-    fileName: `${fileName}.${extension}`,
+    fileName: `${fileName}.mp4`,
     name: fileName,
     extension: extension,
     recordStoring: true,
@@ -172,6 +173,8 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
   console.log(recording);
 
   await storeSnapshotFromVideo(camera, data.path, fileName, label);
+
+  await convertToMp4(camera, data.path, fileName);
 
   if (!skipffmpeg) {
     if (fileBuffer) {
@@ -221,16 +224,14 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 };
 
 export const removeById = async (id) => {
-  const recPath = Database.recordingsDB.chain.get('path').cloneDeep().value();
-
   const recording = await Recording.find({ id: id });
 
   if (recording) {
-    await fs.remove(recPath + '/' + recording.fileName);
+    await fs.remove('/var/lib/homebridge/camera.ui/recordings/' + recording.fileName);
     let placehoalder = recording.fileName.split('.')[0] + '@2.jpeg';
 
     if (recording.recordType === 'Video') {
-      await fs.remove(recPath + '/' + placehoalder);
+      await fs.remove('/var/lib/homebridge/camera.ui/recordings/' + placehoalder);
     }
   }
 
