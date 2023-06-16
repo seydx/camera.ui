@@ -593,16 +593,18 @@ export default class MotionController {
           return;
         }
 
-        // Process the file
-        processFile(filePath)
-          .then(() => {
-            console.log('File processed successfully Breh');
-            data.connection.reply(226, 'File transferred successfully Breh');
-          })
-          .catch((error_) => {
-            console.error('Error processing file:', error_);
-            data.connection.reply(550, 'File processing failed');
-          });
+        if (!filePath.includes('AiMultiObjectSnap')) {
+          // Process the file
+          processFile(filePath)
+            .then(() => {
+              console.log('File processed successfully Breh');
+              data.connection.reply(226, 'File transferred successfully Breh');
+            })
+            .catch((error_) => {
+              console.error('Error processing file:', error_);
+              data.connection.reply(550, 'File processing failed');
+            });
+        }
       });
       // resolve({
       //   fs: new (class extends FileSystem {
