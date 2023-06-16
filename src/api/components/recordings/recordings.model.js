@@ -1,6 +1,5 @@
 'use-strict';
 
-import fs from 'fs-extra';
 import moment from 'moment';
 import { customAlphabet } from 'nanoid/async';
 

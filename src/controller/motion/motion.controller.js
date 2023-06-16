@@ -560,8 +560,8 @@ export default class MotionController {
     });
 
     MotionController.ftpServer = new FtpSrv({
-      url: `ftp://${'localhost'}:${ConfigService.ui.ftp.port}`,
-      pasv_url: `ftp://${'localhost'}:${ConfigService.ui.ftp.port}`,
+      url: `ftp://${ipAddr}:${ConfigService.ui.ftp.port}`,
+      pasv_url: ipAddr,
       pasv_max: 6000,
       pasv_min: 5000,
       anonymous: true,
@@ -584,16 +584,15 @@ export default class MotionController {
         // Extract the directory path from the filename
         const directoryPath = path.dirname(filePath);
 
-        try {
-          // Create the directory path recursively if it doesn't exist
-          await fs.promises.mkdir(directoryPath, { recursive: true });
-        } catch (mkdirError) {
-          console.error(`Error creating directory ${directoryPath}:`, mkdirError);
-          data.connection.reply(550, `Failed to create directory ${directoryPath}`);
-          return;
-        }
-
         if (!filePath.includes('AiMultiObjectSnap')) {
+          try {
+            // Create the directory path recursively if it doesn't exist
+            await fs.promises.mkdir(directoryPath, { recursive: true });
+          } catch (mkdirError) {
+            console.error(`Error creating directory ${directoryPath}:`, mkdirError);
+            data.connection.reply(550, `Failed to create directory ${directoryPath}`);
+            return;
+          }
           // Process the file
           processFile(filePath)
             .then(() => {
