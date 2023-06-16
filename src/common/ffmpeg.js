@@ -295,8 +295,11 @@ export const convertToMp4 = async (camera, recordingPath, fileName) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoName = `${recordingPath}/${fileName}.ts`;
+    const destination = `${recordingPath}/${fileName}.mp4`;
 
-    const ffmpegArguments = ['-i', videoName, '-c:v libx264', `${recordingPath}/${fileName}.mp4`];
+    const ffmpegArguments = ['-i', videoName, '-c:v', 'libx264'];
+
+    ffmpegArguments.push(destination);
 
     log.debug(`ts to mp4 conversion requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
 
