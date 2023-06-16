@@ -560,8 +560,8 @@ export default class MotionController {
     });
 
     MotionController.ftpServer = new FtpSrv({
-      url: `ftp://${ipAddr}:${ConfigService.ui.ftp.port}`,
-      pasv_url: ipAddr,
+      url: `ftp://${'localhost'}:${ConfigService.ui.ftp.port}`,
+      pasv_url: `ftp://${'localhost'}:${ConfigService.ui.ftp.port}`,
       pasv_max: 6000,
       pasv_min: 5000,
       anonymous: true,

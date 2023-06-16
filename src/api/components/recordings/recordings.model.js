@@ -224,17 +224,6 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 };
 
 export const removeById = async (id) => {
-  const recording = await Recording.find({ id: id });
-
-  if (recording) {
-    await fs.remove('/var/lib/homebridge/camera.ui/recordings/' + recording.fileName);
-    let placehoalder = recording.fileName.split('.')[0] + '@2.jpeg';
-
-    if (recording.recordType === 'Video') {
-      await fs.remove('/var/lib/homebridge/camera.ui/recordings/' + placehoalder);
-    }
-  }
-
   Cleartimer.removeRecordingTimer(id);
 
   return await Recording.findOneAndDelete({ id: id });
