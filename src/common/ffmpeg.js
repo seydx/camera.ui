@@ -316,9 +316,9 @@ export const convertToMp4 = async (camera, recordingPath, fileName) => {
         errors.unshift(`FFmpeg ts to mp4 process exited with error! (${signal})`);
         reject(new Error(errors.join(' - ')));
       } else {
-        fs.unlink(videoName, (err) => {
-          if (err) {
-            console.error('Error deleting ts file: ' + err);
+        fs.unlink(videoName, (error) => {
+          if (error) {
+            console.error('Error deleting ts file: ' + error);
           } else {
             console.log('ts file deleted');
           }
