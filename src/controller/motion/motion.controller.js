@@ -160,7 +160,7 @@ export default class MotionController {
 
       //Entry Point for camera alerts
       log.info(`New message: URL: ${request.url}`, 'HTTP');
-      //let notification;
+      let notification;
       let body = '';
       request.on('data', async (chunk) => {
         if (chunk) {
