@@ -40,6 +40,7 @@ export default class EventController {
     EventController.#controller = controller;
     //
     EventController.#controller.on('uiMotion', (event) =>
+      // this is where we handle alerts from sunell
       EventController.handle(event.triggerType, event.cameraName, event.state, event.data, event.message)
     );
 
@@ -140,8 +141,8 @@ export default class EventController {
               recordingSettings.active
             );
 
-            //not used atm
             let allowStream = true;
+            //not used atm
 
             /*if (controller && !fileBuffer && recordingSettings.active && !Camera.prebuffering) {
               allowStream = controller.session.requestSession();
@@ -251,7 +252,7 @@ export default class EventController {
                   log.debug('Recording not enabled, skip recording..', cameraName);
                 }
 
-                // 7)
+                // 7) Send to Alert to UI Toaster
                 if (recordingSettings.active) {
                   if (notificationsSettings.active) {
                     if (allowRecording) {

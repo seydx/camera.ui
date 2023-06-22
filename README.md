@@ -2,15 +2,25 @@
     <img src="https://github.com/SeydX/camera.ui/blob/master/images/logo.png">
 </p>
 
-1090704204951 40
+Extra Camera Fields to GET Cameras:
+Camera Operation Type: PTZ or Fixed
+Camera Model: Mile or Mini
+Mount Position: Left Right Top
+Location:Miramar or Falcon Ridge
 
-1093704211553 358.55
+Notifications:
+Type: Vehicle Detection
+TimeStamp
+Image
+Info:
+Authorized
+Direction
+Speed
 
-5253 6361 2659 2272
+Outbound Alert To Buzz:
+Send Start for to Buzz to Start watching Mile for Vehicles
 
-358.55
-
-03 2027 485
+60 Days of Reco
 
 # camera.ui
 

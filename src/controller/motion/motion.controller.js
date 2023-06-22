@@ -158,6 +158,7 @@ export default class MotionController {
         data: JSON.stringify(request.headers),
       };
 
+      //Entry Point for camera alerts
       log.info(`New message: URL: ${request.url}`, 'HTTP');
       //let notification;
       let body = '';
@@ -165,7 +166,7 @@ export default class MotionController {
         if (chunk) {
           body += chunk.toString(); // convert Buffer to string
           console.log(body);
-          //notification = await NotificationsModel.createNotification(body);
+          notification = await NotificationsModel.createNotification(body);
         }
       });
       console.log(JSON.stringify(request.headers));
@@ -545,10 +546,13 @@ export default class MotionController {
               const data = JSON.parse(chunk);
 
               if (data.level >= 50) {
-                if (data.err?.message !== 'Server is not running.') {
+                if (
+                  data.err?.message !== 'Server is not running.' &&
+                  !data.err?.message.includes('no such file or directory')
+                ) {
                   log.error(data.msg, 'FTP', 'motion');
                 }
-              } else if (data.level >= 40) {
+              } else if (data.level >= 40 && !data.err?.message.includes('no such file or directory')) {
                 log.warn(data.msg, 'FTP', 'motion');
               }
 

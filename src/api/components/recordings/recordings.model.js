@@ -165,7 +165,7 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
     room: room,
     time: time,
     date: Date.now(),
-    timestamp: timestamp,
+    timeStamp: timestamp,
     label: label,
   });
 
