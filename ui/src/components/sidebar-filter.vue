@@ -173,6 +173,19 @@ export default {
           this.availableLabels = items.map((item) => item);
         } else if (this.$route.name === 'Recordings') {
           const labels = await this.getRecordingsLabels();
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          const date = `${year}-${month}-${day}`;
+
+          this.selected.push({
+            value: {
+              start: date,
+              end: date,
+            },
+            type: 'date',
+          });
 
           const items = [
             ...new Set(
