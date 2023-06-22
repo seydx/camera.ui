@@ -19,7 +19,7 @@ import moment from 'moment';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
-// import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
+import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
 
 import Database from '../../api/database.js';
 
