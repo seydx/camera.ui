@@ -19,7 +19,7 @@ import moment from 'moment';
 
 import ConfigService from '../../services/config/config.service.js';
 import LoggerService from '../../services/logger/logger.service.js';
-import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
+//import * as NotificationsModel from '../../api/components/notifications/notifications.model.js';
 
 import Database from '../../api/database.js';
 
@@ -160,13 +160,11 @@ export default class MotionController {
 
       //Entry Point for camera alerts
       log.info(`New message: URL: ${request.url}`, 'HTTP');
-      let notification;
       let body = '';
       request.on('data', async (chunk) => {
         if (chunk) {
           body += chunk.toString(); // convert Buffer to string
           console.log(body);
-          notification = await NotificationsModel.createNotification(body);
         }
       });
       console.log(JSON.stringify(request.headers));
