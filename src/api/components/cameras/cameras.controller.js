@@ -49,9 +49,69 @@ export const insert = async (req, res) => {
   }
 };
 
+export const insertAlert = async (req, res) => {
+  try {
+    const camera = await CamerasModel.findByName(req.body.name);
+
+    if (camera == null) {
+      return res.status(409).send({
+        statusCode: 404,
+        message: 'Camera does not exist',
+      });
+    }
+
+    const result = await CamerasModel.createCameraAlert(req.body);
+
+    if (!result) {
+      return res.status(409).send({
+        statusCode: 500,
+        message: 'Alert Creation Failure',
+      });
+    }
+
+    res.status(201).send({
+      id: req.body.messageID,
+      object: req.body.object,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 export const list = async (req, res, next) => {
   try {
     res.locals.items = await CamerasModel.list();
+
+    return next();
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const listInfo = async (req, res, next) => {
+  try {
+    let cameras = await CamerasModel.list();
+    let camerasFiltered = cameras.map((obj) => {
+      return {
+        name: obj.name,
+        type: obj.type,
+        mode: obj.mode,
+        model: obj.model,
+        ipaddress: obj.ipaddress,
+        mountPosition: obj.mountPosition,
+        location: obj.location,
+        streamUrl: obj.videoConfig.source.replace('-i ', ''),
+      };
+    });
+    res.locals.items = camerasFiltered;
 
     return next();
   } catch (error) {

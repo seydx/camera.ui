@@ -54,7 +54,6 @@ export default {
   mounted() {
     const self = this;
     const el = '#' + this.notification.id;
-
     // Initialize Swiper
     this.swiper = new Swiper(el, {
       slidesPerView: 'auto',

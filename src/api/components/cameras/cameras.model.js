@@ -40,6 +40,10 @@ export const createCamera = async (cameraData) => {
   }
 };
 
+export const createCameraAlert = async (cameraAlertData) => {
+  return cameraAlertData;
+};
+
 // todo: not used, handled through system/config
 export const patchCamera = async (name, cameraData) => {
   if (

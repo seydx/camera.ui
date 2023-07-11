@@ -62,6 +62,52 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/cameras/info:
+   *   get:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get all cameras
+   *     parameters:
+   *       - in: query
+   *         name: cameras
+   *         description: Cameras
+   *         example: "Camera One,Camera Two"
+   *         type: string
+   *       - in: query
+   *         name: status
+   *         description: Status
+   *         example: "Online,Offline"
+   *         type: string
+   *       - in: query
+   *         name: start
+   *         type: number
+   *         description: Start index
+   *       - in: query
+   *         name: page
+   *         type: number
+   *         description: Page
+   *       - in: query
+   *         name: pageSize
+   *         type: number
+   *         description: Page size
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/cameras/info', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
+    CamerasController.listInfo,
+    PaginationMiddleware.pages,
+  ]);
+
+  /**
+   * @swagger
    * /api/cameras:
    *   post:
    *     tags: [Cameras]
@@ -97,6 +143,45 @@ export const routesConfig = (app) => {
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:edit'),
     CamerasValidationMiddleware.hasValidFields,
     CamerasController.insert,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/alert:
+   *   post:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Creates new camera
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *          schema:
+   *            type: object
+   *            properties:
+   *              name:
+   *                type: string
+   *              videoConfig:
+   *                type: object
+   *                properties:
+   *                  source:
+   *                    type: string
+   *     responses:
+   *       201:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       409:
+   *         description: Camera already exists
+   *       500:
+   *         description: Internal server error
+   */
+  app.post('/api/cameras/alert', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:edit'),
+    CamerasValidationMiddleware.hasValidFields,
+    CamerasController.insertAlert,
   ]);
 
   /**
