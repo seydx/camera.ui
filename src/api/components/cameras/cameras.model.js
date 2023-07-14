@@ -9,12 +9,18 @@ import Database from '../../database.js';
 
 import CameraController from '../../../controller/camera/camera.controller.js';
 
+import * as NotificationsModel from '../notifications/notifications.model.js';
+
 export const list = async () => {
   return await Database.interfaceDB.chain.get('cameras').cloneDeep().value();
 };
 
 export const findByName = async (name) => {
   return await Database.interfaceDB.chain.get('cameras').find({ name: name }).cloneDeep().value();
+};
+
+export const findAlertById = async (id) => {
+  return await NotificationsModel.findAlertById(id);
 };
 
 export const getSettingsByName = async (name) => {
@@ -41,7 +47,14 @@ export const createCamera = async (cameraData) => {
 };
 
 export const createCameraAlert = async (cameraAlertData) => {
-  return cameraAlertData;
+  var notification = await NotificationsModel.createCameraNotification(cameraAlertData);
+  var response = {
+    id: notification.id,
+    _id: notification._id,
+    object: notification.message,
+    image: notification.image,
+  };
+  return response;
 };
 
 // todo: not used, handled through system/config

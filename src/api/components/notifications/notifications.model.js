@@ -4,8 +4,35 @@ import moment from 'moment';
 import { customAlphabet } from 'nanoid/async';
 
 import Cleartimer from '../../../common/cleartimer.js';
+import fs from 'fs-extra';
 
 import Database from '../../database.js';
+import mongoose from 'mongoose';
+const { Schema } = mongoose;
+
+mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const notificationSchema = new Schema({
+  message: String,
+  id: String,
+  camera: String,
+  fileName: String,
+  name: String,
+  extension: String,
+  recordStoring: Boolean,
+  recordType: String,
+  room: String,
+  time: String,
+  date: Date,
+  timeStamp: Number,
+  label: String,
+});
+
+const Notification = mongoose.model('Notification', notificationSchema);
+await Notification.createCollection();
 
 const nanoid = customAlphabet('1234567890abcdef', 10);
 const notificationsLimit = 100;
@@ -92,6 +119,19 @@ export const findById = async (id) => {
     Database.notificationsDB.chain.get('notifications').find({ id: id }).cloneDeep().value();
 
   return notification;
+};
+
+export const findAlertById = async (id) => {
+  const notification = await Notification.findById(id);
+
+  var formattedNotification = notification.toObject();
+
+  formattedNotification._id = createdDocument._id;
+  formattedNotification._id = createdDocument.id;
+  formattedNotification.message = JSON.parse(notification.message);
+  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}`;
+
+  return formattedNotification;
 };
 
 export const createNotification = async (data) => {
@@ -183,6 +223,85 @@ export const createNotification = async (data) => {
     notification: notification,
     notify: notify,
   };
+};
+
+export const createCameraNotification = async (data) => {
+  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
+  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+
+  if (!camera) {
+    throw new Error('Can not assign notification to camera!');
+  }
+
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+
+  const id = data.id || (await nanoid());
+  const room = data.site;
+  const timestamp = data.timestamp || moment().unix();
+  const time = data.time;
+
+  const fileName = camera.name.replace(/\s+/g, '_') + '-' + id + '-' + timestamp + '_buzz' + '_CUI';
+
+  const extension = 'jpg';
+  const label = `${data.alertType}-${data.severity}`;
+
+  var storedFile = `/var/lib/homebridge/camera.ui/recordings/${fileName}.${extension}`;
+  const jpegBuffer = Buffer.from(data.image, 'base64');
+
+  fs.writeFile(storedFile, jpegBuffer, (error) => {
+    if (error) {
+      console.error('Error saving JPEG:', error);
+    } else {
+      console.log('JPEG saved successfully!');
+    }
+  });
+
+  const notification = new Notification({
+    message: JSON.stringify(data.object),
+    id: id,
+    camera: camera.name,
+    fileName: `${fileName}.${extension}`,
+    name: fileName,
+    extension: extension,
+    recordStoring: data.storing,
+    recordType: data.alertType,
+    trigger: data.alertType,
+    room: room,
+    time: time,
+    timestamp: timestamp,
+    label: label,
+  });
+
+  const notify = {
+    ...notification,
+    title: camera.name,
+    message: `${data.trigger} - ${time}`,
+    subtxt: room,
+    mediaSource: data.storing ? `/files/${fileName}.${extension}` : false,
+    thumbnail: data.storing
+      ? data.type === 'Video'
+        ? `/files/${fileName}@2.jpeg`
+        : `/files/${fileName}.${extension}`
+      : false,
+    count: true,
+    isNotification: true,
+  };
+
+  const notificationSettings = await Database.interfaceDB.chain
+    .get('settings')
+    .get('notifications')
+    .cloneDeep()
+    .value();
+
+  const createdDocument = await Notification.create(notification);
+
+  var formattedNotification = notification.toObject();
+
+  formattedNotification._id = createdDocument._id;
+  formattedNotification.message = JSON.parse(notification.message);
+  formattedNotification.image = `http://192.168.0.150:8081/files/${fileName}`;
+
+  return formattedNotification;
 };
 
 export const removeById = async (id) => {

@@ -51,7 +51,7 @@ export const insert = async (req, res) => {
 
 export const insertAlert = async (req, res) => {
   try {
-    const camera = await CamerasModel.findByName(req.body.name);
+    const camera = await CamerasModel.findByName(req.body.camera);
 
     if (camera == null) {
       return res.status(409).send({
@@ -70,8 +70,7 @@ export const insertAlert = async (req, res) => {
     }
 
     res.status(201).send({
-      id: req.body.messageID,
-      object: req.body.object,
+      result,
     });
   } catch (error) {
     console.log(error);
@@ -134,6 +133,26 @@ export const getByName = async (req, res) => {
     }
 
     res.status(200).send(camera);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const getAlertById = async (req, res) => {
+  try {
+    const alert = await CamerasModel.findAlertById(req.params.id);
+
+    if (!alert) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Alert does not exist',
+      });
+    }
+
+    res.status(200).send(alert);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

@@ -152,7 +152,7 @@ export const routesConfig = (app) => {
    *     tags: [Cameras]
    *     security:
    *       - bearerAuth: []
-   *     summary: Creates new camera
+   *     summary: Creates new camera alert
    *     requestBody:
    *       required: true
    *       content:
@@ -160,12 +160,14 @@ export const routesConfig = (app) => {
    *          schema:
    *            type: object
    *            properties:
-   *              name:
+   *              alertType:
    *                type: string
-   *              videoConfig:
+   *              messageID:
+   *                type: string
+   *              object:
    *                type: object
    *                properties:
-   *                  source:
+   *                  id:
    *                    type: string
    *     responses:
    *       201:
@@ -180,8 +182,39 @@ export const routesConfig = (app) => {
   app.post('/api/cameras/alert', [
     ValidationMiddleware.validJWTNeeded,
     PermissionMiddleware.minimumPermissionLevelRequired('cameras:edit'),
-    CamerasValidationMiddleware.hasValidFields,
+    CamerasValidationMiddleware.hasValidAlertFields,
     CamerasController.insertAlert,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}:
+   *   get:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Get specific camera by name
+   *     parameters:
+   *       - in: path
+   *         name: name
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Name of the camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.get('/api/cameras/alert', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:access'),
+    CamerasController.getAlertById,
   ]);
 
   /**
