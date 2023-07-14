@@ -126,8 +126,8 @@ export const findAlertById = async (id) => {
 
   var formattedNotification = notification.toObject();
 
-  formattedNotification._id = createdDocument._id;
-  formattedNotification._id = createdDocument.id;
+  formattedNotification._id = notification._id;
+  formattedNotification._id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
   formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}`;
 
@@ -233,8 +233,6 @@ export const createCameraNotification = async (data) => {
     throw new Error('Can not assign notification to camera!');
   }
 
-  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
-
   const id = data.id || (await nanoid());
   const room = data.site;
   const timestamp = data.timestamp || moment().unix();
@@ -272,26 +270,26 @@ export const createCameraNotification = async (data) => {
     label: label,
   });
 
-  const notify = {
-    ...notification,
-    title: camera.name,
-    message: `${data.trigger} - ${time}`,
-    subtxt: room,
-    mediaSource: data.storing ? `/files/${fileName}.${extension}` : false,
-    thumbnail: data.storing
-      ? data.type === 'Video'
-        ? `/files/${fileName}@2.jpeg`
-        : `/files/${fileName}.${extension}`
-      : false,
-    count: true,
-    isNotification: true,
-  };
+  // const notify = {
+  //   ...notification,
+  //   title: camera.name,
+  //   message: `${data.trigger} - ${time}`,
+  //   subtxt: room,
+  //   mediaSource: data.storing ? `/files/${fileName}.${extension}` : false,
+  //   thumbnail: data.storing
+  //     ? data.type === 'Video'
+  //       ? `/files/${fileName}@2.jpeg`
+  //       : `/files/${fileName}.${extension}`
+  //     : false,
+  //   count: true,
+  //   isNotification: true,
+  // };
 
-  const notificationSettings = await Database.interfaceDB.chain
-    .get('settings')
-    .get('notifications')
-    .cloneDeep()
-    .value();
+  // const notificationSettings = await Database.interfaceDB.chain
+  //   .get('settings')
+  //   .get('notifications')
+  //   .cloneDeep()
+  //   .value();
 
   const createdDocument = await Notification.create(notification);
 
