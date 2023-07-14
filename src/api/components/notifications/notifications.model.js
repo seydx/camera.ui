@@ -227,7 +227,7 @@ export const createNotification = async (data) => {
 
 export const createCameraNotification = async (data) => {
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
-  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+  // const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
   if (!camera) {
     throw new Error('Can not assign notification to camera!');
