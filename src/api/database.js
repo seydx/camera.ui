@@ -236,6 +236,7 @@ export default class Database {
 
     Socket.watchSystem();
     Socket.watchTemps();
+    Socket.watchStatus();
 
     return {
       interface: Database.interfaceDB,

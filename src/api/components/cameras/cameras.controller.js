@@ -99,15 +99,22 @@ export const listInfo = async (req, res, next) => {
   try {
     let cameras = await CamerasModel.list();
     let camerasFiltered = cameras.map((obj) => {
+      const str = obj.videoConfig.source.replace('-i ', '');
+      const searchString = ':554';
+
+      const startIndex = str.indexOf(searchString);
+
+      const extractedString = str.substring(startIndex + searchString.length);
+
       return {
         name: obj.name,
-        type: obj.type,
+        online: obj.online,
         mode: obj.mode,
         model: obj.model,
         ipaddress: obj.ipaddress,
         mountPosition: obj.mountPosition,
         location: obj.location,
-        streamUrl: obj.videoConfig.source.replace('-i ', ''),
+        streamUrl: `rtsp://${obj.ipaddress}:554${extractedString}`,
       };
     });
     res.locals.items = camerasFiltered;

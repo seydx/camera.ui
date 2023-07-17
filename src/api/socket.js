@@ -15,6 +15,7 @@ import Database from './database.js';
 import CameraController from '../controller/camera/camera.controller.js';
 import MotionController from '../controller/motion/motion.controller.js';
 import * as TemperaturesModel from '../api/components/temperatures/temperatures.model.js';
+import * as CamerasModel from '../api/components/cameras/cameras.model.js';
 
 import fetch from 'node-fetch';
 
@@ -317,6 +318,14 @@ export default class Socket {
     }, 60000 * 60);
   }
 
+  static async watchStatus() {
+    await Socket.#handleCameraStatus();
+
+    setTimeout(() => {
+      Socket.watchStatus();
+    }, 60000 * 1);
+  }
+
   static async #handleUptime() {
     try {
       const humaniseDuration = (seconds) => {
@@ -573,6 +582,16 @@ export default class Socket {
           console.log(error);
         }
       }
+    }
+  }
+
+  static async #handleCameraStatus() {
+    const cameras = ConfigService.ui.cameras;
+    for (const camera of cameras) {
+      const status = await CamerasModel.pingCamera(camera, 6);
+      console.log(`status for ${camera.name} is online: ${status}`);
+      camera.online = status;
+      await CamerasModel.patchCamera(camera.name, camera);
     }
   }
 
