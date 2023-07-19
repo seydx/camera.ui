@@ -17,7 +17,11 @@ mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
 
 const notificationSchema = new Schema({
   message: String,
-  id: String,
+  id: {
+    type: String,
+    required: true,
+    unique: true,
+  },
   camera: String,
   fileName: String,
   name: String,
@@ -32,10 +36,94 @@ const notificationSchema = new Schema({
 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
+
+// Notification.statics.deleteByCustomId = async function (customIdToDelete) {
+//   try {
+//     const deletedDocument = await this.findOneAndDelete({ id: customIdToDelete });
+
+//     if (!deletedDocument) {
+//       console.error('Document not found');
+//       return null;
+//     }
+
+//     console.log('Deleted document:', deletedDocument);
+//     return deletedDocument;
+//   } catch (err) {
+//     console.error('Error deleting document:', err);
+//     throw err;
+//   }
+// };
+
 await Notification.createCollection();
 
 const nanoid = customAlphabet('1234567890abcdef', 10);
 const notificationsLimit = 100;
+
+// export const list = async (query) => {
+//   // eslint-disable-next-line unicorn/consistent-function-scoping
+//   const GetSortOrder = (property) => {
+//     return (a, b) => {
+//       if (a[property] < b[property]) {
+//         return 1;
+//       } else if (a[property] > b[property]) {
+//         return -1;
+//       }
+//       return 0;
+//     };
+//   };
+
+//   let notifications = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
+//   notifications.push(...Database.notificationsDB.chain.get('notifications').cloneDeep().value());
+//   notifications.sort(GetSortOrder('timestamp'));
+
+//   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
+//     notifications = notifications.filter((notification) => {
+//       const date = moment.unix(notification.timestamp).format('YYYY-MM-DD');
+//       const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
+
+//       let fromDate = query.from;
+//       let toDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
+
+//       if (moment(toDate).isBefore(fromDate)) {
+//         toDate = query.from;
+//         fromDate = moment(query.to, 'YYYY-MM-DD').isValid() ? query.to : moment();
+//       }
+
+//       const fromDateMoment = moment(fromDate).set({ hour: 0, minute: 0, second: 0 });
+//       const toDateMoment = moment(toDate).set({ hour: 23, minute: 59, second: 59 });
+
+//       const isBetween = dateMoment.isBetween(fromDateMoment, toDateMoment);
+
+//       return isBetween;
+//     });
+//   }
+
+//   if (query.cameras) {
+//     const cameras = query.cameras.split(',');
+//     notifications = notifications.filter(
+//       (notification) => cameras.includes(notification.camera) || cameras.includes(notification.title)
+//     );
+//   }
+
+//   if (query.labels) {
+//     const labels = query.labels.split(',');
+//     notifications = notifications.filter((notification) => labels.includes(notification.label));
+//   }
+
+//   if (query.rooms) {
+//     const rooms = query.rooms.split(',');
+//     notifications = notifications.filter((notification) => rooms.includes(notification.room));
+//   }
+
+//   if (query.types) {
+//     const types = query.types.split(',');
+//     notifications = notifications.filter(
+//       (notification) => types.includes(notification.recordType) || types.includes(notification.type)
+//     );
+//   }
+
+//   return notifications;
+// };
 
 export const list = async (query) => {
   // eslint-disable-next-line unicorn/consistent-function-scoping
@@ -50,13 +138,13 @@ export const list = async (query) => {
     };
   };
 
-  let notifications = await Database.interfaceDB.chain.get('notifications').cloneDeep().value();
-  notifications.push(...Database.notificationsDB.chain.get('notifications').cloneDeep().value());
-  notifications.sort(GetSortOrder('timestamp'));
+  let notifications = await Notification.find({});
+
+  notifications.sort(GetSortOrder('timeStamp'));
 
   if (moment(query.from, 'YYYY-MM-DD').isValid()) {
     notifications = notifications.filter((notification) => {
-      const date = moment.unix(notification.timestamp).format('YYYY-MM-DD');
+      const date = moment.unix(notification.timeStamp).format('YYYY-MM-DD');
       const dateMoment = moment(date).set({ hour: 0, minute: 0, second: 1 });
 
       let fromDate = query.from;
@@ -78,9 +166,7 @@ export const list = async (query) => {
 
   if (query.cameras) {
     const cameras = query.cameras.split(',');
-    notifications = notifications.filter(
-      (notification) => cameras.includes(notification.camera) || cameras.includes(notification.title)
-    );
+    notifications = notifications.filter((notification) => cameras.includes(notification.camera));
   }
 
   if (query.labels) {
@@ -95,9 +181,7 @@ export const list = async (query) => {
 
   if (query.types) {
     const types = query.types.split(',');
-    notifications = notifications.filter(
-      (notification) => types.includes(notification.recordType) || types.includes(notification.type)
-    );
+    notifications = notifications.filter((notification) => types.includes(notification.recordType));
   }
 
   return notifications;
@@ -122,14 +206,15 @@ export const findById = async (id) => {
 };
 
 export const findAlertById = async (id) => {
-  const notification = await Notification.findById(id);
+  const notification = await Notification.findById(id).exec();
+  console.log(id);
 
   var formattedNotification = notification.toObject();
 
   formattedNotification._id = notification._id;
   formattedNotification._id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}`;
+  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}.jpg`;
 
   return formattedNotification;
 };
@@ -310,6 +395,14 @@ export const removeById = async (id) => {
     .remove((not) => not.id === id)
     .value();
 
+  // await Notification.deleteByCustomId(customIdToDelete)
+  //   .then((deletedDocument) => {
+  //     console.log(deletedDocument);
+  //   })
+  //   .catch((err) => {
+  //     console.log(err);
+  //   });
+
   return await Database.interfaceDB.chain
     .get('notifications')
     .remove((not) => not.id === id)
@@ -323,6 +416,14 @@ export const removeAll = async () => {
     .get('notifications')
     .remove(() => true)
     .value();
+
+  await Notification.deleteMany({})
+    .then((result) => {
+      console.log(`${result.deletedCount} documents have been removed.`);
+    })
+    .catch((error) => {
+      console.error('Error occurred while removing documents:', error);
+    });
 
   return await Database.interfaceDB.chain
     .get('notifications')

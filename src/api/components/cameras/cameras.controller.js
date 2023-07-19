@@ -104,17 +104,17 @@ export const listInfo = async (req, res, next) => {
 
       const startIndex = str.indexOf(searchString);
 
-      const extractedString = str.substring(startIndex + searchString.length);
+      const extractedString = str.slice(Math.max(0, startIndex + searchString.length));
 
       return {
         name: obj.name,
         online: obj.online,
         mode: obj.mode,
         model: obj.model,
-        ipaddress: obj.ipaddress,
+        ipAddress: obj.ipAddress,
         mountPosition: obj.mountPosition,
         location: obj.location,
-        streamUrl: `rtsp://${obj.ipaddress}:554${extractedString}`,
+        streamUrl: `rtsp://${obj.ipAddress}:554${extractedString}`,
       };
     });
     res.locals.items = camerasFiltered;

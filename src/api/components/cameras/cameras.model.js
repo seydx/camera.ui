@@ -52,7 +52,7 @@ export const createCameraAlert = async (cameraAlertData) => {
     id: notification.id,
     _id: notification._id,
     object: notification.message,
-    image: notification.image,
+    image: `${notification.image}.jpg`,
   };
   return response;
 };
