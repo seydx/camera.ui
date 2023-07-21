@@ -161,6 +161,23 @@ export default {
           //   return not;
           // });
 
+          this.notifications = this.notifications.map((notification) => {
+            var jsonAlertDataRaw = notification.message;
+            var jsonAlertDataFormatted = JSON.parse(jsonAlertDataRaw.replace(/\\/g, ''));
+            console.log(jsonAlertDataFormatted);
+            notification.confidence = jsonAlertDataFormatted.confidence;
+            notification.type = jsonAlertDataFormatted.type;
+            notification.location = `${jsonAlertDataFormatted.location[0]},${jsonAlertDataFormatted.location[1]} `;
+            notification.orientation = `${jsonAlertDataFormatted.orientation[0]},${jsonAlertDataFormatted.orientation[1]} `;
+            notification.speed = jsonAlertDataFormatted.speed;
+            notification.authorized = jsonAlertDataFormatted.info.authorized;
+            notification.license = jsonAlertDataFormatted.info.license;
+            notification.gear = jsonAlertDataFormatted.info.gear;
+            notification.pose = jsonAlertDataFormatted.info.pose;
+
+            return notification;
+          });
+
           this.images = this.notifications
             .map((notification) => {
               if (notification.recordStoring) {

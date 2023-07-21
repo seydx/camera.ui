@@ -17,8 +17,17 @@
               v-img(:contain="errorImg" v-on:error="handleErrorImg" style="border-radius: 5px;" :src="src" width="40" max-width="40" min-width="40" height="40" max-height="40" min-height="40")
                 template(v-slot:placeholder)
                   .tw-flex.tw-justify-center.tw-items-center.tw-h-full
-                    v-progress-circular(indeterminate color="var(--cui-primary)" size="22")
-            v-card-subtitle.tw-p-0.text-muted.tw-font-normal {{ notification.message }}
+                    v-progress-circular(indeterminate color="var(--cui-primary)" size="22")                   
+            v-card-subtitle.tw-p-0.text-muted.tw-font-normal
+              v-btn.ml-2.mt-5(outlined rounded small) Confidence:{{notification.confidence}}
+              v-btn.ml-2.mt-5(outlined rounded small) Type:{{notification.type}}
+              v-btn.ml-2.mt-5(outlined rounded small) Location:{{notification.location}}
+              v-btn.ml-2.mt-5(outlined rounded small) Orientation:{{notification.orientation}}
+              v-btn.ml-2.mt-5(outlined rounded small) Speed:{{notification.speed}}
+              v-btn.ml-2.mt-5(outlined rounded small) Authorized:{{notification.authorized}}
+              v-btn.ml-2.mt-5(outlined rounded small) License:{{notification.license}}
+              v-btn.ml-2.mt-5(outlined rounded small) Gear:{{notification.gear}}
+              v-btn.ml-2.mt-5(outlined rounded small) Pose:{{notification.pose}}
     .tw-flex.tw-justify-center.tw-items-center.swiper-slide.notification-card-remove
       v-btn(icon color="error" @click="remove")
         v-icon {{ icons['mdiCloseCircle'] }}

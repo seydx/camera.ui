@@ -206,15 +206,21 @@ export const findById = async (id) => {
 };
 
 export const findAlertById = async (id) => {
-  const notification = await Notification.findById(id).exec();
+  var notification;
   console.log(id);
+  try {
+    notification = await Notification.findById(id);
+    console.log(notification);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+  }
 
   var formattedNotification = notification.toObject();
 
   formattedNotification._id = notification._id;
-  formattedNotification._id = notification.id;
+  formattedNotification.id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}.jpg`;
+  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}`;
 
   return formattedNotification;
 };
@@ -346,7 +352,7 @@ export const createCameraNotification = async (data) => {
     fileName: `${fileName}.${extension}`,
     name: fileName,
     extension: extension,
-    recordStoring: data.storing,
+    recordStoring: true,
     recordType: data.alertType,
     trigger: data.alertType,
     room: room,

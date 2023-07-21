@@ -100,11 +100,8 @@ export const listInfo = async (req, res, next) => {
     let cameras = await CamerasModel.list();
     let camerasFiltered = cameras.map((obj) => {
       const str = obj.videoConfig.source.replace('-i ', '');
-      const searchString = ':554';
-
-      const startIndex = str.indexOf(searchString);
-
-      const extractedString = str.slice(Math.max(0, startIndex + searchString.length));
+      const regex = /[^:]*$/;
+      const match = str.match(regex);
 
       return {
         name: obj.name,
@@ -114,7 +111,7 @@ export const listInfo = async (req, res, next) => {
         ipAddress: obj.ipAddress,
         mountPosition: obj.mountPosition,
         location: obj.location,
-        streamUrl: `rtsp://${obj.ipAddress}:554${extractedString}`,
+        streamUrl: `rtsp://${obj.ipAddress}:${match[0]}`,
       };
     });
     res.locals.items = camerasFiltered;
@@ -150,7 +147,7 @@ export const getByName = async (req, res) => {
 
 export const getAlertById = async (req, res) => {
   try {
-    const alert = await CamerasModel.findAlertById(req.params.id);
+    const alert = await CamerasModel.findAlertById(req.query.id);
 
     if (!alert) {
       return res.status(404).send({
