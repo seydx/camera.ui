@@ -6,6 +6,7 @@ import * as CamerasModel from './cameras.model.js';
 import CameraController from '../../../controller/camera/camera.controller.js';
 import MotionController from '../../../controller/motion/motion.controller.js';
 import fetch from 'node-fetch';
+import { URL } from 'url';
 
 const setTimeoutAsync = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -27,7 +28,21 @@ export const insert = async (req, res) => {
       });
     }
 
-    const result = await CamerasModel.createCamera(req.body);
+    const rtspStreamRaw = req.body.videoConfig.source.replace('-i ', '');
+
+    const regex = /^rtsp:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\/.*$/;
+    const match = rtspStreamRaw.match(regex);
+    var ip;
+    var port;
+
+    if (match && match.length === 3) {
+      ip = match[1];
+      port = parseInt(match[2]);
+    }
+
+    req.body.ipAddress = `${ip}:${port}`;
+
+    var result = await CamerasModel.createCamera(req.body);
 
     if (!result) {
       return res.status(409).send({
@@ -99,19 +114,38 @@ export const listInfo = async (req, res, next) => {
   try {
     let cameras = await CamerasModel.list();
     let camerasFiltered = cameras.map((obj) => {
-      const str = obj.videoConfig.source.replace('-i ', '');
-      const regex = /[^:]*$/;
-      const match = str.match(regex);
+      var rtspStreamRaw = obj.videoConfig.source.replace('-i ', '');
+
+      if (rtspStreamRaw.includes('@')) {
+        const parsedUrl = new URL(rtspStreamRaw);
+
+        // Remove the username and password
+        parsedUrl.username = '';
+        parsedUrl.password = '';
+
+        const updatedRtspUrl = parsedUrl.toString();
+        rtspStreamRaw = updatedRtspUrl;
+      }
+
+      const regex = /^rtsp:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\/.*$/;
+      const match = rtspStreamRaw.match(regex);
+      var ip;
+      var port;
+
+      if (match && match.length === 3) {
+        ip = match[1];
+        port = parseInt(match[2]);
+      }
 
       return {
         name: obj.name,
         online: obj.online,
         mode: obj.mode,
         model: obj.model,
-        ipAddress: obj.ipAddress,
+        ipAddress: `${ip}:${port}`,
         mountPosition: obj.mountPosition,
         location: obj.location,
-        streamUrl: `rtsp://${obj.ipAddress}:${match[0]}`,
+        streamUrl: rtspStreamRaw,
       };
     });
     res.locals.items = camerasFiltered;
