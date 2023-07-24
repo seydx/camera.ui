@@ -30,14 +30,14 @@ export const insert = async (req, res) => {
 
     const rtspStreamRaw = req.body.videoConfig.source.replace('-i ', '');
 
-    const regex = /^rtsp:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\/.*$/;
+    const regex = /^rtsp:\/{2}((?:\d+\.){3}\d+):(\d+)\/.*$/;
     const match = rtspStreamRaw.match(regex);
     var ip;
     var port;
 
     if (match && match.length === 3) {
       ip = match[1];
-      port = parseInt(match[2]);
+      port = Number.parseInt(match[2]);
     }
 
     req.body.ipAddress = `${ip}:${port}`;
@@ -127,14 +127,18 @@ export const listInfo = async (req, res, next) => {
         rtspStreamRaw = updatedRtspUrl;
       }
 
-      const regex = /^rtsp:\/\/(\d+\.\d+\.\d+\.\d+):(\d+)\/.*$/;
+      const regex = /^rtsp:\/{2}((?:\d+\.){3}\d+):(\d+)\/.*$/;
       const match = rtspStreamRaw.match(regex);
       var ip;
       var port;
 
       if (match && match.length === 3) {
         ip = match[1];
-        port = parseInt(match[2]);
+        port = Number.parseInt(match[2]);
+      }
+
+      if (rtspStreamRaw.includes('/2')) {
+        rtspStreamRaw = rtspStreamRaw.replace('/2', '/1');
       }
 
       return {
@@ -462,9 +466,41 @@ export const patchByName = async (req, res) => {
       }
     }
 
-    await CamerasModel.patchCamera(req.params.name, req.body);
+    var result = await CamerasModel.patchCamera(req.params.name, req.body);
+    var rtspStreamRaw = result.videoConfig.source.replace('-i ', '');
 
-    res.status(204).send({});
+    if (rtspStreamRaw.includes('@')) {
+      const parsedUrl = new URL(rtspStreamRaw);
+
+      // Remove the username and password
+      parsedUrl.username = '';
+      parsedUrl.password = '';
+
+      const updatedRtspUrl = parsedUrl.toString();
+      rtspStreamRaw = updatedRtspUrl;
+    }
+
+    const regex = /^rtsp:\/{2}((?:\d+\.){3}\d+):(\d+)\/.*$/;
+    const match = rtspStreamRaw.match(regex);
+    var ip;
+    var port;
+
+    if (match && match.length === 3) {
+      ip = match[1];
+      port = Number.parseInt(match[2]);
+    }
+
+    var cameraUpdated = {
+      name: result.name,
+      online: result.online,
+      mode: result.mode,
+      model: result.model,
+      ipAddress: `${ip}:${port}`,
+      mountPosition: result.mountPosition,
+      location: result.location,
+      streamUrl: rtspStreamRaw,
+    };
+    res.status(200).send(cameraUpdated);
   } catch (error) {
     res.status(500).send({
       statusCode: 500,
