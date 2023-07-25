@@ -150,6 +150,7 @@ export const listInfo = async (req, res, next) => {
         mountPosition: obj.mountPosition,
         location: obj.location,
         streamUrl: rtspStreamRaw,
+        active: obj.active,
       };
     });
     res.locals.items = camerasFiltered;
@@ -603,7 +604,9 @@ export const removeByName = async (req, res) => {
 
     await CamerasModel.removeByName(req.params.name);
 
-    res.status(204).send({});
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+
+    await res.status(204).send({});
   } catch (error) {
     res.status(500).send({
       statusCode: 500,

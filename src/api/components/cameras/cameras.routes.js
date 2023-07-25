@@ -106,6 +106,8 @@ export const routesConfig = (app) => {
     PaginationMiddleware.pages,
   ]);
 
+  app.get('/api/cameras/info/basic', [CamerasController.listInfo, PaginationMiddleware.pages]);
+
   /**
    * @swagger
    * /api/cameras:

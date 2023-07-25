@@ -10,7 +10,7 @@ import Database from '../../database.js';
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
-mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
+mongoose.connect('mongodb://10.0.1.150:27017/infraspec', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -220,7 +220,7 @@ export const findAlertById = async (id) => {
   formattedNotification._id = notification._id;
   formattedNotification.id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://192.168.0.150:8081/files/${notification.fileName}`;
+  formattedNotification.image = `http://10.0.1.150:8081/files/${notification.fileName}`;
 
   return formattedNotification;
 };
@@ -388,7 +388,7 @@ export const createCameraNotification = async (data) => {
 
   formattedNotification._id = createdDocument._id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://192.168.0.150:8081/files/${fileName}`;
+  formattedNotification.image = `http://10.0.1.150:8081/files/${fileName}`;
 
   return formattedNotification;
 };

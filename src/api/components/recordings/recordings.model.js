@@ -19,7 +19,7 @@ import {
   convertToMp4,
 } from '../../../common/ffmpeg.js';
 
-mongoose.connect('mongodb://192.168.0.150:27017/infraspec', {
+mongoose.connect('mongodb://10.0.1.150:27017/infraspec', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
