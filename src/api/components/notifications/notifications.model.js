@@ -265,7 +265,7 @@ export const createNotification = async (data) => {
     trigger: data.trigger,
     room: room,
     time: time,
-    timeStamp: timestamp,
+    timestamp: timestamp,
     label: label,
   };
 
@@ -357,7 +357,7 @@ export const createCameraNotification = async (data) => {
     trigger: data.alertType,
     room: room,
     time: time,
-    timestamp: timestamp,
+    timeStamp: timestamp,
     label: label,
   });
 
