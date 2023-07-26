@@ -141,6 +141,10 @@ export const listInfo = async (req, res, next) => {
         rtspStreamRaw = rtspStreamRaw.replace('/2', '/1');
       }
 
+      if (rtspStreamRaw.includes('/3')) {
+        rtspStreamRaw = rtspStreamRaw.replace('/3', '/1');
+      }
+
       return {
         name: obj.name,
         online: obj.online,

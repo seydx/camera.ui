@@ -220,7 +220,7 @@ export const findAlertById = async (id) => {
   formattedNotification._id = notification._id;
   formattedNotification.id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://10.0.1.150:8081/files/${notification.fileName}`;
+  formattedNotification.image = `http://10.30.3.150:8081/files/${notification.fileName}`;
 
   return formattedNotification;
 };
@@ -265,7 +265,7 @@ export const createNotification = async (data) => {
     trigger: data.trigger,
     room: room,
     time: time,
-    timestamp: timestamp,
+    timeStamp: timestamp,
     label: label,
   };
 
@@ -388,7 +388,7 @@ export const createCameraNotification = async (data) => {
 
   formattedNotification._id = createdDocument._id;
   formattedNotification.message = JSON.parse(notification.message);
-  formattedNotification.image = `http://10.0.1.150:8081/files/${fileName}`;
+  formattedNotification.image = `http://10.30.3.150:8081/files/${fileName}`;
 
   return formattedNotification;
 };
