@@ -628,6 +628,20 @@ export const removeAll = async (req, res) => {
   }
 };
 
+export const removeAllProcessed = async (req, res) => {
+  try {
+    await CamerasModel.removeAllProcessed();
+    await new Promise((resolve) => setTimeout(resolve, 20000));
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 export const resetMotion = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);

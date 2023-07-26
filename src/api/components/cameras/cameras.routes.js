@@ -243,6 +243,28 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
+   * /api/cameras:
+   *   delete:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Remove all cameras from config/ui
+   *     responses:
+   *       204:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Internal server error
+   */
+  app.delete('/api/cameras/processed', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:edit'),
+    CamerasController.removeAllProcessed,
+  ]);
+
+  /**
+   * @swagger
    * /api/cameras/{name}:
    *   get:
    *     tags: [Cameras]

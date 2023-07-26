@@ -124,3 +124,21 @@ export const removeAll = async () => {
   await Database.writeConfigCamerasToDB();
   Database.controller?.emit('removeCameras');
 };
+
+export const removeAllProcessed = async () => {
+  ConfigService.ui.cameras = ConfigService.ui.cameras.filter((camera) => !camera.name.includes('processed'));
+  ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+
+  var processed = ConfigService.ui.cameras.filter((camera) => camera.name.includes('processed'));
+  if (processed.length > 0) {
+    processed.forEach(async (camera) => {
+      ConfigService.ui.cameras = ConfigService.ui.cameras.filter(
+        (camera) => camera.name !== `${camera.name} processed`
+      );
+      ConfigService.writeToConfig('cameras', ConfigService.ui.cameras);
+      await CameraController.removeController(`${camera.name} processed`);
+      await Database.writeConfigCamerasToDB();
+      Database.controller?.emit('removeCamera', `${camera.name} processed`);
+    });
+  }
+};
