@@ -243,7 +243,7 @@ export const routesConfig = (app) => {
 
   /**
    * @swagger
-   * /api/cameras:
+   * /api/cameras/processed:
    *   delete:
    *     tags: [Cameras]
    *     security:
