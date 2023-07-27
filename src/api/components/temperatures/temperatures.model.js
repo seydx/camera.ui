@@ -10,7 +10,7 @@ import Database from '../../database.js';
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
-mongoose.connect('mongodb://10.30.3.150:27017/infraspec', {
+mongoose.connect('mongodb://10.0.1.150:27017/infraspec', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
