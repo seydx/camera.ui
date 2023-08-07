@@ -96,7 +96,7 @@ export class ConfigSetup {
   static setupOptions(options = {}) {
     return {
       videoProcessor: options?.vidteoProcessor || defaultVideoProcess,
-      host: options.host || defaulHost,
+      host: options.host || defaultHost,
     };
   }
 

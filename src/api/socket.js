@@ -452,6 +452,31 @@ export default class Socket {
               break;
             case 'PTZ':
               {
+                var regexPTZ = /=(.*)/;
+                if (camera.iis) {
+                  ip = camera.videoConfig.source.slice(
+                    camera.videoConfig.source.indexOf('@') + 1,
+                    camera.videoConfig.source.lastIndexOf(':')
+                  );
+
+                  credsRaw = camera.videoConfig.source.slice(
+                    camera.videoConfig.source.indexOf('/') + 2,
+                    camera.videoConfig.source.lastIndexOf('@')
+                  );
+                } else {
+                  ip = camera.videoConfig.source.slice(
+                    getIndex(camera.videoConfig.source, '@', 2) + 1,
+                    camera.videoConfig.source.lastIndexOf(':')
+                  );
+
+                  credsRaw = camera.videoConfig.source.slice(
+                    camera.videoConfig.source.indexOf('/') + 2,
+                    getIndex(camera.videoConfig.source, '@', 2)
+                  );
+                }
+
+                const creds = credsRaw.split(':');
+
                 await fetch(
                   `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&areaID=-1`,
                   {
@@ -477,7 +502,6 @@ export default class Socket {
                           minTemp: rawNames[index + 7].match(regexPTZ)[1],
                           avgTemp: rawNames[index + 8].match(regexPTZ)[1],
                         };
-                        var presetName;
                         await fetch(
                           `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${data.presetId}&areaID=-1`,
                           {
@@ -493,7 +517,7 @@ export default class Socket {
                               }
                             }
                           });
-                        data.presetId = `${presetName}[${preset.presetId}]`;
+                        data.presetId = `${presetName}[${data.presetId}]`;
 
                         Socket.#cameraTempsHistory.push(data);
                         TemperaturesModel.createTemperature(data);
