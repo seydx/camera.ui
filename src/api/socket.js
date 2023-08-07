@@ -315,7 +315,7 @@ export default class Socket {
 
     setTimeout(() => {
       Socket.watchTemps();
-    }, 60000 * 60);
+    }, 60000 * 1);
   }
 
   static async watchStatus() {
@@ -452,131 +452,61 @@ export default class Socket {
               break;
             case 'PTZ':
               {
-                const start = performance.now();
-                var regexPTZ = /=(.*)/;
-                if (camera.iis) {
-                  ip = camera.videoConfig.source.slice(
-                    camera.videoConfig.source.indexOf('@') + 1,
-                    camera.videoConfig.source.lastIndexOf(':')
-                  );
-
-                  credsRaw = camera.videoConfig.source.slice(
-                    camera.videoConfig.source.indexOf('/') + 2,
-                    camera.videoConfig.source.lastIndexOf('@')
-                  );
-                } else {
-                  ip = camera.videoConfig.source.slice(
-                    getIndex(camera.videoConfig.source, '@', 2) + 1,
-                    camera.videoConfig.source.lastIndexOf(':')
-                  );
-
-                  credsRaw = camera.videoConfig.source.slice(
-                    camera.videoConfig.source.indexOf('/') + 2,
-                    getIndex(camera.videoConfig.source, '@', 2)
-                  );
-                }
-
-                const creds = credsRaw.split(':');
-
-                var presets = [];
-                var rawPresets = [];
                 await fetch(
-                  `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=listPreset`,
+                  `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&areaID=-1`,
                   {
                     method: 'GET', // *GET, POST, PUT, DELETE, etc.
                   }
                 )
                   .then((response) => response.text())
-                  .then((data) => {
-                    rawPresets = data.split(/\r?\n/);
-                    for (var index = 0; index < rawPresets.length; index++) {
-                      if (rawPresets[index].startsWith('presetID')) {
+                  .then(async (data) => {
+                    var rawNames = data.split(/\r?\n/);
+                    if (rawNames[0] === 'areaTemperatureBegin=1' && rawNames[1] === 'areaTemperatureBegin=1') {
+                      console.log('Camera is navigating between presets.');
+                      return;
+                    }
+
+                    for (const [index, rawName] of rawNames.entries()) {
+                      var presetName;
+                      if (rawName.startsWith('areaId')) {
                         data = {
-                          presetName: rawPresets[index + 1].match(regexPTZ)[1],
-                          presetId: rawPresets[index].match(regexPTZ)[1],
+                          cameraName: camera.name,
+                          regionId: `${rawNames[index + 1].match(regexPTZ)[1]}[${rawNames[index].match(regexPTZ)[1]}]`,
+                          presetId: rawNames[1].match(regexPTZ)[1],
+                          maxTemp: rawNames[index + 4].match(regexPTZ)[1],
+                          minTemp: rawNames[index + 7].match(regexPTZ)[1],
+                          avgTemp: rawNames[index + 8].match(regexPTZ)[1],
                         };
-                        presets.push(data);
+                        var presetName;
+                        await fetch(
+                          `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${data.presetId}&areaID=-1`,
+                          {
+                            method: 'GET', // *GET, POST, PUT, DELETE, etc.
+                          }
+                        )
+                          .then((response) => response.text())
+                          .then(async (data) => {
+                            var rawNames = data.split(/\r?\n/);
+                            for (const [index, rawName] of rawNames.entries()) {
+                              if (rawName.startsWith(`areaId=${data.presetId}`)) {
+                                presetName = rawNames[index + 1].match(regexPTZ)[1];
+                              }
+                            }
+                          });
+                        data.presetId = `${presetName}[${preset.presetId}]`;
+
+                        Socket.#cameraTempsHistory.push(data);
+                        TemperaturesModel.createTemperature(data);
+                        console.log(
+                          `Temperatures Logged for ${camera.name}:${data.presetId} - ${data.regionId} maxTemp: ${data.maxTemp}`
+                        );
                       }
                     }
                   });
-                for (const preset of presets) {
-                  var goodsPTZ = [];
-                  var formattedPTZ = [];
-                  var regionList = [];
-
-                  await fetch(
-                    `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${preset.presetId}&areaID=-1`,
-                    {
-                      method: 'GET', // *GET, POST, PUT, DELETE, etc.
-                    }
-                  )
-                    .then((response) => response.text())
-                    .then((data) => {
-                      var rawNames = data.split(/\r?\n/);
-                      for (const [index, rawName] of rawNames.entries()) {
-                        if (rawName.startsWith('areaId')) {
-                          data = {
-                            regionId: rawNames[index].match(regexPTZ)[1],
-                            regionName: rawNames[index + 1].match(regexPTZ)[1],
-                          };
-                          regionList.push(data);
-                        }
-                      }
-                    });
-
-                  await fetch(
-                    `http://${ip}/cgi-bin/ptz.cgi?userName=${creds[0]}&password=${creds[1]}&cameraID=1&action=presetInvoke&presetID=${preset.presetId}`,
-                    {
-                      method: 'GET', // *GET, POST, PUT, DELETE, etc.
-                    }
-                  ).then(() => {
-                    setTimeout(() => {}, 60000 * 1);
-                  });
-
-                  await fetch(
-                    `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&AreaID=-1`,
-                    {
-                      method: 'GET', // *GET, POST, PUT, DELETE, etc.
-                    }
-                  )
-                    .then((response) => response.text())
-                    .then((data) => {
-                      goodsPTZ = data.split(/\r?\n/);
-                      for (var index = 0; index < goodsPTZ.length; index++) {
-                        if (goodsPTZ[index].startsWith('areaID')) {
-                          data = {
-                            cameraName: camera.name,
-                            regionId: `${
-                              regionList.find((x) => x.regionId == goodsPTZ[index].match(regexPTZ)[1]).regionName
-                            }[${regionList.find((x) => x.regionId == goodsPTZ[index].match(regexPTZ)[1]).regionId}]`,
-                            presetId: `${preset.presetName}[${preset.presetId}]`,
-                            maxTemp: goodsPTZ[index + 4].match(regexPTZ)[1],
-                            minTemp: goodsPTZ[index + 7].match(regexPTZ)[1],
-                            avgTemp: goodsPTZ[index + 8].match(regexPTZ)[1],
-                          };
-                          formattedPTZ.push(data);
-                          Socket.#cameraTempsHistory.push(data);
-                          TemperaturesModel.createTemperature(data);
-                          console.log(
-                            `Temperatures Logged for ${camera.name}:${preset.presetName}[${preset.presetId}] - ${data.regionId} maxTemp: ${data.maxTemp}`
-                          );
-                          //add to mongo here
-                        }
-                        //Do something
-                      }
-                      Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
-                    });
-                }
-                const end = performance.now();
-                console.log(
-                  `Temperatures Logs Created Successfully for ${camera.name}. Scanned ${presets.length} presets in ${
-                    end - start / 10000
-                  } seconds`
-                );
               }
               break;
+
             default:
-            // code block
           }
         } catch (error) {
           console.log(error);

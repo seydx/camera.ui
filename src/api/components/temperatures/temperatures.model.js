@@ -4,13 +4,14 @@ import moment from 'moment';
 import { customAlphabet } from 'nanoid/async';
 
 import Cleartimer from '../../../common/cleartimer.js';
+import ConfigService from '../../../services/config/config.service.js';
 
 import Database from '../../database.js';
 
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
-mongoose.connect('mongodb://10.20.2.150:27017/infraspec', {
+mongoose.connect(`mongodb://${ConfigService.ui.options.host}:27017/infraspec`, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });

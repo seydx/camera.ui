@@ -7,6 +7,7 @@ import path from 'path';
 import {
   uiDefaults,
   defaultVideoProcess,
+  defaultHost,
   permissionLevels,
   minNodeVersion,
   httpDefaults,
@@ -54,6 +55,7 @@ export default class ConfigService {
     smtp: false,
     options: {
       videoProcessor: defaultVideoProcess,
+      host: defaultHost,
     },
     cameras: [],
     version: '',
@@ -233,6 +235,9 @@ export default class ConfigService {
   static #configOptions(options = {}) {
     if (options.videoProcessor) {
       ConfigService.ui.options.videoProcessor = options.videoProcessor;
+    }
+    if (options.dbAddress) {
+      ConfigService.ui.options.host = options.host;
     }
   }
 
