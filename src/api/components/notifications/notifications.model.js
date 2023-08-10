@@ -307,6 +307,7 @@ export const createNotification = async (data) => {
     }
 
     await Database.interfaceDB.chain.get('notifications').push(notification).value();
+    //change this to mongo
 
     Cleartimer.setNotification(id, timestamp);
   }

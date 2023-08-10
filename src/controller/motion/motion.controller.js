@@ -570,7 +570,7 @@ export default class MotionController {
       log: bunyan,
       tls: false,
       greeting: 'Welcome to IISFTP!',
-      timeout: 30 * 1000,
+      timeout: 120 * 1000,
     });
 
     MotionController.ftpServer.on('login', (data, resolve) => {
@@ -781,6 +781,7 @@ export default class MotionController {
 
   static async handleMotion(triggerType, cameraName, state, event, result = {}, message = {}) {
     // result = {} is used as http response
+    //this is wherer we do temp alarms
     let camera = ConfigService.ui.cameras.find(
       (camera) => camera?.name.toLowerCase().replace(/\s/g, '') === cameraName.toLowerCase().replace(/\s/g, '')
     );

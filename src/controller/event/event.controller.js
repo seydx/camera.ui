@@ -244,6 +244,7 @@ export default class EventController {
                 }
 
                 // 6)
+                //handle temp alerts
                 if (recordingSettings.active) {
                   if (allowRecording) {
                     await EventController.#handleRecording(cameraName, motionInfo, fileBuffer);
