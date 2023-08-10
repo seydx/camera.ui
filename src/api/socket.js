@@ -452,7 +452,6 @@ export default class Socket {
               break;
             case 'PTZ':
               {
-                var ip;
                 var regexPTZ = /=(.*)/;
                 if (camera.iis) {
                   ip = camera.videoConfig.source.slice(
@@ -478,7 +477,7 @@ export default class Socket {
 
                 const creds = credsRaw.split(':');
 
-                var tempLog;
+                var temporaryLog;
 
                 await fetch(
                   `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=areaTemperature&areaID=-1`,
@@ -497,7 +496,7 @@ export default class Socket {
                     for (const [index, rawName] of rawNames.entries()) {
                       var regionName;
                       if (rawName.startsWith('areaID')) {
-                        tempLog = {
+                        temporaryLog = {
                           cameraName: camera.name,
                           regionId: `${rawNames[index].match(regexPTZ)[1]}`,
                           presetId: rawNames[1].match(regexPTZ)[1],
@@ -507,7 +506,7 @@ export default class Socket {
                         };
 
                         await fetch(
-                          `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${tempLog.presetId}&areaID=-1`,
+                          `http://${ip}/cgi-bin/param.cgi?userName=${creds[0]}&password=${creds[1]}&action=get&type=temperAlarmParam&measureMode=0&measureID=${temporaryLog.presetId}&areaID=-1`,
                           {
                             method: 'GET', // *GET, POST, PUT, DELETE, etc.
                           }
@@ -517,17 +516,17 @@ export default class Socket {
                             var rawRegionNames = data.split(/\r?\n/);
 
                             for (const [index, rawRegionName] of rawRegionNames.entries()) {
-                              if (rawRegionName.startsWith(`areaId=${tempLog.regionId}`)) {
+                              if (rawRegionName.startsWith(`areaId=${temporaryLog.regionId}`)) {
                                 regionName = rawRegionNames[index + 1].match(regexPTZ)[1];
                               }
                             }
                           });
 
-                        tempLog.regionId = `${regionName}[${tempLog.regionId}]`;
+                        temporaryLog.regionId = `${regionName}[${temporaryLog.regionId}]`;
 
-                        Socket.#cameraTempsHistory.push(tempLog);
-                        await TemperaturesModel.createTemperature(tempLog);
-                        console.log(tempLog);
+                        Socket.#cameraTempsHistory.push(temporaryLog);
+                        await TemperaturesModel.createTemperature(temporaryLog);
+                        console.log(temporaryLog);
                       }
                     }
                   });
