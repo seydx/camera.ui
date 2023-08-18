@@ -67,7 +67,7 @@ export const permissionLevels = [
 
 export const defaultVideoProcess = ffmpegPath || 'ffmpeg';
 
-export const defaultHost = '10.0.1.150';
+export const defaultHost = 'localhost';
 
 export const minNodeVersion = '16.12.0';
 

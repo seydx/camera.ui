@@ -499,7 +499,7 @@ export default class Socket {
                         temporaryLog = {
                           cameraName: camera.name,
                           regionId: `${rawNames[index].match(regexPTZ)[1]}`,
-                          presetId: rawNames[1].match(regexPTZ)[1],
+                          presetId: `${rawNames[2].match(regexPTZ)[1]}[${rawNames[1].match(regexPTZ)[1]}]`,
                           maxTemp: rawNames[index + 4].match(regexPTZ)[1],
                           minTemp: rawNames[index + 7].match(regexPTZ)[1],
                           avgTemp: rawNames[index + 8].match(regexPTZ)[1],
@@ -527,6 +527,7 @@ export default class Socket {
                         Socket.#cameraTempsHistory.push(temporaryLog);
                         await TemperaturesModel.createTemperature(temporaryLog);
                         console.log(temporaryLog);
+                        Socket.io.emit('cameraTemps', Socket.#cameraTempsHistory);
                       }
                     }
                   });
