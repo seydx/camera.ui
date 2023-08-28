@@ -479,7 +479,7 @@ export const storeInifniteVideo = async (camera) => {
   console.log(recording);
 
   var savedRecording = await RecordingsModel.createRecording(recording, null, true, true);
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
     const videoName = `${recording.path}${camera.name.replace(/\s/g, '')}-${generateClipFileName()}.mp4`;
@@ -493,7 +493,7 @@ export const storeInifniteVideo = async (camera) => {
 
     if (camera.prebuffering && controller?.prebuffer) {
       try {
-        ffmpegInput = await controller.prebuffer.getVideo();
+        ffmpegInput = controller.prebuffer.getVideo();
       } catch {
         // ignore
       }

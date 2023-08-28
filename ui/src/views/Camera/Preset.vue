@@ -24,7 +24,6 @@
         v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
           v-icon {{ icons['mdiFilter'] }}
 
-
   .filter-content.filter-included.tw-flex.tw-flex.tw-justify-center.tw-items-center(v-if="!loading && graphLoading")
         v-progress-circular(indeterminate color="var(--cui-primary)")
 
