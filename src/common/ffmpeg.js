@@ -10,6 +10,13 @@ import ConfigService from '../services/config/config.service.js';
 import LoggerService from '../services/logger/logger.service.js';
 
 import CameraController from '../controller/camera/camera.controller.js';
+import * as RecordingsModel from '../api/components/recordings/recordings.model.js';
+import { customAlphabet } from 'nanoid/async';
+import Database from '../api/database.js';
+
+import moment from 'moment';
+
+const nanoid = customAlphabet('1234567890abcdef', 10);
 
 const { log } = LoggerService;
 
@@ -416,6 +423,148 @@ export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
       } else {
         log.debug('FFmpeg video process exited (expected)', camera.name, 'ffmpeg');
         log.debug(`Video stored to: ${videoName}`, camera.name);
+
+        resolve();
+      }
+    });
+  });
+};
+
+const generateClipFileName = () => {
+  const timestamp = new Date().toISOString().replace(/[:-]/g, '_');
+  return timestamp;
+};
+
+export const storeInifniteVideo = async (camera) => {
+  // eslint-disable-next-line no-async-promise-executor
+  const clipDurationInSeconds = 5 * 60; // 5 minutes in seconds
+  console.log(`Kicking Off 5 Minute Surveillance Clip for ${camera.name} `);
+
+  //Use Create Recording Endpoint Here add parameter to not convert video to mp4
+  var id = await nanoid();
+
+  let cameraName = camera?.name.replace(/\s+/g, '_');
+
+  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+
+  const room = cameraSetting ? cameraSetting.room : 'Standard';
+  const timestamp = moment().unix();
+  const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+
+  const newFileName =
+    cameraName + '-' + id + '-' + Math.floor(Date.now() / 1000) + '_' + 'surveillance' + '_CUI' + '.' + 'mp4';
+
+  const newFilenameNoExtension = newFileName.replace('.mp4', '');
+
+  const recording = {
+    id: id,
+    camera: camera.name,
+    fileName: newFileName,
+    name: newFilenameNoExtension,
+    extension: 'mp4',
+    recordStoring: true,
+    recordType: 'Video',
+    trigger: 'surveillance',
+    room: room,
+    timeStamp: timestamp,
+    time: time,
+    label: 'Surveillance',
+    type: 'Video',
+    ftp: true,
+    path: '/var/lib/homebridge/camera.ui/recordings/',
+  };
+
+  console.log(recording);
+
+  var savedRecording = await RecordingsModel.createRecording(recording, null, true, true);
+  return new Promise(async (resolve, reject) => {
+    const videoProcessor = ConfigService.ui.options.videoProcessor;
+    const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
+    const videoName = `${recording.path}${camera.name.replace(/\s/g, '')}-${generateClipFileName()}.mp4`;
+    const videoWidth = videoConfig.maxWidth;
+    const videoHeight = videoConfig.maxHeight;
+    const vcodec = videoConfig.vcodec;
+    const controller = CameraController.cameras.get(camera.name);
+
+    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+    ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(controller?.media?.codecs?.ffmpegVersion, ffmpegInput);
+
+    if (camera.prebuffering && controller?.prebuffer) {
+      try {
+        ffmpegInput = await controller.prebuffer.getVideo();
+      } catch {
+        // ignore
+      }
+    }
+
+    const ffmpegArguments = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-nostdin',
+      '-y',
+      ...ffmpegInput,
+      '-t',
+      clipDurationInSeconds.toString(),
+      '-strict',
+      'experimental',
+      '-threads',
+      '0',
+      '-s',
+      `${videoWidth}x${videoHeight}`,
+      '-vcodec',
+      `${vcodec}`,
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      '-crf',
+      '23',
+    ];
+
+    if (videoConfig.mapvideo) {
+      ffmpegArguments.push('-map', videoConfig.mapvideo);
+    }
+
+    if (videoConfig.videoFilter) {
+      ffmpegArguments.push('-filter:v', videoConfig.videoFilter);
+    }
+
+    if (videoConfig.mapaudio) {
+      ffmpegArguments.push('-map', videoConfig.mapaudio);
+    }
+
+    ffmpegArguments.push(videoName);
+
+    log.debug(`Video requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
+
+    let errors = [];
+
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
+    });
+
+    ffmpeg.on('error', (error) => reject(error));
+
+    ffmpeg.on('exit', async (code, signal) => {
+      if (code === 1) {
+        errors.unshift(`FFmpeg video process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
+      } else {
+        log.debug('FFmpeg video process exited (expected)', camera.name, 'ffmpeg');
+        log.debug(`Video stored to: ${videoName}`, camera.name);
+        await storeSnapshotFromVideo(
+          camera,
+          '/var/lib/homebridge/camera.ui/recordings/',
+          savedRecording.name,
+          'surveillance'
+        );
+        setTimeout(storeInifniteVideo(camera), 1000); // Restart recording after a delay (1 second)
 
         resolve();
       }

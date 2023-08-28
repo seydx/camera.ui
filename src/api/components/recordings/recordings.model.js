@@ -125,7 +125,7 @@ export const findById = (id) => {
   return Recording.find({ id: id });
 };
 
-export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
+export const createRecording = async (data, fileBuffer, skipffmpeg = false, skipMp4Conversion = false) => {
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
 
   if (!camera) {
@@ -172,9 +172,10 @@ export const createRecording = async (data, fileBuffer, skipffmpeg = false) => {
 
   console.log(recording);
 
-  await storeSnapshotFromVideo(camera, data.path, fileName, label);
-
-  await convertToMp4(camera, data.path, fileName);
+  if (!skipMp4Conversion) {
+    await storeSnapshotFromVideo(camera, data.path, fileName, label);
+    await convertToMp4(camera, data.path, fileName);
+  }
 
   if (!skipffmpeg) {
     if (fileBuffer) {

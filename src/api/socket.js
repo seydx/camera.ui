@@ -16,6 +16,7 @@ import CameraController from '../controller/camera/camera.controller.js';
 import MotionController from '../controller/motion/motion.controller.js';
 import * as TemperaturesModel from '../api/components/temperatures/temperatures.model.js';
 import * as CamerasModel from '../api/components/cameras/cameras.model.js';
+import { storeInifniteVideo } from '../common/ffmpeg.js';
 
 import fetch from 'node-fetch';
 
@@ -326,6 +327,10 @@ export default class Socket {
     }, 60000 * 1);
   }
 
+  static async watchInifiteRecord() {
+    await Socket.#handleInfiniteRecord();
+  }
+
   static async #handleUptime() {
     try {
       const humaniseDuration = (seconds) => {
@@ -550,6 +555,13 @@ export default class Socket {
       console.log(`status for ${camera.name} is online: ${status}`);
       camera.online = status;
       await CamerasModel.patchCamera(camera.name, camera);
+    }
+  }
+
+  static async #handleInfiniteRecord() {
+    const cameras = ConfigService.ui.cameras;
+    for (const camera of cameras) {
+      storeInifniteVideo(camera);
     }
   }
 

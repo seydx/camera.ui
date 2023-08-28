@@ -24,15 +24,11 @@
         v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
           v-icon {{ icons['mdiFilter'] }}
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.includes('ptz')")
-    v-row.tw-w-full.tw-max-h-200
-      v-col.tw-mb-3(:cols="cols" ref="chartExport")
-        Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
   .filter-content.filter-included.tw-flex.tw-flex.tw-justify-center.tw-items-center(v-if="!loading && graphLoading")
         v-progress-circular(indeterminate color="var(--cui-primary)")
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
       Chart.tw-mt-5(v-if="!graphLoading" :dataset="camTempData" :options="camTempsOptions" ref="chart")
 
   //- .filter-content
@@ -60,7 +56,7 @@
   //-       v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
   //-         v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")(v-if="camera.name.toLowerCase().includes('thermal')")
+  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")(v-if="true")
     v-expansion-panels(v-model="notificationsPanel" multiple)
       v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
         v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
