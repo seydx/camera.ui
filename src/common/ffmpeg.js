@@ -478,7 +478,7 @@ export const storeInifniteVideo = async (camera) => {
 
   console.log(recording);
 
-  var savedRecording = await RecordingsModel.createRecording(recording, null, true, true);
+  var savedRecording = await RecordingsModel.createInfinteRecording(recording, null, true, true);
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);

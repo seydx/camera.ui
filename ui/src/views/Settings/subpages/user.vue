@@ -21,6 +21,11 @@
       v-select(small-chips multiple v-model="form.permission" label="..." prepend-inner-icon="mdi-security" :items="permissions" background-color="var(--cui-bg-card)" :rules="rules.permission" solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiSecurity'] }}
+      
+      label.form-input-label {{ $t('email') }}
+        v-text-field(v-model="form.email" :label="$t('email')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.username" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAccount'] }}
 
       v-btn.tw-mt-3.tw-text-white(:loading="loadingAdd" @click="add" block color="success") {{ $t('add') }}
 
@@ -76,6 +81,7 @@ export default {
         username: '',
         password: '',
         permission: [],
+        email: '',
       },
 
       rules: {
@@ -246,6 +252,7 @@ export default {
           username: this.form.username,
           password: this.form.password,
           permissionLevel: [...new Set(this.form.permission.flat())],
+          email: this.form.email,
         });
 
         this.users.push(user.data);

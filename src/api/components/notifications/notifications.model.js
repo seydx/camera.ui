@@ -36,7 +36,7 @@ const notificationSchema = new Schema({
   label: String,
 });
 
-const Notification = mongoose.model('Notification', notificationSchema);
+export const Notification = mongoose.model('Notification', notificationSchema);
 
 // Notification.statics.deleteByCustomId = async function (customIdToDelete) {
 //   try {

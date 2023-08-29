@@ -24,6 +24,11 @@
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiAccount'] }}
 
+      label.form-input-label {{ $t('email') }}
+      v-text-field(v-model="form.email" :label="$t('email')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.username" required solo)
+        template(v-slot:prepend-inner)
+          v-icon.text-muted {{ icons['mdiAccount'] }}
+
       label.form-input-label {{ $t('signout_after') }}
       v-select(ref="sessionTimer" :suffix="$t('hours')" :value="form.sessionTimer/3600 > 25 ? $t('never') : form.sessionTimer/3600" :items="sessionTimerSelect" prepend-inner-icon="mdi-timelapse" background-color="var(--cui-bg-card)" required solo)
         template(v-slot:prepend-inner)
@@ -118,6 +123,7 @@ export default {
     this.form = {
       username: this.currentUser.username,
       sessionTimer: this.currentUser.sessionTimer,
+      email: this.currentUser.email,
     };
 
     this.rules = {

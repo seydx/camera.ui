@@ -8,6 +8,7 @@ import ConfigService from '../../../services/config/config.service.js';
 
 import Database from '../../database.js';
 import mongoose from 'mongoose';
+import { Notification } from '../notifications/notifications.model.js';
 const { Schema } = mongoose;
 
 import {
@@ -126,6 +127,105 @@ export const findById = (id) => {
 };
 
 export const createRecording = async (data, fileBuffer, skipffmpeg = false, skipMp4Conversion = false) => {
+  const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
+
+  if (!camera) {
+    throw new Error('Can not assign recording to camera!');
+  }
+
+  const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
+  const recordingsSettings = await Database.interfaceDB.chain.get('settings').get('recordings').cloneDeep().value();
+
+  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+
+  const id = data.id || (await nanoid());
+  const room = cameraSetting ? cameraSetting.room : 'Standard';
+  const timestamp = data.timestamp || moment().unix();
+  const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+
+  const fileName =
+    camera.name.replace(/\s+/g, '_') +
+    '-' +
+    id +
+    '-' +
+    timestamp +
+    (data.trigger === 'motion' ? '_m' : data.trigger === 'doorbell' ? '_d' : '_c') +
+    '_CUI';
+
+  const extension = data.extension;
+  const label = (data.label || 'no label').toString();
+
+  const notification = new Notification({
+    id: id,
+    camera: camera.name,
+    fileName: `${fileName}.mp4`,
+    name: fileName,
+    extension: extension,
+    recordStoring: true,
+    recordType: data.type,
+    trigger: data.trigger,
+    room: room,
+    time: time,
+    date: Date.now(),
+    timeStamp: timestamp,
+    label: label,
+  });
+
+  console.log(notification);
+
+  if (!skipMp4Conversion) {
+    await storeSnapshotFromVideo(camera, data.path, fileName, label);
+    await convertToMp4(camera, data.path, fileName);
+  }
+
+  if (!skipffmpeg) {
+    if (fileBuffer) {
+      await storeVideoBuffer(camera, fileBuffer, data.path, fileName);
+      await storeSnapshotFromVideo(camera, data.path, fileName, label);
+    } else {
+      const isPlaceholder = data.type === 'Video';
+      const externRecording = false;
+      const storeSnapshot = true;
+
+      // eslint-disable-next-line unicorn/prefer-ternary
+      if (data.imgBuffer) {
+        await storeBuffer(camera, data.imgBuffer, data.path, fileName, label, isPlaceholder, externRecording);
+      } else {
+        await getAndStoreSnapshot(camera, false, data.path, fileName, label, isPlaceholder, storeSnapshot);
+      }
+
+      if (data.type === 'Video') {
+        if (camera.prebuffering) {
+          let filebuffer = Buffer.alloc(0);
+
+          let generator = handleFragmentsRequests(camera);
+
+          setTimeout(async () => {
+            if (generator) {
+              generator.throw();
+            }
+          }, recordingsSettings.timer * 1000);
+
+          for await (const fileBuffer of generator) {
+            filebuffer = Buffer.concat([filebuffer, Buffer.concat(fileBuffer)]);
+          }
+
+          generator = null;
+
+          await storeVideoBuffer(camera, filebuffer, data.path, fileName);
+        } else {
+          await storeVideo(camera, data.path, fileName, data.timer);
+        }
+      }
+    }
+  }
+
+  notification.save();
+
+  return notification;
+};
+
+export const createInfinteRecording = async (data, fileBuffer, skipffmpeg = false, skipMp4Conversion = false) => {
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();
 
   if (!camera) {

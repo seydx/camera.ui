@@ -22,6 +22,7 @@ export const createUser = async (userData) => {
     photo: userData.photo || false,
     sessionTimer: userData.sessionTimer || 14400, //4h
     permissionLevel: userData.permissionLevel || 1,
+    email: userData.email,
   };
 
   return await Database.interfaceDB.chain.get('users').push(user).value();
