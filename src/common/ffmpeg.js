@@ -482,7 +482,7 @@ export const storeInifniteVideo = async (camera) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-    const videoName = `${recording.path}${camera.name.replace(/\s/g, '')}-${generateClipFileName()}.mp4`;
+    const videoName = `${recording.path}${recording.fileName}.mp4`;
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
     const vcodec = videoConfig.vcodec;
@@ -560,7 +560,7 @@ export const storeInifniteVideo = async (camera) => {
         log.debug(`Video stored to: ${videoName}`, camera.name);
         await storeSnapshotFromVideo(
           camera,
-          '/var/lib/homebridge/camera.ui/recordings/',
+          '/var/lib/homebridge/camera.ui/recordings',
           savedRecording.name,
           'surveillance'
         );
