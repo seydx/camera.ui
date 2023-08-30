@@ -25,7 +25,7 @@
           v-icon.text-muted {{ icons['mdiAccount'] }}
 
       label.form-input-label {{ $t('email') }}
-      v-text-field(v-model="form.email" :label="$t('email')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.username" required solo)
+      v-text-field(v-model="form.email" :label="$t('email')" prepend-inner-icon="mdi-account" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" :rules="rules.email" required solo)
         template(v-slot:prepend-inner)
           v-icon.text-muted {{ icons['mdiAccount'] }}
 
@@ -91,6 +91,7 @@ export default {
         username: [],
         newpassword: [],
         newpassword2: [],
+        email: [],
       },
 
       sessionTimerSelect: [1, 4, 6, 9, 12, 24, this.$t('never')],
@@ -134,6 +135,7 @@ export default {
             ? v === this.form.password || this.$t('password_not_match')
             : !this.form.password || this.$t('enter_new_password'),
       ],
+      email: [(v) => !v.includes('@') || 'Enter valid email'],
     };
 
     if (this.currentUser.photo && this.currentUser.photo !== 'no_img.png') {

@@ -37,6 +37,8 @@ export const patchUser = async (username, userData) => {
     }
   }
 
+  user.email = userData.email;
+
   return await Database.interfaceDB.chain.get('users').find({ username: username }).assign(user).value();
 };
 

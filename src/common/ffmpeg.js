@@ -252,7 +252,7 @@ export const getAndStoreSnapshot = (
 export const storeSnapshotFromVideo = async (camera, recordingPath, fileName, label) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const videoName = `${recordingPath}/${fileName}.ts`;
+    const videoName = `${recordingPath}/${fileName}.mp4`;
     const destination = `${recordingPath}/${fileName}@2.jpeg`;
 
     const ffmpegArguments = [
@@ -477,7 +477,7 @@ export const storeInifniteVideo = async (camera) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-    const videoName = `${recording.path}${recording.fileName}.mp4`;
+    const videoName = `${recording.path}${recording.fileName}`;
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
     const vcodec = videoConfig.vcodec;

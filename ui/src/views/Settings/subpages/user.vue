@@ -88,6 +88,7 @@ export default {
         username: [],
         password: [],
         permission: [],
+        email: [],
       },
 
       permissions: [
@@ -226,6 +227,7 @@ export default {
         ],
         password: [(v) => (!!v && !!v.trim()) || this.$t('password_is_required')],
         permission: [(v) => v.length > 0 || this.$t('atleast_one_permission_required')],
+        email: [(v) => !v.includes('@') || 'Enter valid email'],
       };
 
       this.loading = false;
