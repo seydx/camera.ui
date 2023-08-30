@@ -248,7 +248,13 @@ export const createInfinteRecording = async (data, fileBuffer, skipffmpeg = fals
     id +
     '-' +
     timestamp +
-    (data.trigger === 'motion' ? '_m' : data.trigger === 'doorbell' ? '_d' : '_c') +
+    (data.trigger === 'motion'
+      ? '_m'
+      : data.trigger === 'doorbell'
+      ? '_d'
+      : data.trigger === 'surveillance'
+      ? '_surveillance'
+      : '_c') +
     '_CUI';
 
   const extension = data.extension;
