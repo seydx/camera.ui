@@ -430,11 +430,6 @@ export const storeVideo = (camera, recordingPath, fileName, recordingTimer) => {
   });
 };
 
-const generateClipFileName = () => {
-  const timestamp = new Date().toISOString().replace(/[:-]/g, '_');
-  return timestamp;
-};
-
 export const storeInifniteVideo = async (camera) => {
   // eslint-disable-next-line no-async-promise-executor
   const clipDurationInSeconds = 5 * 60; // 5 minutes in seconds
