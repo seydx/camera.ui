@@ -252,6 +252,55 @@ export const getAndStoreSnapshot = (
 export const storeSnapshotFromVideo = async (camera, recordingPath, fileName, label) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
+    const videoName = `${recordingPath}${fileName}.mp4`;
+    const destination = `${recordingPath}${fileName}@2.jpeg`;
+
+    const ffmpegArguments = [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-ss',
+      '00:00:03.500',
+      '-i',
+      videoName,
+      '-frames:v',
+      '1',
+    ];
+
+    ffmpegArguments.push(destination);
+
+    log.debug(`Snapshot requested, command: ${videoProcessor} ${ffmpegArguments.join(' ')}`, camera.name);
+
+    const ffmpeg = spawn(videoProcessor, ffmpegArguments, { env: process.env });
+
+    let errors = [];
+
+    ffmpeg.stderr.on('data', (data) => {
+      errors = errors.slice(-5);
+      errors.push(data.toString().replace(/(\r\n|\n|\r)/gm, ' '));
+    });
+
+    ffmpeg.on('error', (error) => reject(error));
+
+    ffmpeg.on('exit', (code, signal) => {
+      if (code === 1) {
+        errors.unshift(`FFmpeg snapshot process exited with error! (${signal})`);
+        reject(new Error(errors.join(' - ')));
+      } else {
+        log.debug('FFmpeg snapshot process exited (expected)', camera.name, 'ffmpeg');
+
+        replaceJpegWithExifJPEG(camera.name, destination, label);
+
+        resolve();
+      }
+    });
+  });
+};
+
+export const storeSnapshotFromInfiniteVideo = async (camera, recordingPath, fileName, label) => {
+  return new Promise((resolve, reject) => {
+    const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoName = `${recordingPath}/${fileName}.mp4`;
     const destination = `${recordingPath}/${fileName}@2.jpeg`;
 
@@ -553,7 +602,7 @@ export const storeInifniteVideo = async (camera) => {
       } else {
         log.debug('FFmpeg video process exited (expected)', camera.name, 'ffmpeg');
         log.debug(`Video stored to: ${videoName}`, camera.name);
-        await storeSnapshotFromVideo(
+        await storeSnapshotFromInfiniteVideo(
           camera,
           '/var/lib/homebridge/camera.ui/recordings',
           savedRecording.name,
