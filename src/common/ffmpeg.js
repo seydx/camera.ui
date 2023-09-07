@@ -608,8 +608,9 @@ export const storeInifniteVideo = async (camera) => {
           savedRecording.name,
           'surveillance'
         );
-        setTimeout(storeInifniteVideo(camera), 1000); // Restart recording after a delay (1 second)
-
+        setTimeout(() => {
+          storeInifniteVideo(camera);
+        }, 1000);
         resolve();
       }
     });
