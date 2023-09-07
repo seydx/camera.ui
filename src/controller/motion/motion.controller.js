@@ -930,94 +930,97 @@ function processFile(filePath) {
       let filename = filePath.replace('/var/lib/homebridge/camera.ui/recordings/', '');
       switch (filename) {
         case filePath.includes('IntrusionDetect'):
-          let fileExtension = filePath.split('.').pop();
+          {
+            let fileExtension = filePath.split('.').pop();
 
-          let originalFilePath = filename.split('/');
+            let originalFilePath = filename.split('/');
 
-          let cameraIp = originalFilePath[0];
+            let cameraIp = originalFilePath[0];
 
-          let originalFileName = originalFilePath[2];
+            let originalFileName = originalFilePath[2];
 
-          let alertType = originalFileName.split('_')[2];
+            let alertType = originalFileName.split('_')[2];
 
-          var id = await nanoid();
+            var id = await nanoid();
 
-          if (alertType.includes('.ts')) {
-            alertType = alertType.replace('.ts', '');
-          }
-
-          let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
-
-          let cameraName = camera?.name.replace(/\s+/g, '_');
-
-          const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
-
-          const cameraSetting = camerasSettings.find(
-            (cameraSetting) => cameraSetting && cameraSetting.name === camera.name
-          );
-
-          const room = cameraSetting ? cameraSetting.room : 'Standard';
-          const timestamp = moment().unix();
-          const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
-
-          //Rename the file
-          const newFilePath =
-            '/var/lib/homebridge/camera.ui/recordings/' +
-            cameraName +
-            '-' +
-            id +
-            '-' +
-            timestamp +
-            '_c' +
-            '_CUI' +
-            '.' +
-            'ts';
-
-          const newFileName =
-            cameraName +
-            '-' +
-            id +
-            '-' +
-            Math.floor(Date.now() / 1000) +
-            '_' +
-            alertType +
-            '_CUI' +
-            '.' +
-            fileExtension;
-
-          const newFilenameNoExtension = newFileName.replace(fileExtension, '');
-
-          fs.rename(filePath, newFilePath, (renameError) => {
-            if (renameError) {
-              reject(renameError);
-              return;
+            if (alertType.includes('.ts')) {
+              alertType = alertType.replace('.ts', '');
             }
 
-            const recording = {
-              id: id,
-              camera: camera.name,
-              fileName: newFileName,
-              name: newFilenameNoExtension,
-              extension: 'ts',
-              recordStoring: true,
-              recordType: 'Video',
-              trigger: 'intrusion_detection',
-              room: room,
-              timeStamp: timestamp,
-              time: time,
-              label: 'Intrusion Detection',
-              type: 'Video',
-              ftp: true,
-              path: '/var/lib/homebridge/camera.ui/recordings/',
-            };
+            let camera = ConfigService.ui.cameras.find((camera) => camera?.videoConfig?.source.includes(cameraIp));
 
-            console.log(recording);
+            let cameraName = camera?.name.replace(/\s+/g, '_');
 
-            RecordingsModel.createRecording(recording, null, true);
+            const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
-            console.log('File renamed to:', newFilePath);
-            resolve();
-          });
+            const cameraSetting = camerasSettings.find(
+              (cameraSetting) => cameraSetting && cameraSetting.name === camera.name
+            );
+
+            const room = cameraSetting ? cameraSetting.room : 'Standard';
+            const timestamp = moment().unix();
+            const time = moment.unix(timestamp).format('YYYY-MM-DD HH:mm:ss');
+
+            //Rename the file
+            const newFilePath =
+              '/var/lib/homebridge/camera.ui/recordings/' +
+              cameraName +
+              '-' +
+              id +
+              '-' +
+              timestamp +
+              '_c' +
+              '_CUI' +
+              '.' +
+              'ts';
+
+            const newFileName =
+              cameraName +
+              '-' +
+              id +
+              '-' +
+              Math.floor(Date.now() / 1000) +
+              '_' +
+              alertType +
+              '_CUI' +
+              '.' +
+              fileExtension;
+
+            const newFilenameNoExtension = newFileName.replace(fileExtension, '');
+
+            fs.rename(filePath, newFilePath, (renameError) => {
+              if (renameError) {
+                reject(renameError);
+                return;
+              }
+
+              const recording = {
+                id: id,
+                camera: camera.name,
+                fileName: newFileName,
+                name: newFilenameNoExtension,
+                extension: 'ts',
+                recordStoring: true,
+                recordType: 'Video',
+                trigger: 'intrusion_detection',
+                room: room,
+                timeStamp: timestamp,
+                time: time,
+                label: 'Intrusion Detection',
+                type: 'Video',
+                ftp: true,
+                path: '/var/lib/homebridge/camera.ui/recordings/',
+              };
+
+              console.log(recording);
+
+              RecordingsModel.createRecording(recording, null, true);
+
+              console.log('File renamed to:', newFilePath);
+              resolve();
+            });
+          }
+
           break;
 
         default:
