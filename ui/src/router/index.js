@@ -212,9 +212,30 @@ export const routes = [
     },
     component: () => import(/* webpackChunkName: "recordings" */ '@/views/Recordings/Recordings.vue'),
   },
+  // {
+  //   path: '/notifications',
+  //   name: 'Notifications',
+  //   meta: {
+  //     auth: {
+  //       requiresAuth: true,
+  //       requiredLevel: ['notifications:access'],
+  //     },
+  //     config: {
+  //       fixedNavbar: true,
+  //       showFooter: true,
+  //       showNavbar: true,
+  //       showSidebar: true,
+  //     },
+  //     navigation: {
+  //       main: true,
+  //       icon: 'mdi-bell',
+  //     },
+  //   },
+  //   component: () => import(/* webpackChunkName: "notifications" */ '@/views/Notifications/Notifications.vue'),
+  // },
   {
-    path: '/notifications',
-    name: 'Notifications',
+    path: '/alerts',
+    name: 'Alerts',
     meta: {
       auth: {
         requiresAuth: true,
@@ -231,7 +252,7 @@ export const routes = [
         icon: 'mdi-bell',
       },
     },
-    component: () => import(/* webpackChunkName: "notifications" */ '@/views/Notifications/Notifications.vue'),
+    component: () => import(/* webpackChunkName: "alerts" */ '@/views/Alerts/Alerts.vue'),
   },
   {
     path: '/cameras',

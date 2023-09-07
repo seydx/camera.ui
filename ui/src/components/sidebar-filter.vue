@@ -212,7 +212,12 @@ export default {
     //this.$watch('items', this.watchItems, { deep: true });
   },
 
-  mounted() {},
+  mounted() {
+    this.getCurrentDate();
+    this.saveDateRange(this.dateFrom, false);
+    this.saveDateRange(this.dateTo, false);
+    this.filterQuery();
+  },
 
   beforeDestroy() {
     bus.$off('showFilterNavi', this.toggleSettingsNavi);
@@ -244,12 +249,22 @@ export default {
       this.selectedLabels = [];
       this.selectedTypes = [];
 
-      this.dateFrom = '';
-      this.dateTo = '';
+      let today = new Date();
+      const offset = today.getTimezoneOffset();
+      today = new Date(today.getTime() - offset * 60 * 1000);
+      this.dateFrom = today.toISOString().split('T')[0];
+      this.dateTo = today.toISOString().split('T')[0];
 
       this.saveDateRange();
       this.watchItems();
       this.hideNavi();
+    },
+    getCurrentDate() {
+      let today = new Date();
+      const offset = today.getTimezoneOffset();
+      today = new Date(today.getTime() - offset * 60 * 1000);
+      this.dateFrom = today.toISOString().split('T')[0];
+      this.dateTo = today.toISOString().split('T')[0];
     },
     filterQuery() {
       if (this.selected && this.selected.length) {

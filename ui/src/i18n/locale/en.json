@@ -10,6 +10,7 @@
     "add_new_user": "Add new user",
     "add_to_homescreen": "Add to Homescreen",
     "admin": "Administrator",
+    "alerts": "Alerts",
     "alarm": "Alarm",
     "alarm_ftp_info": "FTP Server must be enabled to trigger a movement through file upload!",
     "alarm_http_info": "HTTP Server must be enabled to trigger a movement through HTTP call!",

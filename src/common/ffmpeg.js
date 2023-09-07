@@ -526,7 +526,7 @@ export const storeInifniteVideo = async (camera) => {
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
     const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
-    const videoName = `${savedRecording.path}${savedRecording.fileName}`;
+    const videoName = `${recording.path}${recording.fileName}`;
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
     const vcodec = videoConfig.vcodec;

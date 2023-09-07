@@ -174,6 +174,7 @@ export default {
             notification.license = jsonAlertDataFormatted.info.license;
             notification.gear = jsonAlertDataFormatted.info.gear;
             notification.pose = jsonAlertDataFormatted.info.pose;
+            console.log(notification);
 
             return notification;
           });
@@ -222,11 +223,9 @@ export default {
         this.$toast.error(err.message);
       }
     },
-    openGallery(notification) {
-      if (notification.recordStoring) {
-        const index = this.images.findIndex((el) => el.id === notification.id);
-        this.$refs.lightbox.showImage(index);
-      }
+    openGallery(item) {
+      const index = this.notifications.findIndex((notification) => notification.id === item.id);
+      this.$refs.lightbox.showImage(index);
     },
     async remove(notification, index) {
       try {
