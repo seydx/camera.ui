@@ -361,6 +361,7 @@ export const createCameraNotification = async (data) => {
     time: time,
     timeStamp: timestamp,
     label: label,
+    date: Date.now(),
   });
 
   // const notify = {
