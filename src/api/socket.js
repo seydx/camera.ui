@@ -559,7 +559,7 @@ export default class Socket {
   }
 
   static async #handleInfiniteRecord() {
-    const cameras = ConfigService.ui.cameras;
+    const cameras = await ConfigService.ui.cameras;
 
     for (const camera of cameras) {
       if (camera.record) {

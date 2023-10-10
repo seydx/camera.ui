@@ -491,7 +491,9 @@ export const storeInifniteVideo = async (camera) => {
 
   const camerasSettings = await Database.interfaceDB.chain.get('settings').get('cameras').cloneDeep().value();
 
-  const cameraSetting = camerasSettings.find((cameraSetting) => cameraSetting && cameraSetting.name === camera.name);
+  const cameraSetting = await camerasSettings.find(
+    (cameraSetting) => cameraSetting && cameraSetting.name === camera.name
+  );
 
   const room = cameraSetting ? cameraSetting.room : 'Standard';
   const timestamp = moment().unix();
@@ -520,19 +522,17 @@ export const storeInifniteVideo = async (camera) => {
     path: '/var/lib/homebridge/camera.ui/recordings/',
   };
 
-  console.log(recording);
+  var videoConfig = await cameraUtils.generateVideoConfig(camera.videoConfig);
+  var ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
 
   var savedRecording = await RecordingsModel.createInfinteRecording(recording, null, true, true);
   return new Promise((resolve, reject) => {
     const videoProcessor = ConfigService.ui.options.videoProcessor;
-    const videoConfig = cameraUtils.generateVideoConfig(camera.videoConfig);
     const videoName = `${recording.path}${recording.fileName}`;
     const videoWidth = videoConfig.maxWidth;
     const videoHeight = videoConfig.maxHeight;
     const vcodec = videoConfig.vcodec;
     const controller = CameraController.cameras.get(camera.name);
-
-    let ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
     ffmpegInput = cameraUtils.checkDeprecatedFFmpegArguments(controller?.media?.codecs?.ffmpegVersion, ffmpegInput);
 
     if (camera.prebuffering && controller?.prebuffer) {
