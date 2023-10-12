@@ -23,6 +23,10 @@ export const findAlertById = async (id) => {
   return await NotificationsModel.findAlertById(id);
 };
 
+export const findAlerts = async () => {
+  return await NotificationsModel.findAlerts();
+};
+
 export const getSettingsByName = async (name) => {
   return await Database.interfaceDB.chain.get('settings').get('cameras').find({ name: name }).cloneDeep().value();
 };

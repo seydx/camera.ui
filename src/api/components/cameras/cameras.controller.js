@@ -208,6 +208,19 @@ export const getAlertById = async (req, res) => {
   }
 };
 
+export const getAlerts = async (req, res) => {
+  try {
+    const alerts = await CamerasModel.findAlerts();
+
+    res.status(200).send(alerts);
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
 export const changeCameraPosition = async (req, res) => {
   try {
     const camera = await CamerasModel.findByName(req.params.name);

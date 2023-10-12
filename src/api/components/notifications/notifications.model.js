@@ -226,6 +226,30 @@ export const findAlertById = async (id) => {
   return formattedNotification;
 };
 
+export const findAlerts = async () => {
+  var notifications;
+  var notificationsRaw;
+
+  try {
+    notificationsRaw = await Notification.find({});
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+  }
+
+  notificationsRaw.forEach((element) => {
+    var formattedNotification = element.toObject();
+
+    formattedNotification._id = notification._id;
+    formattedNotification.id = notification.id;
+    formattedNotification.message = JSON.parse(notification.message);
+    formattedNotification.image = `/files/${notification.fileName}`;
+
+    notifications.push(formattedNotification);
+  });
+
+  return notifications;
+};
+
 export const createNotification = async (data) => {
   console.log(data.camera);
   const camera = await Database.interfaceDB.chain.get('cameras').find({ name: data.camera }).cloneDeep().value();

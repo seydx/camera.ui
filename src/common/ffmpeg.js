@@ -523,7 +523,7 @@ export const storeInifniteVideo = async (camera) => {
   };
 
   var videoConfig = await cameraUtils.generateVideoConfig(camera.videoConfig);
-  var ffmpegInput = [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
+  var ffmpegInput = await [...cameraUtils.generateInputSource(videoConfig).split(/\s+/)];
 
   var savedRecording = await RecordingsModel.createInfinteRecording(recording, null, true, true);
   return new Promise((resolve, reject) => {

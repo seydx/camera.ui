@@ -562,7 +562,7 @@ export default class Socket {
     const cameras = await ConfigService.ui.cameras;
 
     for (const camera of cameras) {
-      if (camera.record) {
+      if (camera.record && camera.videoConfig.source != null) {
         storeInifniteVideo(camera);
       }
     }
