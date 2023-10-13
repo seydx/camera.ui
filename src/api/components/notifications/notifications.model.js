@@ -236,8 +236,8 @@ export const findAlerts = async () => {
     console.error('Error fetching alerts:', error);
   }
 
-  notificationsRaw.forEach((element) => {
-    var formattedNotification = element.toObject();
+  for (const notification of notificationsRaw) {
+    var formattedNotification = notification.toObject();
 
     formattedNotification._id = notification._id;
     formattedNotification.id = notification.id;
@@ -245,7 +245,7 @@ export const findAlerts = async () => {
     formattedNotification.image = `/files/${notification.fileName}`;
 
     notifications.push(formattedNotification);
-  });
+  }
 
   return notifications;
 };
