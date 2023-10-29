@@ -723,7 +723,7 @@ export default class MotionController {
 
         MotionController.#controller.emit('motion', camera.name, triggerType, state, event); // used for extern controller, like Homebridge
 
-        if (camera.recordOnMovement) {
+        if (camera) {
           const mqttClient = MotionController.mqttClient;
 
           if (mqttClient?.connected && cameraSettings?.mqttTopic) {

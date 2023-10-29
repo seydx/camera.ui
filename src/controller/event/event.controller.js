@@ -115,7 +115,7 @@ export default class EventController {
             subscription: SettingsDB.webpush.subscription,
           };
 
-          if (!EventController.#movementHandler[cameraName] || fileBuffer) {
+          if (true) {
             EventController.#movementHandler[cameraName] = true;
 
             /*

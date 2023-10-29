@@ -329,44 +329,33 @@ export default class VideoAnalysisService {
         return;
       }
 
+      const recordingSettings = await Database.interfaceDB.chain
+            .get('settings')
+            .get('recordings')
+            .cloneDeep()
+            .value();
+
+      const recTimer = recordingSettings.timer || 10;
+
       const event = data.trigger.map((data) => {
         return {
           zone: data.name,
           percent: data.percent,
           sensitivity: Math.round(100 - data.percent) + 1,
-          dwell: pamDiff.dwellTime,
-          forceClose: pamDiff.forceCloseTime,
+          recTimer: recTimer,
         };
       });
 
       if (!this.motionEventTimeout) {
         this.#triggerMotion(true, event);
 
-        // forceClose after 3min
-        if (pamDiff.forceCloseTime > 0) {
-          this.forceCloseTimeout = setTimeout(() => {
-            this.#triggerMotion(false, {
-              time: new Date(),
-              event: `forceClose (${pamDiff.forceCloseTime}m)`,
-            });
-          }, pamDiff.forceCloseTime * 60 * 1000);
-        }
+        this.motionEventTimeout = setTimeout(() => {
+          this.#triggerMotion(false, {
+            time: new Date(),
+            event: `forceClose`,
+          });
+        }, recTimer * 1000);
       }
-
-      if (this.motionEventTimeout) {
-        log.debug(`New motion detected, resetting motion in ${pamDiff.dwellTime}s..`, this.cameraName);
-        log.debug(`Motion data: ${JSON.stringify(event)}}`, this.cameraName);
-
-        clearTimeout(this.motionEventTimeout);
-        this.motionEventTimeout = null;
-      }
-
-      this.motionEventTimeout = setTimeout(async () => {
-        this.#triggerMotion(false, {
-          time: new Date(),
-          event: `dwellTime (${pamDiff.dwellTime}s)`,
-        });
-      }, pamDiff.dwellTime * 1000);
     });
 
     const cp = spawn(ConfigService.ui.options.videoProcessor, ffmpegArguments, {
