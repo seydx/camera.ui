@@ -13,7 +13,7 @@
             .badge-text.tw-flex.tw-justify-center.tw-items-center.tw-h-full.tw-w-full
               span(v-if="notSize > 99") 99+
               span(v-else) {{ notSize }}
-          v-btn.text-default.tw-text-white.tw-mr-1(@click="$router.push('/notifications')" icon height="38px" width="38px")
+          v-btn.text-default.tw-text-white.tw-mr-1(@click="$router.push('/alerts')" icon height="38px" width="38px")
             v-icon {{ icons['mdiBell'] }}
 
 </template>
