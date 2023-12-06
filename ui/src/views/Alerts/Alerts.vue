@@ -1,88 +1,85 @@
 <template lang="pug">
-  .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
-    v-progress-circular(indeterminate color="var(--cui-primary)")
-  .tw-py-6.tw-px-4(v-else)
-    .tw-flex.tw-relative.pl-safe.pr-safe
-  
-      Sidebar(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
-  
-      .overlay(v-if="showOverlay")
-  
-      .filter-content.filter-included.tw-w-full.tw-relative
-        .tw-flex.tw-justify-between
-          .header-title.tw-flex.tw-items-center
-            v-btn.included.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
-              v-icon {{ icons['mdiFilter'] }}
-            v-badge(overlap :content="totalRecordings.toString()" offset-x="0")
-              .page-title Alerts
-          .header-utils.tw-flex.tw-justify-center.tw-items-center
-            v-btn.tw-mr-1(v-if="showListOptions" icon height="35px" width="35px" :color="listMode ? 'var(--cui-primary)' : 'grey'" @click="changeListView(1)")
-              v-icon(size="25") {{ icons['mdiFormatListBulleted'] }}
-            v-btn.tw-mr-3(v-if="showListOptions" icon height="35px" width="35px" :color="!listMode ? 'var(--cui-primary)' : 'grey'" @click="changeListView(2)")
-              v-icon(size="25") {{ icons['mdiViewModule'] }}
-            v-btn(fab elevation="1" height="35px" width="35px" color="red" :disabled="!selected.length" @click="remove")
-              v-badge(v-if="selected.length" :content="selected.length > 999 ? '999+' : selected.length" overlap offset-x="9" offset-y="10" color="grey")
-                v-icon(size="20" color="white") {{ icons['mdiDelete'] }}
-              v-icon(v-else size="20" color="white") {{ icons['mdiDelete'] }}
-  
-        .tw-block
-          v-layout(row wrap :class="listMode && recordings.length ? 'tw-m-0 tw-mt-5' : 'tw-mt-5'")
-            v-flex.tw-mb-4.tw-px-2(v-if="!listMode" xs12 sm6 md4 lg3 xl2 v-for="(recording, i) in recordings" :key="recording.id")
-              vue-aspect-ratio(ar="4:3")
-                RecordingCard(ref="recordings" :selectedItems="selected" :recording="recording" @select="clickRow(recording)" @show="openGallery(recording)" @remove="remove(recording, i)")
-  
-            v-data-table.tw-w-full(v-if="listMode && recordings.length" :items-per-page="-1" calculate-widths disable-pagination hide-default-footer v-model="selected" :loading="loading" :headers="headers" :items="recordings" :no-data-text="$t('no_data_available')" item-key="id" show-select class="elevation-1" checkbox-color="var(--cui-primary)" mobile-breakpoint="0" @click:row="clickRow")
-              template(v-slot:item.preview="{ item }")
-                vue-aspect-ratio.tw-m-3(ar="16:9" width="100px")
-                  RecordingCard(ref="recordings" list :selectedItems="selected" :recording="item" @show="openGallery(item)" @remove="remove(item, item.index)")
-              template(v-slot:item.camera="{ item }")
-                b {{ item.camera }}
-              template(v-slot:item.recordType="{ item }")
-                .text-font-disabled {{ item.recordType }}
-              template(v-slot:item.message="{ item }")
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.confidence != null") Confidence:{{item.confidence}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type != null") Type:{{item.type}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.location != null") Location:{{item.location}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.orientation != null") Orientation:{{item.orientation}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.speed != null") Speed:{{item.speed}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.authorized != null") Authorized:{{item.authorized}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.license != null") License:{{item.license}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.gear != null") Gear:{{item.gear}}
-                v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.pose != null") Pose:{{item.pose}}
+.tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
+  v-progress-circular(indeterminate color="var(--cui-primary)")
+.tw-py-6.tw-px-4(v-else)
+  .tw-flex.tw-relative.pl-safe.pr-safe
 
-              template(v-slot:item.time="{ item }")
-                .text-font-disabled {{ item.time }}
-              template(v-slot:item.label="{ item }")
-                v-chip(color="var(--cui-primary)" dark small) {{ item.label.includes("no label") ? $t("no_label") : item.label.includes("Custom") ? $t("custom") : item.label }}
-              template(v-slot:item.download="{ item }")
-                v-btn.tw-text-white(fab x-small color="#434343" elevation="1" @click="download(item)")
-                  v-icon {{ icons['mdiDownload'] }}
-  
-          infinite-loading(:identifier="infiniteId" @infinite="infiniteHandler")
-            .tw-mt-10(slot="spinner")
-              v-progress-circular(indeterminate color="var(--cui-primary)")
-            .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_recordings") }}
-            .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_recordings") }}
-  
-    LightBox(
-      ref="lightbox"
-      :media="images"
-      :showLightBox="false"
-      :showThumbs="false"
-      showCaption
-      disableScroll
-    )
-  
-    LightBox(
-      ref="lightboxBanner"
-      :media="notImages"
-      :showLightBox="false"
-      :showThumbs="false"
-      showCaption
-      disableScroll
-    )
-  
-  </template>
+    Sidebar(camerasSelect datePicker labelSelect roomSelect typeSelect @filter="filter")
+
+    .overlay(v-if="showOverlay")
+
+    .filter-content.filter-included.tw-w-full.tw-relative
+      .tw-flex.tw-justify-between
+        .header-title.tw-flex.tw-items-center
+          v-btn.included.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
+            v-icon {{ icons['mdiFilter'] }}
+          v-badge(overlap :content="totalRecordings.toString()" offset-x="0")
+            .page-title Alerts
+        .header-utils.tw-flex.tw-justify-center.tw-items-center
+          v-btn.tw-mr-1(v-if="showListOptions" icon height="35px" width="35px" :color="listMode ? 'var(--cui-primary)' : 'grey'" @click="changeListView(1)")
+            v-icon(size="25") {{ icons['mdiFormatListBulleted'] }}
+          v-btn.tw-mr-3(v-if="showListOptions" icon height="35px" width="35px" :color="!listMode ? 'var(--cui-primary)' : 'grey'" @click="changeListView(2)")
+            v-icon(size="25") {{ icons['mdiViewModule'] }}
+          v-btn(fab elevation="1" height="35px" width="35px" color="red" :disabled="!selected.length" @click="remove")
+            v-badge(v-if="selected.length" :content="selected.length > 999 ? '999+' : selected.length" overlap offset-x="9" offset-y="10" color="grey")
+              v-icon(size="20" color="white") {{ icons['mdiDelete'] }}
+            v-icon(v-else size="20" color="white") {{ icons['mdiDelete'] }}
+
+      .tw-block
+        v-layout(row wrap :class="listMode && recordings.length ? 'tw-m-0 tw-mt-5' : 'tw-mt-5'")
+          v-flex.tw-mb-4.tw-px-2(v-if="!listMode" xs12 sm6 md4 lg3 xl2 v-for="(recording, i) in recordings" :key="recording.id")
+            vue-aspect-ratio(ar="4:3")
+              RecordingCard(ref="recordings" :selectedItems="selected" :recording="recording" @select="clickRow(recording)" @show="openGallery(recording)" @remove="remove(recording, i)")
+
+          v-data-table.tw-w-full(v-if="listMode && recordings.length" :items-per-page="-1" calculate-widths disable-pagination hide-default-footer v-model="selected" :loading="loading" :headers="headers" :items="recordings" :no-data-text="$t('no_data_available')" item-key="id" show-select class="elevation-1" checkbox-color="var(--cui-primary)" mobile-breakpoint="0" @click:row="clickRow")
+            template(v-slot:item.preview="{ item }")
+              vue-aspect-ratio.tw-m-3(ar="16:9" width="100px")
+                RecordingCard(ref="recordings" list :selectedItems="selected" :recording="item" @show="openGallery(item)" @remove="remove(item, item.index)")
+            template(v-slot:item.camera="{ item }")
+              b {{ item.camera }}
+            template(v-slot:item.recordType="{ item }")
+              .text-font-disabled {{ item.recordType }}
+            template(v-slot:item.message="{ item }")
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type != null") Type:{{item.type}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'insulator' && item.insulator_condition != null") Insulator Condition:{{item.insulator_condition}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'vehicle' && item.authorized != null") Authorized:{{item.authorized}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'vehicle' && item.license != null") License:{{item.license}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'person' && item.authorized != null") Authorized:{{item.authorized}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'person' && item.missing_gear != null") Missing Gear:{{item.missing_gear}}
+              v-chip(color="var(--cui-primary)" outlined rounded small v-if="item.type === 'person' && item.pose != null") Pose:{{item.pose}}
+            template(v-slot:item.time="{ item }")
+              .text-font-disabled {{ item.time }}
+            template(v-slot:item.label="{ item }")
+              v-chip(color="var(--cui-primary)" dark small) {{ item.label.includes("no label") ? $t("no_label") : item.label.includes("Custom") ? $t("custom") : item.label }}
+            template(v-slot:item.download="{ item }")
+              v-btn.tw-text-white(fab x-small color="#434343" elevation="1" @click="download(item)")
+                v-icon {{ icons['mdiDownload'] }}
+
+        infinite-loading(:identifier="infiniteId" @infinite="infiniteHandler")
+          .tw-mt-10(slot="spinner")
+            v-progress-circular(indeterminate color="var(--cui-primary)")
+          .tw-mt-10.tw-text-sm.text-muted(slot="no-more") {{ $t("no_more_notifications") }}
+          .tw-mt-10.tw-text-sm.text-muted(slot="no-results") {{ $t("no_notifications") }}
+
+  LightBox(
+    ref="lightbox"
+    :media="images"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
+  )
+
+  LightBox(
+    ref="lightboxBanner"
+    :media="notImages"
+    :showLightBox="false"
+    :showThumbs="false"
+    showCaption
+    disableScroll
+  )
+
+</template>
 
 <script>
 import LightBox from 'vue-it-bigger';
@@ -374,8 +371,9 @@ export default {
               recording.speed = jsonAlertDataFormatted.speed;
               recording.authorized = jsonAlertDataFormatted.info.authorized;
               recording.license = jsonAlertDataFormatted.info.license;
-              recording.gear = jsonAlertDataFormatted.info.gear;
+              recording.missing_gear = jsonAlertDataFormatted.info.missing_gear;
               recording.pose = jsonAlertDataFormatted.info.pose;
+              recording.insulator_condition = jsonAlertDataFormatted.info.insulator_condition;
               console.log(recording);
             }
 
