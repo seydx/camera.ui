@@ -99,6 +99,7 @@
     "config": "Config",
     "config_information": "config.json",
     "config_was_saved": "Configuración guardada",
+    "confirm": "Confirmar",
     "connected": "Conectado",
     "console": "Consola",
     "cpu_load": "Carga del CPU",

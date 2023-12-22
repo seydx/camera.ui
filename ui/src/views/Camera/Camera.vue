@@ -19,6 +19,20 @@
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
+    // Camera controls
+    h3.font-weight-bold.text-truncate.mb-2 Controls
+
+    v-container.controls
+      v-row(justify="end")
+        v-col
+          v-select(:items="timezones" :prepend-icon="icons['mdiMapMarkerCircle']" label="Timezone" variant="outlined" @change="setTimezone")
+        v-col.text-right(align-self="center")
+          v-btn.control-secondary(@click="reboot") Reboot
+            v-icon.pl-2 {{ icons['mdiRefresh'] }}
+        v-col.text-right(align-self="center")
+          v-btn.control-primary(prepend-icon @click="dialog = true") Shutdown
+            v-icon.pl-2 {{ icons['mdiPower'] }}
+
     v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
       v-expansion-panels(v-model="notificationsPanel" multiple)
         v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
@@ -46,6 +60,18 @@
                   v-list-item-content
                     v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
+    v-dialog(v-model="dialog" width="400" scrollable)
+      v-card(height="350")
+        v-card-title Confirm Shutdown
+        v-divider
+        v-card-text.tw-p-7.tw-flex.tw-flex-col.tw-items-center.tw-justify-center
+          span.text-default If you choose to shutdown the camera, then the only way to turn it back on is for someone to unplug / pluggin the battery again manually.  Please only use this option when preparing the camera for transport.  Else if you need to power cycle the camera to resolve an issue, then select 'Reboot' instead.
+
+        v-divider
+        v-card-actions.tw-flex.tw-justify-end
+          v-btn.text-default(text @click='dialog = false') {{ $t('cancel') }}
+          v-btn(color='var(--cui-primary)' text @click='shutdown') {{ $t('confirm') }}
+
   LightBox(
     ref="lightbox"
     :media="images"
@@ -67,9 +93,17 @@
 </template>
 
 <script>
+/* eslint-disable vue/require-default-prop */
 import LightBox from 'vue-it-bigger';
 import 'vue-it-bigger/dist/vue-it-bigger.min.css';
-import { mdiOpenInNew, mdiPlusCircle } from '@mdi/js';
+// eslint-disable-next-line
+import {
+  mdiOpenInNew,
+  mdiPlusCircle,
+  mdiRefresh,
+  mdiPower,
+  mdiMapMarkerCircle,
+} from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
 
 import { getCamera, getCameraSettings } from '@/api/cameras.api';
@@ -78,6 +112,8 @@ import { getNotifications } from '@/api/notifications.api';
 import VideoCard from '@/components/camera-card.vue';
 
 import socket from '@/mixins/socket';
+
+import mqtt from 'mqtt';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -103,12 +139,27 @@ export default {
     icons: {
       mdiOpenInNew,
       mdiPlusCircle,
+      mdiRefresh,
+      mdiPower,
+      mdiMapMarkerCircle,
     },
     images: [],
     loading: true,
     notifications: [],
     notificationsPanel: [0],
     showNotifications: false,
+    mqttClient: null,
+    isMQTTConnected: false,
+    timezones: [
+      'America/New_York',
+      'America/Chicago',
+      'America/Denver',
+      'America/Los_Angeles',
+      'America/Anchorage',
+      'America/Adak',
+    ],
+    currentTimezone: 'America/New_York',
+    dialog: false,
   }),
 
   async mounted() {
@@ -158,11 +209,17 @@ export default {
 
       this.loading = false;
 
+      // MQTT
+      this.mqttConnect();
+
       await timeout(10);
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
     }
+  },
+  beforeUnmounted() {
+    this.mqttDisconnect();
   },
 
   methods: {
@@ -180,6 +237,66 @@ export default {
       } else {
         this.notificationsPanel = [];
       }
+    },
+    mqttConnect() {
+      const options = {
+        clientId: 'cameraui-client-id',
+        username: 'mosquitto',
+        password: 'l3m13uxmqtt',
+      };
+
+      this.mqttClient = mqtt.connect('ws://10.20.0.1:9001', options);
+
+      this.mqttClient.on('connect', () => {
+        if (!this.isMQTTConnected) {
+          console.log('MQTT Connected');
+          this.isMQTTConnected = true;
+        }
+      });
+
+      this.mqttClient.on('disconnect', () => {
+        console.log('MQTT Disconnected');
+      });
+    },
+    mqttDisconnect() {
+      this.mqttClient.end();
+    },
+    setTimezone(selectedTimezone) {
+      // TODO add check for current vs selected timezone
+      const message = {
+        cmd: 'change-timezone',
+        timezone: selectedTimezone,
+      };
+
+      const topic = `unmanned/${this.camera.name}/control`;
+      //console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
+
+      this.mqttClient.publish(topic, JSON.stringify(message));
+    },
+    reboot() {
+      console.log('Reboot');
+
+      const message = {
+        cmd: 'reboot',
+      };
+
+      const topic = `unmanned/${this.camera.name}/control`;
+      //console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
+
+      this.mqttClient.publish(topic, JSON.stringify(message));
+    },
+    shutdown() {
+      console.log('Shutdown');
+      this.dialog = false;
+
+      const message = {
+        cmd: 'shutdown',
+      };
+
+      const topic = `unmanned/${this.camera.name}/control`;
+      console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
+
+      this.mqttClient.publish(topic, JSON.stringify(message));
     },
   },
 };
@@ -223,5 +340,31 @@ div >>> .v-expansion-panel-content__wrap {
 
 div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
   color: rgba(var(--cui-text-default-rgb)) !important;
+}
+
+.controls {
+  background-color: rgba(14, 14, 14);
+  border: 1px solid rgba(var(--cui-bg-card-rgb)) !important;
+  border-radius: 0.25em;
+  padding: 0px 12px;
+}
+
+div >>> .v-input__icon--prepend .v-icon__svg {
+  color: white;
+}
+
+.control-primary {
+  color: white;
+  background-color: var(--cui-primary) !important;
+}
+
+.control-secondary {
+  color: white;
+  background-color: var(--cui-bg-card) !important;
+}
+
+div >>> .v-select__selection,
+.v-select >>> .v-label {
+  padding-left: 0.5em;
 }
 </style>

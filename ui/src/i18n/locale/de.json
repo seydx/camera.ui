@@ -100,6 +100,7 @@
     "config": "Konfiguration",
     "config_information": "config.json",
     "config_was_saved": "Konfiguration wurde gespeichert",
+    "confirm": "Bevestigen",
     "connected": "Verbunden",
     "console": "Konsole",
     "cpu_load": "CPU Auslastung",

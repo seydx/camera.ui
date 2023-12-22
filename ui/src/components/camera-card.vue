@@ -11,7 +11,9 @@
       .tw-z-10(v-if="title && titlePosition === 'top' && !fullscreen" @click="$router.push(`cameras/${camera.name}`)")
         v-card-title.video-card-top-title.tw-flex.tw-justify-between.tw-items-center
           span.font-weight-bold.text-truncate {{ camera.name }}
-          v-badge(dot inline v-if="status" :color="loading || offline ? 'red' : 'green'")
+          .grid.grid-rows-1.grid-flow-col.gap-2
+            v-icon.battery.tw-text-white {{ icons['mdiBatteryHigh'] }} 
+            v-badge(dot inline v-if="status" :color="loading || offline ? 'red' : 'green'")
         v-divider
 
       // Video Title (inner-top)
@@ -58,6 +60,7 @@
             .tw-block.tw-p-2
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="handleStartStop") {{ !play ? icons['mdiPlay'] : icons['mdiPause'] }}
             .tw-ml-auto
+            .tw-ml-auto
             .tw-block.tw-p-2.tw-pr-0(v-if="!hideIndicatorReload")
               v-icon.tw-p-1.tw-cursor-pointer.controller-button(size="22" @click="refreshStream") {{ icons['mdiRefresh'] }}
             .tw-block.tw-p-2.tw-pr-0(v-if="camera.settings.audio && !hideIndicatorAudio")
@@ -99,6 +102,10 @@ import {
   mdiVideoOff,
   mdiVolumeHigh,
   mdiVolumeOff,
+  mdiCogOutline,
+  mdiBatteryHigh,
+  mdiBatteryMedium,
+  mdiBatteryLow,
 } from '@mdi/js';
 
 import { getCameraSnapshot, getCameraStatus } from '@/api/cameras.api';
@@ -141,6 +148,10 @@ export default {
       mdiVideoOff,
       mdiVolumeHigh,
       mdiVolumeOff,
+      mdiCogOutline,
+      mdiBatteryHigh,
+      mdiBatteryMedium,
+      mdiBatteryLow,
     },
     images: [],
     imgSource: '',
@@ -155,6 +166,12 @@ export default {
     snapshotTimeout: null,
     streamTimeout: null,
     timeout: 60,
+    // eslint-disable-next-line
+    actions: [ 
+      { title: 'Timezone' }, 
+      { title: 'Reboot' }, 
+      { title: 'Shutdown' } 
+    ],
   }),
 
   async mounted() {
@@ -192,6 +209,15 @@ export default {
   },
 
   methods: {
+    updateTimezone() {
+      alert('timezone');
+    },
+    reboot() {
+      alert('reboot');
+    },
+    shutdown() {
+      alert('shutdown');
+    },
     closeFullscreen() {
       this.fullscreen = false;
 
@@ -672,5 +698,10 @@ export default {
   right: 0;
   width: 100%;
   height: 100%;
+}
+
+.battery {
+  transform: rotate(90deg);
+  margin-bottom: 4px;
 }
 </style>

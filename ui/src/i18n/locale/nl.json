@@ -99,6 +99,7 @@
     "config": "Config",
     "config_information": "config.json",
     "config_was_saved": "De configuratie werd opgeslagen",
+    "confirm": "Bekrefte",
     "connected": "Aangesloten",
     "console": "Console",
     "cpu_load": "CPU Belasting",
