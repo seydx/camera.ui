@@ -157,7 +157,7 @@ module.exports = {
     plugins: [
       new BundleAnalyzerPlugin({
         analyzerMode: 'static',
-        openAnalyzer: true,
+        openAnalyzer: false,
       }),
     ],
   },
