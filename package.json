@@ -1,5 +1,5 @@
 {
-  "name": "camera.ui",
+  "name": "@douglassllc/camera.ui",
   "version": "1.2.0",
   "description": "NVR like user interface for RTSP capable cameras.",
   "author": "SeydX (https://github.com/SeydX/camera.ui)",
