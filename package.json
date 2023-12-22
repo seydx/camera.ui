@@ -1,5 +1,4 @@
 {
-  "name": "@douglassllc/camera.ui",
   "name": "camera.ui",
   "version": "1.1.17",
   "description": "NVR like user interface for RTSP capable cameras.",
@@ -13,7 +12,11 @@
     "watch": "concurrently \"npm run watch:server\" \"npm run watch:ui\"",
     "watch:server": "nodemon",
     "watch:ui": "npm run serve --prefix ui",
-    "prepublishOnly": "npm i --package-lock-only && npm run lint && npm run build"
+    "prepublishOnly": "npm i --package-lock-only && npm run lint && npm run build",
+    "release": "standard-version --no-verify --release-as",
+    "release:major": "standard-version --no-verify --release-as major",
+    "release:minor": "standard-version --no-verify --release-as minor",
+    "release:patch": "standard-version --no-verify --release-as patch"
   },
   "main": "src/index.js",
   "dependencies": {
@@ -75,6 +78,7 @@
     "jest-jasmine2": "^27.5.1",
     "nodemon": "^2.0.15",
     "prettier": "^2.6.2",
+    "standard-version": "^9.5.0",
     "supertest": "6.2.2"
   },
   "optionalDependencies": {

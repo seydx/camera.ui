@@ -10,6 +10,12 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/SeydX/camera.ui.svg?style=flat-square)](https://github.com/SeydX/camera.ui)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=flat-square&maxAge=2592000)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NP4T3KASWQLD8)
 
+## Fork Descritpion
+
+This fork is to continue development of this project by upgrading and maintaining dependencies.  Additionally, this fork will address adding functionality to support a more IoT.
+
+- **Camera Controls**: ability to set the time zone, reboot, and shutdown
+
 **camera.ui** is a NVR like PWA to control your RTSP capable cameras with:
 
 - **Live Streams** on Web
