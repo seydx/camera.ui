@@ -7,6 +7,7 @@
 This fork is to continue development of this project by upgrading and maintaining dependencies.  Additionally, this fork will address adding functionality to support a more IoT.
 
 - **Camera Controls**: ability to set the time zone, reboot, and shutdown
+- **IoT Status**: receive IoT messages via MQTT and update cameras
 
 <p align="center">
     <img src="https://github.com/SeydX/camera.ui/blob/master/images/logo.png">
