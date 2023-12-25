@@ -14,7 +14,8 @@
       .tw-w-full.tw-flex.tw-justify-between.tw-items-center
         .tw-block
           h2.tw-leading-6 {{ $route.params.name }}
-          span.subtitle {{ camera.settings.room }}
+          span.subtitle {{ camera.settings.room }} 
+          span.tw-text-xs.tw-text-thin - {{ lastStatusUpdate }}
         .tw-block
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
@@ -25,7 +26,7 @@
     v-container.controls
       v-row(justify="end")
         v-col
-          v-select(:items="timezones" :prepend-icon="icons['mdiMapMarkerCircle']" label="Timezone" variant="outlined" @change="setTimezone")
+          v-select(:value="camera.timezone || ''" :items="timezones" :prepend-icon="icons['mdiMapMarkerCircle']" label="Timezone" variant="outlined" @change="setTimezone")
         v-col.text-right(align-self="center")
           v-btn.control-secondary(@click="reboot") Reboot
             v-icon.pl-2 {{ icons['mdiRefresh'] }}
@@ -105,15 +106,14 @@ import {
   mdiMapMarkerCircle,
 } from '@mdi/js';
 import VueAspectRatio from 'vue-aspect-ratio';
+import moment from 'moment';
 
-import { getCamera, getCameraSettings } from '@/api/cameras.api';
+import { getCamera, getCameraSettings, setTimezone, reboot, shutdown } from '@/api/cameras.api';
 import { getNotifications } from '@/api/notifications.api';
 
 import VideoCard from '@/components/camera-card.vue';
 
 import socket from '@/mixins/socket';
-
-import mqtt from 'mqtt';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -148,8 +148,6 @@ export default {
     notifications: [],
     notificationsPanel: [0],
     showNotifications: false,
-    mqttClient: null,
-    isMQTTConnected: false,
     timezones: [
       'America/New_York',
       'America/Chicago',
@@ -161,6 +159,20 @@ export default {
     currentTimezone: 'America/New_York',
     dialog: false,
   }),
+
+  computed: {
+    lastStatusUpdate() {
+      return this.camera.lastStatusUpdate ? moment(this.camera.lastStatusUpdate).fromNow() : '';
+    },
+  },
+
+  created() {
+    this.$socket.client.on('iotStatus', this.setIotData);
+  },
+
+  beforeDestroy() {
+    this.$socket.client.off('iotStatus', this.setIotData);
+  },
 
   async mounted() {
     try {
@@ -209,17 +221,11 @@ export default {
 
       this.loading = false;
 
-      // MQTT
-      this.mqttConnect();
-
       await timeout(10);
     } catch (err) {
       console.log(err);
       this.$toast.error(err.message);
     }
-  },
-  beforeUnmounted() {
-    this.mqttDisconnect();
   },
 
   methods: {
@@ -238,65 +244,19 @@ export default {
         this.notificationsPanel = [];
       }
     },
-    mqttConnect() {
-      const options = {
-        clientId: 'cameraui-client-id',
-        username: 'mosquitto',
-        password: 'l3m13uxmqtt',
-      };
-
-      this.mqttClient = mqtt.connect('ws://10.20.0.1:9001', options);
-
-      this.mqttClient.on('connect', () => {
-        if (!this.isMQTTConnected) {
-          console.log('MQTT Connected');
-          this.isMQTTConnected = true;
-        }
-      });
-
-      this.mqttClient.on('disconnect', () => {
-        console.log('MQTT Disconnected');
-      });
+    async setTimezone(selectedTimezone) {
+      await setTimezone(this.camera.name, selectedTimezone);
     },
-    mqttDisconnect() {
-      this.mqttClient.end();
+    async reboot() {
+      await reboot(this.camera.name);
     },
-    setTimezone(selectedTimezone) {
-      // TODO add check for current vs selected timezone
-      const message = {
-        cmd: 'change-timezone',
-        timezone: selectedTimezone,
-      };
-
-      const topic = `unmanned/${this.camera.name}/control`;
-      //console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
-
-      this.mqttClient.publish(topic, JSON.stringify(message));
+    async shutdown() {
+      await shutdown(this.camera.name);
     },
-    reboot() {
-      console.log('Reboot');
-
-      const message = {
-        cmd: 'reboot',
-      };
-
-      const topic = `unmanned/${this.camera.name}/control`;
-      //console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
-
-      this.mqttClient.publish(topic, JSON.stringify(message));
-    },
-    shutdown() {
-      console.log('Shutdown');
-      this.dialog = false;
-
-      const message = {
-        cmd: 'shutdown',
-      };
-
-      const topic = `unmanned/${this.camera.name}/control`;
-      console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
-
-      this.mqttClient.publish(topic, JSON.stringify(message));
+    setIotData(data) {
+      if (this.camera.name === data.name) {
+        this.camera = { ...this.camera, ...data };
+      }
     },
   },
 };

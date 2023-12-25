@@ -326,6 +326,17 @@ export default class ConfigService {
         ConfigService.ui.topics.set(mqttOptions.doorbellTopic, mqttOptions);
       }
 
+      // IoT
+      // receive: health-and-status
+      if (camera.mqtt.topic) {
+        const mqttOptions = {
+          topic: camera.mqtt.topic,
+          camera: camera.name,
+        };
+
+        ConfigService.ui.topics.set(mqttOptions.topic, mqttOptions);
+      }
+
       return camera;
     });
   }

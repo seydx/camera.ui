@@ -492,4 +492,92 @@ export const routesConfig = (app) => {
     PermissionMiddleware.onlyMasterCanDoThisAction,
     CamerasController.resetMotion,
   ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/timezone:
+   *   patch:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Set Timezone on Camera
+   *     parameters:
+   *       - in: path
+   *         name: name
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: Name of the camera
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *          schema:
+   *            type: object
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.patch('/api/cameras/:name/timezone', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.minimumPermissionLevelRequired('cameras:edit'),
+    CamerasController.setTimezone,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/reboot:
+   *   put:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Reboot Camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/reboot', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.reboot,
+  ]);
+
+  /**
+   * @swagger
+   * /api/cameras/{name}/shutdown:
+   *   put:
+   *     tags: [Cameras]
+   *     security:
+   *       - bearerAuth: []
+   *     summary: Reboot Camera
+   *     responses:
+   *       200:
+   *         description: Successfull
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Not found
+   *       500:
+   *         description: Internal server error
+   */
+  app.put('/api/cameras/:name/shutdown', [
+    ValidationMiddleware.validJWTNeeded,
+    PermissionMiddleware.onlyMasterCanDoThisAction,
+    CamerasController.shutdown,
+  ]);
+
 };
