@@ -4,7 +4,7 @@ v-app.app(:style="$route.name === 'Camview' ? 'background: #121212 !important' :
   audio#soundFx
     source(src="@/assets/sounds/notification.mp3" type="audio/mpeg")
 
-  button.add-button(style="display: none;") {{ $t('add_to_homescreen') }}
+  <!-- button.add-button(style="display: none;") {{ $t('add_to_homescreen') }} -->
   
   transition(name='fade' mode='out-in')
     Loader(v-if="loading")
