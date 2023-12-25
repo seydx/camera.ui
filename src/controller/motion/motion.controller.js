@@ -20,6 +20,8 @@ import LoggerService from '../../services/logger/logger.service.js';
 import Database from '../../api/database.js';
 import Socket from '../../api/socket.js';
 
+import * as CamerasModel from '../../api/components/cameras/cameras.model.js';
+
 const { log } = LoggerService;
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -240,9 +242,12 @@ export default class MotionController {
         } else if (cameraMqttConfig.motion) {
           triggerType = 'motion';
           message = cameraMqttConfig.motionMessage;
-        } else {
+        } else if (cameraMqttConfig.doorbell) {
           triggerType = 'doorbell';
           message = cameraMqttConfig.doorbellMessage;
+        } else {
+          triggerType = 'iot';
+          message = data;
         }
 
         const triggerState = () => {
@@ -315,23 +320,37 @@ export default class MotionController {
           return state_;
         };
 
-        state = check();
-
-        if (state === undefined && triggerType === 'motion') {
-          const resetted = check(cameraMqttConfig.motionResetMessage);
-
-          if (resetted !== undefined) {
-            state = !resetted;
+        if (triggerType === 'iot') {
+          const dataObject = JSON.parse(data)
+          
+          const cameraData = {
+            name: dataObject.camera_name,
+            timezone: dataObject.local_tz,
+            lastStatusUpdate: dataObject.ts_local,
           }
-        }
 
-        if (state !== undefined) {
-          triggerType = triggerType === 'reset' ? 'motion' : triggerType;
-          await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt');
+          await CamerasModel.patchCamera(dataObject.camera_name, cameraData);
+
+          Socket.io.emit('iotStatus', cameraData);
         } else {
-          log.warn(
-            `The incoming MQTT message (${data}) for the topic (${topic}) was not the same as set in config.json (${message}). Skip...`
-          );
+          state = check();
+
+          if (state === undefined && triggerType === 'motion') {
+            const resetted = check(cameraMqttConfig.motionResetMessage);
+
+            if (resetted !== undefined) {
+              state = !resetted;
+            }
+          }
+
+          if (state !== undefined) {
+            triggerType = triggerType === 'reset' ? 'motion' : triggerType;
+            await MotionController.handleMotion(triggerType, cameraName, state, 'mqtt');
+          } else {
+            log.warn(
+              `The incoming MQTT message (${data}) for the topic (${topic}) was not the same as set in config.json (${message}). Skip...`
+            );
+          }
         }
       } else {
         log.warn(`Can not assign the MQTT topic (${topic}) to a camera!`, 'MQTT');

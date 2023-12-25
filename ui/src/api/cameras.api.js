@@ -10,6 +10,9 @@ const snapshot_resource = 'snapshot';
 const status_resource = 'status';
 const videoanalysis_restart_resource = 'videoanalysis/restart';
 const videoanalysis_stop_resource = 'videoanalysis/stop';
+const iot_set_timezone = 'timezone';
+const iot_reboot = 'reboot';
+const iot_shutdown = 'shutdown';
 
 export const addCamera = async (cameraData) => await api.post(resource, cameraData);
 
@@ -46,3 +49,10 @@ export const stopVideoanalysis = async (cameraName) =>
   await api.put(`${resource}/${cameraName}/${videoanalysis_stop_resource}`);
 
 export const resetMotion = async (cameraName) => await api.put(`${resource}/${cameraName}/${motion_reset_resource}`);
+
+export const setTimezone = async (cameraName, timezone) =>
+  await api.patch(`${resource}/${cameraName}/${iot_set_timezone}`, { timezone });
+
+export const reboot = async (cameraName) => await api.put(`${resource}/${cameraName}/${iot_reboot}`);
+
+export const shutdown = async (cameraName) => await api.put(`${resource}/${cameraName}/${iot_shutdown}`);

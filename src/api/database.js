@@ -123,6 +123,8 @@ const defaultCameraSettingsEntry = {
   webhookUrl: '',
   mqttTopic: 'camera.ui/motion',
   privacyMode: false,
+  timezone: '',
+  lastStatusUpdate: '',
   camview: {
     favourite: true,
     live: true,
@@ -488,6 +490,14 @@ export default class Database {
 
     if (typeof settings.privacyMode !== 'boolean') {
       settings.privacyMode = defaultCameraSettingsEntry.privacyMode;
+    }
+
+    if (!settings.timezone) {
+      settings.timezone = defaultCameraSettingsEntry.timezone;
+    }
+
+    if (!settings.lastStatusUpdate) {
+      settings.lastStatusUpdate = defaultCameraSettingsEntry.lastStatusUpdate;
     }
 
     if (typeof settings.camview !== 'object') {
