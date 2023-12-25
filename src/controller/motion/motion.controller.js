@@ -321,13 +321,13 @@ export default class MotionController {
         };
 
         if (triggerType === 'iot') {
-          const dataObject = JSON.parse(data)
-          
+          const dataObject = JSON.parse(data);
+
           const cameraData = {
             name: dataObject.camera_name,
             timezone: dataObject.local_tz,
             lastStatusUpdate: dataObject.ts_local,
-          }
+          };
 
           await CamerasModel.patchCamera(dataObject.camera_name, cameraData);
 

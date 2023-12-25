@@ -403,7 +403,7 @@ export const stopVideoanalysis = async (req, res) => {
 };
 
 export const setTimezone = async (req, res) => {
-  console.log('setTimezone', req.params, req.body)
+  console.log('setTimezone', req.params, req.body);
   try {
     if (req.body === undefined || Object.keys(req?.body).length === 0) {
       return res.status(400).send({
