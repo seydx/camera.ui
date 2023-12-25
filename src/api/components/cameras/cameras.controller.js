@@ -103,7 +103,7 @@ export const patchByName = async (req, res) => {
       }
     }
 
-    await CamerasModel.patchCamera(req.params.name, req.body);
+    await CamerasModel.patchCamera(req.params.name, { name: req.params.name, ...req.body });
 
     res.status(204).send({});
   } catch (error) {
@@ -392,6 +392,129 @@ export const stopVideoanalysis = async (req, res) => {
 
     controller.videoanalysis.stop(true);
     await setTimeoutAsync(1000);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const setTimezone = async (req, res) => {
+  console.log('setTimezone', req.params, req.body)
+  try {
+    if (req.body === undefined || Object.keys(req?.body).length === 0) {
+      return res.status(400).send({
+        statusCode: 400,
+        message: 'Bad request',
+      });
+    }
+
+    let camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.iot)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    const topic = `unmanned/${camera.name}/control`;
+
+    const message = {
+      cmd: 'change-timezone',
+      timezone: req.body.timezone,
+    };
+    //console.log(`topic: ${topic}\nmessage: ${JSON.stringify(message, null, 2)}`);
+
+    controller.iot.publishMqtt(topic, message);
+
+    await CamerasModel.patchCamera(camera.name, req.body);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const reboot = async (req, res) => {
+  try {
+    let camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.iot)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    const topic = `unmanned/${camera.name}/control`;
+
+    const message = {
+      cmd: 'reboot',
+    };
+
+    controller.iot.publishMqtt(topic, message);
+
+    res.status(204).send({});
+  } catch (error) {
+    res.status(500).send({
+      statusCode: 500,
+      message: error.message,
+    });
+  }
+};
+
+export const shutdown = async (req, res) => {
+  try {
+    let camera = await CamerasModel.findByName(req.params.name);
+
+    if (!camera) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera not exists',
+      });
+    }
+
+    const controller = CameraController.cameras.get(req.params.name);
+
+    if (!controller || (controller && !controller.iot)) {
+      return res.status(404).send({
+        statusCode: 404,
+        message: 'Camera controller not exists',
+      });
+    }
+
+    const topic = `unmanned/${camera.name}/control`;
+
+    const message = {
+      cmd: 'shutdown',
+    };
+
+    controller.iot.publishMqtt(topic, message);
 
     res.status(204).send({});
   } catch (error) {

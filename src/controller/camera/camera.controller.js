@@ -7,6 +7,7 @@ import PrebufferService from './services/prebuffer.service.js';
 import SessionService from './services/session.service.js';
 import StreamService from './services/stream.service.js';
 import VideoAnalysisService from './services/videoanalysis.service.js';
+import IoTService from './services/iot.service.js';
 
 export default class CameraController {
   static #controller;
@@ -34,6 +35,7 @@ export default class CameraController {
     );
     const sessionService = new SessionService(camera);
     const streamService = new StreamService(camera, prebufferService, mediaService, sessionService);
+    const iotService = new IoTService(camera, CameraController.#controller);
 
     const controller = {
       options: camera,
@@ -42,6 +44,7 @@ export default class CameraController {
       prebuffer: prebufferService,
       session: sessionService,
       stream: streamService,
+      iot: iotService,
     };
 
     CameraController.cameras.set(camera.name, controller);
@@ -58,6 +61,7 @@ export default class CameraController {
     controller.videoanalysis.destroy(true);
     controller.stream.destroy();
     controller.session.clearSession();
+    controller.iot.destroy();
 
     CameraController.cameras.delete(cameraName);
   }

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  camera.ui:
+    container_name: cameraui
+    image: 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:latest@sha256:1d2ce4e734d5c2320de94be6902e5b11a25db3852d2e852735bc0c2e9a6fab6c
+    ports:
+     - "8081:8081"
+     - "1884:1883"
+     - "7272:7272"
+    networks:
+      - default
+    volumes:
+      - ./data:/app/.camera.ui:rw
+    restart: unless-stopped
+
+networks:
+  default:
+    name: my-main-net
+    external: true
