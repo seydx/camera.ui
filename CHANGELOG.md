@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/SeydX/camera.ui/compare/v1.2.0...v1.3.0) (2023-12-25)
+
+
+### Features
+
+* **app:** add docker build and docker compose ([13e5b02](https://github.com/SeydX/camera.ui/commit/13e5b02f4b1aa1fe41808df5ec97ec218211355c))
+* **app:** moved mqtt for IoT into server ([4a4d1d0](https://github.com/SeydX/camera.ui/commit/4a4d1d05cb334f12012ab16ef0d9349af30cf0dd))
+
 ## 1.2.0 (2023-12-22)
 
 
