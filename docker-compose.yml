@@ -3,7 +3,7 @@ version: '3.8'
 services:
   camera.ui:
     container_name: cameraui
-    image: 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:1.3.2
+    image: 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:latest
     platform: linux/arm64
     ports:
      - "8081:8081"
@@ -11,6 +11,8 @@ services:
      - "7272:7272"
     networks:
       - default
+    environment:
+      CUI_LOG_MODE: 2
     volumes:
       - ./data:/app/.camera.ui:rw
     restart: unless-stopped

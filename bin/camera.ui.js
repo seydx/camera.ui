@@ -50,7 +50,7 @@ process.env.NTBA_FIX_350 = 1;
 process.env.CUI_SERVICE_MODE = '1';
 
 process.env.CUI_LOG_COLOR = logColourful;
-process.env.CUI_LOG_MODE = logLevel;
+process.env.CUI_LOG_MODE = (process.env.CUI_LOG_MODE) ? process.env.CUI_LOG_MODE : logLevel;
 process.env.CUI_LOG_TIMESTAMPS = logTimestamps;
 
 process.env.CUI_BASE_PATH = path.resolve(__dirname, '../');
