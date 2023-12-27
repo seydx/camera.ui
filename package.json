@@ -17,7 +17,7 @@
     "watch:ui": "npm run serve --prefix ui",
     "prepublishOnly": "npm i --package-lock-only && npm run lint && npm run build",
     "docker:build": "docker build -t lemieux-unmanned-cameraui .",
-    "docker:push": "docker buildx build --platform linux/arm64,linux/amd64 --tag 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:$npm_package_version --tag 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:latest --push .",
+    "docker:push": "docker buildx build --push --platform linux/arm64,linux/amd64/v2 --tag 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:$npm_package_version --tag 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:latest .",
     "docker:inspect": "docker manifest inspect --verbose 607765238356.dkr.ecr.us-east-1.amazonaws.com/lemieux-unmanned-cameraui:latest",
     "release": "standard-version --no-verify --release-as",
     "release:major": "standard-version --no-verify --release-as major",
