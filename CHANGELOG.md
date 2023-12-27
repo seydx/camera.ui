@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.4](https://github.com/douglassllc/camera.ui/compare/v1.3.3...v1.3.4) (2023-12-27)
+
+
+### Features
+
+* **back-end:** add ability to set log level in PROD with docker compose file ([a9d4991](https://github.com/douglassllc/camera.ui/commit/a9d4991b79b81c5e8be2bae14bb17ff34b9c45a9))
+* **build:** improve docker build and push ([4ce823c](https://github.com/douglassllc/camera.ui/commit/4ce823c68a3b6c8dc7558003a1c00794f6a5afdd))
+
 ### [1.3.3](https://github.com/douglassllc/camera.ui/compare/v1.3.2...v1.3.3) (2023-12-26)
 
 ### [1.3.2](https://github.com/SeydX/camera.ui/compare/v1.3.1...v1.3.2) (2023-12-25)
