@@ -579,5 +579,4 @@ export const routesConfig = (app) => {
     PermissionMiddleware.onlyMasterCanDoThisAction,
     CamerasController.shutdown,
   ]);
-
 };

@@ -1,7 +1,6 @@
 'use-strict';
 
 import LoggerService from '../../../services/logger/logger.service.js';
-import ConfigService from '../../../services/config/config.service.js';
 
 const { log } = LoggerService;
 
@@ -29,8 +28,8 @@ export default class IoTService {
         return log.debug('MQTT client not connected, skip MQTT (message)..');
       }
     } catch (error) {
-      log.info('An error occured during publishing mqtt message', cameraName, 'events');
-      log.error(error, cameraName, 'events');
+      log.info('An error occured during publishing mqtt message', message, 'events');
+      log.error(error, message, 'events');
     }
   }
 }
