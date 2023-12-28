@@ -7,7 +7,6 @@ services:
     platform: linux/arm64
     ports:
      - "8081:8081"
-     - "1884:1883"
      - "7272:7272"
     networks:
       - default

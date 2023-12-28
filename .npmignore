@@ -11,6 +11,12 @@ jsconfig.json
 test.js
 diverses
 
+# IoT version
+data/
+aws-ecr-auth.sh
+Dockerfile
+docker-compose.yml
+
 # Logs
 logs
 *.log
