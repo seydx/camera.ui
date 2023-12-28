@@ -2,12 +2,12 @@
 
 [![npm](https://img.shields.io/npm/v/@douglassllc/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/@douglassllc/camera.ui)
 [![npm](https://img.shields.io/npm/dt/@douglassllc/camera.ui.svg?style=flat-square)](https://www.npmjs.com/package/@douglassllc/camera.ui)
-[![GitHub last commit](https://img.shields.io/github/last-commit/@douglassllc/camera.ui.svg?style=flat-square)](https://github.com/douglassllc/camera.ui)
 
 This fork is to continue development of this project by upgrading and maintaining dependencies.  Additionally, this fork will address adding functionality to support a more IoT.
 
 - **Camera Controls**: ability to set the time zone, reboot, and shutdown
-- **IoT Status**: receive IoT messages via MQTT and update cameras
+- **IoT Health & Status**: receive IoT messages via MQTT and update cameras
+- **Docker**: added docker build, publish, and docker compose support
 
 <p align="center">
     <img src="https://github.com/SeydX/camera.ui/blob/master/images/logo.png">
