@@ -15,7 +15,7 @@
         .tw-block
           h2.tw-leading-6 {{ $route.params.name }}
           span.subtitle {{ camera.settings.room }} 
-          span.tw-text-xs.tw-text-thin - {{ lastStatusUpdate }}
+          span.tw-text-xs.tw-text-thin(:key="relativeTime") - {{ lastStatusUpdate() }}
         .tw-block
           v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
             v-icon(size="20") {{ icons['mdiOpenInNew'] }}
@@ -28,10 +28,10 @@
         v-col
           v-select(:value="camera.timezone || ''" :items="timezones" :prepend-icon="icons['mdiMapMarkerCircle']" label="Timezone" variant="outlined" @change="setTimezone")
         v-col.text-right(align-self="center")
+        v-col.text-right(align-self="center")
           v-btn.control-secondary(@click="reboot") Reboot
             v-icon.pl-2 {{ icons['mdiRefresh'] }}
-        v-col.text-right(align-self="center")
-          v-btn.control-primary(prepend-icon @click="dialog = true") Shutdown
+          v-btn.control-primary.ml-1(prepend-icon @click="dialog = true") Shutdown
             v-icon.pl-2 {{ icons['mdiPower'] }}
 
     v-col.tw-px-0.tw-flex.tw-justify-between.tw-items-center.tw-mt-2(:cols="cols")
@@ -117,6 +117,8 @@ import socket from '@/mixins/socket';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const REFRESH_INTERVAL = 60 * 1000;
+
 export default {
   name: 'Camera',
 
@@ -158,20 +160,18 @@ export default {
     ],
     currentTimezone: 'America/New_York',
     dialog: false,
+    relativeTime: Date.now(),
+    lastStatusUpdateTimer: null,
   }),
-
-  computed: {
-    lastStatusUpdate() {
-      return this.camera.lastStatusUpdate ? moment(this.camera.lastStatusUpdate).fromNow() : '';
-    },
-  },
 
   created() {
     this.$socket.client.on('iotStatus', this.setIotData);
+    this.updateLastStatusTime();
   },
 
   beforeDestroy() {
     this.$socket.client.off('iotStatus', this.setIotData);
+    clearInterval(this.lastStatusUpdateTimer);
   },
 
   async mounted() {
@@ -251,12 +251,21 @@ export default {
       await reboot(this.camera.name);
     },
     async shutdown() {
+      this.dialog = false;
       await shutdown(this.camera.name);
     },
     setIotData(data) {
       if (this.camera.name === data.name) {
         this.camera = { ...this.camera, ...data };
       }
+    },
+    lastStatusUpdate() {
+      return this.camera.lastStatusUpdate ? moment(this.camera.lastStatusUpdate).fromNow() : '';
+    },
+    updateLastStatusTime() {
+      this.lastStatusUpdateTimer = setInterval(() => {
+        this.relativeTime = Date.now();
+      }, REFRESH_INTERVAL);
     },
   },
 };

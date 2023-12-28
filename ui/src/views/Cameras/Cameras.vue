@@ -27,6 +27,8 @@
           .text-font-disabled {{ item.model || 'IP Camera' }}
         template(v-slot:item.address="{ item }")
           .text-font-disabled {{ item.url }}
+        template(v-slot:item.lastStatusUpdate="{ item }")
+          .text-font-disabled {{ item.lastStatusUpdate ? lastStatusUpdateRelativeTime(item.lastStatusUpdate) : $t('no_data') }}
         template(v-slot:item.lastNotification="{ item }")
           .text-font-disabled {{ item.lastNotification ? item.lastNotification.time : $t('no_data') }}
         template(v-slot:item.liveFeed="{ item }")
@@ -75,6 +77,8 @@ import FilterCard from '@/components/filter.vue';
 import VideoCard from '@/components/camera-card.vue';
 
 import socket from '@/mixins/socket';
+
+import moment from 'moment';
 
 export default {
   name: 'Cameras',
@@ -152,6 +156,14 @@ export default {
         value: 'address',
         align: 'start',
         sortable: false,
+        class: 'tw-pl-3 tw-pr-1',
+        cellClass: 'tw-pl-3 tw-pr-1',
+      },
+      {
+        text: 'Last Status',
+        value: 'lastStatusUpdate',
+        align: 'start',
+        sortable: true,
         class: 'tw-pl-3 tw-pr-1',
         cellClass: 'tw-pl-3 tw-pr-1',
       },
@@ -295,6 +307,9 @@ export default {
         : window.innerWidth ||
             document.documentElement.clientWidth ||
             document.getElementsByTagName('body')[0].clientWidth;
+    },
+    lastStatusUpdateRelativeTime(time) {
+      return moment(time).fromNow();
     },
   },
 };
