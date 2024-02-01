@@ -222,6 +222,7 @@ export const findAlertById = async (id) => {
   formattedNotification.id = notification.id;
   formattedNotification.message = JSON.parse(notification.message);
   formattedNotification.image = `/files/${notification.fileName}`;
+  formattedNotification.camera = notification.camera;
 
   return formattedNotification;
 };
@@ -243,6 +244,7 @@ export const findAlerts = async () => {
     formattedNotification.id = notification.id;
     formattedNotification.message = JSON.parse(notification.message);
     formattedNotification.image = `/files/${notification.fileName}`;
+    formattedNotification.camera = notification.camera;
 
     notifications.push(formattedNotification);
   }
