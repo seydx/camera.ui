@@ -3,7 +3,7 @@
   v-progress-circular(indeterminate color="var(--cui-primary)")
 .tw-py-6.tw-px-4(v-else)
   .pl-safe.pr-safe
-    
+
     .tw-flex.tw-justify-between
       .header-title.tw-flex.tw-items-center
         .page-title {{ $t($route.name.toLowerCase()) }}
@@ -34,7 +34,7 @@
 
       div(v-for="room in rooms" :key="room" v-if="!listMode && ((room === 'Standard' && cameras.find((cam) => cam.settings.room === room)) || room !== 'Standard')")
         .tw-mt-7(v-if="room !== 'Standard'")
-        
+
         h4(style="font-weight: 700;") {{ room === 'Standard' ? $t('standard') : room }}
         v-divider.tw-mt-3
 
@@ -206,7 +206,14 @@ export default {
       }
     },
     clickRow(item) {
-      this.$router.push(`/cameras/${item.name}/presets`);
+      if (item.type == "Fixed") {
+        this.$router.push(`/cameras/${item.name}`);
+
+      }
+      else {
+        this.$router.push(`/cameras/${item.name}/presets`);
+      }
+
     },
     changeListView(view) {
       localStorage.setItem('listModeCameras', view);
@@ -297,8 +304,8 @@ export default {
       return window.innerWidth && document.documentElement.clientWidth
         ? Math.min(window.innerWidth, document.documentElement.clientWidth)
         : window.innerWidth ||
-            document.documentElement.clientWidth ||
-            document.getElementsByTagName('body')[0].clientWidth;
+        document.documentElement.clientWidth ||
+        document.getElementsByTagName('body')[0].clientWidth;
     },
   },
 };
@@ -316,7 +323,7 @@ export default {
   display: flex;
 }
 
-div >>> .v-data-table-header__icon {
+div>>>.v-data-table-header__icon {
   display: none;
 }
 </style>
