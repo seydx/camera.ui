@@ -21,13 +21,13 @@
         v-btn.included.filter-cleanup.filter-nav-toggle(@click="toggleFilterNavi" icon height="38px" width="38px" :color="selectedFilter.length ? 'var(--cui-primary)' : 'var(--cui-text-default)'")
           v-icon {{ icons['mdiFilter'] }}
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.includes('ptz')")
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
     v-row.tw-w-full.tw-max-h-200
       v-col.tw-mb-3(:cols="cols" ref="chartExport")
         Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
-  .filter-content.filter-included.tw-flex.tw-flex-wrap(v-if="camera.name.toLowerCase().includes('thermal')")
-      Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
+  .filter-content.filter-included.tw-flex.tw-flex-wrap
+    Chart.tw-mt-5(:dataset="camTempData" :options="camTempsOptions" ref="chart")
 
   //- .filter-content
   //-   <v-row class="ma-4 justify-space-around">
@@ -54,7 +54,7 @@
   //-       v-btn.tw-text-white(fab small color="var(--cui-primary)" @click="$router.push(`/cameras/${camera.name}/feed`)")
   //-         v-icon(size="20") {{ icons['mdiOpenInNew'] }}
 
-  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")(v-if="camera.name.toLowerCase().includes('thermal')")
+  .filter-content.filter-included.v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")
     v-expansion-panels(v-model="notificationsPanel" multiple)
       v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
         v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
@@ -83,32 +83,32 @@
                   v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
   .v-col.tw-flex.tw-justify-between.tw-items-center.tw-mt-2.tw-w-full.tw-relative(:cols="cols")(v-else)
-      v-expansion-panels(v-model="notificationsPanel" multiple)
-        v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
-          v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
-          v-expansion-panel-content.notifications-panel-content
-            v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
-              template(v-slot:default="{ item }")
-                v-list.tw-p-0(two-line dense)
-                  v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
-                    v-list-item-avatar
-                      v-avatar(size="40" color="black")
-                        v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
-                          template(v-slot:placeholder)
-                            .tw-flex.tw-justify-center.tw-items-center.tw-h-full
-                              v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
-                    v-list-item-content
-                      v-list-item-title.text-default.tw-font-semibold {{ `${$t('camera_alarm')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
-                      v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
-                      v-list-item-subtitle.text-muted {{ `Alert Info: ${notification.message}` }}
-                    v-list-item-action
-                      v-btn.text-muted(icon @click="openGallery(notification)")
-                        v-icon {{ icons['mdiPlusCircle'] }}
-            .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
-              v-list.tw-p-0(dense)
-                v-list-item
+    v-expansion-panels(v-model="notificationsPanel" multiple)
+      v-expansion-panel.notifications-panel(v-for="(item,i) in 1" :key="i")
+        v-expansion-panel-header.notifications-panel-title.text-default.tw-font-bold {{ $t('notifications') }}
+        v-expansion-panel-content.notifications-panel-content
+          v-virtual-scroll(v-if="notifications.length" :items="notifications" item-height="74" max-height="400" bench="10" style="border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;")
+            template(v-slot:default="{ item }")
+              v-list.tw-p-0(two-line dense)
+                v-list-item(v-for="(notification,i) in notifications" :key="notification.id" :class="i !== notifications.length - 1 ? 'notification-item' : ''")
+                  v-list-item-avatar
+                    v-avatar(size="40" color="black")
+                      v-img(v-on:error="notification.error = true" :src="!notification.error ? `/files/${notification.recordType === 'Video' ? `${notification.name}@2.jpeg` : notification.fileName}` : require('../../assets/img/logo.png')" width="56")
+                        template(v-slot:placeholder)
+                          .tw-flex.tw-justify-center.tw-items-center.tw-h-full
+                            v-progress-circular(indeterminate color="var(--cui-primary)" size="16")
                   v-list-item-content
-                    v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
+                    v-list-item-title.text-default.tw-font-semibold {{ `${$t('camera_alarm')} (${notification.label.includes("no label") ? $t("no_label") : notification.label.includes("Custom") ? $t("custom") : notification.label})` }}
+                    v-list-item-subtitle.text-muted {{ `${$t('time')}: ${notification.time}` }}
+                    v-list-item-subtitle.text-muted {{ `Alert Info: ${notification.message}` }}
+                  v-list-item-action
+                    v-btn.text-muted(icon @click="openGallery(notification)")
+                      v-icon {{ icons['mdiPlusCircle'] }}
+          .tw-flex.tw-justify-center.tw-items-center.tw-w-full(v-if="!notifications.length" style="height: 100px")
+            v-list.tw-p-0(dense)
+              v-list-item
+                v-list-item-content
+                  v-list-item-title.text-muted.tw-font-semibold.tw-text-center {{ $t('no_notifications') }}
 
   LightBox(
   ref="lightbox"
@@ -442,9 +442,8 @@ export default {
       console.log(this.camera);
       console.log(this.query);
       if (!this.query) {
-        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${
-          today.toISOString().split('T')[0]
-        }&to=${today.toISOString().split('T')[0]}
+        this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000&from=${today.toISOString().split('T')[0]
+          }&to=${today.toISOString().split('T')[0]}
         `);
       } else {
         this.temperatures = await getTemperatures(`?cameras=${this.camera.name}&pageSize=5000${this.query}
@@ -523,22 +522,22 @@ export default {
   border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.1);
 }
 
-div >>> .v-badge__badge {
+div>>>.v-badge__badge {
   font-size: 8px;
   height: 15px;
   min-width: 15px;
   padding: 3px 3px;
 }
 
-div >>> .theme--light.v-btn.v-btn--disabled .v-icon {
+div>>>.theme--light.v-btn.v-btn--disabled .v-icon {
   color: rgba(var(--cui-text-default-rgb), 0.4) !important;
 }
 
-div >>> .v-expansion-panel-content__wrap {
+div>>>.v-expansion-panel-content__wrap {
   padding: 0;
 }
 
-div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
+div>>>.theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
   color: rgba(var(--cui-text-default-rgb)) !important;
 }
 </style>

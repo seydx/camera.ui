@@ -206,7 +206,7 @@ export default {
       }
     },
     clickRow(item) {
-      if (item.type == "Fixed") {
+      if (item.settings.type == "Fixed") {
         this.$router.push(`/cameras/${item.name}`);
 
       }
