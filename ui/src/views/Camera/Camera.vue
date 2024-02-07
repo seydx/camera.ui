@@ -1,7 +1,5 @@
 <template lang="pug">
-  .tw-flex.tw-justify-center.tw-items-center.page-loading(v-if="loading")
-    v-progress-circular(indeterminate color="var(--cui-primary)")
-  .tw-py-6.tw-px-4(v-else)
+  .tw-py-6.tw-px-4
     .tw-max-w-7xl.pl-safe.pr-safe
       Sidebar(datePicker @intervalModifier="modifyInterval" @tempAxisModifier="modifyTempAxis" @tempValueModifier="modifyTempValue" @filter="filter" :temperaturesJson="exportData" :camera="camera" :cameraPresets="cameraPresets")
 
