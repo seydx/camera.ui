@@ -451,7 +451,7 @@ export const routes = [
           child: true,
           auth: {
             requiresAuth: true,
-            requiredLevel: ['settings:general:access', 'settings:general:edit'],
+            requiredLevel: ['admin'],
           },
           config: {
             fixedNavbar: true,
@@ -472,7 +472,7 @@ export const routes = [
           child: true,
           auth: {
             requiresAuth: true,
-            requiredLevel: ['admin'],
+            requiredLevel: ['admin', 'settings:general:access', 'settings:general:edit'],
           },
           config: {
             fixedNavbar: true,
@@ -514,7 +514,7 @@ export const routes = [
           child: true,
           auth: {
             requiresAuth: true,
-            requiredLevel: ['settings:recordings:access', 'settings:recordings:edit'],
+            requiredLevel: ['admin'],
           },
           config: {
             fixedNavbar: true,
@@ -535,7 +535,7 @@ export const routes = [
           child: true,
           auth: {
             requiresAuth: true,
-            requiredLevel: ['settings:notifications:access', 'settings:notifications:edit'],
+            requiredLevel: ['admin'],
           },
           config: {
             fixedNavbar: true,
@@ -577,7 +577,7 @@ export const routes = [
           child: true,
           auth: {
             requiresAuth: true,
-            requiredLevel: ['backup:download', 'backup:restore'],
+            requiredLevel: ['admin'],
           },
           config: {
             fixedNavbar: true,

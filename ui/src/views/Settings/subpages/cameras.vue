@@ -58,17 +58,17 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('livestream_snapshot') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.thermalReporting")
-                
+
                   label.form-input-label {{ 'IP Address' }}
                   v-text-field(v-model="camera.ipaddress" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiLink'] }}
-                
+
                 label.form-input-label {{ 'Username' }}
                   v-text-field(v-model="camera.username" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiLink'] }}
-                
+
                 label.form-input-label {{ 'Password' }}
                   v-text-field(v-model="camera.password" prepend-inner-icon="mdi-link" background-color="var(--cui-bg-card)" type="password" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -81,7 +81,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('livestream_snapshot') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.dashboard.live")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label {{ `${$t('camview')} ${$t('livestream')}` }}
@@ -99,7 +99,7 @@
                         br(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
                         span(style="color: #FF5252 !important" v-if="moduleName === 'homebridge-camera-ui' || env === 'development'") Attention: Enabling this option will disable HSV and disabling this option will enable HSV.
                   v-switch(color="var(--cui-primary)" v-model="cam.recordOnMovement")
-                  
+
                 label.form-input-label {{ `${$t('dashboard')} ${$t('snapshot_timer')}` }}
                 v-text-field(v-model.number="camera.dashboard.snapshotTimer" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -124,12 +124,12 @@
                 .tw-flex.tw-justify-between.tw-items-center
                   label.form-input-label {{ $t('audio') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.audio")
-                
+
                 label.form-input-label {{ $t('video_resolution') }}
                 v-select.select(prepend-inner-icon="mdi-video-high-definition" v-model="camera.resolution" :items="resolutions" background-color="var(--cui-bg-card)" solo)
                   template(v-slot:prepend-inner)
                     v-icon.text-muted {{ icons['mdiVideoHighDefinition'] }}
-                
+
                 label.form-input-label {{ $t('ping_timeout') }}
                 v-text-field(v-model.number="camera.pingTimeout" type="number" :suffix="$t('seconds')" prepend-inner-icon="mdi-speedometer" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -149,7 +149,7 @@
                 .tw-flex.tw-justify-between.tw-items-center
                   label.form-input-label {{ $t('alexa') }}
                   v-switch(color="var(--cui-primary)" v-model="camera.alexa")
-                
+
                 label.form-input-label {{ $t('telegram_message_type') }}
                 v-select.select(prepend-inner-icon="mdi-video-image" v-model="camera.telegramType" :items="telegramTypes" background-color="var(--cui-bg-card)" solo)
                   template(v-slot:prepend-inner)
@@ -347,7 +347,7 @@
                         br
                         span(style="color: #FF5252 !important") Attention: "At Home" must be enabled for privacy mode to work
                   v-switch(color="var(--cui-primary)" v-model="camera.privacyMode")
-                
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Unbridge (Recommended) ¹ ²
@@ -355,7 +355,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('unbridge_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.unbridge")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Motion Sensor ¹ ²
@@ -363,7 +363,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('motionSensor_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.motion")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Doorbell Sensor ¹ ²
@@ -371,7 +371,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('doorbellSensor_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.doorbell")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Motion / Doorbell Switches ¹ ²
@@ -387,7 +387,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('privacySwitch_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.privacySwitch")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Trigger Doorbell on Motion ¹
@@ -411,7 +411,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('use_interface_timer_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.useInterfaceTimer")
-                
+
                 label.form-input-label Manufacturer ¹ ²
                 v-text-field(v-model="cam.manufacturer" :hint="$t('manufacturer_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -420,7 +420,7 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}
-                      
+
                 label.form-input-label Model ¹ ²
                 v-text-field(v-model="cam.model" :hint="$t('model_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -429,7 +429,7 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}
-                      
+
                 label.form-input-label Serial Number ¹ ²
                 v-text-field(v-model="cam.serialNumber" :hint="$t('serialNumber_info')" persistent-hint prepend-inner-icon="mdi-alphabetical" background-color="var(--cui-bg-card)" color="var(--cui-text-default)" solo)
                   template(v-slot:prepend-inner)
@@ -457,7 +457,7 @@
                 v-btn.tw-text-white.tw-mt-3(:disabled="!prebufferingStates[cam.name].state" :loading="prebufferingStates[cam.name].loading" block color="error" @click="onHandlePrebuffering(cam.name, false)") {{ $t('stop') }}
                 v-btn.tw-text-white.tw-mt-5(:disabled="!cam.prebuffering" :loading="prebufferingStates[cam.name].loading" block color="success" @click="onHandlePrebuffering(cam.name, true)") {{ $t('restart') }}
 
-            v-expansion-panel
+            v-expansion-panel(v-if="currentUser.permissionLevel.includes('admin'))
               v-expansion-panel-header 
                 div
                   .page-subtitle {{ $t('videoanalysis') }}
@@ -508,20 +508,20 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}
-                
+
                 .tw-my-3
-                
+
                 label.form-input-label {{ $t('pixel_difference') }}
                 v-slider(:messages="$t('pixel_difference_info')" min="1" max="255" step="1" thumb-label v-model="camera.videoanalysis.difference")
                   template(v-slot:message="{ key, message}")
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}
-                      
+
                 v-btn.tw-text-white.tw-mt-8(block color="var(--cui-primary)" @click="resetVideoanalysis") {{ $t('reset') }}
 
                 v-divider.tw-mt-10
-                
+
                 .tw-flex.tw-justify-between.tw-items-center.tw-mt-10
                   label.form-input-label {{ $t('status') }}
                   span.tw-text-right(:class="!videoanalysisStates[cam.name].state ? 'tw-text-red-500' : 'tw-text-green-500'") {{ videoanalysisStates[cam.name].state ? $t('active') : $t('inactive') }}
@@ -555,7 +555,7 @@
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ $t('audio_info') }}
                   v-switch(color="var(--cui-primary)" v-model="cam.videoConfig.audio")
-                  
+
                 .tw-flex.tw-justify-between.tw-items-center
                   .tw-block.tw-w-full.tw-pr-2
                     label.form-input-label Read Rate ¹
@@ -752,7 +752,7 @@
                     .tw-flex.tw-flex-row.tw-items-center.tw-break-normal
                       v-icon.text-muted.tw-mr-1(small) {{ icons['mdiInformationOutline'] }}
                       .input-info.tw-italic {{ message }}   
-                
+
                 .tw-mt-3(v-if="moduleName === 'homebridge-camera-ui' || env === 'development'")
                   .page-subtitle HKSV Configuration
 
@@ -956,6 +956,12 @@ export default {
       prebufferingStates: {},
       videoanalysisStates: {},
     };
+  },
+
+  computed: {
+    currentUser() {
+      return this.$store.state.auth.user || {};
+    },
   },
 
   watch: {
@@ -1394,11 +1400,11 @@ export default {
   bottom: 95px !important;
 }
 
-div >>> .v-chip .v-chip__content {
+div>>>.v-chip .v-chip__content {
   color: #fff !important;
 }
 
-div >>> .v-expansion-panels .v-expansion-panel {
+div>>>.v-expansion-panels .v-expansion-panel {
   background: none;
   color: var(--cui-text-default);
   border-bottom: 1px solid rgba(var(--cui-text-default-rgb), 0.12);
@@ -1406,25 +1412,25 @@ div >>> .v-expansion-panels .v-expansion-panel {
   border-bottom-right-radius: 0 !important;
 }
 
-div >>> .v-expansion-panel-header {
+div>>>.v-expansion-panel-header {
   padding-left: 0;
   padding-right: 0;
 }
 
-div >>> .v-expansion-panel-content__wrap {
+div>>>.v-expansion-panel-content__wrap {
   padding-left: 0;
   padding-right: 0;
 }
 
-div >>> .v-expansion-panel::before {
+div>>>.v-expansion-panel::before {
   box-shadow: unset;
 }
 
-div >>> .theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
+div>>>.theme--light.v-expansion-panels .v-expansion-panel-header .v-expansion-panel-header__icon .v-icon {
   color: rgba(var(--cui-text-default-rgb), 0.4);
 }
 
-div >>> .v-expansion-panel:not(:first-child)::after {
+div>>>.v-expansion-panel:not(:first-child)::after {
   border: none;
 }
 
@@ -1432,11 +1438,11 @@ div >>> .v-expansion-panel:not(:first-child)::after {
   border: none !important;
 }*/
 
-div >>> .v-slider__thumb-label {
+div>>>.v-slider__thumb-label {
   color: #fff !important;
 }
 
-div >>> .v-slider__track-background.primary.lighten-3 {
+div>>>.v-slider__track-background.primary.lighten-3 {
   background-color: #5a5a5a !important;
   border-color: #5a5a5a !important;
 }
