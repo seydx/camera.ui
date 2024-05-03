@@ -457,7 +457,7 @@
                 v-btn.tw-text-white.tw-mt-3(:disabled="!prebufferingStates[cam.name].state" :loading="prebufferingStates[cam.name].loading" block color="error" @click="onHandlePrebuffering(cam.name, false)") {{ $t('stop') }}
                 v-btn.tw-text-white.tw-mt-5(:disabled="!cam.prebuffering" :loading="prebufferingStates[cam.name].loading" block color="success" @click="onHandlePrebuffering(cam.name, true)") {{ $t('restart') }}
 
-            v-expansion-panel(v-if="currentUser.permissionLevel.includes('admin'))
+            v-expansion-panel(v-if="currentUser.permissionLevel.includes('admin')")
               v-expansion-panel-header 
                 div
                   .page-subtitle {{ $t('videoanalysis') }}
