@@ -2,6 +2,8 @@
 > 🚀 New Version in Development 🚀
 >
 > A new version of camera.ui is currently under active development. An initial alpha/beta release and previews are coming soon. Stay tuned for exciting updates!
+>
+> Details: https://github.com/seydx/camera.ui/issues/448
 
 <p align="center">
     <img src="https://github.com/SeydX/camera.ui/blob/master/images/logo.png">
