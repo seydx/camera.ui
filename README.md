@@ -35,7 +35,7 @@ and much mure...
 
 **Supported Languages:** 
 
-:de: | :gb: | :netherlands: | :fr: | :thailand: | :es:
+:de: | :gb: | :netherlands: | :fr: | :thailand: | :es: | :tr:
 
 **Demo:** https://streamable.com/3yce42 
 
