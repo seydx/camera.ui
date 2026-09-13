@@ -98,7 +98,7 @@
         <Card
           v-for="candidate in gridItems"
           :key="candidate.id"
-          class="cui-card overflow-hidden transition-shadow cursor-pointer hover:shadow-md aspect-[1.17] flex flex-col"
+          class="cui-card cui-training-card overflow-hidden transition-shadow cursor-pointer hover:shadow-md aspect-[1.17] flex flex-col"
           :pt="{ header: { class: 'flex-1 min-h-0 flex' }, body: { class: 'shrink-0', style: 'height: auto' } }"
           @click="onCardClick(candidate)"
         >
@@ -483,3 +483,21 @@ onBeforeUnmount(() => {
   stopCandidatesListener();
 });
 </script>
+
+<style scoped>
+.cui-training-card :deep(:is(.p-tag-success, .p-tag-info, .p-tag-danger)) {
+  background-color: var(--card-background);
+}
+
+.cui-training-card :deep(.p-tag-success) {
+  background-image: linear-gradient(var(--p-tag-success-background), var(--p-tag-success-background));
+}
+
+.cui-training-card :deep(.p-tag-info) {
+  background-image: linear-gradient(var(--p-tag-info-background), var(--p-tag-info-background));
+}
+
+.cui-training-card :deep(.p-tag-danger) {
+  background-image: linear-gradient(var(--p-tag-danger-background), var(--p-tag-danger-background));
+}
+</style>

@@ -105,7 +105,8 @@ export class AssistantController {
         durability,
       });
     } catch (error: any) {
-      reply.code(400).send({ statusCode: 400, message: error.message });
+      const statusCode = error.statusCode ?? 400;
+      reply.code(statusCode).send({ statusCode, message: error.message });
       return;
     }
     await pipeResponse(reply, response);

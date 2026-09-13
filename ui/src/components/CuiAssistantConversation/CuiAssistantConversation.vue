@@ -379,7 +379,7 @@
 </template>
 
 <script setup lang="ts">
-import { AssistantQuery, branchAssistantThread, replaceAssistantThreadMessages } from '@/api/routes/assistant.js';
+import { AssistantQuery, branchAssistantThread, getAssistantThread, replaceAssistantThreadMessages } from '@/api/routes/assistant.js';
 import { capabilityTags, defaultModel } from '@/common/assistantModels.js';
 import { isContinueMark } from '@/components/CuiAssistantMessage/types.js';
 import { PENDING_ANSWER } from './types.js';
@@ -440,7 +440,7 @@ const chat = useAssistantChat({
   modelId,
   approvalTools: props.approvalTools,
   onFinish: () => emit('finished'),
-  onError: (error) => toast.add({ severity: 'error', detail: error.message, life: 5000 }),
+  onError: onChatError,
 });
 
 const welcome = computed(() => chat.messages.value.length === 0);
@@ -650,6 +650,21 @@ async function send(submission: ComposerSubmission): Promise<void> {
     content.push({ type: item.kind, source: { type: 'data', value: item.data, mimeType: item.mimeType } });
   }
   await chat.sendMessage({ content });
+}
+
+function onChatError(error: Error): void {
+  if (error.message.includes('status: 409')) {
+    reloadThread();
+    return;
+  }
+  toast.add({ severity: 'error', detail: error.message, life: 5000 });
+}
+
+async function reloadThread(): Promise<void> {
+  const thread = await getAssistantThread(props.threadId).catch(() => undefined);
+  if (!thread) return;
+  chat.replaceFromStore(thread.messages as UIMessage[], thread.attachments);
+  toast.add({ severity: 'info', detail: t('views.assistant.thread_reloaded'), life: 5000 });
 }
 
 function refreshFromStore(thread: DBAssistantThread): boolean {

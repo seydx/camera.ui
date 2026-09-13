@@ -2043,6 +2043,7 @@ export default {
       queue_cancel: 'Remove from queue',
       scroll_to_latest: 'Jump to the latest',
       paused_elsewhere: 'This conversation is waiting for a decision in another window or on another device.',
+      thread_reloaded: 'This conversation continued on another device, it now shows the latest state.',
       memory_title: 'What the assistant remembers about you',
       memory_empty: 'Nothing yet. Facts you mention or ask it to remember show up here.',
       memory_forget: 'Forget',

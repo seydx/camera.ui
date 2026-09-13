@@ -40,7 +40,7 @@
             @pointerup="onPointerUp"
             @pointercancel="onPointerUp"
           >
-            <g v-for="(box, i) in boxes" :key="i">
+            <g v-for="{ box, i } in layers" :key="i">
               <rect
                 :x="pct(box.x)"
                 :y="pct(box.y)"
@@ -77,7 +77,7 @@
           </svg>
 
           <div
-            v-for="(box, i) in boxes"
+            v-for="{ box, i } in layers"
             :key="`label-${i}`"
             class="bbox-label cursor-move"
             :data-box-label="i"
@@ -200,7 +200,8 @@ import { TRAINING_LABELS } from './types';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
 import type { DBTrainingCandidate, DBTrainingCandidateBox } from '@shared/types';
-import type { CSSProperties } from 'vue';
+import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { CSSProperties, Ref } from 'vue';
 import type { TrainingBoxEditorProps } from './types';
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
@@ -217,6 +218,7 @@ interface DragState {
 
 const props = defineProps<TrainingBoxEditorProps>();
 
+const dialogRef = inject<Ref<DynamicDialogInstance>>('dialogRef')!;
 const { t, te } = useI18n();
 
 const corners: Corner[] = ['nw', 'ne', 'sw', 'se'];
@@ -233,6 +235,9 @@ const NUDGE_STEP = 0.003;
 const edits = new Map<string, DBTrainingCandidateBox[]>();
 const removedIds = reactive(new Set<string>());
 const verifiedIds = reactive(new Set<string>());
+const sunkBoxes = shallowReactive(new Map<DBTrainingCandidateBox, number>());
+
+let sinkCount = 0;
 const startIndex = Math.max(
   0,
   props.candidates.findIndex((c) => c.id === props.startId),
@@ -279,6 +284,10 @@ const hasPrev = computed(() => props.candidates.slice(0, index.value).some((c) =
 const hasNext = computed(() => props.candidates.slice(index.value + 1).some((c) => !removedIds.has(c.id)));
 const currentStatus = computed(() => (verifiedIds.has(current.value.id) ? 'verified' : current.value.status));
 
+const layers = computed(() => boxes.value.map((box, i) => ({ box, i })).sort((a, b) => layerRank(a) - layerRank(b)));
+
+const selectedBox = computed<DBTrainingCandidateBox | undefined>(() => boxes.value[selectedIndex.value]);
+
 const selectedPlateBox = computed(() => {
   const box = boxes.value[selectedIndex.value];
   return box?.label === 'license_plate' ? box : null;
@@ -313,6 +322,11 @@ const labelPlacement = computed(() => (box: DBTrainingCandidateBox): 'above' | '
 const isLabelOnRight = computed(() => (box: DBTrainingCandidateBox): boolean => {
   return box.x > 0.7;
 });
+
+function layerRank({ box, i }: { box: DBTrainingCandidateBox; i: number }): number {
+  if (i === selectedIndex.value) return Number.MAX_SAFE_INTEGER;
+  return sunkBoxes.get(toRaw(box)) ?? i;
+}
 
 function labelText(label: string): string {
   const key = `components.training_editor.labels.${label}`;
@@ -551,6 +565,7 @@ function goTo(next: number, stashEdits = true): void {
   loupe.value = null;
   selectedIndex.value = -1;
   labelMenuIndex.value = -1;
+  sunkBoxes.clear();
   labelMenuRef.value?.hide();
   resetStageZoom();
 }
@@ -621,7 +636,16 @@ function nudgeSelected(dx: number, dy: number, resize: boolean): void {
   }
 }
 
+async function verifyFromKeyboard(): Promise<void> {
+  const result = await save('verified');
+  if (result !== null) dialogRef.value.close({ status: 'confirm', data: result });
+}
+
 watch(index, preloadNeighbors, { immediate: true });
+
+watch(selectedBox, (next, previous) => {
+  if (previous && previous !== next && boxes.value.includes(previous)) sunkBoxes.set(toRaw(previous), --sinkCount);
+});
 
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   if ((event.target as HTMLElement | null)?.closest?.('input, textarea')) return;
@@ -656,7 +680,7 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
     cycleLabel(event.shiftKey ? -1 : 1);
   } else if (event.key === ' ' && !labelMenuRef.value?.isOpen) {
     event.preventDefault();
-    save('verified');
+    verifyFromKeyboard();
   }
 });
 

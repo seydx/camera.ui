@@ -547,6 +547,10 @@ export class AssistantManager {
       if (record?.status === 'pending') openInterrupts.add(item.interruptId);
     }
     const resume = (params.resume ?? []).filter((item) => openInterrupts.has(item.interruptId));
+    const stored = params.threadId ? this.threads.get(ctx.userId, params.threadId) : undefined;
+    if (params.resume?.length ? !resume.length : forwarded.regenerate !== true && repeatsStored(stored?.messages, params.messages)) {
+      throw Object.assign(new Error('The conversation changed since this device loaded it'), { statusCode: 409 });
+    }
 
     const adapter = withEmptyTurnRetry(createAdapter(model, this.decryptKey(entry)), () => this.logger.debug(EMPTY_TURN_LOG));
     const disabledGroups = new Set(Array.isArray(forwarded.disabledGroups) ? forwarded.disabledGroups.filter((group) => typeof group === 'string') : []);
@@ -1091,6 +1095,20 @@ function entryConfigured(entry: DBAssistantModel): boolean {
 
 function sendsImages(entry: DBAssistantModel): boolean {
   return entry.sendImages && entry.capabilities?.vision !== false;
+}
+
+function repeatsStored(stored: readonly unknown[] | undefined, incoming: readonly unknown[]): boolean {
+  if (!stored?.length || !incoming.length) return false;
+  const known = new Set(stored.map(messageId));
+  return incoming.every((message) => {
+    const id = messageId(message);
+    return id !== undefined && known.has(id);
+  });
+}
+
+function messageId(message: unknown): string | undefined {
+  const id = (message as { id?: unknown } | null)?.id;
+  return typeof id === 'string' ? id : undefined;
 }
 
 function pickString(value: unknown): string | undefined {

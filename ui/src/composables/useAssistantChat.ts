@@ -154,7 +154,8 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
   const usage = ref<Record<string, AssistantUsageEvent>>({});
   const stoppedId = ref<string | null>(null);
 
-  function syncForwarded(): void {
+  function syncForwarded(regenerate = false): void {
+    forwardedProps.regenerate = regenerate;
     forwardedProps.disabledGroups = [...(options.disabledGroups?.value ?? [])];
     forwardedProps.instructions = options.instructions?.value?.trim() || undefined;
     forwardedProps.modelId = options.modelId?.value ?? undefined;
@@ -259,7 +260,7 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
 
   async function reload(): Promise<void> {
     stoppedId.value = null;
-    syncForwarded();
+    syncForwarded(true);
     await chat.reload();
   }
 

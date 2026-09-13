@@ -2057,6 +2057,7 @@ export default {
       queue_cancel: 'Aus der Warteschlange nehmen',
       scroll_to_latest: 'Zum Ende springen',
       paused_elsewhere: 'Dieses Gespräch wartet in einem anderen Fenster oder auf einem anderen Gerät auf eine Entscheidung.',
+      thread_reloaded: 'Dieses Gespräch ging auf einem anderen Gerät weiter und zeigt jetzt den aktuellen Stand.',
       memory_title: 'Was der Assistent über dich weiß',
       memory_empty: 'Noch nichts. Fakten, die du erwähnst oder ihn merken lässt, erscheinen hier.',
       memory_forget: 'Vergessen',
