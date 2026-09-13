@@ -38,31 +38,17 @@
           </Button>
           <Button
             v-if="!clickDisabled"
-            v-tooltip.left="{ value: $t('views.recordings.episode_trace.open') }"
-            rounded
-            text
-            severity="secondary"
-            class="!w-5 !h-5 !p-0 shrink-0 bg-black/60 hover:!bg-black/80"
-            @click.stop="openTrace"
-            @mouseenter="stopPreview"
-          >
-            <template #icon>
-              <i-tabler:list-search class="w-3 h-3 text-white" />
-            </template>
-          </Button>
-          <Button
-            v-if="!clickDisabled"
-            v-tooltip.left="{ value: $t('views.recordings.download') }"
+            v-tooltip.left="{ value: $t('views.recordings.more_actions') }"
             rounded
             text
             severity="secondary"
             :loading="isDownloading"
             class="!w-5 !h-5 !p-0 shrink-0 bg-black/60 hover:!bg-black/80"
-            @click.stop="handleDownload"
+            @click.stop="openCardMenu"
             @mouseenter="stopPreview"
           >
             <template #icon>
-              <i-tabler:download class="w-3 h-3 text-white" />
+              <i-tabler:dots-vertical class="w-3 h-3 text-white" />
             </template>
           </Button>
         </div>
@@ -93,14 +79,31 @@
     <div v-if="!fluid" class="mt-2 text-center">
       <p class="text-xs text-muted">{{ formatTime }}</p>
     </div>
+
+    <CuiMenu
+      v-if="fluid"
+      ref="cardMenuRef"
+      :items="cardMenuItems"
+      :popover="{
+        pt: {
+          content: {
+            class: 'p-0! rounded-xl! overflow-hidden!',
+          },
+        },
+      }"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { EventHoverPreviewKey, thumbnailToUrl, useEventStore } from '@camera.ui/nvr';
+import DownloadIcon from '~icons/tabler/download';
+import TraceIcon from '~icons/tabler/list-search';
 
 import { extractErrorMessage } from '@/common/utils.js';
+import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 
+import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { PreviewPart, RecordedEpisode } from '@camera.ui/nvr';
 import type { PrivacyZone } from '@camera.ui/sdk';
 import type { DBCamera } from '@shared/types';
@@ -124,6 +127,7 @@ const preview = inject(EventHoverPreviewKey, undefined);
 
 const cardRef = useTemplateRef<HTMLElement>('cardRef');
 const previewCanvasRef = useTemplateRef<HTMLCanvasElement>('previewCanvasRef');
+const cardMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('cardMenuRef');
 const mosaicUrl = ref<string | undefined>(undefined);
 const mosaicState = ref<'loading' | 'loaded' | 'empty'>('loading');
 const isDownloading = ref(false);
@@ -161,6 +165,11 @@ const privacyByCamera = computed(() => {
   }
   return map;
 });
+
+const cardMenuItems = computed<MenuItem[]>(() => [
+  { key: 'trace', label: t('views.recordings.episode_trace.open'), icon: TraceIcon, onClick: () => openTrace() },
+  { key: 'download', label: t('views.recordings.download'), icon: DownloadIcon, loading: isDownloading.value, onClick: () => handleDownload() },
+]);
 
 const previewIndicator = computed(() => {
   if (!preview) return '';
@@ -232,6 +241,11 @@ function openEpisode(): void {
   if (longPress.consumesClick()) return;
   if (props.clickDisabled) return;
   dialogInstance = openEpisodePlayer(props.episode, props.cameraById);
+}
+
+function openCardMenu(event: MouseEvent): void {
+  stopPreview();
+  cardMenuRef.value?.toggleMenu(event);
 }
 
 function openTrace(): void {

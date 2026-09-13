@@ -132,7 +132,7 @@
       </div>
     </div>
 
-    <div v-if="!welcome" class="cui-assistant-dock relative px-4 pb-3 pt-6">
+    <div v-if="!welcome" class="relative px-4 pb-3 pt-6">
       <Button
         v-if="!pinnedToBottom"
         v-tooltip.top="{ value: $t('views.assistant.scroll_to_latest') }"
@@ -685,7 +685,7 @@ watch(welcome, async () => {
 
 useEventListener(window, 'scroll', realignPopovers, { capture: true, passive: true });
 
-useResizeObserver(contentRef, () => {
+useResizeObserver([scrollRef, contentRef], () => {
   if (pinnedToBottom.value) scrollToBottom();
 });
 
@@ -756,9 +756,5 @@ defineExpose({ refreshFromStore });
   border: 1px solid var(--border-color);
   background: var(--card-background);
   box-shadow: var(--shadow-sm);
-}
-
-.cui-assistant-dock {
-  background: linear-gradient(to top, rgba(var(--ground-background-val), 1) 62%, rgba(var(--ground-background-val), 0));
 }
 </style>

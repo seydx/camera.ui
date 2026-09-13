@@ -102,11 +102,13 @@
                       </template>
                     </Button>
                   </div>
-                  <Button type="button" severity="secondary" text rounded class="cui-icon-md shrink-0 md:hidden" @click="openModelMenu($event, entry)">
-                    <template #icon>
-                      <i-mdi:dots-vertical width="100%" height="100%" />
-                    </template>
-                  </Button>
+                  <div class="shrink-0 md:hidden">
+                    <Button type="button" severity="secondary" text rounded class="cui-icon-md" @click="openModelMenu($event, entry)">
+                      <template #icon>
+                        <i-mdi:dots-vertical width="100%" height="100%" />
+                      </template>
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div v-else class="text-sm text-muted">{{ $t('views.settings.assistant_models_empty') }}</div>
@@ -350,58 +352,81 @@
             <div class="flex flex-col gap-6">
               <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.assistant_external_info') }}</Message>
 
-              <div v-for="server in form.mcpServers" :key="server.id" class="cui-assistant-server flex flex-col gap-4 rounded-xl p-4">
-                <div class="flex items-center gap-3">
-                  <span class="text-sm font-medium text-color truncate">{{ server.name || $t('views.settings.assistant_external_new') }}</span>
-                  <span class="text-xs" :class="externalStateClass(server.id)">{{ externalStateLabel(server.id) }}</span>
-                  <ToggleSwitch v-model="server.enabled" class="ml-auto shrink-0" />
-                  <Button
-                    v-tooltip.top="{ value: $t('views.settings.assistant_external_remove') }"
-                    type="button"
-                    severity="secondary"
-                    text
-                    rounded
-                    class="cui-icon-md shrink-0"
-                    @click="removeServer(server.id)"
-                  >
-                    <template #icon>
-                      <i-mdi:delete-outline class="w-4 h-4" />
-                    </template>
-                  </Button>
-                </div>
-                <div class="flex flex-col md:flex-row gap-4">
-                  <div class="flex flex-col field-gap md:w-56">
-                    <label :for="`server-name-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_name') }}</label>
-                    <InputText :id="`server-name-${server.id}`" v-model="server.name" fluid placeholder="Home Assistant" />
+              <div v-for="server in form.mcpServers" :key="server.id" class="cui-assistant-server overflow-hidden rounded-xl">
+                <button
+                  type="button"
+                  class="flex w-full cursor-pointer items-center gap-3 p-4 text-left"
+                  :aria-expanded="openServers.includes(server.id)"
+                  @click="toggleServer(server.id)"
+                >
+                  <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span class="truncate text-sm font-medium text-color">{{ server.name || $t('views.settings.assistant_external_new') }}</span>
+                    <span v-if="externalStateLabel(server.id)" class="truncate text-xs" :class="externalStateClass(server.id)">{{ externalStateLabel(server.id) }}</span>
                   </div>
-                  <div class="flex flex-col field-gap flex-1">
-                    <label :for="`server-url-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_url') }}</label>
-                    <InputText :id="`server-url-${server.id}`" v-model="server.url" fluid placeholder="http://homeassistant.local:8123/api/mcp" />
+                  <i-mdi:chevron-down class="h-5 w-5 shrink-0 text-muted transition-transform duration-200" :class="{ 'rotate-180': openServers.includes(server.id) }" />
+                </button>
+                <div class="cui-assistant-server-body grid" :class="{ 'cui-assistant-server-open': openServers.includes(server.id) }">
+                  <div class="min-h-0 overflow-hidden" :inert="!openServers.includes(server.id)">
+                    <div class="flex flex-col gap-4 px-4 pb-4">
+                      <div class="flex items-center gap-4 cui-toggle-switch">
+                        <div class="flex flex-col field-switch-gap">
+                          <label :for="`server-enabled-${server.id}`" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
+                          <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
+                            $t('views.settings.assistant_external_enabled_info')
+                          }}</Message>
+                        </div>
+                        <ToggleSwitch v-model="server.enabled" :input-id="`server-enabled-${server.id}`" class="ml-auto shrink-0" />
+                      </div>
+                      <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex flex-col field-gap md:w-56">
+                          <label :for="`server-name-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_name') }}</label>
+                          <InputText :id="`server-name-${server.id}`" v-model="server.name" fluid placeholder="Home Assistant" />
+                        </div>
+                        <div class="flex flex-col field-gap flex-1">
+                          <label :for="`server-url-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_url') }}</label>
+                          <InputText :id="`server-url-${server.id}`" v-model="server.url" fluid placeholder="http://homeassistant.local:8123/api/mcp" />
+                        </div>
+                      </div>
+                      <div class="flex flex-col field-gap">
+                        <label :for="`server-token-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_token') }}</label>
+                        <Password
+                          :id="`server-token-${server.id}`"
+                          v-model="serverTokens[server.id]"
+                          :feedback="false"
+                          toggle-mask
+                          fluid
+                          autocomplete="new-password"
+                          :placeholder="server.tokenSet ? '••••••••' : ''"
+                        />
+                        <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{
+                          server.tokenSet ? $t('views.settings.assistant_external_token_set') : $t('views.settings.assistant_external_token_info')
+                        }}</Message>
+                      </div>
+                      <div class="flex items-center gap-4 cui-toggle-switch">
+                        <div class="flex flex-col field-switch-gap">
+                          <label :for="`server-insecure-${server.id}`" class="cui-label-switch">{{ $t('views.settings.assistant_external_insecure') }}</label>
+                          <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
+                            $t('views.settings.assistant_external_insecure_info')
+                          }}</Message>
+                        </div>
+                        <ToggleSwitch :input-id="`server-insecure-${server.id}`" v-model="server.insecure" class="ml-auto shrink-0" />
+                      </div>
+                      <div class="flex">
+                        <Button
+                          type="button"
+                          severity="danger"
+                          outlined
+                          class="cui-button-medium ml-auto"
+                          :label="$t('views.settings.assistant_external_remove')"
+                          @click="removeServer(server.id)"
+                        >
+                          <template #icon>
+                            <i-mdi:delete-outline class="w-4 h-4" />
+                          </template>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div class="flex flex-col field-gap">
-                  <label :for="`server-token-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_token') }}</label>
-                  <Password
-                    :id="`server-token-${server.id}`"
-                    v-model="serverTokens[server.id]"
-                    :feedback="false"
-                    toggle-mask
-                    fluid
-                    autocomplete="new-password"
-                    :placeholder="server.tokenSet ? '••••••••' : ''"
-                  />
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{
-                    server.tokenSet ? $t('views.settings.assistant_external_token_set') : $t('views.settings.assistant_external_token_info')
-                  }}</Message>
-                </div>
-                <div class="flex items-center gap-4 cui-toggle-switch">
-                  <div class="flex flex-col field-switch-gap">
-                    <label :for="`server-insecure-${server.id}`" class="cui-label-switch">{{ $t('views.settings.assistant_external_insecure') }}</label>
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                      $t('views.settings.assistant_external_insecure_info')
-                    }}</Message>
-                  </div>
-                  <ToggleSwitch :input-id="`server-insecure-${server.id}`" v-model="server.insecure" class="ml-auto shrink-0" />
                 </div>
               </div>
 
@@ -441,9 +466,9 @@
 
               <div v-if="schedules?.length" class="flex flex-col divide-y divide-(--border-color)">
                 <div v-for="schedule in schedules" :key="schedule._id" class="flex items-start gap-3 py-3 text-sm">
-                  <div class="min-w-0 flex-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="font-medium text-color">{{ schedule.title }}</span>
+                  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1" :class="{ 'opacity-60': !schedule.enabled }">
+                    <span class="max-w-full basis-full truncate font-medium text-color md:basis-auto">{{ schedule.title }}</span>
+                    <div class="flex flex-wrap items-center gap-1.5">
                       <Tag severity="secondary" :value="scheduleLabel(schedule.cron)" class="text-[10px]" />
                       <Tag
                         :severity="deliverySeverity(schedule.deliver)"
@@ -457,42 +482,79 @@
                         class="text-[10px]"
                       />
                     </div>
-                    <div class="mt-0.5 text-muted line-clamp-2">{{ schedule.prompt }}</div>
-                    <div class="mt-1 text-xs text-muted">
+                    <div class="basis-full text-muted line-clamp-2">{{ schedule.prompt }}</div>
+                    <div class="basis-full text-xs text-muted">
                       <span v-if="schedule.enabled && schedule.nextRun">{{
                         $t('views.settings.assistant_schedule_next', { time: formatDateTime(schedule.nextRun) })
                       }}</span>
                       <span v-else-if="!schedule.enabled">{{ $t('views.settings.assistant_schedule_paused') }}</span>
-                      <span v-if="schedule.lastRun" :class="schedule.lastRun.status === 'error' ? 'text-danger' : ''">
+                      <span v-if="schedule.lastRun" :class="{ 'text-danger': schedule.lastRun.status === 'error' }">
                         · {{ $t(`views.settings.assistant_schedule_last_${schedule.lastRun.status}`, { time: formatDateTime(schedule.lastRun.at) }) }}
-                        <template v-if="schedule.lastRun.message">({{ schedule.lastRun.message }})</template>
                       </span>
                     </div>
+                    <div v-if="schedule.lastRun?.status === 'error' && schedule.lastRun.message" class="basis-full text-xs text-danger line-clamp-2">
+                      {{ schedule.lastRun.message }}
+                    </div>
                   </div>
-                  <div class="flex shrink-0 items-center gap-1">
-                    <Button
-                      v-tooltip.top="{ value: $t('views.settings.assistant_schedule_run') }"
-                      type="button"
-                      severity="secondary"
-                      text
-                      rounded
-                      class="cui-icon-md"
-                      :loading="runScheduleMutation.isPending.value && runScheduleMutation.variables.value === schedule._id"
-                      @click="runScheduleMutation.mutate(schedule._id)"
-                    >
-                      <template #icon>
-                        <i-mdi:play-outline width="100%" height="100%" />
-                      </template>
-                    </Button>
-                    <ToggleSwitch
-                      :model-value="schedule.enabled"
-                      @update:model-value="(value) => patchScheduleMutation.mutate({ scheduleId: schedule._id, patch: { enabled: value } })"
-                    />
-                    <Button type="button" severity="danger" text rounded class="cui-icon-md" @click="deleteScheduleMutation.mutate(schedule._id)">
-                      <template #icon>
-                        <i-mdi:delete-outline width="100%" height="100%" />
-                      </template>
-                    </Button>
+                  <div class="shrink-0">
+                    <div class="hidden items-center gap-1 md:flex">
+                      <Button
+                        v-tooltip.top="{ value: $t('views.settings.assistant_schedule_run') }"
+                        type="button"
+                        severity="secondary"
+                        text
+                        rounded
+                        class="cui-icon-md"
+                        :loading="runScheduleMutation.isPending.value && runScheduleMutation.variables.value === schedule._id"
+                        @click="runScheduleMutation.mutate(schedule._id)"
+                      >
+                        <template #icon>
+                          <i-mdi:lightning-bolt-outline width="100%" height="100%" />
+                        </template>
+                      </Button>
+                      <Button
+                        v-tooltip.top="{ value: schedule.enabled ? $t('views.settings.assistant_schedule_pause') : $t('views.settings.assistant_schedule_resume') }"
+                        type="button"
+                        severity="secondary"
+                        text
+                        rounded
+                        class="cui-icon-md"
+                        @click="toggleSchedule(schedule)"
+                      >
+                        <template #icon>
+                          <i-mdi:pause v-if="schedule.enabled" width="100%" height="100%" />
+                          <i-mdi:play-outline v-else width="100%" height="100%" />
+                        </template>
+                      </Button>
+                      <Button
+                        v-tooltip.top="{ value: $t('views.settings.assistant_schedule_delete') }"
+                        type="button"
+                        severity="danger"
+                        text
+                        rounded
+                        class="cui-icon-md"
+                        @click="deleteScheduleMutation.mutate(schedule._id)"
+                      >
+                        <template #icon>
+                          <i-mdi:delete-outline width="100%" height="100%" />
+                        </template>
+                      </Button>
+                    </div>
+                    <div class="md:hidden">
+                      <Button
+                        type="button"
+                        severity="secondary"
+                        text
+                        rounded
+                        class="cui-icon-md"
+                        :loading="runScheduleMutation.isPending.value && runScheduleMutation.variables.value === schedule._id"
+                        @click="openScheduleMenu($event, schedule)"
+                      >
+                        <template #icon>
+                          <i-mdi:dots-vertical width="100%" height="100%" />
+                        </template>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -678,7 +740,7 @@
       </div>
     </div>
 
-    <CuiMenu ref="modelMenuRef" :items="modelMenuItems" :popover="{ pt: { content: { class: 'p-0! rounded-xl! overflow-hidden!' } } }" />
+    <CuiMenu ref="rowMenuRef" :items="rowMenuItems" :popover="{ pt: { content: { class: 'p-0! rounded-xl! overflow-hidden!' } } }" />
   </div>
 </template>
 
@@ -686,7 +748,10 @@
 import { LANGUAGES } from '@shared/types';
 import CopyIcon from '~icons/mdi/content-copy';
 import DeleteIcon from '~icons/mdi/delete-outline';
+import RunIcon from '~icons/mdi/lightning-bolt-outline';
+import PauseIcon from '~icons/mdi/pause';
 import EditIcon from '~icons/mdi/pencil-outline';
+import PlayIcon from '~icons/mdi/play-outline';
 import StarIcon from '~icons/mdi/star-outline';
 
 import { axiosInstance } from '@/api/index.js';
@@ -697,6 +762,7 @@ import { toolDisplayName } from '@/components/CuiAssistantToolCall/types.js';
 import AssistantModelDialog from '@/components/CuiDialog/templates/AssistantModel/AssistantModel.vue';
 import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 
+import type { AssistantScheduleRow } from '@/api/routes/assistant.js';
 import type { AssistantModelFormProps } from '@/components/CuiDialog/templates/AssistantModel/types.js';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { PassThrough } from '@primevue/core';
@@ -718,6 +784,12 @@ type SchedulePreset = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'hourly' | 
 type ToolSource = { key: string; label: string; serverId?: string; tools: AssistantToolInfo[] };
 
 const NO_PLUGIN_ACCESS = 'none';
+const DELETE_ITEM: MenuItem = {
+  icon: DeleteIcon,
+  iconProps: { class: 'text-red-500' },
+  labelProps: { class: 'text-red-500' },
+  buttonProps: { severity: 'danger' },
+};
 const BEHAVIOR_DEFAULTS = {
   memoryEnabled: true,
   terminalEnabled: false,
@@ -770,35 +842,14 @@ const scheduleForm = ref<{
   profileId: null,
 });
 const serverTokens = ref<Record<string, string>>({});
-const menuEntry = ref<AssistantModelView | null>(null);
+const rowMenuItems = ref<MenuItem[]>([]);
+const openServers = ref<string[]>([]);
 const mcpClient = ref<'claude-code' | 'cursor' | 'claude-desktop'>('claude-code');
 const toolSource = ref('core');
-const modelMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('modelMenuRef');
+const rowMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('rowMenuRef');
 
 const models = computed(() => info.value?.settings.models ?? []);
 const defaultEntry = computed(() => (info.value ? defaultModel(info.value.settings) : undefined));
-const modelMenuItems = computed<MenuItem[]>(() => {
-  const entry = menuEntry.value;
-  if (!entry) return [];
-  return [
-    {
-      label: t('views.settings.assistant_model_make_default'),
-      icon: StarIcon,
-      hide: entry._id === defaultEntry.value?._id,
-      disabled: patchMutation.isPending.value,
-      onClick: () => makeDefault(entry),
-    },
-    { label: t('views.settings.assistant_model_edit'), icon: EditIcon, onClick: () => openModelDialog(entry) },
-    {
-      label: t('views.settings.assistant_model_delete'),
-      icon: DeleteIcon,
-      iconProps: { class: 'text-red-500' },
-      labelProps: { class: 'text-red-500' },
-      buttonProps: { severity: 'danger' },
-      onClick: () => confirmDeleteModel(entry),
-    },
-  ];
-});
 const pluginOptions = computed(() => [
   { label: t('views.settings.assistant_plugin_no_access'), value: NO_PLUGIN_ACCESS },
   ...models.value.map((model) => ({ label: model.name, value: model._id })),
@@ -970,12 +1021,19 @@ function externalStateClass(id: string): string {
 
 function addServer(): void {
   if (!form.value) return;
-  form.value.mcpServers.push({ id: randomId(), name: '', url: '', enabled: true, insecure: false, tokenSet: false, toolApproval: {} });
+  const id = randomId();
+  form.value.mcpServers.push({ id, name: '', url: '', enabled: true, insecure: false, tokenSet: false, toolApproval: {} });
+  openServers.value.push(id);
+}
+
+function toggleServer(id: string): void {
+  openServers.value = openServers.value.includes(id) ? openServers.value.filter((open) => open !== id) : [...openServers.value, id];
 }
 
 function removeServer(id: string): void {
   if (!form.value) return;
   form.value.mcpServers = form.value.mcpServers.filter((server) => server.id !== id);
+  openServers.value = openServers.value.filter((open) => open !== id);
   delete serverTokens.value[id];
 }
 
@@ -1030,8 +1088,33 @@ async function saveModels(next: AssistantModelInput[]): Promise<AssistantInfo> {
 }
 
 function openModelMenu(event: Event, entry: AssistantModelView): void {
-  menuEntry.value = entry;
-  modelMenuRef.value?.toggleMenu(event);
+  rowMenuItems.value = [
+    {
+      label: t('views.settings.assistant_model_make_default'),
+      icon: StarIcon,
+      hide: entry._id === defaultEntry.value?._id,
+      disabled: patchMutation.isPending.value,
+      onClick: () => makeDefault(entry),
+    },
+    { label: t('views.settings.assistant_model_edit'), icon: EditIcon, onClick: () => openModelDialog(entry) },
+    { ...DELETE_ITEM, label: t('views.settings.assistant_model_delete'), onClick: () => confirmDeleteModel(entry) },
+  ];
+  rowMenuRef.value?.toggleMenu(event);
+}
+
+function toggleSchedule(schedule: AssistantScheduleRow): void {
+  patchScheduleMutation.mutate({ scheduleId: schedule._id, patch: { enabled: !schedule.enabled } });
+}
+
+function openScheduleMenu(event: Event, schedule: AssistantScheduleRow): void {
+  rowMenuItems.value = [
+    { label: t('views.settings.assistant_schedule_run'), icon: RunIcon, onClick: () => runScheduleMutation.mutate(schedule._id) },
+    schedule.enabled
+      ? { label: t('views.settings.assistant_schedule_pause'), icon: PauseIcon, onClick: () => toggleSchedule(schedule) }
+      : { label: t('views.settings.assistant_schedule_resume'), icon: PlayIcon, onClick: () => toggleSchedule(schedule) },
+    { ...DELETE_ITEM, label: t('views.settings.assistant_schedule_delete'), onClick: () => deleteScheduleMutation.mutate(schedule._id) },
+  ];
+  rowMenuRef.value?.toggleMenu(event);
 }
 
 function openModelDialog(entry?: AssistantModelView): void {
@@ -1122,6 +1205,15 @@ watch(
 .cui-assistant-server {
   background: var(--card-inner-background);
   border: 1px solid var(--border-color-inner);
+}
+
+.cui-assistant-server-body {
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+
+.cui-assistant-server-open {
+  grid-template-rows: 1fr;
 }
 
 .cui-assistant-schedule-form {

@@ -251,9 +251,15 @@ function toggleVoice(): void {
     recognition = null;
     focus();
   };
-  session.onerror = () => {
+  session.onerror = (event) => {
     listening.value = false;
     recognition = null;
+    if (event.error === 'no-speech' || event.error === 'aborted') return;
+    showAttachError(
+      event.error === 'not-allowed' || event.error === 'service-not-allowed'
+        ? t('views.assistant.voice_denied')
+        : t('views.assistant.voice_failed', { error: event.error }),
+    );
   };
   recognition = session;
   listening.value = true;
