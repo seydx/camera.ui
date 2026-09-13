@@ -7,12 +7,12 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import sharp from 'sharp';
 import { container } from 'tsyringe';
 
 import { PluginManager } from '../../plugins/index.js';
 import { ConfigService } from '../../services/config/index.js';
 import { checkEngineCompatibility, checkProtocolCompat } from '../../utils/engines.js';
+import { squarePng } from '../../utils/image.js';
 import { checkForUpdate, extractPackage, getFullManifest, getPackument, getVersionsAndDistTags, invalidatePackage, searchPackages } from '../../utils/npm/index.js';
 import { isPlatformCompatible } from '../../utils/platform.js';
 import { computeTrust, getBlock, getBlocklist, getCatalog, getVerified, getWeeklyDownloads, invalidateRegistry } from '../../utils/plugin-registry/index.js';
@@ -1033,8 +1033,8 @@ export class PluginsController {
       return null;
     }
 
-    const logo = await sharp(logoPath).resize({ width: 100, height: 100, fit: 'cover', kernel: 'nearest' }).toBuffer();
-    return Buffer.from(logo).toString('base64');
+    const logo = await squarePng(logoPath, 100);
+    return logo ? logo.toString('base64') : null;
   }
 
   private async readLogoFromTarball(pluginName: string): Promise<string | null> {
