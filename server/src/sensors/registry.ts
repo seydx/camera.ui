@@ -1,5 +1,5 @@
 import { RPCClass, RPCMethod } from '@camera.ui/rpc';
-import { canProvideSensorsToAnyCameras, SensorType } from '@camera.ui/sdk';
+import { canProvideSensorsToAnyCameras, hasInterface, PluginInterface, SensorType } from '@camera.ui/sdk';
 import { randomUUID } from 'node:crypto';
 import { container } from 'tsyringe';
 
@@ -640,7 +640,7 @@ export class SensorRegistry {
       if (!isOwnCamera && !canProvideSensorsToAnyCameras(contract)) {
         throw new Error(`Plugin "${pluginId}" cannot provide sensors to cameras it didn't create. Role "${contract.role}" only allows providing sensors to own cameras.`);
       }
-    } else if (!canProvideSensorsToAnyCameras(contract)) {
+    } else if (!canProvideSensorsToAnyCameras(contract) && !hasInterface(contract, PluginInterface.SensorDiscovery)) {
       throw new Error(`Plugin "${pluginId}" cannot register standalone sensors. Role "${contract.role}" only allows sensors on own cameras.`);
     }
 
