@@ -38,7 +38,7 @@ export class SnapshotPrivacy {
   }
 
   private async maskJpeg(jpeg: ArrayBuffer): Promise<ArrayBuffer | null> {
-    using demuxer = await Demuxer.open(Buffer.from(jpeg));
+    await using demuxer = await Demuxer.open(Buffer.from(jpeg));
     const stream = demuxer.video();
     if (!stream) return null;
 

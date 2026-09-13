@@ -30,7 +30,7 @@ export async function actionImageInput(ctx: ActionContext, data: Record<string, 
   }
 
   const input = isUrl ? source : Buffer.from(source, 'base64');
-  using demuxer = await Demuxer.open(input, isUrl ? { options: { user_agent: 'camera.ui' } } : undefined);
+  await using demuxer = await Demuxer.open(input, isUrl ? { options: { user_agent: 'camera.ui' } } : undefined);
   const videoStream = demuxer.video();
   if (!videoStream) throw new Error('No image data found in source');
 
