@@ -3226,7 +3226,8 @@ export default {
       assistant_max_tool_calls_label: 'Tool calls per question',
       assistant_max_tool_calls_info: 'Stops a model that is stuck in a loop.',
       assistant_context_tokens_label: 'Context budget (tokens)',
-      assistant_context_tokens_info: 'Older tool results and turns are dropped above this size. Lower it for small local models.',
+      assistant_context_tokens_info:
+        'Older tool results and turns are dropped above this size. Ollama gets a context window of this size plus headroom, lower it on small hardware.',
       assistant_history_threads_label: 'Conversations kept per user',
       assistant_history_threads_info: 'The oldest conversations are removed first.',
       assistant_history_images_label: 'Pictures kept per conversation',

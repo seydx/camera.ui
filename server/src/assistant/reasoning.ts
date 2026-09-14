@@ -9,11 +9,18 @@ const GEMINI_BUDGET: Record<Level, number> = { off: 0, low: 1024, high: 8192 };
 const ANTHROPIC_BUDGET_ONLY = /^claude-(?:opus-4(?:-[015])?|sonnet-4(?:-5)?|haiku-4-5)(?:-\d{8})?$|^claude-3-/;
 // families that accept the ollama think flag, everything else keeps its default
 const OLLAMA_THINKERS = /qwen3|deepseek-r1|gpt-oss|magistral|qwq|cogito|smollm3|glm|nemotron|phi4-reasoning|granite3\.[3-9]|granite4/i;
+// system prompt, tool list and the answer sit outside the compaction budget
+const OLLAMA_CONTEXT_HEADROOM = 16_384;
 
-export function modelOptionsFor(settings: Pick<AssistantSettings, 'provider' | 'model' | 'reasoning'>): Record<string, unknown> | undefined {
+export function modelOptionsFor(settings: Pick<AssistantSettings, 'provider' | 'model' | 'reasoning' | 'contextTokens'>): Record<string, unknown> | undefined {
   const level = settings.reasoning;
-  if (level === 'default') return undefined;
   const model = settings.model.trim();
+
+  if (settings.provider === 'ollama') {
+    return { options: { num_ctx: settings.contextTokens + OLLAMA_CONTEXT_HEADROOM }, ...(level === 'default' ? {} : ollama(model, level)) };
+  }
+
+  if (level === 'default') return undefined;
 
   switch (settings.provider) {
     case 'anthropic':
@@ -22,8 +29,6 @@ export function modelOptionsFor(settings: Pick<AssistantSettings, 'provider' | '
       return openai(model, level);
     case 'gemini':
       return gemini(model, level);
-    case 'ollama':
-      return ollama(model, level);
     case 'openrouter':
       return level === 'off' ? { reasoning: { enabled: false } } : { reasoning: { effort: level } };
     case 'openai-compatible':
