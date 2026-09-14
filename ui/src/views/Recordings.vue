@@ -112,7 +112,7 @@
                 :load-thumbnails="loadThumbnails"
                 :semantic-score="semanticEventIds.get(item.event.id)"
                 :seg-index="item.segIndex"
-                :selection-mode="selectionMode"
+                :selection-mode="selectionMode && item.event.state === 'ended'"
                 :selected="selectedIds.has(item.event.id)"
                 :sibling-active="item.segIndex !== undefined && hoveredEventId === item.event.id"
                 @select="toggleSelection(item.event.id)"
@@ -331,7 +331,7 @@ const layoutReady = ref(false);
 const filters = ref<RecordingsFilterState>({ ...DEFAULT_FILTERS });
 const assistantSearching = ref(false);
 const assistantNote = ref('');
-const serverFilter = shallowRef<GetEventsOptions>({ state: 'ended', hasDetections: true, withRecordingInfo: true, hasRecording: true });
+const serverFilter = shallowRef<GetEventsOptions>({ hasDetections: true, withRecordingInfo: true, hasRecording: true });
 let _prevFilterJSON = JSON.stringify(serverFilter.value);
 const ungrouped = ref(false);
 const ungroupedItems = shallowRef<UngroupedItem[]>([]);
@@ -424,7 +424,7 @@ const semanticEventIds = computed(() => {
 const isSemanticActive = computed(() => semanticHasSearched.value);
 
 const displayEvents = computed(() => {
-  let result = events.value.filter((e) => e.state === 'ended');
+  let result = events.value.filter((e) => e.state === 'ended' || (e.segments?.length ?? 0) > 0);
   const f = filters.value;
 
   if (f.timeRange && TIME_RANGE_MS[f.timeRange]) {
@@ -509,8 +509,10 @@ const gridItems = computed<UngroupedItem[]>(() => {
 
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 
+const selectableEvents = computed(() => displayEvents.value.filter((e) => e.state === 'ended'));
+
 const { selectionMode, selectedIds, allSelected, bulkBusy, enterSelectionMode, exitSelectionMode, toggleSelectAll, toggleSelection } = useCardSelection(
-  displayEvents,
+  selectableEvents,
   (event) => event.id,
 );
 
@@ -710,7 +712,6 @@ watch(
       filterLogicAttributes: hasAnyContentFilter ? f.filterLogicAttributes : undefined,
       search: f.search || undefined,
       minConfidence: f.minConfidence > 0 ? f.minConfidence : undefined,
-      state: 'ended',
       hasDetections: !hasAnyContentFilter,
       withRecordingInfo: true,
       hasRecording: f.onlyWithRecordings || undefined,

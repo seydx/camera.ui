@@ -327,7 +327,6 @@ const serverFilter = computed<GetEventsOptions>(() => {
     triggers: selectedTriggers.value.length > 0 ? selectedTriggers.value : undefined,
     attributes: attrFilters.length > 0 ? attrFilters : undefined,
     search: search.value || undefined,
-    state: 'ended',
     hasDetections: !hasAnyFilter,
   };
 });
@@ -354,7 +353,7 @@ const formatSelectedDate = computed(() => {
 
 // Date + grid regions only — attributes are now server-side.
 const displayEvents = computed(() => {
-  let result = events.value.filter((e) => e.state === 'ended');
+  let result = events.value.filter((e) => e.state === 'ended' || (e.segments?.length ?? 0) > 0);
 
   if (selectedDate.value) {
     const d = selectedDate.value;

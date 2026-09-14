@@ -336,10 +336,7 @@ const visibleThumbnails = computed(() => stripThumbnails.value.slice(0, footerLa
 const hiddenThumbnailCount = computed(() => stripThumbnails.value.length - footerLayout.value.tiles);
 
 const formatDateTime = computed(() => {
-  // label with the moment the card pictures: the segment's own start on
-  // segment cards, the thumbnail moment on event cards (matches the sort key)
-  const segStart = props.segIndex !== undefined ? props.event.segments?.[props.segIndex]?.firstSeen : undefined;
-  const date = new Date(segStart ?? props.event.thumbnailAt ?? props.event.startTime);
+  const date = new Date(shownSegment.value?.firstSeen ?? props.event.thumbnailAt ?? props.event.startTime);
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
