@@ -11,7 +11,7 @@
       <h1 v-if="!smBreakpoint" class="page-title mb-2">
         {{ $t('components.camera_events.title') }}
       </h1>
-      <CuiCameraEvents v-if="hiddenEventTypesReady" :cameras="cameras?.result" :hidden-types="hiddenEventTypes" />
+      <CuiCameraEvents :cameras="cameras?.result" :hidden-types="hiddenEventTypes" :pending="!hiddenEventTypesReady" />
     </div>
 
     <div class="flex flex-col flex-1 overflow-x-hidden">

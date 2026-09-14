@@ -136,6 +136,7 @@ const {
   pageSize: pageSize.value,
   filter: () => ({ hasDetections: true, hiddenTypes: props.hiddenTypes }),
   withEpisodes: true,
+  enabled: () => !props.pending,
 });
 
 const { start: startSwipeReset } = useTimeoutFn(

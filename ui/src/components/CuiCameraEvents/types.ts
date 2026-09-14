@@ -4,6 +4,7 @@ import type { DBCamera, HiddenEventTypes } from '@shared/types';
 export interface CuiCameraEventsProps {
   cameras?: DBCamera[];
   hiddenTypes?: HiddenEventTypes;
+  pending?: boolean;
 }
 
 export type EventType = 'motion' | 'person' | 'face' | 'vehicle' | 'animal' | 'audio' | 'license_plate' | (string & {});
