@@ -105,6 +105,7 @@
             :total-records="totalRecords ?? 0"
             :first="(currentPage - 1) * rows"
             :template="TABLE_PAGINATOR_TEMPLATE"
+            :page-link-size="TABLE_PAGE_LINK_SIZE"
             @page="goToPage($event.page + 1)"
           />
         </div>
@@ -118,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { TABLE_PAGINATOR_TEMPLATE } from '@/common/constants.js';
+import { TABLE_PAGE_LINK_SIZE, TABLE_PAGINATOR_TEMPLATE } from '@/common/constants.js';
 import { isHeaderAction, isHeaderCategory, isHeaderChart, isHeaderIndicator } from './types.js';
 
 import type { ChartData, ChartOptions } from 'chart.js';

@@ -6,7 +6,7 @@
       </div>
     </Transition>
 
-    <DataTable v-bind="$attrs" :value="value" :rows="effectiveRows" :paginator="showPaginator" :paginator-template="paginatorTemplate">
+    <DataTable v-bind="$attrs" :value="value" :rows="effectiveRows" :paginator="showPaginator" :paginator-template="paginatorTemplate" :page-link-size="pageLinkSize">
       <template v-for="(_, name) in $slots" #[name]="slotProps">
         <slot :name="name" v-bind="slotProps ?? {}" />
       </template>
