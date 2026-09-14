@@ -1726,6 +1726,7 @@ export default {
       sc_nav: 'Previous / next frame (no selection)',
       verify: 'Verify',
       remove_box: 'Remove box',
+      removed_meanwhile: 'This picture was removed in the meantime.',
       labels: {
         person: 'Person',
         vehicle: 'Vehicle',

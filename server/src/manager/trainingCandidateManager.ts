@@ -145,7 +145,7 @@ export class TrainingCandidateManager {
     if (!candidate) return false;
     await this.dbs.trainingCandidatesDB.remove(id);
     await unlink(join(this.imagesDir, `${id}.jpg`)).catch(() => {});
-    this.emitChanged(candidate.cameraId);
+    this.emitChanged(candidate.cameraId, [id]);
     return true;
   }
 
@@ -169,36 +169,38 @@ export class TrainingCandidateManager {
       boxes: payload.boxes,
     });
 
-    await this.enforceCameraLimit(payload.cameraId, settings.perCameraLimit);
-    this.emitChanged(payload.cameraId);
+    const evicted = await this.enforceCameraLimit(payload.cameraId, settings.perCameraLimit);
+    this.emitChanged(payload.cameraId, evicted);
     return 'stored';
   }
 
-  private async enforceCameraLimit(cameraId: string, limit: number): Promise<void> {
-    // verified candidates are the user's work, eviction only eats unreviewed ones
+  private async enforceCameraLimit(cameraId: string, limit: number): Promise<string[]> {
     const candidates = this.list({ cameraId });
     const evictable = candidates.filter((c) => c.status !== 'verified');
     const overflow = candidates.length - limit;
-    if (overflow <= 0) return;
+    if (overflow <= 0) return [];
+    const evicted: string[] = [];
     for (const candidate of evictable.slice(-overflow)) {
       await this.dbs.trainingCandidatesDB.remove(candidate.id);
       await unlink(join(this.imagesDir, `${candidate.id}.jpg`)).catch(() => {});
+      evicted.push(candidate.id);
     }
+    return evicted;
   }
 
   private async pruneExpired(): Promise<void> {
     const cutoff = Date.now() - this.getSettings().retentionDays * 24 * 60 * 60 * 1000;
-    let removed = 0;
+    const removed: string[] = [];
     for (const { key, value } of this.dbs.trainingCandidatesDB.getRange()) {
       if (value.status !== 'new' || value.createdAt >= cutoff || this.isUploadLocked(value)) continue;
       const id = String(key);
       await this.dbs.trainingCandidatesDB.remove(id);
       await unlink(join(this.imagesDir, `${id}.jpg`)).catch(() => {});
-      removed++;
+      removed.push(id);
     }
-    if (removed > 0) {
-      this.logger.debug(`Training: pruned ${removed} expired candidates`);
-      this.emitChanged();
+    if (removed.length > 0) {
+      this.logger.debug(`Training: pruned ${removed.length} expired candidates`);
+      this.emitChanged(undefined, removed);
     }
   }
 
@@ -226,18 +228,20 @@ export class TrainingCandidateManager {
       await this.dbs.commit(this.dbs.trainingCandidatesDB, id, (c) => (c ? { ...c, upload: 'uploading' as const } : undefined));
       this.emitChanged(candidate.cameraId);
 
+      let removed: string[] | undefined;
       try {
         const image = await readFile(join(this.imagesDir, `${id}.jpg`));
         await cloudApi.trainRoute.submit(candidate.boxes, candidate.createdAt, image);
         await this.dbs.trainingCandidatesDB.remove(id);
         await unlink(join(this.imagesDir, `${id}.jpg`)).catch(() => {});
+        removed = [id];
         this.submitProgress.done++;
       } catch (error: any) {
         const message = error?.message ?? String(error);
         await this.dbs.commit(this.dbs.trainingCandidatesDB, id, (c) => (c ? { ...c, upload: 'failed' as const, uploadError: message } : undefined));
         this.submitProgress.failed++;
       }
-      this.emitChanged(candidate.cameraId);
+      this.emitChanged(candidate.cameraId, removed);
       this.emitSubmitProgress(true);
 
       if (this.submitQueue.length > 0) await new Promise((resolve) => setTimeout(resolve, SUBMIT_ITEM_DELAY_MS));
@@ -273,7 +277,7 @@ export class TrainingCandidateManager {
     }
   }
 
-  private emitChanged(cameraId?: string): void {
-    this.trainingNamespace()?.emitCandidatesChanged(cameraId);
+  private emitChanged(cameraId?: string, removed?: string[]): void {
+    this.trainingNamespace()?.emitCandidatesChanged(cameraId, removed);
   }
 }

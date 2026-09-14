@@ -69,6 +69,11 @@ export interface TrainingSubmitProgress {
   failed: number;
 }
 
+export interface TrainingCandidatesChanged {
+  cameraId?: string;
+  removed?: string[];
+}
+
 export interface TrainingSubmission {
   id: string;
   labels: DBTrainingCandidateBox[];

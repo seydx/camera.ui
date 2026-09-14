@@ -220,6 +220,8 @@ const props = defineProps<TrainingBoxEditorProps>();
 
 const dialogRef = inject<Ref<DynamicDialogInstance>>('dialogRef')!;
 const { t, te } = useI18n();
+const toast = useCuiToast();
+const trainingSocket = useTrainingSocket();
 
 const corners: Corner[] = ['nw', 'ne', 'sw', 'se'];
 const MIN_SIZE = 0.01;
@@ -600,6 +602,20 @@ async function removeCurrent(): Promise<null | undefined> {
   return step(1, false) || step(-1, false) ? null : undefined;
 }
 
+function dropRemoved(ids: string[]): void {
+  let currentGone = false;
+  for (const id of ids) {
+    if (removedIds.has(id) || !props.candidates.some((c) => c.id === id)) continue;
+    removedIds.add(id);
+    edits.delete(id);
+    if (id === current.value.id) currentGone = true;
+  }
+  if (!currentGone) return;
+
+  toast.add({ severity: 'warn', detail: t('components.training_editor.removed_meanwhile'), life: 4000 });
+  if (!step(1, false) && !step(-1, false)) dialogRef.value.close({ status: 'cancel' });
+}
+
 function preloadNeighbors(): void {
   for (const direction of [1, -1] as const) {
     let next = index.value + direction;
@@ -689,6 +705,15 @@ useEventListener(() => (rootRef.value?.closest('.p-dialog-content') as HTMLEleme
 });
 useEventListener(() => (rootRef.value?.closest('.p-dialog-content') as HTMLElement | null) ?? undefined, 'touchend', onContentTouchEnd, {
   passive: true,
+});
+
+trainingSocket.connect();
+const stopCandidatesListener = trainingSocket.onCandidatesChanged((change) => {
+  if (change.removed?.length) dropRemoved(change.removed);
+});
+
+onBeforeUnmount(() => {
+  stopCandidatesListener();
 });
 
 defineExpose<CustomDialogComponent>({

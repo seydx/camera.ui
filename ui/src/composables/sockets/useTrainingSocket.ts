@@ -1,17 +1,17 @@
 import type { SocketChannel } from '@/connection/index.js';
-import type { TrainingSubmitProgress } from '@shared/types';
+import type { TrainingCandidatesChanged, TrainingSubmitProgress } from '@shared/types';
 
 const state = reactive<{ progress: TrainingSubmitProgress | null }>({ progress: null });
 
 let scope: ReturnType<typeof effectScope> | null = null;
 let channel: SocketChannel | null = null;
-const changeListeners = new Set<() => void>();
+const changeListeners = new Set<(change: TrainingCandidatesChanged) => void>();
 const resyncListeners = new Set<() => void>();
 
-function notify(listeners: Set<() => void>): void {
+function notify<T>(listeners: Set<(payload: T) => void>, payload: T): void {
   for (const listener of listeners) {
     try {
-      listener();
+      listener(payload);
     } catch {
       // listener errors stay local
     }
@@ -34,8 +34,8 @@ async function loadProgress(): Promise<void> {
 
 function resync(): void {
   loadProgress();
-  notify(changeListeners);
-  notify(resyncListeners);
+  notify(changeListeners, {});
+  notify(resyncListeners, undefined);
 }
 
 function ensureChannel(): SocketChannel {
@@ -46,11 +46,11 @@ function ensureChannel(): SocketChannel {
     const ch = useSocket('/training');
     channel = ch;
 
-    ch.on('candidates-changed', () => notify(changeListeners));
+    ch.on<TrainingCandidatesChanged>('candidates-changed', (change) => notify(changeListeners, change ?? {}));
 
     ch.on<TrainingSubmitProgress>('submit-progress', (progress) => {
       state.progress = progress;
-      notify(changeListeners);
+      notify(changeListeners, {});
     });
 
     ch.onReady(resync);
@@ -64,7 +64,7 @@ export function useTrainingSocket() {
     ensureChannel();
   }
 
-  function onCandidatesChanged(listener: () => void): () => void {
+  function onCandidatesChanged(listener: (change: TrainingCandidatesChanged) => void): () => void {
     changeListeners.add(listener);
     return () => changeListeners.delete(listener);
   }

@@ -2,7 +2,7 @@ import { container } from 'tsyringe';
 
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { TrainingCandidateManager } from '../../../manager/trainingCandidateManager.js';
-import type { TrainingSubmitProgress } from '../../../manager/types.js';
+import type { TrainingCandidatesChanged, TrainingSubmitProgress } from '../../../manager/types.js';
 import type { SocketNsp } from '../types.js';
 
 export class TrainingNamespace {
@@ -27,8 +27,9 @@ export class TrainingNamespace {
     return progress;
   }
 
-  public emitCandidatesChanged(cameraId?: string): void {
-    this.nsp.emit('candidates-changed', { cameraId });
+  public emitCandidatesChanged(cameraId?: string, removed?: string[]): void {
+    const payload: TrainingCandidatesChanged = { cameraId, removed };
+    this.nsp.emit('candidates-changed', payload);
   }
 
   public emitSubmitProgress(progress: TrainingSubmitProgress): void {

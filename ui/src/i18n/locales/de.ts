@@ -1737,6 +1737,7 @@ export default {
       sc_nav: 'Bild zurück / vor (ohne Auswahl)',
       verify: 'Bestätigen',
       remove_box: 'Box entfernen',
+      removed_meanwhile: 'Dieses Bild wurde inzwischen entfernt.',
       labels: {
         person: 'Person',
         vehicle: 'Fahrzeug',
