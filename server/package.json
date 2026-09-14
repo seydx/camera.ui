@@ -42,7 +42,7 @@
     "@camera.ui/rpc": "^1.0.12",
     "@camera.ui/rust-detector": "~0.0.12",
     "@camera.ui/rust-postprocessor": "~0.1.4",
-    "@camera.ui/sdk": "~1.2.37",
+    "@camera.ui/sdk": "~1.2.38",
     "@camera.ui/tunnel": "^1.0.4",
     "@eneris/push-receiver": "^4.3.1",
     "@fastify/cors": "^11.3.0",
@@ -100,7 +100,7 @@
     "undici": "^8.10.2",
     "werift": "^0.24.4",
     "ws": "^8.21.3",
-    "zod": "4.6.4"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.10.0",

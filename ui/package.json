@@ -35,11 +35,11 @@
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@aparajita/capacitor-secure-storage": "^8.0.0",
-    "@camera.ui/browser": "~0.0.189",
+    "@camera.ui/browser": "~0.0.190",
     "@camera.ui/common": "~0.0.55",
-    "@camera.ui/nvr": "~0.0.121",
+    "@camera.ui/nvr": "~0.0.122",
     "@camera.ui/rpc": "~1.0.12",
-    "@camera.ui/sdk": "~1.2.37",
+    "@camera.ui/sdk": "~1.2.38",
     "@camera.ui/transport": "~0.0.29",
     "@capacitor-firebase/messaging": "^8.5.1",
     "@capacitor/app": "^8.1.1",
@@ -55,8 +55,8 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.3",
     "@capawesome/capacitor-badge": "^8.0.3",
-    "@capgo/capacitor-updater": "^8.51.15",
-    "@iconify/json": "^2.2.527",
+    "@capgo/capacitor-updater": "^8.51.16",
+    "@iconify/json": "^2.2.528",
     "@primeuix/themes": "^2.0.3",
     "@tanstack/ai": "^0.54.0",
     "@tanstack/ai-client": "^0.31.1",
@@ -98,7 +98,7 @@
     "vue-view-transitions": "^1.2.1",
     "vue-zoomable": "^1.2.8",
     "vue3-dnd": "^2.1.0",
-    "zod": "4.6.4"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@primevue/auto-import-resolver": "4.5.5",
@@ -110,7 +110,7 @@
     "@types/node": "26.5.1",
     "@types/qrcode": "^1.5.6",
     "@vite-pwa/assets-generator": "^2.0.0",
-    "@vitejs/plugin-vue": "^6.0.8",
+    "@vitejs/plugin-vue": "^6.0.9",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/tsconfig": "^0.9.1",
