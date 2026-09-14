@@ -26,15 +26,6 @@
     <section class="px-4 mb-4">
       <span class="card-title">{{ $t('views.menu.section_actions') }}</span>
       <CuiList size="large" dividers>
-        <CuiListItem v-for="item in settingsItems" :key="item.to" :to="item.to">
-          <template #prepend>
-            <component :is="item.icon" class="w-5 h-5 text-muted" />
-          </template>
-          {{ item.label }}
-          <template #append>
-            <i-mdi:chevron-right class="w-5 h-5 text-muted" />
-          </template>
-        </CuiListItem>
         <CuiListItem to="/about">
           <template #prepend>
             <i-mdi:information-outline class="w-5 h-5 text-muted" />
@@ -91,14 +82,18 @@ const ungroupedRoutes = computed<RouteRecordRaw[]>(() =>
   routes.filter((r) => r.meta?.navbar?.position === 'bottom' && !r.meta.navbar.group && !SETTINGS_ROUTES.includes(r.name as string) && hasPermission(r)),
 );
 
+const settingsRoutes = computed<RouteRecordRaw[]>(() => routes.filter((r) => SETTINGS_ROUTES.includes(r.name as string) && hasPermission(r)));
+
 const sections = computed(() =>
   NAV_GROUPS.map((key) => ({
     key,
-    items: toItems([...(key === 'manage' ? ungroupedRoutes.value : []), ...navGroups.value[key].map((entry) => entry.route)]),
+    items: toItems([
+      ...(key === 'manage' ? ungroupedRoutes.value : []),
+      ...navGroups.value[key].map((entry) => entry.route),
+      ...(key === 'system' ? settingsRoutes.value : []),
+    ]),
   })).filter((section) => section.items.length > 0),
 );
-
-const settingsItems = computed<MenuItemDef[]>(() => toItems(routes.filter((r) => SETTINGS_ROUTES.includes(r.name as string) && hasPermission(r))));
 
 function toItems(routesList: RouteRecordRaw[]): MenuItemDef[] {
   return routesList
