@@ -142,6 +142,7 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
         width: this.#options.video?.width,
         height: this.#options.video?.height,
         bitrate: this.#options.video?.bitrate,
+        dumpExtra: true,
         encoderOptions: this.#options.video?.encoderOptions,
       },
       audio: {
