@@ -1,5 +1,5 @@
 import ansiRegex from 'ansi-regex';
-import { red } from 'ansicolor';
+import { darkGray, red } from 'ansicolor';
 import { createReadStream, existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,6 +12,7 @@ import type { EventEmitter } from 'node:events';
 import type { ReadStream } from 'node:fs';
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { CameraUiAPI } from '../../../api.js';
+import type { CameraUi } from '../../../main.js';
 import type { PluginManager } from '../../../plugins/index.js';
 import type { ConfigService } from '../../../services/config/index.js';
 import type { SocketNsp } from '../types.js';
@@ -32,15 +33,18 @@ export class LogsNamespace {
   public nspName: SocketNsp = '/logs';
 
   private static readonly SYSTEM_SOURCES = new Set(['server', 'go2rtc', 'nats', 'tunnel']);
+  private static readonly STARTUP_POLL_MS = 250;
 
   private sharedTails = new Map<string, SharedTail>();
 
   private api: CameraUiAPI;
+  private cameraui: CameraUi;
   private configService: ConfigService;
   private pluginManager: PluginManager;
 
   constructor(io: Server) {
     this.api = container.resolve<CameraUiAPI>('api');
+    this.cameraui = container.resolve<CameraUi>('cameraui');
     this.configService = container.resolve<ConfigService>('configService');
     this.pluginManager = container.resolve<PluginManager>('pluginManager');
 
@@ -75,9 +79,9 @@ export class LogsNamespace {
     this.tailLogFromFileNative(socket, logFile, emitTo, undefined, options);
   }
 
-  public getCameraLog(socket: Socket, cameraName: string, options?: { sinceLastStart?: boolean }) {
+  public async getCameraLog(socket: Socket, cameraName: string, options?: { sinceLastStart?: boolean }) {
     const emitTo = `stdout/${cameraName}`;
-    const cameraController = this.api.getCamera(cameraName);
+    const cameraController = await this.lookupAfterStartup(socket, emitTo, () => this.api.getCamera(cameraName));
 
     if (!cameraController) {
       socket.emit(emitTo, red(`Camera "${cameraName}" not found.\r\n`));
@@ -87,9 +91,9 @@ export class LogsNamespace {
     this.tailLogFromFileNative(socket, cameraController.logPath, emitTo, cameraController.camera.name, options);
   }
 
-  public getPluginLog(socket: Socket, pluginName: string, options?: { sinceLastStart?: boolean }) {
+  public async getPluginLog(socket: Socket, pluginName: string, options?: { sinceLastStart?: boolean }) {
     const emitTo = `stdout/${pluginName}`;
-    const plugin = this.pluginManager.plugins.get(pluginName);
+    const plugin = await this.lookupAfterStartup(socket, emitTo, () => this.pluginManager.plugins.get(pluginName));
 
     if (!plugin) {
       socket.emit(emitTo, red(`Plugin "${pluginName}" not found.\r\n`));
@@ -97,6 +101,19 @@ export class LogsNamespace {
     }
 
     this.tailLogFromFileNative(socket, plugin.logPath, emitTo, plugin.displayName, options);
+  }
+
+  private async lookupAfterStartup<T>(socket: Socket, channel: string, lookup: () => T | undefined): Promise<T | undefined> {
+    const ready = () => this.cameraui.status === 'ready';
+    let found = lookup();
+    if (found || ready()) return found;
+
+    socket.emit(channel, darkGray('Waiting for camera.ui to finish starting...\r\n'));
+    while (!found && !ready() && !socket.disconnected) {
+      await new Promise((resolve) => setTimeout(resolve, LogsNamespace.STARTUP_POLL_MS));
+      found = lookup();
+    }
+    return found;
   }
 
   private async tailLogFromFileNative(socket: Socket, logFile: string, channel: string, filter?: string | number, options?: { sinceLastStart?: boolean }) {
