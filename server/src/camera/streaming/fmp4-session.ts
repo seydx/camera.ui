@@ -4,7 +4,15 @@ import { FMP4_CODECS, FMP4Stream } from 'node-av/api';
 
 import { setupNodeAvLog } from './node-av-log.js';
 
-import type { CameraDeviceSource, CameraInput, Fmp4Session as Fmp4SessionInterface, Fmp4SessionOptions, LoggerService, RTSPUrlOptions } from '@camera.ui/sdk';
+import type {
+  CameraDeviceSource,
+  CameraInput,
+  Fmp4Session as Fmp4SessionInterface,
+  Fmp4SessionOptions,
+  Fmp4VideoInfo,
+  LoggerService,
+  RTSPUrlOptions,
+} from '@camera.ui/sdk';
 import type { FMP4Data } from 'node-av/api';
 import type { FFHWDeviceType } from 'node-av/constants';
 import type { CameraDevice } from '../index.js';
@@ -40,6 +48,10 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
 
   get initSegment(): Promise<Buffer> {
     return firstValueFrom(this.#initSegmentSubject);
+  }
+
+  get videoInfo(): Fmp4VideoInfo | undefined {
+    return this.#fmp4Stream?.getVideoInfo();
   }
 
   public async startStream(config?: Fmp4SessionOptions): Promise<void> {
