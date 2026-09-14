@@ -44,6 +44,7 @@ export function createApiTools(catalog: ApiCatalog): CoreTool[] {
 
   const apiGet = toolDefinition({
     name: 'api_get',
+    lazy: true,
     description:
       'Read data from a camera.ui REST endpoint found with api_search. Runs with the permissions of the current user. ' +
       'Large answers are trimmed, so narrow the request with query parameters when possible.',
@@ -65,6 +66,7 @@ export function createApiTools(catalog: ApiCatalog): CoreTool[] {
 
   const apiCall = toolDefinition({
     name: 'api_call',
+    lazy: true,
     description:
       'Change something through a camera.ui REST endpoint found with api_search: update a plugin, clear notifications, restart a worker, edit a setting. ' +
       'Runs with the permissions of the current user. Requires user confirmation.',

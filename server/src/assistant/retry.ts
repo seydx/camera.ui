@@ -45,6 +45,10 @@ export function withEmptyTurnRetry(adapter: AssistantAdapter, onRetry: () => voi
     }
   }
 
+  return wrapChatStream(adapter, chatStream);
+}
+
+export function wrapChatStream(adapter: AssistantAdapter, chatStream: (options: ChatStreamOptions) => AsyncGenerator<StreamChunk>): AssistantAdapter {
   return new Proxy(adapter, {
     get(target, property, receiver) {
       if (property === 'chatStream') return chatStream;

@@ -18,6 +18,7 @@ const remember = toolDefinition({
 
 const forget = toolDefinition({
   name: 'forget_memory',
+  lazy: true,
   description: 'Remove remembered facts about the user that match the given text, when they ask you to forget something.',
   inputSchema: zod.object({ text: zod.string().min(2).max(200).describe('The fact or a distinctive part of it') }),
 }).server<ToolContext['context']>(async ({ text }, ctx) => {

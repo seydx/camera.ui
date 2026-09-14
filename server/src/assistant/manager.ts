@@ -29,6 +29,7 @@ import { withEmptyTurnRetry } from './retry.js';
 import { AssistantScheduler, PUSH_BODY_MAX } from './scheduler.js';
 import { SEARCH_SCHEMA, searchPrompt, toSearchResult } from './search.js';
 import { AssistantThreadStore, contentParts } from './threads.js';
+import { withToolNameRepair } from './tool-names.js';
 import { isBrowserTool } from './tools/index.js';
 import { describeUploads, extractUploads, messagesForModel } from './uploads.js';
 import { AssistantUsageStore } from './usage.js';
@@ -58,6 +59,7 @@ import type { LoggerService } from '../services/logger/index.js';
 import type { ExternalServer } from './external.js';
 import type { AssistantQuestion } from './interrupts.js';
 import type { MemoryChange } from './memory.js';
+import type { AssistantAdapter } from './providers.js';
 import type { ToolImage } from './tools/shared.js';
 import type {
   AssistantAccess,
@@ -552,7 +554,7 @@ export class AssistantManager {
       throw Object.assign(new Error('The conversation changed since this device loaded it'), { statusCode: 409 });
     }
 
-    const adapter = withEmptyTurnRetry(createAdapter(model, this.decryptKey(entry)), () => this.logger.debug(EMPTY_TURN_LOG));
+    const adapter = this.chatAdapter(model, entry);
     const disabledGroups = new Set(Array.isArray(forwarded.disabledGroups) ? forwarded.disabledGroups.filter((group) => typeof group === 'string') : []);
     if (!settings.terminalEnabled) disabledGroups.add(TERMINAL_GROUP);
     const available = entry.capabilities?.toolCalling === false ? [] : this.registry.toolsFor(ctx.role).filter((tool) => !disabledGroups.has(toolGroup(tool)));
@@ -677,7 +679,7 @@ export class AssistantManager {
 
     try {
       const stream = chat({
-        adapter: withEmptyTurnRetry(createAdapter(model, this.decryptKey(entry)), () => this.logger.debug(EMPTY_TURN_LOG)),
+        adapter: this.chatAdapter(model, entry),
         messages: [{ id: `${Date.now()}-user`, role: 'user', parts: parts as never }],
         tools,
         context: ctx,
@@ -917,6 +919,11 @@ export class AssistantManager {
     const settings = this.settings();
     const access = settings.plugins.find((row) => row.pluginId === pluginId);
     return access ? (settings.models.find((entry) => entry._id === access.modelId) ?? defaultEntry(settings)) : undefined;
+  }
+
+  private chatAdapter(model: AssistantSettings, entry: DBAssistantModel): AssistantAdapter {
+    const adapter = withEmptyTurnRetry(createAdapter(model, this.decryptKey(entry)), () => this.logger.debug(EMPTY_TURN_LOG));
+    return withToolNameRepair(adapter, (from, to) => this.logger.debug(`Assistant: repaired tool name ${from} to ${to}`));
   }
 
   private modelSettings(settings: AssistantSettings, entry: DBAssistantModel): AssistantSettings {

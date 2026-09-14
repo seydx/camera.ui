@@ -24,6 +24,7 @@ export function createDocsTools(docs: DocsIndex): CoreTool[] {
 
   const docsRead = toolDefinition({
     name: 'docs_read',
+    lazy: true,
     description: 'Read a documentation page or one of its sections found with docs_search. Pass the page path, optionally a heading.',
     inputSchema: zod.object({
       page: zod.string().min(1).describe('Page path from docs_search, e.g. cameras/add-camera'),

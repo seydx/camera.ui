@@ -10,6 +10,7 @@ const SETTING_KEYS = ['terminalEnabled', 'memoryEnabled', 'sendImages'] as const
 
 const suggestSetting = toolDefinition({
   name: 'suggest_setting',
+  lazy: true,
   description:
     'Show the user a switch for an assistant setting that is off and would answer their request: terminalEnabled (shell commands on the server), ' +
     'memoryEnabled (remembering facts about the user), sendImages (pictures go to the model). Admins flip it right in the chat, others see who ' +
