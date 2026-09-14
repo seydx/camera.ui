@@ -1,6 +1,5 @@
 import { isEqual, structuredClone, Subscribed } from '@camera.ui/common/utils';
 import { BehaviorSubject, distinctUntilChanged, filter, mergeMap, pairwise, ReplaySubject, share } from '@camera.ui/sdk';
-import { TTLCache } from '@isaacs/ttlcache';
 
 import { normalizeZones } from './zones.js';
 
@@ -12,8 +11,8 @@ import type {
   CameraFrameWorkerSettings,
   CameraImplementation,
   CameraInformation,
-  CameraPluginInfo,
   CameraNotificationSettings,
+  CameraPluginInfo,
   CameraRecordingSettings,
   CameraSource,
   CameraType,
@@ -30,11 +29,6 @@ import type {
   SnapshotSettings,
 } from '@camera.ui/sdk';
 
-export interface CachedSnapshot {
-  data: ArrayBuffer;
-  fetchedAt: number;
-}
-
 export abstract class CameraDevice extends Subscribed implements CameraDeviceInterface {
   public readonly cameraSubject: BehaviorSubject<Camera>;
   public readonly cameraState = new BehaviorSubject<boolean>(false);
@@ -44,8 +38,6 @@ export abstract class CameraDevice extends Subscribed implements CameraDeviceInt
   public readonly onFrameWorkerConnected = this.#createStateObservable(this.frameWorkerState);
 
   public abstract readonly onDetectionEvent: Observable<{ type: DetectionEventType; event: DetectionEvent }>;
-
-  protected snapshotCache: TTLCache<string, CachedSnapshot>;
 
   protected readonly initialized = new BehaviorSubject<boolean>(false);
   protected readonly onInitialized = this.initialized.pipe(distinctUntilChanged(), share({ connector: () => new ReplaySubject(1) }));
@@ -57,11 +49,6 @@ export abstract class CameraDevice extends Subscribed implements CameraDeviceInt
     super();
 
     this.cameraSubject = new BehaviorSubject(camera);
-
-    this.snapshotCache = new TTLCache({
-      max: 100,
-      ttl: this.snapshotSettings.ttl * 1000,
-    });
   }
 
   abstract get sources(): CameraDeviceSource[];
@@ -207,17 +194,9 @@ export abstract class CameraDevice extends Subscribed implements CameraDeviceInt
     this.cameraSubject.complete();
     this.cameraState.complete();
     this.frameWorkerState.complete();
-    this.snapshotCache.clear();
   }
 
   protected updateCamera(updatedCamera: Camera): void {
-    if (updatedCamera.snapshotSettings.ttl !== this.snapshotSettings.ttl) {
-      this.snapshotCache = new TTLCache({
-        max: 100,
-        ttl: updatedCamera.snapshotSettings.ttl * 1000,
-      });
-    }
-
     this.cameraSubject.next(updatedCamera);
   }
 

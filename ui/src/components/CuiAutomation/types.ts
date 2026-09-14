@@ -602,9 +602,26 @@ export const CAMERA_CONTROL_PROPERTY_DEFINITIONS: CameraControlPropertyDefinitio
     inputType: 'boolean',
     defaultValue: 'false',
   },
-  { key: 'snapshotSettings.autoRefresh', labelKey: 'components.automation_nodes.camera_prop_auto_refresh', inputType: 'boolean', defaultValue: 'false' },
-  { key: 'snapshotSettings.interval', labelKey: 'components.automation_nodes.camera_prop_snapshot_interval', inputType: 'number', min: 10, max: 60, defaultValue: '60' },
-  { key: 'snapshotSettings.ttl', labelKey: 'components.automation_nodes.camera_prop_snapshot_ttl', inputType: 'number', min: 10, max: 60, defaultValue: '50' },
+  {
+    key: 'snapshotSettings.mode',
+    labelKey: 'components.automation_nodes.camera_prop_snapshot_mode',
+    inputType: 'select',
+    options: [
+      { labelKey: 'components.automation_nodes.option_snapshot_interval', value: 'interval' },
+      { labelKey: 'components.automation_nodes.option_snapshot_on_view', value: 'onView' },
+      { labelKey: 'components.automation_nodes.option_snapshot_on_demand', value: 'onDemand' },
+    ],
+    defaultValue: 'interval',
+  },
+  {
+    key: 'snapshotSettings.interval',
+    labelKey: 'components.automation_nodes.camera_prop_snapshot_interval',
+    inputType: 'number',
+    min: 10,
+    max: 3600,
+    defaultValue: '60',
+  },
+  { key: 'snapshotSettings.maxAge', labelKey: 'components.automation_nodes.camera_prop_snapshot_max_age', inputType: 'number', min: 10, max: 3600, defaultValue: '60' },
 ];
 
 export interface ConfigActionDelayProps {

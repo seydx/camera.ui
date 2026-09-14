@@ -451,9 +451,9 @@ export const cameraPluginInfo = zod
 
 export const snapshotSettingsSchema = zod
   .object({
-    autoRefresh: zod.boolean().default(true),
-    ttl: zod.number().min(10, 'Minimum 10 seconds').max(60, 'Maximum 60 seconds').default(50),
-    interval: zod.number().min(10, 'Minimum 10 seconds').max(60, 'Maximum 60 seconds').default(60),
+    mode: zod.enum(['interval', 'onView', 'onDemand']).default('interval'),
+    interval: zod.number().min(10, 'Minimum 10 seconds').max(3600, 'Maximum 1 hour').default(60),
+    maxAge: zod.number().min(10, 'Minimum 10 seconds').max(3600, 'Maximum 1 hour').default(60),
   })
   .strict();
 
@@ -472,9 +472,9 @@ export const createCameraBaseSchema = zod
     type: cameraTypeSchema.default('camera'),
     isCloud: zod.boolean().default(false),
     snapshotSettings: snapshotSettingsSchema.default({
-      autoRefresh: true,
-      ttl: 50,
+      mode: 'interval',
       interval: 60,
+      maxAge: 60,
     }),
     info: cameraInfoSchema.default({
       model: 'IP Camera',

@@ -12,6 +12,7 @@ import { FrameWorker } from './decoder/worker.js';
 import { CameraDevice } from './index.js';
 import { SnapshotPrivacy } from './privacy/snapshot.js';
 import { SensorController } from './sensors/controller.js';
+import { SnapshotStore } from './snapshot-store.js';
 import { Fmp4Session } from './streaming/fmp4-session.js';
 import { RtpSession } from './streaming/rtp-session.js';
 import { generateAudioStreamInfo, generateVideoStreamInfo } from './utils.js';
@@ -47,6 +48,7 @@ import type { CameraNamespaces, FrameWorkerDetectionNamespaces } from '../rpc/na
 import type { SensorRegistry } from '../sensors/registry.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { SourceCodecInfo } from './codecCache.js';
+import type { StoredSnapshot } from './snapshot-store.js';
 
 const PRELOAD_KINDS: ProbeConfig = { video: true, audio: true, microphone: true };
 
@@ -75,6 +77,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   private detectionEventUnsub?: () => void;
   private autoRefreshInterval?: NodeJS.Timeout;
   private snapshotPrivacy: SnapshotPrivacy;
+  private readonly snapshots = new SnapshotStore((sourceId, entry) => this.announceSnapshot(sourceId, entry));
 
   constructor(camera: Camera, logger: Logger) {
     super(camera, logger);
@@ -215,11 +218,9 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
 
   @RPCMethod
   public async snapshot(sourceId: string, forceNew?: boolean, preferNative?: boolean): Promise<ArrayBuffer | undefined> {
-    this.snapshotCache.purgeStale();
-
-    const fromCache = this.snapshotCache.get(sourceId);
-    if (!forceNew && fromCache) {
-      return fromCache.data;
+    if (!forceNew) {
+      const stored = this.snapshots.serve(sourceId, this.snapshotSettings);
+      if (stored) return stored;
     }
 
     const source = this.sources.find((source) => source._id === sourceId);
@@ -230,7 +231,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     const storeSnapshot = async (s: CameraDeviceSource, data: ArrayBuffer): Promise<ArrayBuffer | undefined> => {
       const masked = await this.snapshotPrivacy.apply(data);
       if (masked && masked.byteLength > 0) {
-        this.snapshotCache.set(s._id, { data: masked, fetchedAt: Date.now() });
+        this.snapshots.set(s._id, masked, Date.now(), s._id === this.preferredSnapshotSource?._id);
       }
 
       return masked;
@@ -292,8 +293,8 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     const data = await this.snapshot(sourceId, forceNew);
     if (!data) return undefined;
 
-    const cached = this.snapshotCache.get(sourceId);
-    const ageMs = cached?.data === data ? Math.max(0, Date.now() - cached.fetchedAt) : 0;
+    const stored = this.snapshots.get(sourceId);
+    const ageMs = stored?.data === data ? Math.max(0, Date.now() - stored.fetchedAt) : 0;
 
     return { data, ageMs };
   }
@@ -403,6 +404,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
 
   public async cleanup(): Promise<void> {
     this.stopAutoRefresh();
+    this.snapshots.dispose();
     this.detectionEventUnsub?.();
     this.snapshotPrivacy.dispose();
     await this.frameWorker.destroy();
@@ -526,9 +528,9 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     this.stopAutoRefresh();
 
     const settings = this.snapshotSettings;
-    if (!settings.autoRefresh) return;
+    if (settings.mode !== 'interval') return;
 
-    const interval = Math.max(10, Math.min(60, settings.interval)) * 1000;
+    const interval = Math.max(10, Math.min(3600, settings.interval)) * 1000;
 
     this.logger.debug(`Starting snapshot auto-refresh with interval ${settings.interval}s`);
 
@@ -539,16 +541,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       if (!source) return;
 
       try {
-        const snapshot = await this.snapshot(source._id, true);
-        if (snapshot && snapshot.byteLength > 0) {
-          this.triggerProxyEvent('snapshot:updated', { sourceId: source._id, snapshot });
-          try {
-            const bus = container.resolve<InternalEventBus>('internalBus');
-            bus.emitEvent('camera:snapshot:updated', { cameraId: this.id, cameraName: this.name });
-          } catch {
-            // ignore
-          }
-        }
+        await this.snapshot(source._id, true);
       } catch (error: any) {
         this.logger.debug('Auto-refresh snapshot failed:', error.message);
       }
@@ -559,6 +552,28 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     if (this.autoRefreshInterval) {
       clearInterval(this.autoRefreshInterval);
       this.autoRefreshInterval = undefined;
+    }
+  }
+
+  private announceSnapshot(sourceId: string, entry: StoredSnapshot): void {
+    this.triggerProxyEvent('snapshot:updated', { sourceId, snapshot: entry.data, fetchedAt: entry.fetchedAt });
+    try {
+      const bus = container.resolve<InternalEventBus>('internalBus');
+      bus.emitEvent('camera:snapshot:updated', { cameraId: this.id, cameraName: this.name });
+    } catch {
+      // ignore
+    }
+  }
+
+  private async remaskSnapshots(): Promise<void> {
+    const preferred = this.preferredSnapshotSource?._id;
+    for (const [sourceId, entry] of this.snapshots.list()) {
+      const masked = await this.snapshotPrivacy.apply(entry.data);
+      if (!masked || masked.byteLength === 0) {
+        this.snapshots.delete(sourceId);
+      } else if (masked !== entry.data) {
+        this.snapshots.set(sourceId, masked, entry.fetchedAt, sourceId === preferred);
+      }
     }
   }
 
@@ -659,7 +674,11 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
 
         if (!isEqual(oldCamera.zones?.privacy, newCamera.zones?.privacy, true) || oldCamera.zones?.privacyFallback !== newCamera.zones?.privacyFallback) {
           this.snapshotPrivacy.update(newCamera.zones);
-          this.snapshotCache.clear();
+          this.remaskSnapshots();
+        }
+
+        if (!isEqual(oldCamera.sources, newCamera.sources, true)) {
+          this.snapshots.retain(newCamera.sources.map((source) => source._id));
         }
 
         if (oldCamera.name !== newCamera.name) {
@@ -690,12 +709,8 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
         if (!newCamera.disabled) {
           const oldSettings = oldCamera.snapshotSettings;
           const newSettings = newCamera.snapshotSettings;
-          if (oldSettings.autoRefresh !== newSettings.autoRefresh || oldSettings.interval !== newSettings.interval) {
-            if (newSettings.autoRefresh) {
-              this.startAutoRefresh();
-            } else {
-              this.stopAutoRefresh();
-            }
+          if (oldSettings.mode !== newSettings.mode || oldSettings.interval !== newSettings.interval) {
+            this.startAutoRefresh();
           }
         }
       });

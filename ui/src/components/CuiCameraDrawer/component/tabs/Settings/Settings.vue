@@ -1595,63 +1595,34 @@
           <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
             {{ $t('components.camera_options.snapshot_hint') }}
           </Message>
-          <div class="w-full flex flex-col gap-2">
-            <Field
-              v-slot="{ field, errors }"
-              :model-value="cameraForm.snapshotSettings.autoRefresh"
-              :value="true"
-              :unchecked-value="false"
-              type="checkbox"
-              name="snapshotSettings.autoRefresh"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
-            >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="snapshotSettings.autoRefresh" class="cui-label-switch">{{ $t('components.form.label.auto_refresh') }}</label>
-
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.auto_refresh') }}</Message>
-
-                  <Transition name="fade">
-                    <ErrorMessage name="snapshotSettings.autoRefresh" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
-
-                <ToggleSwitch
-                  :model-value="cameraForm.snapshotSettings.autoRefresh"
-                  v-bind="field"
-                  :invalid="errors.length > 0"
-                  :loading="isLoading"
-                  class="ml-auto shrink-0"
-                  @value-change="(e) => (cameraForm.snapshotSettings.autoRefresh = e)"
-                />
-              </div>
-            </Field>
-          </div>
-
-          <Field v-slot="{ errors }" :model-value="cameraForm.snapshotSettings.ttl" name="snapshotSettings.ttl" as="div" class="flex flex-col field-gap">
-            <label for="snapshotSettings.ttl" class="cui-label">{{ $t('components.form.label.cache_time') }}</label>
-            <InputGroup>
-              <InputNumber
-                :model-value="cameraForm.snapshotSettings.ttl"
-                :invalid="errors.length > 0"
-                :loading="isLoading"
-                :min="10"
-                show-buttons
-                :use-grouping="false"
-                @value-change="(e) => (cameraForm.snapshotSettings.ttl = e ?? 10)"
-                @input="(e) => (cameraForm.snapshotSettings.ttl = (e.value as any) ?? 10)"
-              />
-            </InputGroup>
+          <Field v-slot="{ errors }" :model-value="cameraForm.snapshotSettings.mode" name="snapshotSettings.mode" as="div" class="flex flex-col field-gap">
+            <label for="snapshotSettings.mode" class="cui-label">{{ $t('components.form.label.snapshot_mode') }}</label>
+            <Select
+              :model-value="cameraForm.snapshotSettings.mode"
+              :options="snapshotModeOptions"
+              option-label="label"
+              option-value="value"
+              :invalid="errors.length > 0"
+              :loading="isLoading"
+              class="w-full"
+              @update:model-value="(e) => (cameraForm.snapshotSettings.mode = e)"
+            />
 
             <Transition name="fade">
-              <ErrorMessage name="snapshotSettings.ttl" class="cui-input-error" />
+              <ErrorMessage name="snapshotSettings.mode" class="cui-input-error" />
             </Transition>
 
-            <Message v-if="!errors.length" severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('components.form.hint.cache_time') }}</Message>
+            <Message v-if="!errors.length" severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ snapshotModeHint }}</Message>
           </Field>
 
-          <Field v-slot="{ errors }" :model-value="cameraForm.snapshotSettings.interval" name="snapshotSettings.interval" as="div" class="flex flex-col field-gap">
+          <Field
+            v-if="cameraForm.snapshotSettings.mode === 'interval'"
+            v-slot="{ errors }"
+            :model-value="cameraForm.snapshotSettings.interval"
+            name="snapshotSettings.interval"
+            as="div"
+            class="flex flex-col field-gap"
+          >
             <label for="snapshotSettings.interval" class="cui-label">{{ $t('components.form.label.refresh_interval') }}</label>
             <InputGroup>
               <InputNumber
@@ -1659,11 +1630,11 @@
                 :invalid="errors.length > 0"
                 :loading="isLoading"
                 :min="10"
-                :max="60"
+                :max="3600"
                 show-buttons
                 :use-grouping="false"
-                @value-change="(e) => (cameraForm.snapshotSettings.interval = e ?? 30)"
-                @input="(e) => (cameraForm.snapshotSettings.interval = (e.value as any) ?? 30)"
+                @value-change="(e) => (cameraForm.snapshotSettings.interval = e ?? 60)"
+                @input="(e) => (cameraForm.snapshotSettings.interval = (e.value as any) ?? 60)"
               />
             </InputGroup>
 
@@ -1673,6 +1644,38 @@
 
             <Message v-if="!errors.length" severity="secondary" variant="simple" size="small" class="cui-input-hint">{{
               $t('components.form.hint.refresh_interval')
+            }}</Message>
+          </Field>
+
+          <Field
+            v-if="cameraForm.snapshotSettings.mode === 'onView'"
+            v-slot="{ errors }"
+            :model-value="cameraForm.snapshotSettings.maxAge"
+            name="snapshotSettings.maxAge"
+            as="div"
+            class="flex flex-col field-gap"
+          >
+            <label for="snapshotSettings.maxAge" class="cui-label">{{ $t('components.form.label.snapshot_max_age') }}</label>
+            <InputGroup>
+              <InputNumber
+                :model-value="cameraForm.snapshotSettings.maxAge"
+                :invalid="errors.length > 0"
+                :loading="isLoading"
+                :min="10"
+                :max="3600"
+                show-buttons
+                :use-grouping="false"
+                @value-change="(e) => (cameraForm.snapshotSettings.maxAge = e ?? 60)"
+                @input="(e) => (cameraForm.snapshotSettings.maxAge = (e.value as any) ?? 60)"
+              />
+            </InputGroup>
+
+            <Transition name="fade">
+              <ErrorMessage name="snapshotSettings.maxAge" class="cui-input-error" />
+            </Transition>
+
+            <Message v-if="!errors.length" severity="secondary" variant="simple" size="small" class="cui-input-hint">{{
+              $t('components.form.hint.snapshot_max_age')
             }}</Message>
           </Field>
         </div>
@@ -1938,6 +1941,12 @@ const { data: cameraExtensions } = camerasQuery.getCameraExtensionsQuery(cameraF
 const { mutateAsync: removeCamera, isPending: removeLoading } = camerasQuery.removeCameraQuery();
 const { mutateAsync: patchZoneConfig, isPending: zoneConfigPatching } = camerasQuery.patchZoneConfigQuery();
 
+const SNAPSHOT_MODE_KEYS = {
+  interval: { label: 'components.form.label.snapshot_mode_interval', hint: 'components.form.hint.snapshot_mode_interval' },
+  onView: { label: 'components.form.label.snapshot_mode_on_view', hint: 'components.form.hint.snapshot_mode_on_view' },
+  onDemand: { label: 'components.form.label.snapshot_mode_on_demand', hint: 'components.form.hint.snapshot_mode_on_demand' },
+} as const;
+
 const cameraTypes = ref<CameraType[]>(['camera', 'doorbell']);
 const streamingModes = ref<VideoStreamingMode[]>(['auto', 'mse', 'webrtc', 'webrtc/tcp']);
 const streamingSources = ref<StreamingRole[]>(['high-resolution', 'mid-resolution', 'low-resolution']);
@@ -1955,6 +1964,8 @@ const notifyAudioOptions = computed(() => [
 ]);
 
 const notifySensorOptions = computed(() => NOTIFY_SENSOR_TYPES.map((type) => ({ label: t(sensorLabelKey(type)), value: type })));
+const snapshotModeOptions = computed(() => Object.entries(SNAPSHOT_MODE_KEYS).map(([value, keys]) => ({ label: t(keys.label), value })));
+const snapshotModeHint = computed(() => t(SNAPSHOT_MODE_KEYS[cameraForm.value.snapshotSettings.mode].hint));
 
 const decoderHardwareOptions: { label: string; value: FrameWorkerDecoderHardware }[] = [
   { label: 'Auto', value: 'auto' },

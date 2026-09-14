@@ -38,6 +38,7 @@ export interface RefreshedStates {
 export interface SnapshotUpdatedEvent {
   sourceId: string;
   snapshot: ArrayBuffer;
+  fetchedAt: number;
 }
 
 export interface SnapshotWithMeta {
