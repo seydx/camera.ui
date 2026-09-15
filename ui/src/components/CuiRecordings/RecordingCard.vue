@@ -374,7 +374,7 @@ const cardMenuItems = computed<MenuItem[]>(() => {
     });
   }
   if (props.camera) {
-    items.push({ key: 'trace', label: t('views.recordings.open_trace'), icon: TraceIcon, onClick: () => emit('openTrace') });
+    items.push({ key: 'trace', label: t('views.recordings.open_trace'), icon: TraceIcon, onClick: () => emit('openTrace', shownSegment.value?.firstSeen) });
   }
   items.push({ key: 'ask', label: t('views.recordings.ask_assistant'), icon: AssistantIcon, onClick: () => askAssistant() });
   if (canDownload.value) {

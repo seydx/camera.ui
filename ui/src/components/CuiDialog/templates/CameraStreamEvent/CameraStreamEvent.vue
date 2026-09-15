@@ -69,9 +69,8 @@ import SparklesIcon from '~icons/tabler/sparkles';
 import { extractErrorMessage } from '@/common/utils.js';
 
 import type CuiCameraCard from '@/components/CuiCameraCard/CuiCameraCard.vue';
-import type { EventDescription } from '@camera.ui/nvr';
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
-import type { CuiTimelineLocale } from '@camera.ui/nvr';
+import type { CuiTimelineLocale, EventDescription } from '@camera.ui/nvr';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { CameraStreamEventProps } from './types.js';
 
@@ -129,7 +128,9 @@ const timelineLocaleSettings = computed<CuiTimelineLocale>(() => {
 function openTrace(): void {
   const current = cuiTimelineRef.value?.currentEvent;
   const event = current ? eventStore.getEvent(current.id) : undefined;
-  if (event) openEventTrace(event, camera.value);
+  if (!event) return;
+  const at = nvrController.currentTimestamp.value > 0 ? Math.floor(nvrController.currentTimestamp.value / 1000) : undefined;
+  openEventTrace(event, camera.value, at);
 }
 
 async function handleDownload(): Promise<void> {

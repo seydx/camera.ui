@@ -237,7 +237,7 @@
             :camera="camera"
             :load-thumbnails="loadThumbnails"
             @scroll-to-event="(ts: number) => emit('scrollToEvent', ts)"
-            @open-trace="() => openTrace(item.event)"
+            @open-trace="(atMs?: number) => openTrace(item.event, atMs)"
           />
         </template>
       </CuiRecordingsGrid>
@@ -392,8 +392,8 @@ function closeMobileSearch() {
   search.value = '';
 }
 
-function openTrace(event: RecordedEvent): void {
-  if (props.camera) openEventTrace(event, props.camera);
+function openTrace(event: RecordedEvent, atMs?: number): void {
+  if (props.camera) openEventTrace(event, props.camera, atMs);
 }
 </script>
 

@@ -141,6 +141,24 @@
       <div class="bg-black shrink-0">
         <div class="flex items-center gap-2 h-7 px-4 pt-2 text-[10px] text-white/50 whitespace-nowrap overflow-hidden">
           <span class="shrink-0">{{ $t('views.recordings.trace.summary', { loaded: frames.length, total }) }}</span>
+          <form class="flex items-center gap-1 shrink-0 dark-mode" @submit.prevent="jumpToTime">
+            <DatePicker
+              v-model="jumpAt"
+              v-tooltip.top="{ value: $t('views.recordings.trace.jump_to_time') }"
+              time-only
+              show-seconds
+              hour-format="24"
+              size="small"
+              :aria-label="$t('views.recordings.trace.jump_to_time')"
+              :pt="{ pcInputText: { root: { class: '!h-5 !w-[84px] !px-1.5 !py-0 !text-[11px] tabular-nums' } } }"
+              @keydown.enter.prevent="jumpToTime"
+            />
+            <Button type="submit" text severity="contrast" class="control-bar-btn !w-5 !h-5" :disabled="!jumpAt">
+              <template #icon>
+                <i-tabler:arrow-right class="w-3.5 h-3.5" />
+              </template>
+            </Button>
+          </form>
           <ProgressSpinner
             v-if="framesStatus === 'loading'"
             v-tooltip.top="{ value: $t('views.recordings.trace.loading_frames') }"
@@ -156,20 +174,35 @@
             <span class="truncate">{{ $t('views.recordings.trace.codec_fallback_short') }}</span>
           </span>
         </div>
-        <div ref="stripRef" class="strip flex gap-2 px-4 pt-2 pb-3 overflow-x-auto" @scroll.passive="onStripScroll">
-          <button
-            v-for="(frame, index) in frames"
-            :key="frame.tick.tMs"
-            type="button"
-            class="thumb shrink-0 rounded-md overflow-hidden bg-black border-2 transition cursor-pointer"
-            :class="index === selectedIndex ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100 hover:border-white/40'"
-            :style="{ width: `${THUMB_WIDTH}px`, aspectRatio: frameAspect(frame) }"
-            v-tooltip.top="{ value: `+${relativeSeconds(frame.tick.tMs)}s · ${formatTime(frame.tick.tMs)}` }"
-            @click="select(index)"
+        <div class="relative">
+          <Button
+            v-if="hasEarlier"
+            v-tooltip.top="{ value: $t('views.recordings.trace.earlier') }"
+            rounded
+            severity="secondary"
+            class="!absolute left-2 top-1/2 -translate-y-1/2 z-[2] cui-icon-md shadow-md opacity-80 hover:opacity-100"
+            :loading="earlierBusy"
+            @click="showEarlier"
           >
-            <canvas v-if="frame.thumb" :ref="(el) => setThumbCanvas(index, el)" class="block w-full h-full" />
-            <div v-else class="w-full h-full flex items-center justify-center text-[10px] text-white/50 px-1 text-center">+{{ relativeSeconds(frame.tick.tMs) }}s</div>
-          </button>
+            <template #icon>
+              <i-tabler:chevron-left class="w-4 h-4" />
+            </template>
+          </Button>
+          <div ref="stripRef" class="strip flex gap-2 px-4 pt-2 pb-3 overflow-x-auto" @scroll.passive="onStripScroll">
+            <button
+              v-for="(frame, index) in frames"
+              :key="frame.tick.tMs"
+              type="button"
+              class="thumb shrink-0 rounded-md overflow-hidden bg-black border-2 transition cursor-pointer"
+              :class="index === selectedIndex ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100 hover:border-white/40'"
+              :style="{ width: `${THUMB_WIDTH}px`, aspectRatio: frameAspect(frame) }"
+              v-tooltip.top="{ value: `+${relativeSeconds(frame.tick.tMs)}s · ${formatTime(frame.tick.tMs)}` }"
+              @click="select(index)"
+            >
+              <canvas v-if="frame.thumb" :ref="(el) => setThumbCanvas(index, el)" class="block w-full h-full" />
+              <div v-else class="w-full h-full flex items-center justify-center text-[10px] text-white/50 px-1 text-center">+{{ relativeSeconds(frame.tick.tMs) }}s</div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -284,7 +317,23 @@ const nvrController = useNvrPlayback(
   computed(() => props.camera._id),
   { sourceRole: computed(() => props.camera.interfaceSettings?.playbackSource ?? 'auto') },
 );
-const { trace, frames, total, hasMore, status, framesStatus, codecFallback, load, loadMore, allTicks, ensureFrames, fullFrame } = useEventTrace();
+const {
+  trace,
+  frames,
+  total,
+  hasMore,
+  hasEarlier,
+  status,
+  framesStatus,
+  codecFallback,
+  load,
+  loadMore,
+  loadEarlier,
+  jumpTo: jumpTrace,
+  allTicks,
+  ensureFrames,
+  fullFrame,
+} = useEventTrace();
 
 const THUMB_WIDTH = 144;
 const STRIP_GAP = 8;
@@ -328,6 +377,8 @@ const playheadMs = ref(props.event.startTime);
 const scrubbing = ref(false);
 const ended = ref(false);
 const bundleBusy = ref(false);
+const jumpAt = ref<Date>();
+const earlierBusy = ref(false);
 
 let stageRequest = 0;
 let wasPlayingBeforeScrub = false;
@@ -439,6 +490,40 @@ function loadVisible(): void {
   if (hasMore.value && first + count + PREFETCH_AHEAD >= frames.value.length) {
     loadMore().then(() => nextTick(loadVisible));
   }
+  if (hasEarlier.value && first === 0 && strip.scrollLeft < step / 2) showEarlier();
+}
+
+async function showEarlier(): Promise<void> {
+  if (earlierBusy.value) return;
+  earlierBusy.value = true;
+  try {
+    const strip = stripRef.value;
+    const scrollBefore = strip?.scrollLeft ?? 0;
+    const added = await loadEarlier();
+    if (added === 0) return;
+    if (selectedIndex.value >= 0) selectedIndex.value += added;
+    await nextTick();
+    if (strip) strip.scrollLeft = scrollBefore + added * (THUMB_WIDTH + STRIP_GAP);
+    loadVisible();
+  } finally {
+    earlierBusy.value = false;
+  }
+}
+
+async function jumpToTime(): Promise<void> {
+  const picked = jumpAt.value;
+  if (!picked) return;
+  const at = new Date(props.event.startTime);
+  at.setHours(picked.getHours(), picked.getMinutes(), picked.getSeconds(), 0);
+  let target = at.getTime();
+  if (target < props.event.startTime - 1000) target += 24 * 3600_000;
+  target = Math.min(Math.max(target, props.event.startTime), props.event.endTime ?? Date.now());
+  selectedIndex.value = -1;
+  thumbCanvases.clear();
+  await jumpTrace(target);
+  await nextTick();
+  loadVisible();
+  if (showPlayback.value) jumpTo(target);
 }
 
 function setThumbCanvas(index: number, el: unknown): void {
@@ -929,6 +1014,7 @@ watch(selectedIndex, (index) => {
   showStage(index);
   nextTick(scrollThumbIntoView);
   const tick = frames.value[index]?.tick;
+  if (tick) jumpAt.value = new Date(tick.tMs);
   if (showPlayback.value && tick) jumpTo(tick.tMs);
 });
 
@@ -950,7 +1036,7 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-  load(props.event.cameraId, props.event.id);
+  load(props.event.cameraId, props.event.id, props.startAtMs);
 });
 </script>
 

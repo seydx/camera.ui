@@ -2659,6 +2659,8 @@ export default {
         empty: 'Für dieses Ereignis ist kein Verlauf gespeichert.',
         unavailable: 'Der Verlauf konnte nicht geladen werden.',
         summary: '{loaded} von {total} Bildern geladen',
+        jump_to_time: 'Zu einer Uhrzeit springen',
+        earlier: 'Frühere Bilder',
         loading_frames: 'Bilder werden aus der Aufnahme geladen…',
         bundle_hint: 'Paket herunterladen',
         bundle_failed: 'Das Support-Paket konnte nicht erstellt werden',

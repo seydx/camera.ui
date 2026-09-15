@@ -2642,6 +2642,8 @@ export default {
         empty: 'No trace stored for this event.',
         unavailable: 'The trace could not be loaded.',
         summary: '{loaded} of {total} frames loaded',
+        jump_to_time: 'Jump to a time',
+        earlier: 'Earlier frames',
         loading_frames: 'Loading frames from the recording…',
         bundle_hint: 'Download bundle',
         bundle_failed: 'The support bundle could not be created',

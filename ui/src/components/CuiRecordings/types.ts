@@ -41,7 +41,7 @@ export interface RecordingCardProps {
 export interface RecordingCardEmits {
   scrollToEvent: [timestamp: number];
   select: [];
-  openTrace: [];
+  openTrace: [atMs?: number];
 }
 
 export interface RecordingsFilterSidebarProps {

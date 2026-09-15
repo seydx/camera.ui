@@ -117,7 +117,7 @@
                 :sibling-active="item.segIndex !== undefined && hoveredEventId === item.event.id"
                 @select="toggleSelection(item.event.id)"
                 @scroll-to-event="(ts: number) => openRecordingDialog(item.event, ts)"
-                @open-trace="() => openTraceDialog(item.event)"
+                @open-trace="(atMs?: number) => openTraceDialog(item.event, atMs)"
                 @mouseenter="hoveredEventId = item.segIndex !== undefined ? item.event.id : null"
                 @mouseleave="hoveredEventId = null"
               />
@@ -645,10 +645,10 @@ function onSemanticSearch(query: string): void {
   runSemanticSearch(query);
 }
 
-function openTraceDialog(event: RecordedEvent): void {
+function openTraceDialog(event: RecordedEvent, atMs?: number): void {
   const camera = cameraById.value.get(event.cameraId);
   if (!camera) return;
-  openEventTrace(event, camera);
+  openEventTrace(event, camera, atMs);
 }
 
 function openRecordingDialog(event: RecordedEvent, timestamp: number): void {

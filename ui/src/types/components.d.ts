@@ -514,6 +514,7 @@ declare module 'vue' {
     'ISvgSpinners:ringResize': typeof import('~icons/svg-spinners/ring-resize')['default']
     'ITabler:activity': typeof import('~icons/tabler/activity')['default']
     'ITabler:arrowLeft': typeof import('~icons/tabler/arrow-left')['default']
+    'ITabler:arrowRight': typeof import('~icons/tabler/arrow-right')['default']
     'ITabler:calendar': typeof import('~icons/tabler/calendar')['default']
     'ITabler:check': typeof import('~icons/tabler/check')['default']
     'ITabler:chevronLeft': typeof import('~icons/tabler/chevron-left')['default']

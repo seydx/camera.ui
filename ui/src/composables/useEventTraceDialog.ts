@@ -8,7 +8,7 @@ import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
 export function useEventTraceDialog() {
   const dialog = useCuiDialog();
 
-  function openEventTrace(event: RecordedEvent, camera: DBCamera): DynamicDialogInstance {
+  function openEventTrace(event: RecordedEvent, camera: DBCamera, startAtMs?: number): DynamicDialogInstance {
     return dialog.openComponentDialog<EventTraceProps>(EventTraceDialog, {
       data: {
         title: camera.name,
@@ -19,6 +19,7 @@ export function useEventTraceDialog() {
         contentProps: {
           event,
           camera,
+          startAtMs,
         },
         headerActions: [],
         draggable: true,
