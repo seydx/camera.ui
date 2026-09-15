@@ -1903,7 +1903,10 @@ export class DetectionCoordinator {
     for (const id of result.removed) this.heldMoments.delete(id);
     if (this.witnessSensors.size === 0) return;
 
+    const confirmed = new Set(result.created);
     for (const sighting of result.sightings) {
+      // confirmed in the same tick: the regular moment cuts this frame anyway
+      if (confirmed.has(sighting.trackId)) continue;
       const box: BoundingBox = { x: sighting.x, y: sighting.y, width: sighting.width, height: sighting.height };
       const rendered = await this.renderMoment({ subject: box, base: box }, analysis);
       if (!rendered) continue;
