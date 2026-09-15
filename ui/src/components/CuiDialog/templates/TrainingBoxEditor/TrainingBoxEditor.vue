@@ -77,7 +77,7 @@
           </svg>
 
           <div
-            v-for="{ box, i } in layers"
+            v-for="(box, i) in boxes"
             :key="`label-${i}`"
             class="bbox-label cursor-move"
             :data-box-label="i"
@@ -89,7 +89,7 @@
               'label-inside': labelPlacement(box) === 'inside',
               'label-right': isLabelOnRight(box),
             }"
-            :style="labelStyle(box)"
+            :style="[labelStyle(box), { zIndex: labelOrder.get(i) }]"
           >
             <component :is="styleFor(box.label).icon" class="bbox-label-icon" />
             <span class="bbox-label-text">{{ labelText(box.label) }}</span>
@@ -287,6 +287,8 @@ const hasNext = computed(() => props.candidates.slice(index.value + 1).some((c) 
 const currentStatus = computed(() => (verifiedIds.has(current.value.id) ? 'verified' : current.value.status));
 
 const layers = computed(() => boxes.value.map((box, i) => ({ box, i })).sort((a, b) => layerRank(a) - layerRank(b)));
+
+const labelOrder = computed(() => new Map(layers.value.map(({ i }, position) => [i, position + 1])));
 
 const selectedBox = computed<DBTrainingCandidateBox | undefined>(() => boxes.value[selectedIndex.value]);
 
@@ -528,7 +530,8 @@ function normalizedRect(x1: number, y1: number, x2: number, y2: number): Pick<DB
 function openLabelMenu(boxIndex: number, event: Event): void {
   labelMenuIndex.value = boxIndex;
   const anchor = frameRef.value?.querySelector(`[data-box-label="${boxIndex}"]`);
-  labelMenuRef.value?.toggleMenu(event, anchor ?? undefined);
+  const source = { currentTarget: frameRef.value ?? event.currentTarget } as unknown as Event;
+  labelMenuRef.value?.toggleMenu(source, anchor ?? undefined);
 }
 
 function setLabel(label: string): void {
@@ -596,9 +599,14 @@ function step(direction: 1 | -1, stash = true): boolean {
 
 async function removeCurrent(): Promise<null | undefined> {
   const id = current.value.id;
-  await props.onDelete(id);
-  edits.delete(id);
   removedIds.add(id);
+  try {
+    await props.onDelete(id);
+  } catch (error) {
+    removedIds.delete(id);
+    throw error;
+  }
+  edits.delete(id);
   return step(1, false) || step(-1, false) ? null : undefined;
 }
 

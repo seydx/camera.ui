@@ -5,7 +5,7 @@ export type PluginSchemaStorageType = 'plugin' | 'camera' | 'sensor';
 export interface PluginSchemaProps {
   schemaConfig: SchemaConfig;
   pluginName: string;
-  cameraName?: string;
+  cameraId?: string;
   buttonKey: string;
   sensorId?: string;
   pluginId?: string;

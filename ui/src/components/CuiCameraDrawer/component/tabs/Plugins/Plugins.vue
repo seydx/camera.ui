@@ -888,7 +888,8 @@ async function updateSelectedPlugin(pluginName?: string): Promise<void> {
         selectedPlugin.value = isPluginEnabled(cameraControllerExtension.value?.pluginName) || '';
         break;
       case 'hub':
-        selectedPlugin.value = isPluginEnabled(hubExtensions.value[0]?.pluginName) || '';
+        selectedPlugin.value = isPluginEnabled(selectedHubPlugin.value) || isPluginEnabled(hubExtensions.value[0]?.pluginName) || '';
+        selectedHubPlugin.value = selectedPlugin.value || undefined;
         break;
       case 'detection': {
         const assignment = selectedDetectionType.value ? getDetectionAssignment(selectedDetectionType.value) : undefined;
@@ -1070,7 +1071,7 @@ async function onSubmit(state: { key: string; payload: any }, pluginName: string
           contentProps: {
             schemaConfig: { schema: response.schema, config: state.payload },
             pluginName,
-            cameraName: camera.value.name,
+            cameraId: camera.value._id,
             buttonKey: state.key,
           },
         },
@@ -1215,7 +1216,7 @@ async function onAccessorySubmit(state: { key: string; payload: any }): Promise<
           contentProps: {
             schemaConfig: { schema: response.schema, config: state.payload },
             pluginName: selectedAccessoryPluginName.value,
-            cameraName: camera.value.name,
+            cameraId: camera.value._id,
             buttonKey: state.key,
             sensorId: selectedAccessorySensorId.value,
             pluginId: selectedAccessoryPluginId.value,
@@ -1259,7 +1260,7 @@ async function onDetectionPluginSubmit(state: { key: string; payload: any }): Pr
           contentProps: {
             schemaConfig: { schema: response.schema, config: state.payload },
             pluginName: selectedDetectionPlugin.value,
-            cameraName: camera.value.name,
+            cameraId: camera.value._id,
             buttonKey: state.key,
           },
         },
@@ -1299,7 +1300,7 @@ async function onCorePluginSubmit(state: { key: string; payload: any }): Promise
           contentProps: {
             schemaConfig: { schema: response.schema, config: state.payload },
             pluginName: selectedCorePlugin.value,
-            cameraName: camera.value.name,
+            cameraId: camera.value._id,
             buttonKey: state.key,
           },
         },
@@ -1336,7 +1337,7 @@ async function onAccessoryPluginSubmit(state: { key: string; payload: any }): Pr
           contentProps: {
             schemaConfig: { schema: response.schema, config: state.payload },
             pluginName: selectedAccessoryPluginForConfig.value,
-            cameraName: camera.value.name,
+            cameraId: camera.value._id,
             buttonKey: state.key,
           },
         },

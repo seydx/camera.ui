@@ -19,17 +19,17 @@ const toast = useCuiToast();
 const dialogRef = inject<Ref<DynamicDialogInstance>>('dialogRef')!;
 const dialogRefProps = inject<DialogRefProps>('dialogRefProps')!;
 
-const { schemaConfig, pluginName, cameraName, buttonKey, sensorId, pluginId } = toRefs(props);
+const { schemaConfig, pluginName, cameraId, buttonKey, sensorId, pluginId } = toRefs(props);
 
 const pluginStorage = usePluginStorage(pluginName);
-const cameraStorage = useCameraStorage(cameraName, pluginName);
+const cameraStorage = useCameraStorage(cameraId, pluginName);
 const sensorStorage = useSensorStorage(sensorId, pluginId);
 
 const schema = ref<SchemaConfig>({ schema: [], config: {} });
 
 const storageType = computed<PluginSchemaStorageType>(() => {
-  if (cameraName.value && sensorId.value) return 'sensor';
-  if (cameraName.value) return 'camera';
+  if (cameraId.value && sensorId.value) return 'sensor';
+  if (cameraId.value) return 'camera';
   return 'plugin';
 });
 
