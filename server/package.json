@@ -37,7 +37,7 @@
   "dependencies": {
     "@bjia56/portable-python": "^0.1.166",
     "@camera.ui/common": "~0.0.55",
-    "@camera.ui/go2rtc": "^1.9.14-cui.43",
+    "@camera.ui/go2rtc": "^1.9.14-cui.44",
     "@camera.ui/nats": "^2.14.6",
     "@camera.ui/rpc": "^1.0.12",
     "@camera.ui/rust-detector": "~0.0.12",
@@ -126,7 +126,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "^8.70.0",
     "updates": "^18.1.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "overrides": {
     "@shinyoshiaki/binary-data": "npm:@seydx/binary-data@0.6.2",
