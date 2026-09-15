@@ -37,7 +37,7 @@
     "@aparajita/capacitor-secure-storage": "^8.0.0",
     "@camera.ui/browser": "~0.0.191",
     "@camera.ui/common": "~0.0.55",
-    "@camera.ui/nvr": "~0.0.125",
+    "@camera.ui/nvr": "~0.0.126",
     "@camera.ui/rpc": "~1.0.12",
     "@camera.ui/sdk": "~1.2.38",
     "@camera.ui/transport": "~0.0.30",
