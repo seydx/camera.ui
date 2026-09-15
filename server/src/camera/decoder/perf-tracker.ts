@@ -10,12 +10,16 @@ export class PerfTracker {
   public loopMs = 0;
   public idleTicks = 0;
   public activeTicks = 0;
-  public mainFrames = 0;
+  public mainTicks = 0;
+  public mainLoopMs = 0;
   public switches = 0;
   public decodeMs = 0;
   public decodedFrames = 0;
   public mainDecodeMs = 0;
+  public mainDecodedFrames = 0;
   public scaleMs = 0;
+  public motionScaleMs = 0;
+  public motionScaleCount = 0;
   public postMs = 0;
   public jpegMs = 0;
   public motionMs = 0;
@@ -118,12 +122,16 @@ export class PerfTracker {
       loopMs: this.loopMs,
       idleTicks: this.idleTicks,
       activeTicks: this.activeTicks,
-      mainFrames: this.mainFrames,
+      mainTicks: this.mainTicks,
+      mainLoopMs: this.mainLoopMs,
       switches: this.switches,
       decodeMs: this.decodeMs,
       decodedFrames: this.decodedFrames,
       mainDecodeMs: this.mainDecodeMs,
+      mainDecodedFrames: this.mainDecodedFrames,
       scaleMs: this.scaleMs,
+      motionScaleMs: this.motionScaleMs,
+      motionScaleCount: this.motionScaleCount,
       postMs: this.postMs,
       jpegMs: this.jpegMs,
       motionMs: this.motionMs,

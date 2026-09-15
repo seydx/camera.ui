@@ -76,8 +76,10 @@ export interface CuiCameraCardProps {
   toolbarTimelineButton?: boolean;
   toolbarZoneButton?: boolean;
   toolbarDescriptionButton?: boolean;
+  toolbarTraceButton?: boolean;
 
   eventDescription?: EventDescription;
+  currentEventId?: string;
 
   // PiP Configuration
   pipSourceRole?: StreamingRole;
@@ -125,6 +127,7 @@ export const CAMERA_CARD_DEFAULTS: InferDefaults<CuiCameraCardProps> = {
   toolbarTimelineButton: true,
   toolbarZoneButton: true,
   toolbarDescriptionButton: false,
+  toolbarTraceButton: false,
 
   control: true,
   controlFastForwardButton: true,

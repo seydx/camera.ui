@@ -75,6 +75,10 @@ export class EventThumbnailer {
     await this.hqSource?.stop();
   }
 
+  public takeHqDecodeStats(): { ms: number; frames: number } {
+    return this.hqSource?.takeDecodeStats() ?? { ms: 0, frames: 0 };
+  }
+
   public async acquireHqFrame(maxAgeMs = HQ_FRAME_MAX_AGE_MS): Promise<{ frame: Frame; scaler: FrameScaler; rtp?: number } | null> {
     const source = this.hqSource;
     if (!source?.isRunning || !source.hasBuffer) return null;

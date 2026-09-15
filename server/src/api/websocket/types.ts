@@ -30,6 +30,7 @@ export interface WorkerPerfStats {
   mainDecodeMs: number;
   scaleMs: number;
   postMs: number;
+  motionScaleMs: number;
   transportMs: number;
   analysedFps: number;
   mainFps: number;

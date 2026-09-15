@@ -529,7 +529,11 @@ const analysisPerformanceHeaders = computed<TableHeader[]>(() => {
       headerTooltip: t('views.metrics.info_processing'),
       columnProps: analysisColumnProps,
       tooltip: (item: ProcessInfo) =>
-        [`${t('views.metrics.tip_scale')}: ${ms(item.perf?.scaleMs)}`, `${t('views.metrics.tip_post')}: ${ms(item.perf?.postMs)}`].join(' · '),
+        [
+          `${t('views.metrics.tip_scale')}: ${ms(item.perf?.scaleMs)}`,
+          `${t('views.metrics.tip_post')}: ${ms(item.perf?.postMs)}`,
+          `${t('views.metrics.tip_motion_scale')}: ${ms(item.perf?.motionScaleMs)}`,
+        ].join(' · '),
     },
     {
       type: 'category',

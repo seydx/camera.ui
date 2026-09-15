@@ -85,12 +85,16 @@ export interface FrameWorkerPerfCounters {
   loopMs: number;
   idleTicks: number;
   activeTicks: number;
-  mainFrames: number;
+  mainTicks: number;
+  mainLoopMs: number;
   switches: number;
   decodeMs: number;
   decodedFrames: number;
   mainDecodeMs: number;
+  mainDecodedFrames: number;
   scaleMs: number;
+  motionScaleMs: number;
+  motionScaleCount: number;
   postMs: number;
   jpegMs: number;
   motionMs: number;

@@ -3,16 +3,16 @@ import { currentLoad, mem, processes } from 'systeminformation';
 import { container } from 'tsyringe';
 
 import { WorkerCapability } from '../../../workers/types.js';
+import { deriveWorkerPerf } from './worker-perf.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { Systeminformation } from 'systeminformation';
 import type { CameraUiAPI } from '../../../api.js';
-import type { FrameWorkerPerfSnapshot } from '../../../camera/decoder/types.js';
 import type { Go2Rtc } from '../../../go2rtc/index.js';
 import type { PluginManager } from '../../../plugins/index.js';
 import type { NATS } from '../../../rpc/server.js';
 import type { WorkerManager } from '../../../workers/manager.js';
-import type { AllProcesses, ProcessInfo, ProcessType, ServerProcesses, SocketNsp, WorkerDetectorStats, WorkerPerfStats, WorkerProcesses } from '../types.js';
+import type { AllProcesses, ProcessInfo, ProcessType, ServerProcesses, SocketNsp, WorkerPerfStats, WorkerProcesses } from '../types.js';
 
 export class MetricsNamespace {
   public nsp: Namespace;
@@ -125,7 +125,7 @@ export class MetricsNamespace {
       controllers.map(async (controller) => {
         const snapshot = await controller.frameWorker.getPerfSnapshot();
         if (snapshot && snapshot.uptimeMs > 0) {
-          next[controller.frameWorker.name] = this.derivePerfStats(snapshot);
+          next[controller.frameWorker.name] = deriveWorkerPerf(snapshot, (pluginId) => this.pluginName(pluginId));
         }
       }),
     );
@@ -139,56 +139,6 @@ export class MetricsNamespace {
       if (plugin.id === pluginId) return plugin.displayName ?? plugin.pluginName;
     }
     return pluginId;
-  }
-
-  private derivePerfStats(snapshot: FrameWorkerPerfSnapshot): WorkerPerfStats {
-    const round = (value: number) => Math.round(value * 10) / 10;
-    const per = (total: number, count: number) => (count > 0 ? round(total / count) : 0);
-    const frames = snapshot.objectCount || snapshot.ticks;
-    const loopSeconds = snapshot.loopMs / 1000;
-    const activeSeconds = snapshot.ticks > 0 ? loopSeconds * (snapshot.activeTicks / snapshot.ticks) : 0;
-    const fallback: Partial<Record<string, number>> = {
-      motion: per(snapshot.motionMs, snapshot.motionCount),
-      object: per(snapshot.objectMs, snapshot.objectCount),
-      face: per(snapshot.faceMs, snapshot.faceCount),
-      licensePlate: per(snapshot.plateMs, snapshot.plateCount),
-      classifier: per(snapshot.classifierMs, snapshot.classifierCount),
-      clip: per(snapshot.clipMs, snapshot.clipCount),
-    };
-
-    const detectors: Record<string, WorkerDetectorStats> = {};
-    for (const [type, info] of Object.entries(snapshot.detectors)) {
-      detectors[type] = {
-        plugin: this.pluginName(info.plugin) ?? info.plugin,
-        input: info.input,
-        runtime: info.runtime,
-        models: info.models,
-        inferenceMs: info.calls ? per(info.handlerMs ?? 0, info.calls) : (fallback[type] ?? 0),
-        transportMs: info.calls ? per(info.transportMs ?? 0, info.calls) : 0,
-        stamped: Boolean(info.calls),
-      };
-    }
-
-    return {
-      detectors,
-      processingMs: per(snapshot.scaleMs + snapshot.postMs, frames),
-      decodeMs: per(snapshot.decodeMs, snapshot.decodedFrames),
-      mainDecodeMs: per(snapshot.mainDecodeMs, snapshot.mainFrames),
-      scaleMs: per(snapshot.scaleMs, frames),
-      postMs: per(snapshot.postMs, frames),
-      transportMs: detectors.object?.transportMs ?? 0,
-      analysedFps: loopSeconds > 0 ? round(snapshot.ticks / loopSeconds) : 0,
-      mainFps: activeSeconds > 0 ? round(snapshot.mainFrames / activeSeconds) : 0,
-      mainStreamEnabled: snapshot.mainStreamEnabled,
-      frameAnalysis: snapshot.frameAnalysis,
-      activePercent: snapshot.uptimeMs > 0 ? Math.min(100, Math.round((snapshot.loopMs / snapshot.uptimeMs) * 100)) : 0,
-      zoomPercent: snapshot.objectCount > 0 ? Math.min(100, Math.round((snapshot.zoomTicks / snapshot.objectCount) * 100)) : 0,
-      zoomWindows: snapshot.zoomTicks > 0 ? round(snapshot.zoomWindows / snapshot.zoomTicks) : 0,
-      objectsPerFrame: per(snapshot.objects, frames),
-      hitPercent: frames > 0 ? Math.round((snapshot.framesWithObjects / frames) * 100) : 0,
-      switches: snapshot.switches,
-      minutes: Math.round(snapshot.uptimeMs / 60_000),
-    };
   }
 
   private withWorkerPerf(processData: AllProcesses): AllProcesses {

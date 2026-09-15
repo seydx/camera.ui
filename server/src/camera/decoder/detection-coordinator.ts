@@ -350,6 +350,8 @@ export class DetectionCoordinator {
   }
 
   public getPerfSnapshot(): FrameWorkerPerfSnapshot {
+    // decodes outside the loop (external reports, pictures) count as well
+    this.collectDecodeStats();
     const { timings, ...counters } = this.perf.snapshot();
     const detectors: Record<string, DetectorInfo> = {};
 
@@ -377,7 +379,19 @@ export class DetectionCoordinator {
   }
 
   public resetPerf(): void {
+    // what was decoded before the reset must not land in the new period
+    this.frameSource.takeDecodeStats();
+    this.thumbnailer.takeHqDecodeStats();
     this.perf.reset();
+  }
+
+  private collectDecodeStats(): void {
+    const decode = this.frameSource.takeDecodeStats();
+    this.perf.decodeMs += decode.ms;
+    this.perf.decodedFrames += decode.frames;
+    const main = this.thumbnailer.takeHqDecodeStats();
+    this.perf.mainDecodeMs += main.ms;
+    this.perf.mainDecodedFrames += main.frames;
   }
 
   public pauseForBenchmark(paused: boolean): void {
@@ -1324,6 +1338,7 @@ export class DetectionCoordinator {
 
     while (this.loopRunning) {
       const tickStart = Date.now();
+      let onMainStream = false;
       const snap = await this.frameSource.nextFrame(lastFrameId);
       if (!snap) break; // source stopped
 
@@ -1356,6 +1371,7 @@ export class DetectionCoordinator {
         // motion always reads the low stream: switching its input resolution
         // would reset the background model on every transition
         const analysis = await this.acquireAnalysisFrame(snap);
+        onMainStream = analysis.isMainStream;
         // debugging
         detectionRecord.setFrame(analysis.isMainStream ? 'main' : 'low', analysis.frame.width, analysis.frame.height, analysis.rtp, analysis.role);
         try {
@@ -1384,9 +1400,7 @@ export class DetectionCoordinator {
         }
       }
 
-      const decode = this.frameSource.takeDecodeStats();
-      this.perf.decodeMs += decode.ms;
-      this.perf.decodedFrames += decode.frames;
+      this.collectDecodeStats();
 
       // activity, not stream choice: cameras without main-stream analysis still count as active
       if (this.worldSpans.size > 0 || this.eventManager.hasActiveSegment()) this.perf.activeTicks++;
@@ -1395,7 +1409,12 @@ export class DetectionCoordinator {
 
       const remaining = (this.mainStreamActive ? ACTIVE_TICK_MS : IDLE_TICK_MS) - (Date.now() - tickStart);
       if (remaining > 0) await sleep(remaining);
-      this.perf.loopMs += Date.now() - tickStart;
+      const tickMs = Date.now() - tickStart;
+      this.perf.loopMs += tickMs;
+      if (onMainStream) {
+        this.perf.mainTicks++;
+        this.perf.mainLoopMs += tickMs;
+      }
     }
 
     await this.frameSource.detach();
@@ -1405,12 +1424,9 @@ export class DetectionCoordinator {
 
   private async acquireAnalysisFrame(snap: Pick<FrameSnap, 'frame' | 'rtp'>): Promise<AnalysisFrame> {
     if (this.mainStreamActive) {
-      const t0 = Date.now();
       try {
         const main = await this.thumbnailer.acquireHqFrame(0);
         if (main) {
-          this.perf.mainFrames++;
-          this.perf.mainDecodeMs += Date.now() - t0;
           return { frame: main.frame, scaler: main.scaler, isMainStream: true, rtp: main.rtp, role: this.thumbnailer.mainStreamRole };
         }
       } catch (error) {
@@ -1423,12 +1439,9 @@ export class DetectionCoordinator {
 
   private async acquireOpeningHqFrame(): Promise<AnalysisFrame | undefined> {
     if (!this.mainStreamAvailable) return undefined;
-    const t0 = Date.now();
     try {
       const main = await this.thumbnailer.acquireHqFrame(0);
       if (main) {
-        this.perf.mainFrames++;
-        this.perf.mainDecodeMs += Date.now() - t0;
         return { frame: main.frame, scaler: main.scaler, isMainStream: true, rtp: main.rtp, role: this.thumbnailer.mainStreamRole };
       }
     } catch (error) {
@@ -1504,7 +1517,10 @@ export class DetectionCoordinator {
       const motionDue = t0 - this.lastMotionAt >= MOTION_INTERVAL_MS - TICK_SLACK_MS;
       const motionScaleStart = Date.now();
       const motionFrame = motionDue ? await this.scaleForMotion(motionRawFrame) : undefined;
-      if (motionDue) this.perf.scaleMs += Date.now() - motionScaleStart;
+      if (motionDue) {
+        this.perf.motionScaleMs += Date.now() - motionScaleStart;
+        this.perf.motionScaleCount++;
+      }
       if (!this.loopRunning) return;
       if (motionFrame) {
         this.lastMotionAt = t0;
@@ -1543,7 +1559,8 @@ export class DetectionCoordinator {
       if (localizeDue && this.localizerWanted) {
         const scaleStart = Date.now();
         const gray = await this.scaleForMotionInput(motionRawFrame);
-        this.perf.scaleMs += Date.now() - scaleStart;
+        this.perf.motionScaleMs += Date.now() - scaleStart;
+        this.perf.motionScaleCount++;
         if (!this.loopRunning) return;
         if (gray) this.feedLocalizer(gray, t0, ptzSuppressed);
       }
@@ -2219,7 +2236,8 @@ export class DetectionCoordinator {
       );
       this.perf.objectMs += Date.now() - inferStart;
       this.perf.objectCount++;
-      return mergeWindowDetections(perWindow.flat());
+      for (const window of perWindow) this.perf.scaleMs += window.cropMs;
+      return mergeWindowDetections(perWindow.flatMap((window) => window.detections));
     }
 
     const scaleStart = Date.now();
@@ -2239,11 +2257,17 @@ export class DetectionCoordinator {
     return FrameScaler.undoLetterbox(ensureDetectionBoxes(result.detections), objectFrame.geometry);
   }
 
-  private async detectInWindow(plugin: RegisteredPlugin, frame: Frame, scaler: FrameScaler, window: BoundingBox, spec: VideoInputSpec): Promise<Detection[]> {
+  private async detectInWindow(
+    plugin: RegisteredPlugin,
+    frame: Frame,
+    scaler: FrameScaler,
+    window: BoundingBox,
+    spec: VideoInputSpec,
+  ): Promise<{ detections: Detection[]; cropMs: number }> {
     const scaleStart = Date.now();
     const cropped = await scaler.cropToSpec(frame, window, spec);
-    this.perf.scaleMs += Date.now() - scaleStart;
-    if (!cropped) return [];
+    const cropMs = Date.now() - scaleStart;
+    if (!cropped) return { detections: [], cropMs };
 
     const result = await PromiseTimeout(
       plugin.proxy.detectObjects(scaler.toVideoFrameData(cropped.padded, 'model')),
@@ -2251,7 +2275,7 @@ export class DetectionCoordinator {
       undefined,
       `Object detection timed out after ${DETECT_TIMEOUT_MS}ms`,
     );
-    return FrameScaler.undoLetterbox(ensureDetectionBoxes(result.detections), cropped.geometry);
+    return { detections: FrameScaler.undoLetterbox(ensureDetectionBoxes(result.detections), cropped.geometry), cropMs };
   }
 
   private async scaleFrameForPlugin(rawFrame: Frame, plugin: RegisteredPlugin, scaler: FrameScaler = this.frameScaler): Promise<PluginFrame | undefined> {
@@ -2302,7 +2326,6 @@ export class DetectionCoordinator {
       const reportedLabels = new Set(reported.map((d) => d.label.toLowerCase()));
       const found = boxed.filter((d) => reportedLabels.size === 0 || reportedLabels.has(d.label.toLowerCase()));
       if (found.length === 0) return { detections: reported, assisted: false };
-      this.perf.objects += found.length;
       return { detections: found, assisted: true };
     } catch (error) {
       if (isNoRespondersError(error)) return { detections: reported, assisted: false };
@@ -2326,7 +2349,7 @@ export class DetectionCoordinator {
       if (windows.length > 0) {
         detectionRecord.zoom({ kind: 'assist', anchors, windows });
         const perWindow = await Promise.all(windows.map((window) => this.detectInWindow(assist, frame, scaler, window, inputSpec)));
-        return mergeWindowDetections(perWindow.flat());
+        return mergeWindowDetections(perWindow.flatMap((window) => window.detections));
       }
     }
     detectionRecord.tick({
