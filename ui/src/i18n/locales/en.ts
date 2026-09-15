@@ -1409,6 +1409,7 @@ export default {
       heatmap: 'Heatmap',
       ask_assistant: 'Ask the assistant',
       ask_assistant_prompt: 'What is happening at the camera {camera} right now, and what did it see today?',
+      ask_assistant_prompt_playback: 'What happened at the camera {camera} around {time}? Show me the picture of that moment and tell me what you see.',
       more: 'More',
       zoom_in: 'Zoom in',
       zoom_out: 'Zoom out',

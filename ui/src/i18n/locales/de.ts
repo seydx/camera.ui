@@ -1420,6 +1420,7 @@ export default {
       heatmap: 'Heatmap',
       ask_assistant: 'Assistenten fragen',
       ask_assistant_prompt: 'Was passiert gerade an der Kamera {camera}, und was hat sie heute gesehen?',
+      ask_assistant_prompt_playback: 'Was ist an der Kamera {camera} um {time} passiert? Zeig mir das Bild von dem Moment und sag mir, was du siehst.',
       more: 'Mehr',
       zoom_in: 'Zoom rein',
       zoom_out: 'Zoom raus',

@@ -1350,7 +1350,7 @@ const streamMenuItems = computed<MenuItem[]>(() => {
   items.push({
     key: 'ask',
     label: t('components.player.ask_assistant'),
-    onClick: () => router.push({ path: '/assistant', query: { prompt: t('components.player.ask_assistant_prompt', { camera: cameraName.value }) } }),
+    onClick: () => router.push({ path: '/assistant', query: { prompt: assistantPrompt() } }),
   });
 
   return items;
@@ -1430,6 +1430,12 @@ const hasMoreMenuItems = computed(() => {
 });
 
 const displayResolution = computed(() => selectedSourceRole.value);
+
+function assistantPrompt(): string {
+  if (!nvrPlaybackVisible.value || !nvrCurrentTimestamp.value) return t('components.player.ask_assistant_prompt', { camera: cameraName.value });
+  const time = new Date(nvrCurrentTimestamp.value / 1000).toLocaleString();
+  return t('components.player.ask_assistant_prompt_playback', { camera: cameraName.value, time });
+}
 
 function onCardPointerDown() {
   panAtPointerDown = { ...panValue.value };
