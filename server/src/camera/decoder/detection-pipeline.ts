@@ -59,6 +59,7 @@ export interface PipelineResult {
   created: number[];
   removed: number[];
   events: WorldEvent[];
+  sightings: WorldObject[];
   trace: TraceTick;
 }
 
@@ -247,6 +248,10 @@ export class DetectionPipeline {
     this.world.notifyCameraMove();
   }
 
+  public attest(label: string, tMs = Date.now()): void {
+    this.world.attest(label, tMs);
+  }
+
   public process(rawDetections: Detection[], poseDelta?: { panDelta: number; tiltDelta: number }, tMs = Date.now()): PipelineResult {
     // the label whitelist is ours, not rust's: a zone only constrains the
     // labels it lists, so a label no zone lists would otherwise pass anywhere
@@ -286,6 +291,7 @@ export class DetectionPipeline {
       created: result.created,
       removed: result.removed,
       events: result.events,
+      sightings: result.sightings,
       trace: worldTrace(tMs, flat, cameraMotion, result),
     };
   }

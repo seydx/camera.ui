@@ -60,7 +60,7 @@ import type { CoordinatorSensorInfo, DetectionPluginInterface, DetectionResults 
 import type { CameraDeviceInterface } from '../../rpc/interfaces/device.js';
 import type { SensorWriteMessage } from '../../rpc/interfaces/sensor.js';
 import type { LineCrossingEvent, PipelineResult, ZoneConfig } from './detection-pipeline.js';
-import type { NormalizedDetectionZone, ProcessedDetectionData, TrackedFaceDetection, TrackedLicensePlateDetection } from './event-manager.js';
+import type { NormalizedDetectionZone, ProcessedDetectionData, SegmentMoment, TrackedFaceDetection, TrackedLicensePlateDetection } from './event-manager.js';
 import type { TraceTick } from './event-trace.js';
 import type { LetterboxGeometry } from './frame-scaler.js';
 import type { CropWindow, MomentFormatName, MomentTarget } from './moment-crop.js';
@@ -118,6 +118,7 @@ const TRAINING_FRAME_MAX_WIDTH = 1280;
 const TRAINING_ATTRIBUTE_BONUS = 0.2;
 const TRAINING_FRAME_QUALITY = 80;
 const MOMENT_EVENTS = new Set(['objectEntered', 'objectWoke', 'objectRecovered', 'bestShotUpdated']);
+const HELD_MOMENT_MS = 4000;
 const MOMENT_MOVING_SPEED = 0.05;
 const MOMENT_ATTRIBUTE_MIN_AREA = 600;
 
@@ -157,6 +158,8 @@ export class DetectionCoordinator {
   private readonly platesSeen = new Set<string>();
   private readonly classifierLabels = new Map<string, Set<string>>();
   private readonly feedingSensors = new Map<string, SensorType>();
+  private readonly witnessSensors = new Set<string>();
+  private readonly heldMoments = new Map<number, SegmentMoment>();
   private readonly dwell = new DwellManager();
   private readonly privacy: PrivacyMask;
 
@@ -469,6 +472,7 @@ export class DetectionCoordinator {
   }
 
   public async dispose(): Promise<void> {
+    this.heldMoments.clear();
     await this.stopVideoLoop();
     await this.frameSource.stop();
     await this.audioLoop.stop();
@@ -486,6 +490,14 @@ export class DetectionCoordinator {
 
   @RPCMethod
   public async onSensorAdded(sensor: CoordinatorSensorInfo): Promise<void> {
+    if (sensor.role === 'witness') {
+      this.feedingSensors.delete(sensor.sensorId);
+      this.witnessSensors.add(sensor.sensorId);
+      return;
+    }
+
+    this.witnessSensors.delete(sensor.sensorId);
+
     if (DETECTION_SENSOR_TYPES.has(sensor.sensorType)) {
       this.feedingSensors.set(sensor.sensorId, sensor.sensorType);
     }
@@ -505,6 +517,7 @@ export class DetectionCoordinator {
 
   @RPCMethod
   public async onSensorRemoved(sensorId: string): Promise<void> {
+    this.witnessSensors.delete(sensorId);
     this.classifierLabels.delete(sensorId);
     const sensorType = this.feedingSensors.get(sensorId);
     if (sensorType === SensorType.Face) this.faceIdentities.clear();
@@ -537,7 +550,13 @@ export class DetectionCoordinator {
 
   @RPCMethod
   public async reportSensorWrite(sensorId: string, sensorType: SensorType, properties: Record<string, unknown>): Promise<void> {
-    // the registry only announces the plugin assigned for this type, everyone else reports into the void
+    if (sensorType === SensorType.Object && this.witnessSensors.has(sensorId)) {
+      this.recordWitness(properties);
+      return;
+    }
+
+    // the registry announces the plugin assigned for this type and the
+    // witnesses, everyone else reports into the void
     if (!this.feedingSensors.has(sensorId)) return;
 
     // a detector reports its spec again once its models finished loading
@@ -846,6 +865,20 @@ export class DetectionCoordinator {
       detections: result.detections ?? [],
       ...(result.decibels !== undefined ? { decibels: result.decibels } : {}),
     });
+  }
+
+  private recordWitness(properties: Record<string, unknown>): void {
+    if (properties.detected !== true) return;
+    const detections = (properties.detections as { label?: string }[] | undefined) ?? [];
+    const labels = new Set<string>();
+    for (const detection of detections) {
+      const label = detection.label?.toLowerCase();
+      if (label && this.pipeline.objectLabelAllowed(label)) labels.add(label);
+    }
+    if (labels.size === 0) return;
+    const at = Date.now();
+    for (const label of labels) this.pipeline.attest(label, at);
+    this.logger.trace(`[witness] ${[...labels].join(', ')}`);
   }
 
   private writeSensorProperties(sensorId: string, properties: Record<string, unknown>): void {
@@ -1541,6 +1574,7 @@ export class DetectionCoordinator {
           if (this.updateWorldSpans(pipelineResult) && !analysis.isMainStream) {
             this.hqUpgrade = await this.acquireOpeningHqFrame();
           }
+          await this.holdSightingMoments(pipelineResult, this.hqUpgrade ?? analysis, t0);
           await this.captureMoments(pipelineResult, this.hqUpgrade ?? analysis, t0);
 
           // open spans and a lingering segment keep the cascade armed: the
@@ -1854,6 +1888,29 @@ export class DetectionCoordinator {
     return opened;
   }
 
+  private async holdSightingMoments(result: PipelineResult, analysis: AnalysisFrame, at: number): Promise<void> {
+    for (const [trackId, held] of this.heldMoments) {
+      if (at - held.capturedAt > HELD_MOMENT_MS) this.heldMoments.delete(trackId);
+    }
+    for (const id of result.removed) this.heldMoments.delete(id);
+    if (this.witnessSensors.size === 0) return;
+
+    for (const sighting of result.sightings) {
+      const box: BoundingBox = { x: sighting.x, y: sighting.y, width: sighting.width, height: sighting.height };
+      const rendered = await this.renderMoment({ subject: box, base: box }, analysis);
+      if (!rendered) continue;
+      const score = sighting.confidence * Math.sqrt(sighting.width * sighting.height);
+      this.heldMoments.set(sighting.trackId, {
+        strip: rendered.strip,
+        card: rendered.card,
+        capturedAt: at,
+        score,
+        rank: MOMENT_RANK_OBJECT,
+        stream: analysis.isMainStream ? 'main' : 'low',
+      });
+    }
+  }
+
   private async captureMoments(result: PipelineResult, analysis: AnalysisFrame, at: number): Promise<void> {
     let subject: WorldObject | undefined;
     let bestScore = -1;
@@ -1877,6 +1934,15 @@ export class DetectionCoordinator {
 
     // one frame per tick, not one per object: they share the picture
     if (!subject) return;
+    // a track confirmed through a witness after its only sighting: the
+    // current frame no longer shows it, the picture held at the sighting does
+    const held = this.heldMoments.get(subject.trackId);
+    this.heldMoments.delete(subject.trackId);
+    if (held && trigger === 'objectEntered' && subject.lastSeenMs < at) {
+      if (!this.eventManager.wantsMoment(held.rank, held.score, held.stream, at)) return;
+      this.eventManager.offerMoment({ ...held, capturedAt: at, shownAt: held.capturedAt });
+      return;
+    }
     if (!this.eventManager.wantsMoment(MOMENT_RANK_OBJECT, bestScore, analysis.isMainStream ? 'main' : 'low', at)) return;
     await this.captureMoment(subject, bestScore, trigger, result.tracked, analysis, at);
   }

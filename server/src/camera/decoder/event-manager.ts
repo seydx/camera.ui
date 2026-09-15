@@ -59,6 +59,7 @@ export interface SegmentMoment {
   strip: Buffer;
   card?: Buffer;
   capturedAt: number;
+  shownAt?: number;
   score: number;
   rank: number;
   stream: AnalysisStream;
@@ -1139,7 +1140,7 @@ export class DetectionEventManager {
     this.logSegment(type);
 
     const moment = this.segmentMoment;
-    if (moment) this.activeSegment.thumbnailAt = moment.capturedAt;
+    if (moment) this.activeSegment.thumbnailAt = moment.shownAt ?? moment.capturedAt;
 
     const attachments = this.segmentAttachments(type === 'segment-end');
     // ticks ride every segment message: they reach the store while the

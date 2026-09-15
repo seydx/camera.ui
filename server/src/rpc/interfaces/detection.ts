@@ -59,6 +59,7 @@ export interface CoordinatorSensorInfo {
   capabilities: string[];
   requiresFrames: boolean;
   modelSpec?: AnyModelSpec;
+  role?: 'feeding' | 'witness';
 }
 
 export interface DetectionCoordinatorInterface {

@@ -699,7 +699,7 @@ export class SensorRegistry {
     for (const record of this.records.values()) {
       if (!record.assignedCameraIds.includes(cameraId) || !this.runtime.has(record._id)) continue;
 
-      if (!this.feedsCamera(record, cameraId)) continue;
+      if (!this.feedsCamera(record, cameraId) && !this.witnessesCamera(record)) continue;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -758,7 +758,7 @@ export class SensorRegistry {
     if (!this.hasFrameWorker(cameraId)) return;
 
     try {
-      if (!this.feedsCamera(record, cameraId)) {
+      if (!this.feedsCamera(record, cameraId) && !this.witnessesCamera(record)) {
         await this.coordinatorFor(cameraId).onSensorRemoved(record._id);
         return;
       }
@@ -787,7 +787,13 @@ export class SensorRegistry {
       capabilities: [...(runtime?.capabilities ?? [])],
       requiresFrames: runtime?.requiresFrames ?? false,
       modelSpec: runtime?.modelSpec,
+      role: this.feedsCamera(record, cameraId) ? 'feeding' : 'witness',
     };
+  }
+
+  private witnessesCamera(record: DBSensor): boolean {
+    if (record.type !== SensorType.Object) return false;
+    return this.runtime.get(record._id)?.requiresFrames === false;
   }
 
   private coordinatorSensorType(record: DBSensor, cameraId: string): SensorType {
