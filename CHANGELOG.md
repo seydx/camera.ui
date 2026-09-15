@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3]
+
+### Changed
+
+- **Choose when a camera takes a new snapshot.** The Snapshot section of the camera settings has one choice now instead of a switch and two timers: regularly on a timer (up to an hour apart), when someone views the camera and the picture is older than an age you set, or only on request, for battery cameras that should stay asleep until an automation or the refresh button asks. Pictures taken by an automation or the refresh button show up on the cards and in Home Assistant right away, without reloading, and a changed privacy zone blacks out the stored picture at once.
+
+- **Recordings show a long event by its latest visitor.** An event that keeps running for hours was missing from Recordings until it ended, and afterwards its card sat at the start time with the first picture, so a person seen later was buried hours down the list. The event now appears while it runs, its card shows the newest span, and the list orders by when something last happened. A named face or plate still fronts the card. Needs the NVR plugin update.
+
+- **Scheduled prompts fit on phones.** The title gets its own line with the badges right below, and the switch became a pause button next to run and delete, which move into a menu on phones. Paused prompts are dimmed, and the error of a failed run shows on its own line.
+
+- **External MCP servers fold up.** Each server shows its name and connection state and opens with a tap, which keeps the card short with several servers. The on switch and the remove button moved inside.
+
+- **Updates and Settings moved under System in the phone menu.** They sat under Actions next to reload and log out.
+
+- **Shorter page lists under tables.** The pager shows three page numbers instead of five. First, previous, next and last stay.
+
+### Fixed
+
+- **The training editor no longer shows a broken picture.** When newer pictures arrived while the editor was open, camera.ui made room by removing older unreviewed ones, and the editor kept showing the removed entry without its picture. Such entries now drop out of the editor, and if it is the open one, the editor moves on to the next.
+
+- **Logs find a plugin or camera right after a restart.** With a plugin's or a camera's log open during a restart, the view claimed the plugin does not exist, because the request came in before the plugins were loaded. It now waits for the start to finish.
+
+- **Recent Events show their placeholders right away.** Since the filter arrived, the row stayed empty for a moment when the page opened and the cards then popped in all at once.
+
+- **Recent Events show the right picture for activity in a long event.** When an event ran on for hours (a cobweb or laundry in the wind keeps the motion going), a person spotted later in it got the picture from the event's start, hours old and in daylight at night, once the app had been in the background in between.
+
+- **Privacy zones black out snapshots again.** Since 2.1.12 the masking of camera snapshots failed every time, so with the default setting the snapshots went out unmasked, and with "drop" they were not sent at all. The Image Input step of automations also failed when it resized a picture from an earlier step.
+
+- **The assistant chat stays at the latest message when the keyboard opens.** The composer moved up but the conversation did not follow, so you had to scroll down again. The faded band above the composer is gone too.
+
+- **Dictation in the iOS and Android apps.** Tapping the microphone in the assistant did nothing. Needs the app update. When dictation is not allowed or fails, the composer now says so instead of staying silent.
+
+- **A finished assistant action is not asked for again.** A phone that woke up with an old copy of a conversation could send it once more. The assistant then asked again for a change that was already done, and the conversation lost its newer part. camera.ui now refuses the outdated copy and the conversation reloads.
+
+- **Training badges stay readable on pictures.** Uploading, upload failed and verified were see-through in dark mode.
+
+- **Training editor.** The selected box lies above all others and sinks below them once you select something else. Space on the last picture verifies it and closes the editor.
+
+- **Ollama models see their tools.** Ollama answers with a 4k token window unless asked for more, and the assistant's instructions did not fit. The model then claimed it could not check the cameras, and a picture ended in "exceeds the available context size". camera.ui now requests a window that matches the context budget.
+
+- **Leaner requests to the model.** Rarely used tools (REST calls, documentation pages, forgetting facts, setting hints) load on demand instead of going along with every question. With the NVR plugin update that also covers its face, plate, favorite, clip and text alert tools. Every model call carries about a quarter fewer tokens, which local models feel most.
+
+- **Gemini no longer gets stuck loading a tool.** The Flash models sometimes garble the name of the tool loader, the call failed and was repeated until the turn limit, and the answer came back empty. Such names are repaired before the call runs.
+
 ## [2.2.2]
 
 ### Added
