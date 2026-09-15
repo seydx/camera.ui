@@ -41,7 +41,7 @@
     "@camera.ui/nats": "^2.14.7",
     "@camera.ui/rpc": "^1.0.12",
     "@camera.ui/rust-detector": "~0.0.12",
-    "@camera.ui/rust-postprocessor": "~0.1.7",
+    "@camera.ui/rust-postprocessor": "~0.1.8",
     "@camera.ui/sdk": "~1.2.38",
     "@camera.ui/tunnel": "^1.0.4",
     "@eneris/push-receiver": "^4.3.1",
