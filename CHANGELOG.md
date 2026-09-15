@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Motion events keep their trace.** An event with motion but no detected object stored its trace only when it ended, so a restart during the event lost all of it, and a running event showed "No trace stored". The trace is now saved while the event runs. Needs the NVR plugin update.
+
 - **Tapping a label in the training editor opens its menu again.** Depending on the browser, the menu closed in the same instant it opened, so a box could only be relabeled or removed by tapping inside it. Seen in the Home Assistant panel and on some phones.
 
 - **No more "Token expired" errors.** A request sent just as the login token ran out failed with that message, for example when saving in the training editor. It now waits for the renewed token and repeats itself.
@@ -33,6 +35,14 @@ All notable changes to this project will be documented in this file.
 - **A camera outage no longer hides the other cameras in the multiview timeline.** One offline camera painted the shared timeline in its color and covered the recordings and detections of every other camera for as long as it was down. The outage now shows as a marker with the camera's name, and the others stay visible. In the single-camera view, a camera that lost only one of its streams no longer looks as if it had stopped recording.
 
 - **Outage labels stay readable while you scroll.** The label of an outage longer than the screen used to scroll away, leaving only the color. It now follows along until the band ends.
+
+- **Metrics show real numbers for detection.** The high-resolution stream could show more than 100 fps, processing times grew with every motion check, decoding counted the catch-up after a pause as one frame, and cameras with their own AI counted each object twice. Each figure now divides by the work it measures. Without an object detector, Processing shows the scaling for motion.
+
+- **Door locks and garage doors show a picture in the timeline.** A lock or garage door set as a camera trigger left an empty card in the timeline. It now shows the camera picture from that moment, like a doorbell or a contact sensor.
+
+- **Alarm system pushes are sent again.** A security system set as a camera trigger sent no notification when it went off, and the Recordings filter for it found nothing.
+
+- **Recordings no longer claim there is nothing to show.** Picking a filter while the list was still loading could leave it empty until you opened the page again.
 
 ## [2.2.3]
 
