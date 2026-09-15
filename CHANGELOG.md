@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.4]
+
+### Added
+
+- **Jump to a time in the event trace.** Type a clock time above the frame strip and the trace opens there, with earlier frames a scroll away. Opened from a card, the trace starts at the moment the card shows; from the camera view, at the moment on screen. A trace of an event that ran for hours used to start at the beginning and page from there. Needs the NVR plugin update for the jump.
+
+### Changed
+
+- **"Ask the assistant" on a camera knows what you are watching.** During playback it asks about the moment on screen instead of what the camera sees right now.
+
+### Fixed
+
+- **Tapping a label in the training editor opens its menu again.** Depending on the browser, the menu closed in the same instant it opened, so a box could only be relabeled or removed by tapping inside it. Seen in the Home Assistant panel and on some phones.
+
+- **No more "Token expired" errors.** A request sent just as the login token ran out failed with that message, for example when saving in the training editor. It now waits for the renewed token and repeats itself.
+
+- **The episode player's clock waits for the picture.** It started ticking as soon as an episode opened, while the video was still black, and again at every cut. It now starts with the first frame, as the event player does.
+
+- **Camera pictures come back after waking the app.** After the iOS or Android app returned from the background, the Home cards could stay empty until you changed the page. Every picture fetch was silently pulling the rug from under the cards showing it, and the refresh after reconnecting skipped the cards that were still re-attaching.
+
+- **The camera's own detection now backs up ours.** A person who is in view for only a moment, behind a fence or a clothesline, used to need two sightings from our detector before anything counted, and a single glimpse was dropped as a flicker. When the camera's own AI (Reolink, Dahua, ONVIF analytics) reports the same kind of object at the same moment, one glimpse is enough now, and the card shows the picture of that glimpse even when the report came in a moment later. The camera report never creates anything by itself. Comes with the native detection update.
+
+- **A visitor at the usual spot is detected again.** Where everyone first appears, at a gate or a door, the tracker could take a new person for the quiet return of someone seen there minutes earlier and keep them out of the timeline, the recordings and the notifications until they moved well away from that spot. A person seen there more than five minutes after the last one is a new visitor now, and someone standing right next to such a spot no longer inherits the other one's identity. Parked cars keep their identity as before. Comes with the native detection update.
+
+- **A recording card opens the video at the moment it shows.** Since 2.2.3 a card of a long event names its latest visitor, but tapping it still opened the video at the event's start, hours earlier.
+
+- **Plugin settings of a camera load after a server restart.** With the camera drawer open across a restart, a plugin's camera settings could spin forever or show the settings of another plugin. The drawer now waits long enough for the plugin to come back, refetches after a reconnect, and clears the form when you switch plugins. The hub chips no longer fall back to the first plugin when you return to the tab.
+
+- **A camera outage no longer hides the other cameras in the multiview timeline.** One offline camera painted the shared timeline in its color and covered the recordings and detections of every other camera for as long as it was down. The outage now shows as a marker with the camera's name, and the others stay visible. In the single-camera view, a camera that lost only one of its streams no longer looks as if it had stopped recording.
+
+- **Outage labels stay readable while you scroll.** The label of an outage longer than the screen used to scroll away, leaving only the color. It now follows along until the band ends.
+
 ## [2.2.3]
 
 ### Changed
