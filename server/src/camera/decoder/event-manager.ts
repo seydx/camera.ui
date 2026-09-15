@@ -1160,7 +1160,10 @@ export class DetectionEventManager {
     const now = Date.now();
     if (now - this.lastPublishTime >= UPDATE_THROTTLE_MS) {
       this.activeEvent!.segments = [];
-      this.publish('update');
+      // outside a segment the ticks ride the keep-alive, or an event without
+      // segments would store its trace only once it ends
+      const trace = this.trace.take();
+      this.publish('update', trace ? { trace } : undefined);
     }
   }
 
