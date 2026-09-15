@@ -2656,6 +2656,8 @@ export default {
         attributes: 'Attributes',
         motion_boxes: 'Motion boxes',
         raw_detections: 'Raw detections',
+        camera_report: 'Camera report',
+        hint_witness: "{label} #{id} · confirmed by the camera's own report",
         world_events: 'Tracker events',
         detector_idle: 'detector did not run',
         info: 'Info',

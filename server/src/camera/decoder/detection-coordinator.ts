@@ -118,6 +118,7 @@ const TRAINING_FRAME_MAX_WIDTH = 1280;
 const TRAINING_ATTRIBUTE_BONUS = 0.2;
 const TRAINING_FRAME_QUALITY = 80;
 const MOMENT_EVENTS = new Set(['objectEntered', 'objectWoke', 'objectRecovered', 'bestShotUpdated']);
+const WITNESS_WINDOW_MS = 3000;
 const HELD_MOMENT_MS = 4000;
 const MOMENT_MOVING_SPEED = 0.05;
 const MOMENT_ATTRIBUTE_MIN_AREA = 600;
@@ -159,6 +160,8 @@ export class DetectionCoordinator {
   private readonly classifierLabels = new Map<string, Set<string>>();
   private readonly feedingSensors = new Map<string, SensorType>();
   private readonly witnessSensors = new Set<string>();
+  // label -> when a witness last reported it, for the trace
+  private readonly witnessSeen = new Map<string, number>();
   private readonly heldMoments = new Map<number, SegmentMoment>();
   private readonly dwell = new DwellManager();
   private readonly privacy: PrivacyMask;
@@ -877,7 +880,10 @@ export class DetectionCoordinator {
     }
     if (labels.size === 0) return;
     const at = Date.now();
-    for (const label of labels) this.pipeline.attest(label, at);
+    for (const label of labels) {
+      this.pipeline.attest(label, at);
+      this.witnessSeen.set(label, at);
+    }
     this.logger.trace(`[witness] ${[...labels].join(', ')}`);
   }
 
@@ -1458,6 +1464,8 @@ export class DetectionCoordinator {
     trace.rtp = analysis.rtp;
     trace.src = analysis.role?.replace('-resolution', '');
     trace.attrs = traceAttributes(results);
+    const witness = [...this.witnessSeen].filter(([, at]) => Math.abs(trace.tMs - at) <= WITNESS_WINDOW_MS).map(([label]) => label);
+    if (witness.length > 0) trace.witness = witness;
     // debugging
     detectionRecord.tick({ ...trace });
     return trace;

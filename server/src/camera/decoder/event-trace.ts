@@ -19,6 +19,7 @@ export interface TraceEvent {
   id: number;
   label: string;
   state: string;
+  attested?: boolean;
 }
 
 export interface TraceAttribute {
@@ -42,6 +43,7 @@ export interface TraceTick {
   removed?: number[];
   motion?: TraceBox[];
   attrs?: TraceAttribute[];
+  witness?: string[];
 }
 
 const KEEP_INTERVAL_MS = 500;
@@ -78,7 +80,13 @@ export function worldTrace(tMs: number, detections: RustDetection[], cameraMotio
       box: [round(t.x), round(t.y), round(t.width), round(t.height)],
     })),
     events: [
-      ...result.events.map((e: WorldEvent) => ({ kind: e.eventType, id: e.object.trackId, label: e.object.label, state: e.object.state })),
+      ...result.events.map((e: WorldEvent) => ({
+        kind: e.eventType,
+        id: e.object.trackId,
+        label: e.object.label,
+        state: e.object.state,
+        ...(e.object.attested ? { attested: true } : {}),
+      })),
       ...result.crossings.map((c) => ({ kind: `line:${c.lineName}:${c.direction}`, id: c.trackId, label: c.label, state: 'crossed' })),
     ],
     created: result.created.length > 0 ? result.created : undefined,
@@ -137,11 +145,10 @@ export class EventTraceCollector {
   private readonly seenReadings = new Set<string>();
 
   public add(tick: TraceTick): void {
-    if (tick.world.length === 0 && tick.events.length === 0 && !tick.motion?.length && !tick.objectRan) return;
+    if (tick.world.length === 0 && tick.events.length === 0 && !tick.motion?.length && !tick.objectRan && !tick.witness?.length) return;
 
-    // a tick where nothing was found only earns its place around activity: a
-    // few kept before and after, the hours in between say nothing
-    const empty = tick.world.length === 0 && tick.events.length === 0 && tick.detections.length === 0 && !tick.motion?.length && !tick.attrs?.length;
+    const empty =
+      tick.world.length === 0 && tick.events.length === 0 && tick.detections.length === 0 && !tick.motion?.length && !tick.attrs?.length && !tick.witness?.length;
     if (empty) {
       if (this.emptyTail > 0) {
         if (tick.tMs - this.lastKeptAt < MOTION_ONLY_INTERVAL_MS) return;

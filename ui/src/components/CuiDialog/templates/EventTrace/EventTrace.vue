@@ -257,6 +257,17 @@
 
           <div class="tile">
             <div class="tile-head">
+              <i-tabler:camera-bolt class="w-3.5 h-3.5" />
+              <span>{{ $t('views.recordings.trace.camera_report') }}</span>
+            </div>
+            <div v-if="selected.tick.witness?.length" class="chips">
+              <span v-for="(label, i) in selected.tick.witness" :key="i" class="chip">{{ label }}</span>
+            </div>
+            <span v-else class="tile-empty">–</span>
+          </div>
+
+          <div class="tile">
+            <div class="tile-head">
               <i-tabler:route class="w-3.5 h-3.5" />
               <span>{{ $t('views.recordings.trace.world_events') }}</span>
             </div>
@@ -428,6 +439,9 @@ const findings = computed<TraceFinding[]>(() => {
   }
   for (const obj of tick.world) {
     if (obj.state === 'tentative') frame(t('views.recordings.trace.hint_tentative', { label: obj.label, id: obj.id }));
+  }
+  for (const e of tick.events) {
+    if (e.kind === 'objectEntered' && e.attested) frame(t('views.recordings.trace.hint_witness', { label: e.label, id: e.id }));
   }
 
   if (props.camera.notificationSettings?.enabled === false) event(t('views.recordings.trace.hint_notifications_off'));

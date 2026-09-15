@@ -2673,6 +2673,8 @@ export default {
         attributes: 'Attribute',
         motion_boxes: 'Bewegungsboxen',
         raw_detections: 'Rohdetektionen',
+        camera_report: 'Kamera-Meldung',
+        hint_witness: '{label} #{id} · bestätigt durch die Meldung der Kamera',
         world_events: 'Tracker-Ereignisse',
         detector_idle: 'Detektor lief nicht',
         info: 'Info',
