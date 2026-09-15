@@ -5,4 +5,5 @@ export interface EventTraceProps {
   event: RecordedEvent;
   camera: DBCamera;
   startAtMs?: number;
+  openedAt?: number;
 }

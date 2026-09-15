@@ -4,12 +4,14 @@ import type { EventTraceProps } from '@/components/CuiDialog/templates/EventTrac
 import type { RecordedEvent } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { Ref } from 'vue';
 
 export function useEventTraceDialog() {
   const dialog = useCuiDialog();
 
   function openEventTrace(event: RecordedEvent, camera: DBCamera, startAtMs?: number): DynamicDialogInstance {
-    return dialog.openComponentDialog<EventTraceProps>(EventTraceDialog, {
+    const openedAt = Date.now();
+    const instance = dialog.openComponentDialog<EventTraceProps>(EventTraceDialog, {
       data: {
         title: camera.name,
         dedupeKey: `event-trace:${event.id}`,
@@ -20,6 +22,7 @@ export function useEventTraceDialog() {
           event,
           camera,
           startAtMs,
+          openedAt,
         },
         headerActions: [],
         draggable: true,
@@ -37,6 +40,14 @@ export function useEventTraceDialog() {
         },
       },
     });
+
+    const contentProps = (instance.data as { contentProps?: Ref<EventTraceProps | undefined> } | undefined)?.contentProps?.value;
+    if (contentProps && contentProps.openedAt !== openedAt) {
+      contentProps.startAtMs = startAtMs;
+      contentProps.openedAt = openedAt;
+    }
+
+    return instance;
   }
 
   return { openEventTrace };

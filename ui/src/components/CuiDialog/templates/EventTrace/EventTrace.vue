@@ -393,6 +393,7 @@ const earlierBusy = ref(false);
 
 let stageRequest = 0;
 let wasPlayingBeforeScrub = false;
+let targetMs = props.startAtMs;
 let lastScrubSent = 0;
 
 const zoomId = randomLetter();
@@ -531,7 +532,12 @@ async function jumpToTime(): Promise<void> {
   at.setHours(picked.getHours(), picked.getMinutes(), picked.getSeconds(), 0);
   let target = at.getTime();
   if (target < props.event.startTime - 1000) target += 24 * 3600_000;
-  target = Math.min(Math.max(target, props.event.startTime), props.event.endTime ?? Date.now());
+  await jumpToMs(target);
+}
+
+async function jumpToMs(tMs: number): Promise<void> {
+  const target = Math.min(Math.max(tMs, props.event.startTime), props.event.endTime ?? Date.now());
+  targetMs = target;
   selectedIndex.value = -1;
   thumbCanvases.clear();
   await jumpTrace(target);
@@ -1017,7 +1023,10 @@ useIntervalFn(() => {
 }, 100);
 
 watch(frames, (list) => {
-  if (selectedIndex.value < 0 && list.length > 0) select(0);
+  if (selectedIndex.value < 0 && list.length > 0) {
+    select(targetMs === undefined ? 0 : Math.max(nearestFrameIndex(targetMs), 0));
+    targetMs = undefined;
+  }
   nextTick(() => {
     redrawThumbs();
     if (!stagePicture.value && !stageLoading.value && selected.value?.thumb) showStage(selectedIndex.value);
@@ -1044,6 +1053,13 @@ watch(
 );
 
 watch(bundleBusy, updateHeaderActions);
+
+watch(
+  () => props.openedAt,
+  () => {
+    if (props.startAtMs !== undefined && status.value === 'ready') jumpToMs(props.startAtMs);
+  },
+);
 
 onBeforeUnmount(() => {
   if (showPlayback.value) nvrController.stop();

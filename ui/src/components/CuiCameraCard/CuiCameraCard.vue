@@ -905,6 +905,7 @@ const {
   toolbarZoneButton,
   toolbarDescriptionButton,
   eventDescription,
+  currentEvent,
   showShortcuts,
 } = toRefs(props);
 
@@ -1346,6 +1347,15 @@ const streamMenuItems = computed<MenuItem[]>(() => {
       heatmapEnabled.value = !heatmapEnabled.value;
     },
   });
+
+  if (props.onOpenTrace && nvrPlaybackVisible.value) {
+    items.push({
+      key: 'trace',
+      label: t('views.recordings.open_trace'),
+      disabled: !currentEvent.value,
+      onClick: () => props.onOpenTrace?.(),
+    });
+  }
 
   items.push({
     key: 'ask',

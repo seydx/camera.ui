@@ -33,6 +33,8 @@
             :toolbar-timeline-button="xmdBreakpoint"
             :toolbar-description-button="Boolean(nvrPluginRef)"
             :event-description="currentDescription"
+            :current-event="currentTraceEvent"
+            @open-trace="openTraceAtPlayhead"
             :camera-name-overlay="false"
             show-shortcuts
             view-transition
@@ -266,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { CuiTimeline, useNvrPlayback } from '@camera.ui/nvr';
+import { CuiTimeline, useEventStore, useNvrPlayback } from '@camera.ui/nvr';
 import { usePrimeVue } from 'primevue';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
@@ -276,14 +278,16 @@ import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
 import { boxOverlapsRegions } from '@/components/CuiGridSearch/utils.js';
 
 import type CuiCameraPipCard from '@/components/CuiCameraPipCard/CuiCameraPipCard.vue';
-import type { CuiTimelineLocale, EventDescription } from '@camera.ui/nvr';
+import type { CuiTimelineLocale, EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { BoundingBox, StreamingRole } from '@camera.ui/sdk';
+
 const CuiCameraRecordings = asyncComponent(() => import('@/components/CuiCameraRecordings/CuiCameraRecordings.vue'));
 const CuiCameraTable = asyncComponent(() => import('@/components/CuiCameraTable/CuiCameraTable.vue'));
 const CuiCameraShares = asyncComponent(() => import('@/components/CuiCameraShares/CuiCameraShares.vue'));
 const CuiBottomSheet = asyncComponent(() => import('@/components/CuiBottomSheet/CuiBottomSheet.vue'));
 
 const camerasQuery = new CamerasQuery();
+const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 
 const log = useLogger();
 const toast = useCuiToast();
@@ -293,6 +297,7 @@ const primevue = usePrimeVue();
 const route = useRoute();
 const router = useRouter();
 const assistantActions = useAssistantActions();
+const { openEventTrace } = useEventTraceDialog();
 const { xmdBreakpoint, smBreakpoint, mdBreakpoint } = useSharedCuiBreakpoint();
 const { topbarOffset } = useSharedCuiStates();
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
@@ -329,6 +334,11 @@ const cameraCardIsFullscreen = computed(() => Boolean(cameraCardRef.value?.isFul
 
 const currentDescription = computed<EventDescription | undefined>(() => cuiTimelineRef.value?.currentEventDescription);
 
+const currentTraceEvent = computed<RecordedEvent | undefined>(() => {
+  const id = cuiTimelineRef.value?.currentEvent?.id;
+  return id ? eventStore.getEvent(id) : undefined;
+});
+
 const timeline = useElementSize(timelineRef);
 
 const playbackSourceRole = computed(() => camera.value?.interfaceSettings?.playbackSource ?? 'auto');
@@ -363,6 +373,13 @@ const trimDurationMs = computed(() => {
 const timelapseDisabled = computed(() => trimDurationMs.value < 60 * 60 * 1000);
 
 provide(GridSearchKey, { active: gridSearchActive, regions: gridSearchRegions });
+
+function openTraceAtPlayhead(): void {
+  const event = currentTraceEvent.value;
+  if (!event || !camera.value) return;
+  const atMs = cuiTimelineRef.value?.currentTimeMs;
+  openEventTrace(event, camera.value, atMs ? Math.floor(atMs) : undefined);
+}
 
 function zoneBoxMatcher(box: BoundingBox): boolean {
   return boxOverlapsRegions(box, gridSearchRegions.value);

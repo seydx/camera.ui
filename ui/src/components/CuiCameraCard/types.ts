@@ -1,5 +1,5 @@
 import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
-import type { EventDescription } from '@camera.ui/nvr';
+import type { EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit } from '@shared/types';
 import type { CardProps } from 'primevue';
@@ -76,10 +76,10 @@ export interface CuiCameraCardProps {
   toolbarTimelineButton?: boolean;
   toolbarZoneButton?: boolean;
   toolbarDescriptionButton?: boolean;
-  toolbarTraceButton?: boolean;
 
   eventDescription?: EventDescription;
-  currentEventId?: string;
+  currentEvent?: RecordedEvent;
+  onOpenTrace?: () => void;
 
   // PiP Configuration
   pipSourceRole?: StreamingRole;
@@ -127,7 +127,6 @@ export const CAMERA_CARD_DEFAULTS: InferDefaults<CuiCameraCardProps> = {
   toolbarTimelineButton: true,
   toolbarZoneButton: true,
   toolbarDescriptionButton: false,
-  toolbarTraceButton: false,
 
   control: true,
   controlFastForwardButton: true,
