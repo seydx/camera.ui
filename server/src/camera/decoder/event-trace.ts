@@ -85,7 +85,7 @@ export function worldTrace(tMs: number, detections: RustDetection[], cameraMotio
         id: e.object.trackId,
         label: e.object.label,
         state: e.object.state,
-        ...(e.object.attested ? { attested: true } : {}),
+        ...(e.eventType === 'objectEntered' && e.object.attested ? { attested: true } : {}),
       })),
       ...result.crossings.map((c) => ({ kind: `line:${c.lineName}:${c.direction}`, id: c.trackId, label: c.label, state: 'crossed' })),
     ],
