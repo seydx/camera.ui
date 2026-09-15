@@ -116,7 +116,7 @@
                 :selected="selectedIds.has(item.event.id)"
                 :sibling-active="item.segIndex !== undefined && hoveredEventId === item.event.id"
                 @select="toggleSelection(item.event.id)"
-                @scroll-to-event="() => openRecordingDialog(item.event)"
+                @scroll-to-event="(ts: number) => openRecordingDialog(item.event, ts)"
                 @open-trace="() => openTraceDialog(item.event)"
                 @mouseenter="hoveredEventId = item.segIndex !== undefined ? item.event.id : null"
                 @mouseleave="hoveredEventId = null"
@@ -651,20 +651,20 @@ function openTraceDialog(event: RecordedEvent): void {
   openEventTrace(event, camera);
 }
 
-function openRecordingDialog(event: RecordedEvent): void {
+function openRecordingDialog(event: RecordedEvent, timestamp: number): void {
   const camera = cameraById.value.get(event.cameraId);
   if (!camera) return;
 
   dialog.openComponentDialog<CameraStreamEventProps>(CameraEventDialog, {
     data: {
       title: camera.name,
-      dedupeKey: `camera-event:${camera._id}:${event.startTime}`,
+      dedupeKey: `camera-event:${camera._id}:${timestamp}`,
       stayActive: true,
       hideCancelButton: true,
       hideConfirmButton: true,
       contentProps: {
         camera,
-        eventTimestamp: event.startTime,
+        eventTimestamp: timestamp,
       },
       headerActions: event.segments?.some((s) => s?.description)
         ? [
@@ -680,7 +680,7 @@ function openRecordingDialog(event: RecordedEvent): void {
       dismissableMask: false,
       modal: false,
       dialogContentClass: '!px-0 h-full',
-      goTo: `/cameras/${camera.name}?startTs=${event.startTime}`,
+      goTo: `/cameras/${camera.name}?startTs=${timestamp}`,
     },
     dialogSize: {
       desktop: {
