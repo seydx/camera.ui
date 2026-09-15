@@ -238,7 +238,6 @@ export class ServerSensor implements SensorLike {
     const config = SENSOR_TYPE_CONFIG[this.type]?.cascadeTrigger;
     if (!config || !(config.property in properties)) return;
 
-    const triggerType = SENSOR_TYPE_CONFIG[this.type].assignmentKey;
     const value = properties[config.property];
 
     for (const cameraId of this.assignedCameraIds) {
@@ -248,11 +247,11 @@ export class ServerSensor implements SensorLike {
       const coordinator = this.ctx.getCoordinator(cameraId);
       if (value === config.value) {
         coordinator
-          .reportSensorTrigger(this.id, triggerType, 'activate', config.sustained, settings.timeout)
+          .reportSensorTrigger(this.id, config.triggerType, 'activate', config.sustained, settings.timeout)
           .catch((error: unknown) => this.ctx.logger.warn('Failed to report sensor trigger activate:', error));
       } else if (config.sustained) {
         coordinator
-          .reportSensorTrigger(this.id, triggerType, 'deactivate', true, settings.timeout)
+          .reportSensorTrigger(this.id, config.triggerType, 'deactivate', true, settings.timeout)
           .catch((error: unknown) => this.ctx.logger.warn('Failed to report sensor trigger deactivate:', error));
       }
     }

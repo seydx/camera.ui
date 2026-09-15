@@ -730,13 +730,7 @@ export class SensorRegistry {
       if (currentValue !== trigger.value) continue;
 
       try {
-        await this.coordinatorFor(cameraId).reportSensorTrigger(
-          sensorId,
-          SENSOR_TYPE_CONFIG[record.type].assignmentKey,
-          'activate',
-          trigger.sustained,
-          settings?.timeout ?? 0,
-        );
+        await this.coordinatorFor(cameraId).reportSensorTrigger(sensorId, trigger.triggerType, 'activate', trigger.sustained, settings?.timeout ?? 0);
       } catch (error) {
         this.logger.warn(`Failed to re-sync cascade trigger for sensor ${sensorId}:`, error);
       }

@@ -1,6 +1,6 @@
 import { SENSOR_META, SensorCategory } from '@camera.ui/sdk';
 
-import type { SensorMeta, SensorPropertySpec, SensorType } from '@camera.ui/sdk';
+import type { EventTriggerType, SensorMeta, SensorPropertySpec, SensorType } from '@camera.ui/sdk';
 
 export interface SensorTypeMetadata {
   category: SensorCategory;
@@ -8,7 +8,15 @@ export interface SensorTypeMetadata {
   multiProvider: boolean;
   isDetectionType: boolean;
   cameraBound: boolean;
-  cascadeTrigger?: { property: string; value: unknown; sustained: boolean };
+  cascadeTrigger?: { property: string; value: unknown; sustained: boolean; triggerType: EventTriggerType };
+}
+
+const TRIGGER_TYPE_BY_KEY: Readonly<Record<string, EventTriggerType>> = {
+  securitySystem: 'security_system',
+};
+
+function eventTriggerType(assignmentKey: string): EventTriggerType {
+  return TRIGGER_TYPE_BY_KEY[assignmentKey] ?? (assignmentKey as EventTriggerType);
 }
 
 function buildSensorTypeConfig(): Record<SensorType, SensorTypeMetadata> {
@@ -20,7 +28,7 @@ function buildSensorTypeConfig(): Record<SensorType, SensorTypeMetadata> {
       multiProvider: meta.multiProvider,
       isDetectionType: meta.isDetectionType,
       cameraBound: meta.cameraBound ?? false,
-      ...(meta.cascadeTrigger ? { cascadeTrigger: meta.cascadeTrigger } : {}),
+      ...(meta.cascadeTrigger ? { cascadeTrigger: { ...meta.cascadeTrigger, triggerType: eventTriggerType(meta.assignmentKey) } } : {}),
     };
   }
   return config;
