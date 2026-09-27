@@ -8,7 +8,7 @@ export interface FaceDetailMark {
 
 export interface FaceDetailFaceImage {
   id: string;
-  src: string;
+  src?: string;
   confidence: number;
   clarity?: number;
   sameAs?: string;
@@ -19,6 +19,7 @@ export interface FaceDetailFace {
   name: string;
   imageCount: number;
   images: FaceDetailFaceImage[];
+  loading?: boolean;
 }
 
 export interface FaceDetailProps {

@@ -3,6 +3,7 @@
     <template #header>
       <div class="relative aspect-square overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
         <img v-if="thumbnail" :src="thumbnail" class="w-full h-full object-cover" />
+        <ProgressSpinner v-else-if="imageCount" stroke-width="6" class="cui-spinner-delayed" />
         <img v-else :src="fallbackUrl" class="w-1/2 h-1/2 object-contain" />
         <span
           v-if="marked"
@@ -28,7 +29,7 @@
     <div class="bg-neutral-900 w-full rounded-xl overflow-hidden relative border-[1px] border-color shadow-lg" style="aspect-ratio: 1 / 1">
       <img v-if="thumbnail" :src="thumbnail" class="w-full h-full object-cover" />
       <div v-else class="w-full h-full flex items-center justify-center bg-neutral-800/80">
-        <img :src="fallbackUrl" class="w-1/3 h-1/3 object-contain opacity-20" />
+        <ProgressSpinner stroke-width="6" class="cui-spinner-delayed" />
       </div>
 
       <div class="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-black/60 to-transparent">

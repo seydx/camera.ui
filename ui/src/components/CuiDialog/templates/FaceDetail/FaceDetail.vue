@@ -10,9 +10,18 @@
       {{ $t('views.faces.marks_hint') }}
     </Message>
 
-    <div v-if="faceData.images.length" class="grid grid-cols-3 gap-2">
+    <div v-if="faceData.loading" class="grid grid-cols-3 gap-2">
+      <div v-for="i in faceData.imageCount" :key="i" class="aspect-square rounded-2xl flex items-center justify-center bg-surface-100 dark:bg-surface-800">
+        <ProgressSpinner stroke-width="6" class="cui-spinner-delayed" />
+      </div>
+    </div>
+
+    <div v-else-if="faceData.images.length" class="grid grid-cols-3 gap-2">
       <div v-for="({ img, mark }, idx) in tiles" :key="idx" class="relative aspect-square rounded-2xl overflow-hidden bg-surface-100 dark:bg-surface-800">
-        <img :src="img.src" class="w-full h-full object-cover" />
+        <img v-if="img.src" :src="img.src" class="w-full h-full object-cover" />
+        <div v-else class="w-full h-full flex items-center justify-center">
+          <ProgressSpinner stroke-width="6" class="cui-spinner-delayed" />
+        </div>
         <div
           v-if="mark && openMarkId === img.id"
           class="absolute inset-x-0 bottom-0 max-h-full overflow-y-auto px-2 pt-1 pb-1.5 bg-black/75 text-white text-[11px] leading-tight"

@@ -95,7 +95,7 @@ onMounted(async () => {
   if (nvr) loadCheck(nvr);
 
   try {
-    const known = await nvr?.listKnownFaces();
+    const known = await nvr?.listKnownFaceMeta();
     knownNames.value = (known ?? []).map((profile) => profile.name);
   } catch {
     // the select stays empty, unknown-option still works

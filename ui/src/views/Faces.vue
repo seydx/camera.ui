@@ -517,23 +517,13 @@ async function rescanFaces() {
 
 async function openKnownFaceDetail(face: FaceProfile) {
   const images = ref<FaceDetailFaceImage[]>([]);
-  try {
-    const raw = await faceStore.getFaceImages(face.name);
-    images.value = raw
-      .map((img) => {
-        const src = thumbnailToUrl(img.jpeg);
-        return src ? { id: img.id, src, confidence: img.confidence ?? 0, clarity: img.clarity, sameAs: img.sameAs, alsoFiledUnder: img.alsoFiledUnder } : null;
-      })
-      .filter(Boolean) as FaceDetailFaceImage[];
-  } catch {
-    // No images available
-  }
+  const loading = ref(true);
 
   const dialogRef = dialog.openComponentDialog(FaceDetailDialog, {
     data: {
       title: face.name,
       contentProps: {
-        face: computed(() => ({ ...face, images: images.value, imageCount: images.value.length })),
+        face: computed(() => ({ ...face, images: images.value, imageCount: loading.value ? face.imageCount : images.value.length, loading: loading.value })),
         onRemoveImage: async (idx: number) => {
           const image = images.value[idx];
           if (!image) return;
@@ -563,6 +553,29 @@ async function openKnownFaceDetail(face: FaceProfile) {
       confirmButtonProps: { severity: 'danger' },
     },
   });
+
+  try {
+    const meta = await faceStore.listFaceImageMeta(face.name);
+    images.value = meta.map((img) => ({ id: img.id, confidence: img.confidence ?? 0, clarity: img.clarity, sameAs: img.sameAs, alsoFiledUnder: img.alsoFiledUnder }));
+  } catch {
+    // No images available
+  } finally {
+    loading.value = false;
+  }
+
+  try {
+    await faceStore.loadFaceImageThumbnails(
+      face.name,
+      images.value.map((img) => img.id),
+      (thumbs) => {
+        for (const img of images.value) {
+          if (thumbs[img.id]) img.src = thumbnailToUrl(thumbs[img.id]);
+        }
+      },
+    );
+  } catch {
+    // a tile without its picture stays a placeholder
+  }
 }
 
 function releaseSameAs(images: FaceDetailFaceImage[], removedId: string) {

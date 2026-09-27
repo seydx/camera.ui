@@ -179,6 +179,20 @@
   @apply w-9 h-9 p-1;
 }
 
+.cui-spinner-delayed {
+  @apply w-[50%] h-[50%] max-w-[30px] max-h-[30px];
+  animation: cui-spinner-show 0s 150ms both;
+}
+
+@keyframes cui-spinner-show {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
 .cui-icon-2xl {
   @apply w-10 h-10 p-1;
 }
