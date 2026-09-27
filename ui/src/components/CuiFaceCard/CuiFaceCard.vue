@@ -1,14 +1,26 @@
 <template>
   <Card v-if="variant === 'known'" class="cui-card transition-shadow cursor-pointer hover:shadow-md" @click="$emit('click')">
     <template #header>
-      <div class="aspect-square overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
+      <div class="relative aspect-square overflow-hidden flex items-center justify-center bg-black/5 dark:bg-black/30">
         <img v-if="thumbnail" :src="thumbnail" class="w-full h-full object-cover" />
         <img v-else :src="fallbackUrl" class="w-1/2 h-1/2 object-contain" />
+        <span
+          v-if="marked"
+          v-tooltip.top="$t('views.faces.card_marked', { count: marked }, marked)"
+          class="absolute top-1.5 left-1.5 cui-icon-sm rounded-full shadow-md"
+          :class="markedDanger ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'"
+        >
+          <i-mdi:exclamation-thick width="100%" height="100%" />
+        </span>
       </div>
     </template>
     <template #content>
       <div class="font-medium truncate">{{ name }}</div>
-      <div class="text-xs text-muted">{{ imageCount }} {{ $t('views.faces.images') }}</div>
+      <div v-if="fewPictures" v-tooltip.top="$t('views.faces.few_pictures_hint', { count: FACE_FEW_PICTURES })" class="text-xs text-amber-500 truncate">
+        {{ imageCount }} {{ $t('views.faces.images') }}
+      </div>
+      <div v-else class="text-xs text-muted truncate">{{ imageCount }} {{ $t('views.faces.images') }}</div>
+      <div v-if="marked" class="text-xs truncate" :class="markedDanger ? 'text-red-500' : 'text-amber-500'">{{ $t('views.faces.to_check', { count: marked }) }}</div>
     </template>
   </Card>
 
@@ -81,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { FACE_FEW_PICTURES } from '@/common/constants.js';
 import { getImageUrl } from '@/common/utils.js';
 
 import type { CuiFaceCardEmits, CuiFaceCardProps } from './types.js';
@@ -90,6 +103,13 @@ const props = defineProps<CuiFaceCardProps>();
 defineEmits<CuiFaceCardEmits>();
 
 const fallbackUrl = getImageUrl();
+
+const fewPictures = computed(() => !!props.imageCount && props.imageCount < FACE_FEW_PICTURES);
+const marked = computed(() => {
+  const marks = props.marks;
+  return (marks?.filedUnder ?? 0) + (marks?.unclear ?? 0) + (marks?.partlyVisible ?? 0) + (marks?.sameAs ?? 0);
+});
+const markedDanger = computed(() => !!(props.marks?.filedUnder || props.marks?.unclear));
 
 const confidenceColorLight = computed(() => {
   if (!props.confidence) return 'text-white/50';

@@ -2,8 +2,8 @@
   <div>
     <div v-if="faceData.imageCount" class="text-sm text-muted mb-4">{{ faceData.imageCount }} {{ $t('views.faces.training_images') }}</div>
 
-    <Message v-if="faceData.images.length > 0 && faceData.images.length < FACE_DETAIL_FEW_PICTURES" severity="warn" size="small" class="mb-4" :closable="false">
-      {{ $t('views.faces.few_pictures_hint', { count: FACE_DETAIL_FEW_PICTURES }) }}
+    <Message v-if="faceData.images.length > 0 && faceData.images.length < FACE_FEW_PICTURES" severity="warn" size="small" class="mb-4" :closable="false">
+      {{ $t('views.faces.few_pictures_hint', { count: FACE_FEW_PICTURES }) }}
     </Message>
 
     <Message v-if="hasMarks" severity="warn" size="small" class="mb-4" :closable="false">
@@ -56,8 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { FACE_CLARITY_CLEAR, FACE_CLARITY_UNCLEAR } from '@/common/constants.js';
-import { FACE_DETAIL_FEW_PICTURES } from './types.js';
+import { FACE_CLARITY_CLEAR, FACE_CLARITY_UNCLEAR, FACE_FEW_PICTURES } from '@/common/constants.js';
 
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
 import type { FaceDetailFaceImage, FaceDetailMark, FaceDetailProps } from './types.js';

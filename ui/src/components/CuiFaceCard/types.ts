@@ -1,8 +1,11 @@
+import type { FacePictureMarks } from '@camera.ui/nvr';
+
 export interface CuiFaceCardProps {
   variant: 'known' | 'unknown' | 'ignored';
   thumbnail?: string;
   name?: string;
   imageCount?: number;
+  marks?: FacePictureMarks;
   cameraName?: string;
   timestamp?: number;
   confidence?: number;

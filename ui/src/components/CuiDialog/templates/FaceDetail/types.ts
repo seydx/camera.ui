@@ -1,5 +1,3 @@
-export const FACE_DETAIL_FEW_PICTURES = 10;
-
 export type FaceDetailMarkKind = 'filed_under' | 'unclear' | 'partly_visible' | 'same_as';
 
 export interface FaceDetailMark {

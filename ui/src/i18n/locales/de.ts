@@ -2637,6 +2637,8 @@ export default {
       training_images: 'Trainingsbilder',
       few_pictures_hint: 'Mindestens {count} Bilder empfohlen. Mit weniger wird diese Person oft nicht erkannt.',
       marks_hint: 'Markierte Bilder können die Erkennung verschlechtern. Tippen Sie auf eine Markierung, um den Grund zu sehen.',
+      card_marked: '{count} Bild kann die Erkennung verschlechtern | {count} Bilder können die Erkennung verschlechtern',
+      to_check: '{count} zu prüfen',
       mark_filed_under: 'Auch bei {names} hinterlegt, nur bei einer Person behalten',
       mark_unclear: 'Kein klares Gesicht, besser entfernen',
       mark_partly_visible: 'Gesicht nur teilweise sichtbar, nur behalten, wenn bessere Bilder fehlen',

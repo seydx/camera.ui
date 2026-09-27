@@ -2619,6 +2619,8 @@ export default {
       training_images: 'training images',
       few_pictures_hint: 'At least {count} pictures are recommended. With fewer, this person is often missed.',
       marks_hint: 'Marked pictures can hurt recognition. Tap a mark to see why.',
+      card_marked: '{count} picture can hurt recognition | {count} pictures can hurt recognition',
+      to_check: '{count} to check',
       mark_filed_under: 'Also filed under {names}, keep it for one person',
       mark_unclear: 'No clear face, better remove it',
       mark_partly_visible: 'Face partly visible, keep it only if better pictures are missing',

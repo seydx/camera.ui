@@ -18,3 +18,4 @@ export const PROXY_SERVICE_HOST = (() => {
 
 export const FACE_CLARITY_UNCLEAR = 0.7;
 export const FACE_CLARITY_CLEAR = 0.8;
+export const FACE_FEW_PICTURES = 10;

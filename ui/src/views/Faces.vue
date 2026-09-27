@@ -59,6 +59,7 @@
                   :thumbnail="thumbnailToUrl(face.thumbnail)"
                   :name="face.name"
                   :image-count="face.imageCount"
+                  :marks="face.marks"
                   @click="!knownSwiping && openKnownFaceDetail(face)"
                 />
               </div>
