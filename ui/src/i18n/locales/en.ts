@@ -2893,6 +2893,7 @@ export default {
       reassign_current: 'Identified as',
       reassign_new: 'Correct person',
       reassign_unknown_person: 'Unknown',
+      reassign_unclear: 'No clear face. Only the name changes, the picture is not used for recognition.',
       more_actions: 'More actions',
       favorite: 'Add to favorites',
       unfavorite: 'Remove from favorites',

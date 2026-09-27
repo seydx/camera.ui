@@ -2911,6 +2911,7 @@ export default {
       reassign_current: 'Erkannt als',
       reassign_new: 'Richtige Person',
       reassign_unknown_person: 'Unbekannt',
+      reassign_unclear: 'Kein klares Gesicht. Nur der Name ändert sich, das Bild wird nicht für die Erkennung verwendet.',
       more_actions: 'Weitere Aktionen',
       favorite: 'Zu Favoriten hinzufügen',
       unfavorite: 'Aus Favoriten entfernen',

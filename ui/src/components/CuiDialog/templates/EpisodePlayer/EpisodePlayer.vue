@@ -705,7 +705,7 @@ function toggleSimilarPick(): void {
     pausedForPick = true;
   }
   similarFrameMs = playheadMs.value;
-  void startSimilarPick();
+  startSimilarPick();
 }
 
 async function followSimilarJump(): Promise<void> {
@@ -896,7 +896,7 @@ watch(
 
 watch([playheadMs, visibleCameraId], ([ms], [, previousCamera]) => {
   if (!similarPicking.value || master.mode.value === 'play') return;
-  if (visibleCameraId.value !== previousCamera || Math.abs(ms - similarFrameMs) > 1000) void followSimilarJump();
+  if (visibleCameraId.value !== previousCamera || Math.abs(ms - similarFrameMs) > 1000) followSimilarJump();
 });
 
 useIntervalFn(() => {

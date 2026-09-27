@@ -504,6 +504,10 @@ function openFaceReassignDialog(): void {
       contentProps: {
         cropUrl: activeImage.value?.url,
         oldName: target.label,
+        eventId: props.event.id,
+        segIndex: target.seg,
+        attrIndex: target.attrIndex,
+        confidence: target.attrIndex === undefined ? undefined : props.event.segments?.[target.seg]?.attributes?.[target.attrIndex]?.confidence,
       },
     },
     onConfirm: (newName: string) => reassignFace(target, newName, onCrop),
