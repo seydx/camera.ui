@@ -1048,7 +1048,7 @@ export default {
         notify_sensors: 'Welche Sensor-Auslöser eine Benachrichtigung schicken.',
         notify_speed: 'Wie lange eine Benachrichtigung auf ein gutes Bild wartet. Sofort schickt direkt, ausgewogen wartet bis zu 2 Sekunden, beste bis zu 4.',
         notify_cooldown: 'Mindestabstand zwischen Benachrichtigungen dieser Kamera. Klingel und Alarme umgehen ihn.',
-        recording_mode: 'Continuous zeichnet durchgehend auf, event nur rund um Erkennungen, adhoc nur bei manuellem Start.',
+        recording_mode: 'Continuous zeichnet durchgehend auf, event rund um Erkennungen mit Pre-Buffer, adhoc verbindet sich erst, wenn eine Erkennung beginnt.',
         recording_prebuffer: 'Sekunden Video, die vor einem Ereignis aufbewahrt werden.',
         recording_sources: 'Stream-Qualitäten, die aufgezeichnet werden. Die niedrigste wird für schnelles Spulen genutzt.',
         ptz_autotrack_target_labels: 'Welchen Objekttypen die Kamera folgen soll.',

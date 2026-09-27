@@ -465,6 +465,7 @@ export const cameraInfoSchema = zod.object({
   serialNumber: zod.string().trim().optional(),
   firmwareVersion: zod.string().trim().optional(),
   supportUrl: zod.string().trim().optional(),
+  power: zod.enum(['mains', 'battery']).optional(),
 });
 
 export const cameraPluginInfo = zod

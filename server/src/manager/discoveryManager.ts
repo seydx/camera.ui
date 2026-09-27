@@ -7,6 +7,7 @@ import { CamerasService } from '../api/services/cameras.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { TtlCache } from '../utils/ttl-cache.js';
+import { adoptedCameraInput } from './adopted-camera.js';
 
 import type { DiscoveredCamera, JsonSchemaWithoutCallbacks } from '@camera.ui/sdk';
 import type { CameraUiAPI } from '../api.js';
@@ -949,15 +950,8 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
       throw new Error(`Camera "${cameraConfig.name}" must have at least one source`);
     }
 
-    cameraConfig.sources = cameraConfig.sources.map((source) => {
-      if (!source.urls?.length) {
-        source.urls = ['cui://127.0.0.1'];
-      }
-      return source;
-    });
-
     const validatedData = createCameraSchema.parse({
-      ...cameraConfig,
+      ...adoptedCameraInput(cameraConfig),
       pluginInfo: {
         id: plugin.id,
         name: plugin.pluginName,

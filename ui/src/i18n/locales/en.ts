@@ -1040,7 +1040,7 @@ export default {
         notify_sensors: 'Which sensor triggers send a push.',
         notify_speed: 'How long a push waits for a good picture. Immediate sends right away, balanced waits up to 2 seconds, best up to 4.',
         notify_cooldown: 'Minimum time between pushes from this camera. Doorbell and alarms bypass it.',
-        recording_mode: 'Continuous records around the clock, event only around detections, adhoc only when started manually.',
+        recording_mode: 'Continuous records around the clock, event around detections with a pre-buffer, adhoc connects only when a detection starts.',
         recording_prebuffer: 'Seconds of video kept before an event.',
         recording_sources: 'Stream qualities that get recorded. The lowest one is used for fast scrubbing.',
         ptz_autotrack_target_labels: 'Which object types the camera should follow.',
