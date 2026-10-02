@@ -532,11 +532,7 @@ watch(
     if (consumedEpisodeLink === episodeId) return;
     consumedEpisodeLink = episodeId;
 
-    let episode = eventStore.getEpisode(episodeId);
-    if (!episode) {
-      await eventStore.loadEpisodes({ limit: 50 });
-      episode = eventStore.getEpisode(episodeId);
-    }
+    const episode = await eventStore.loadEpisode(episodeId);
     router.replace({ query: { ...route.query, episodeId: undefined } });
     if (!episode) return;
 

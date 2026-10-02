@@ -67,11 +67,7 @@ export function useAssistantReferences() {
       }
 
       if (reference.kind === 'episode') {
-        let episode = eventStore.getEpisode(reference.id);
-        if (!episode) {
-          await eventStore.loadEpisodes({ limit: 50 });
-          episode = eventStore.getEpisode(reference.id);
-        }
+        const episode = await eventStore.loadEpisode(reference.id);
         if (!episode || !openEpisodePlayer(episode, cameras)) throw new Error('missing');
         return;
       }
