@@ -403,7 +403,7 @@ watch([() => displayItems.value.length, hasMore, isLoading, regionsKey], ([count
   if (!gridSearch?.regions.value.length || !more || loading) return;
   if (count >= REGION_FILL_ITEMS || regionFillPages >= REGION_FILL_PAGES) return;
   regionFillPages++;
-  void loadMore();
+  loadMore();
 });
 </script>
 
