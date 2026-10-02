@@ -8,6 +8,20 @@
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
         <Button
+          v-if="hasBoxContent || boxesHidden"
+          v-tooltip.bottom="$t(boxesHidden ? 'components.training_editor.boxes_show' : 'components.training_editor.boxes_hide')"
+          :severity="boxesHidden ? 'primary' : 'secondary'"
+          text
+          rounded
+          class="cui-icon-sm"
+          @click="toggleBoxesHidden"
+        >
+          <template #icon>
+            <i-mdi:eye-off-outline v-if="boxesHidden" class="w-4 h-4" />
+            <i-mdi:eye-outline v-else class="w-4 h-4" />
+          </template>
+        </Button>
+        <Button
           v-if="previousBoxes.length > 0"
           v-tooltip.bottom="$t('components.training_editor.ghosts_toggle')"
           :severity="showGhosts ? 'primary' : 'secondary'"
@@ -47,63 +61,76 @@
           <svg
             ref="svgRef"
             class="absolute inset-0 w-full h-full touch-none"
-            :class="stageZoomLevel > 1 ? 'cursor-grab' : 'cursor-crosshair'"
+            :class="stageZoomLevel > 1 ? 'cursor-grab' : boxesHidden ? 'cursor-default' : 'cursor-crosshair'"
             @pointerdown="onPointerDown"
             @pointermove="onPointerMove"
             @pointerup="onPointerUp"
             @pointercancel="onPointerUp"
           >
-            <g v-for="{ box, i } in layers" :key="i">
-              <rect
-                :x="pct(box.x)"
-                :y="pct(box.y)"
-                :width="pct(box.width)"
-                :height="pct(box.height)"
-                :stroke="styleFor(box.label).color"
-                :fill="styleFor(box.label).color"
-                :fill-opacity="i === selectedIndex ? 0.22 : 0.12"
-                :stroke-width="i === selectedIndex ? 3.5 : 2"
-                vector-effect="non-scaling-stroke"
-                class="cursor-move"
-                @pointerdown.stop="startMove(i, $event)"
-                @touchstart.stop
-                @mousedown.stop
-              />
-              <g v-for="corner in corners" :key="corner" class="cursor-nwse-resize" @pointerdown.stop="startResize(i, corner, $event)" @touchstart.stop @mousedown.stop>
-                <circle :cx="cornerX(box, corner)" :cy="cornerY(box, corner)" r="14" fill="transparent" />
-                <circle :cx="cornerX(box, corner)" :cy="cornerY(box, corner)" r="4.5" :fill="styleFor(box.label).color" />
+            <template v-if="!boxesHidden">
+              <g v-for="{ box, i } in layers" :key="i">
+                <rect
+                  :x="pct(box.x)"
+                  :y="pct(box.y)"
+                  :width="pct(box.width)"
+                  :height="pct(box.height)"
+                  :stroke="styleFor(box.label).color"
+                  :fill="styleFor(box.label).color"
+                  :fill-opacity="faded(i) ? 0.03 : i === selectedIndex ? 0.22 : 0.12"
+                  :stroke-opacity="faded(i) ? 0.35 : 1"
+                  :stroke-width="i === selectedIndex ? 3.5 : 2"
+                  vector-effect="non-scaling-stroke"
+                  class="cursor-move"
+                  @pointerdown.stop="startMove(i, $event)"
+                  @touchstart.stop
+                  @mousedown.stop
+                />
+                <template v-if="!faded(i)">
+                  <g
+                    v-for="corner in corners"
+                    :key="corner"
+                    class="cursor-nwse-resize"
+                    @pointerdown.stop="startResize(i, corner, $event)"
+                    @touchstart.stop
+                    @mousedown.stop
+                  >
+                    <circle :cx="cornerX(box, corner)" :cy="cornerY(box, corner)" r="14" fill="transparent" />
+                    <circle :cx="cornerX(box, corner)" :cy="cornerY(box, corner)" r="4.5" :fill="styleFor(box.label).color" />
+                  </g>
+                </template>
               </g>
-            </g>
-            <rect
-              v-for="(ghost, i) in ghosts"
-              :key="`ghost-${i}`"
-              :x="pct(ghost.x)"
-              :y="pct(ghost.y)"
-              :width="pct(ghost.width)"
-              :height="pct(ghost.height)"
-              :stroke="styleFor(ghost.label).color"
-              fill="none"
-              stroke-opacity="0.75"
-              stroke-dasharray="3 5"
-              stroke-width="1.5"
-              vector-effect="non-scaling-stroke"
-              class="pointer-events-none"
-            />
-            <rect
-              v-for="suggestion in suggestions"
-              :key="`suggestion-${suggestion.proposal}`"
-              :x="pct(suggestion.x)"
-              :y="pct(suggestion.y)"
-              :width="pct(suggestion.width)"
-              :height="pct(suggestion.height)"
-              :stroke="styleFor(suggestion.label).color"
-              fill="none"
-              stroke-dasharray="1 4"
-              stroke-linecap="round"
-              stroke-width="2"
-              vector-effect="non-scaling-stroke"
-              class="pointer-events-none"
-            />
+              <rect
+                v-for="(ghost, i) in ghosts"
+                :key="`ghost-${i}`"
+                :x="pct(ghost.x)"
+                :y="pct(ghost.y)"
+                :width="pct(ghost.width)"
+                :height="pct(ghost.height)"
+                :stroke="styleFor(ghost.label).color"
+                fill="none"
+                :stroke-opacity="dragging ? 0.3 : 0.75"
+                stroke-dasharray="3 5"
+                stroke-width="1.5"
+                vector-effect="non-scaling-stroke"
+                class="pointer-events-none"
+              />
+              <rect
+                v-for="suggestion in suggestions"
+                :key="`suggestion-${suggestion.proposal}`"
+                :x="pct(suggestion.x)"
+                :y="pct(suggestion.y)"
+                :width="pct(suggestion.width)"
+                :height="pct(suggestion.height)"
+                :stroke="styleFor(suggestion.label).color"
+                fill="none"
+                :stroke-opacity="dragging ? 0.3 : 1"
+                stroke-dasharray="1 4"
+                stroke-linecap="round"
+                stroke-width="2"
+                vector-effect="non-scaling-stroke"
+                class="pointer-events-none"
+              />
+            </template>
             <rect
               v-if="draft"
               :x="pct(draft.x)"
@@ -119,62 +146,67 @@
             />
           </svg>
 
-          <button
-            v-for="(ghost, i) in ghosts"
-            :key="`ghost-chip-${i}`"
-            v-tooltip.top="$t('components.training_editor.ghost_take')"
-            type="button"
-            class="ghost-chip"
-            :style="chipStyle(ghost)"
-            @pointerdown.stop
-            @touchstart.stop
-            @mousedown.stop
-            @click.stop="adoptGhost(ghost)"
-          >
-            <i-mdi:plus class="w-3.5 h-3.5 shrink-0" />
-            <component :is="styleFor(ghost.label).icon" class="bbox-label-icon" />
-          </button>
+          <template v-if="!boxesHidden">
+            <button
+              v-for="(ghost, i) in ghosts"
+              :key="`ghost-chip-${i}`"
+              v-tooltip.top="$t('components.training_editor.ghost_take')"
+              type="button"
+              class="ghost-chip"
+              :class="{ faded: dragging }"
+              :style="chipStyle(ghost)"
+              @pointerdown.stop
+              @touchstart.stop
+              @mousedown.stop
+              @click.stop="adoptGhost(ghost)"
+            >
+              <i-mdi:plus class="w-3.5 h-3.5 shrink-0" />
+              <component :is="styleFor(ghost.label).icon" class="bbox-label-icon" />
+            </button>
 
-          <button
-            v-for="suggestion in suggestions"
-            :key="`suggestion-chip-${suggestion.proposal}`"
-            v-tooltip.top="$t('components.training_editor.suggestion_take')"
-            type="button"
-            class="ghost-chip"
-            :style="chipStyle(suggestion)"
-            @pointerdown.stop
-            @touchstart.stop
-            @mousedown.stop
-            @click.stop="takeSuggestion(suggestion)"
-          >
-            <i-mdi:plus class="w-3.5 h-3.5 shrink-0" />
-            <component :is="styleFor(suggestion.label).icon" class="bbox-label-icon" />
-            <span class="bbox-label-confidence">{{ Math.round((suggestion.score ?? 0) * 100) }}%</span>
-          </button>
+            <button
+              v-for="suggestion in suggestions"
+              :key="`suggestion-chip-${suggestion.proposal}`"
+              v-tooltip.top="$t('components.training_editor.suggestion_take')"
+              type="button"
+              class="ghost-chip"
+              :class="{ faded: dragging }"
+              :style="chipStyle(suggestion)"
+              @pointerdown.stop
+              @touchstart.stop
+              @mousedown.stop
+              @click.stop="takeSuggestion(suggestion)"
+            >
+              <i-mdi:plus class="w-3.5 h-3.5 shrink-0" />
+              <component :is="styleFor(suggestion.label).icon" class="bbox-label-icon" />
+              <span class="bbox-label-confidence">{{ Math.round((suggestion.score ?? 0) * 100) }}%</span>
+            </button>
 
-          <div
-            v-for="(box, i) in boxes"
-            :key="`label-${i}`"
-            class="bbox-label cursor-move"
-            :data-box-label="i"
-            @pointerdown.stop="startMove(i, $event)"
-            @pointermove="onPointerMove"
-            @pointerup="onPointerUp"
-            @pointercancel="onPointerUp"
-            @touchstart.stop
-            @mousedown.stop
-            :class="{
-              'label-bottom': labelPlacement(box) === 'below',
-              'label-inside': labelPlacement(box) === 'inside',
-              'label-right': isLabelOnRight(box),
-            }"
-            :style="[labelStyle(box), { zIndex: labelOrder.get(i) }]"
-          >
-            <component :is="styleFor(box.label).icon" class="bbox-label-icon" />
-            <span class="bbox-label-text">{{ labelText(box.label) }}</span>
-            <span v-if="box.text" class="bbox-label-confidence">{{ box.text }}</span>
-            <span v-else-if="box.score !== undefined" class="bbox-label-confidence">{{ Math.round(box.score * 100) }}%</span>
-          </div>
+            <div
+              v-for="(box, i) in boxes"
+              :key="`label-${i}`"
+              class="bbox-label cursor-move"
+              :data-box-label="i"
+              @pointerdown.stop="startMove(i, $event)"
+              @pointermove="onPointerMove"
+              @pointerup="onPointerUp"
+              @pointercancel="onPointerUp"
+              @touchstart.stop
+              @mousedown.stop
+              :class="{
+                'label-bottom': labelPlacement(box) === 'below',
+                'label-inside': labelPlacement(box) === 'inside',
+                'label-right': isLabelOnRight(box),
+                faded: faded(i),
+              }"
+              :style="[labelStyle(box), { zIndex: labelOrder.get(i) }]"
+            >
+              <component :is="styleFor(box.label).icon" class="bbox-label-icon" />
+              <span class="bbox-label-text">{{ labelText(box.label) }}</span>
+              <span v-if="box.text" class="bbox-label-confidence">{{ box.text }}</span>
+              <span v-else-if="box.score !== undefined" class="bbox-label-confidence">{{ Math.round(box.score * 100) }}%</span>
+            </div>
+          </template>
         </div>
       </VueZoomable>
 
@@ -198,7 +230,8 @@
               :height="pct(box.height)"
               :stroke="styleFor(box.label).color"
               :fill="styleFor(box.label).color"
-              fill-opacity="0.1"
+              :fill-opacity="faded(i) ? 0.03 : 0.1"
+              :stroke-opacity="faded(i) ? 0.35 : 1"
               stroke-width="1.5"
             />
             <rect
@@ -261,7 +294,8 @@
       ><span>{{ $t('components.training_editor.sc_label') }}</span> <span><kbd>Del</kbd></span
       ><span>{{ $t('components.training_editor.sc_delete') }}</span> <span><kbd>V</kbd></span
       ><span>{{ $t('components.training_editor.sc_ghosts') }}</span> <span><kbd>Shift</kbd> + <kbd>V</kbd></span
-      ><span>{{ $t('components.training_editor.sc_ghosts_all') }}</span> <span><kbd>Esc</kbd></span
+      ><span>{{ $t('components.training_editor.sc_ghosts_all') }}</span> <span><kbd>H</kbd></span
+      ><span>{{ $t('components.training_editor.sc_hide') }}</span> <span><kbd>Esc</kbd></span
       ><span>{{ $t('components.training_editor.sc_deselect') }}</span> <span><kbd>Space</kbd></span
       ><span>{{ $t('components.training_editor.sc_verify') }}</span> <span><kbd>←</kbd> / <kbd>→</kbd></span
       ><span>{{ $t('components.training_editor.sc_nav') }}</span>
@@ -326,6 +360,7 @@ const edits = new Map<string, DBTrainingCandidateBox[]>();
 const removedIds = reactive(new Set<string>());
 const verifiedIds = reactive(new Set<string>());
 const sunkBoxes = shallowReactive(new Map<DBTrainingCandidateBox, number>());
+const cameraBoxes = shallowReactive(new Map<string, DBTrainingCandidateBox[]>());
 
 let sinkCount = 0;
 const startIndex = Math.max(
@@ -352,8 +387,8 @@ let contentSwipe: { x: number; y: number; at: number } | null = null;
 const labelMenuIndex = ref(-1);
 const lastLabel = ref('person');
 const index = ref(startIndex);
-const previousBoxes = shallowRef<DBTrainingCandidateBox[]>([]);
 const showGhosts = ref(false);
+const boxesHidden = ref(false);
 let shownAt = Date.now();
 
 const {
@@ -377,6 +412,9 @@ const totalCount = computed(() => props.candidates.filter((c) => !removedIds.has
 const hasPrev = computed(() => props.candidates.slice(0, index.value).some((c) => !removedIds.has(c.id)));
 const hasNext = computed(() => props.candidates.slice(index.value + 1).some((c) => !removedIds.has(c.id)));
 const currentStatus = computed(() => (verifiedIds.has(current.value.id) ? 'verified' : current.value.status));
+const previousBoxes = computed(() => cameraBoxes.get(current.value.cameraId) ?? []);
+const dragging = computed(() => drag.value?.moved === true);
+const draggedIndex = computed(() => (drag.value && drag.value.mode !== 'draw' ? drag.value.index : -1));
 
 const layers = computed(() => boxes.value.map((box, i) => ({ box, i })).sort((a, b) => layerRank(a) - layerRank(b)));
 
@@ -398,6 +436,8 @@ const suggestions = computed(() => {
   const taken = new Set(boxes.value.map((box) => box.proposal));
   return (current.value.proposals ?? []).flatMap((box, proposal) => (box.source === 'suggestion' && !taken.has(proposal) ? [{ ...box, proposal }] : []));
 });
+
+const hasBoxContent = computed(() => boxes.value.length > 0 || ghosts.value.length > 0 || suggestions.value.length > 0);
 
 const labelMenuItems = computed<MenuItem[]>(() => [
   ...TRAINING_LABELS.map((label) => ({
@@ -428,6 +468,10 @@ const labelPlacement = computed(() => (box: DBTrainingCandidateBox): 'above' | '
 const isLabelOnRight = computed(() => (box: DBTrainingCandidateBox): boolean => {
   return box.x > 0.7;
 });
+
+function faded(boxIndex: number): boolean {
+  return dragging.value && boxIndex !== draggedIndex.value;
+}
 
 function layerRank({ box, i }: { box: DBTrainingCandidateBox; i: number }): number {
   if (i === selectedIndex.value) return Number.MAX_SAFE_INTEGER;
@@ -517,7 +561,7 @@ function dragStart(event: PointerEvent, state: Omit<DragState, 'moved' | 'client
 
 function onPointerDown(event: PointerEvent): void {
   labelMenuRef.value?.hide();
-  if (stageZoomLevel.value > 1 || !event.isPrimary) return;
+  if (boxesHidden.value || stageZoomLevel.value > 1 || !event.isPrimary) return;
   const { x, y } = pointerPos(event);
   dragStart(event, { mode: 'draw', index: -1, startX: x, startY: y, origin: { label: lastLabel.value, source: 'drawn', x, y, width: 0, height: 0 } });
 }
@@ -681,6 +725,17 @@ function setPlateText(value: string | undefined): void {
   box.text = text || undefined;
 }
 
+function toggleBoxesHidden(): void {
+  boxesHidden.value = !boxesHidden.value;
+  if (!boxesHidden.value) return;
+  drag.value = null;
+  draft.value = null;
+  loupe.value = null;
+  selectedIndex.value = -1;
+  labelMenuIndex.value = -1;
+  labelMenuRef.value?.hide();
+}
+
 function removeBox(boxIndex: number): void {
   if (boxIndex < 0 || boxIndex >= boxes.value.length) return;
   boxes.value.splice(boxIndex, 1);
@@ -697,9 +752,16 @@ function goTo(next: number, stashEdits = true): void {
       boxes.value.map((b) => ({ ...b })),
     );
   }
-  previousBoxes.value = boxes.value.map((b) => ({ ...b }));
+  // an empty frame keeps the camera's last boxes for its next one
+  if (boxes.value.length) {
+    cameraBoxes.set(
+      current.value.cameraId,
+      boxes.value.map((b) => ({ ...b })),
+    );
+  }
   index.value = next;
   boxes.value = (edits.get(current.value.id) ?? current.value.boxes).map((b) => ({ ...b }));
+  boxesHidden.value = false;
   draft.value = null;
   drag.value = null;
   loupe.value = null;
@@ -837,6 +899,11 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   }
 
   if (event.repeat) return;
+  if ((event.key === 'h' || event.key === 'H') && !event.metaKey && !event.ctrlKey) {
+    toggleBoxesHidden();
+    return;
+  }
+  if (boxesHidden.value && event.key !== ' ') return;
   if (event.key === 'Tab') {
     event.preventDefault();
     selectNextBox(event.shiftKey ? -1 : 1);
@@ -1029,6 +1096,12 @@ kbd {
 
 .ghost-chip:hover {
   background: rgba(0, 0, 0, 0.85);
+}
+
+.bbox-label.faded,
+.ghost-chip.faded {
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 .bbox-label-icon {
