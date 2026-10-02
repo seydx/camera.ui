@@ -54,8 +54,13 @@ export function dropParkedPage(): void {
 
 function apply(documentScroll: number, scroll: number): void {
   shift = documentScroll - scroll;
-  if (shift) document.body.style.marginTop = `${shift}px`;
-  else document.body.style.removeProperty('margin-top');
+  if (shift) {
+    document.body.style.marginTop = `${shift}px`;
+    document.documentElement.style.paddingBottom = `${Math.max(screen.width, screen.height)}px`;
+  } else {
+    document.body.style.removeProperty('margin-top');
+    document.documentElement.style.removeProperty('padding-bottom');
+  }
   document.documentElement.classList.toggle('cui-page-held', shift !== 0);
   if (window.scrollY !== documentScroll) window.scrollTo({ top: documentScroll, behavior: 'instant' });
 }
