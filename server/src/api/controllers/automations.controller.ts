@@ -2,6 +2,7 @@ import { container } from 'tsyringe';
 
 import { getPluginMethodsForClient } from '../../automations/pluginMethodRegistry.js';
 import { getAutomationBlueprint, getAutomationCatalog, invalidateAutomationRegistry } from '../../utils/automation-registry/index.js';
+import { isAdminRequest } from '../middlewares/authPermission.middleware.js';
 import { AutomationsService } from '../services/automations.service.js';
 import { collectBulk } from '../utils/bulk.js';
 
@@ -21,11 +22,6 @@ import type {
   AutomationsStoreParamsRequest,
   AutomationsStoreQueryRequest,
 } from '../types/index.js';
-
-function isAdminRequest(req: FastifyRequest<AuthLoginRequest>): boolean {
-  const role = req.locals.user?.role;
-  return role === 'admin' || role === 'master';
-}
 
 function maskAutomation<T extends Pick<DBAutomation, 'nodes'>>(automation: T): T {
   return {

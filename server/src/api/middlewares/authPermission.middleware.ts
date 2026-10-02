@@ -1,6 +1,11 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthLoginRequest, AuthParamsRequest } from '../types/index.js';
 
+export function isAdminRequest(req: FastifyRequest<AuthLoginRequest>): boolean {
+  const role = req.locals.user?.role;
+  return role === 'admin' || role === 'master';
+}
+
 export async function onlyMasterCanDoThisAction(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
   if (req.locals.user?.role !== 'master') {
     return reply.code(403).send({
@@ -13,7 +18,7 @@ export async function onlyMasterCanDoThisAction(req: FastifyRequest<AuthLoginReq
 }
 
 export async function onlyAdminCanDoThisAction(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
-  if (req.locals.user?.role !== 'admin' && req.locals.user?.role !== 'master') {
+  if (!isAdminRequest(req)) {
     return reply.code(403).send({
       statusCode: 403,
       message: 'Forbidden',

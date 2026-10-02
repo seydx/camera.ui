@@ -4,6 +4,8 @@ import { Readable } from 'node:stream';
 import { container } from 'tsyringe';
 
 import { createSourceName } from '../../utils/camera.js';
+import { withoutSourceCredentials } from '../../utils/credentials.js';
+import { isAdminRequest } from '../middlewares/authPermission.middleware.js';
 import { CamerasService } from '../services/cameras.service.js';
 import { PluginsService } from '../services/plugins.service.js';
 import { collectBulk } from '../utils/bulk.js';
@@ -75,7 +77,7 @@ export class CamerasController {
         });
       }
 
-      return reply.code(200).send(camera);
+      return reply.code(200).send(isAdminRequest(req) ? camera : withoutSourceCredentials(camera));
     } catch (error: any) {
       return reply.code(500).send({
         statusCode: 500,
@@ -535,12 +537,12 @@ export class CamerasController {
     }
   }
 
-  public list(_req: FastifyRequest<AuthLoginRequest & PaginationRequest>, reply: FastifyReply): FastifyReply | DBCamera[] {
+  public list(req: FastifyRequest<AuthLoginRequest & PaginationRequest>, reply: FastifyReply): FastifyReply | DBCamera[] {
     try {
       const result = this.service.list();
       const ordered = orderBy(result, ['name'], ['asc']);
 
-      return ordered;
+      return isAdminRequest(req) ? ordered : ordered.map(withoutSourceCredentials);
     } catch (error: any) {
       return reply.code(500).send({
         statusCode: 500,

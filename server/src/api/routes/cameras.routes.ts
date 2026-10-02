@@ -127,7 +127,7 @@ export const CamerasRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
   app.withTypeProvider<ZodTypeProvider>().route({
     url: '/:cameraname/probe/:sourcename',
     method: 'GET',
-    preValidation: [validJWTNeeded],
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
     handler: camerasController.probeSourceByName.bind(camerasController),
     schema: {
       tags: ['Cameras'],
@@ -140,7 +140,7 @@ export const CamerasRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
   app.withTypeProvider<ZodTypeProvider>().route({
     url: '/:cameraname/info/:sourcename',
     method: 'GET',
-    preValidation: [validJWTNeeded],
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
     handler: camerasController.streamSourceInfoByName.bind(camerasController),
     schema: {
       tags: ['Cameras'],
