@@ -30,7 +30,7 @@
     "preview": "vite preview",
     "pwa": "pwa-assets-generator",
     "type-check": "vue-tsc --build",
-    "update": "updates -M npm,pypi,go,cargo,docker,make -u -e primevue,@primevue/auto-import-resolver,@primeuix/themes,eslint,typescript,@eslint/js"
+    "update": "updates -M npm,pypi,go,cargo,docker,make -u -e primevue,@primevue/auto-import-resolver,@primeuix/themes,eslint,typescript,@eslint/js,vue-tsc"
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",
@@ -42,18 +42,18 @@
     "@camera.ui/sdk": "~1.4.1",
     "@camera.ui/transport": "~0.0.30",
     "@capacitor-firebase/messaging": "^8.5.2",
-    "@capacitor/app": "^8.1.1",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/device": "^8.0.3",
-    "@capacitor/file-transfer": "^2.0.5",
-    "@capacitor/filesystem": "^8.1.3",
-    "@capacitor/geolocation": "^8.2.2",
-    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/file-transfer": "^2.0.6",
+    "@capacitor/filesystem": "^8.1.4",
+    "@capacitor/geolocation": "^8.2.3",
+    "@capacitor/keyboard": "^8.0.6",
     "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
-    "@capacitor/share": "^8.0.2",
+    "@capacitor/share": "^8.0.3",
     "@capacitor/splash-screen": "^8.0.2",
-    "@capacitor/status-bar": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.4",
     "@capawesome/capacitor-badge": "^8.0.3",
     "@capgo/capacitor-updater": "^8.52.1",
     "@iconify/json": "^2.2.537",
@@ -134,7 +134,7 @@
     "vite": "8.3.2",
     "vite-bundle-visualizer": "^1.2.1",
     "vite-plugin-pwa": "^1.3.0",
-    "vue-tsc": "^3.3.12"
+    "vue-tsc": "3.3.11"
   },
   "overrides": {
     "unplugin-vue-markdown": {
