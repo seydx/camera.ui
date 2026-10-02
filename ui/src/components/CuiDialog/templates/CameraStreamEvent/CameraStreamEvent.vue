@@ -134,6 +134,7 @@ const nvrController = useNvrPlayback(
 );
 
 const isLoading = computed(() => Boolean(dialogRefProps.loading?.value));
+const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 const showDescription = computed(() => headerToggles[0] ?? false);
 const currentDescription = computed<EventDescription | undefined>(() => {
   return cuiTimelineRef.value?.currentEventDescription;
@@ -209,13 +210,13 @@ function resolveGoTo(): string | undefined {
 }
 
 watch(
-  [hasCurrentEvent, isLive, isDownloading, nvrPluginRef],
+  [hasCurrentEvent, isLive, isDownloading, nvrPluginRef, isAdmin],
   ([hasEvent, live]) => {
     if (!dialogRefProps.headerActions) return;
     const eventActionable = !live && hasEvent && Boolean(nvrPluginRef.value);
     dialogRefProps.headerActions.value = [
       { icon: SparklesIcon, tooltip: t('components.player.ai_descriptions'), toggle: true, onClick: () => {} },
-      { icon: TraceIcon, tooltip: t('views.recordings.open_trace'), onClick: openTrace, disabled: !eventActionable },
+      ...(isAdmin.value ? [{ icon: TraceIcon, tooltip: t('views.recordings.open_trace'), onClick: openTrace, disabled: !eventActionable }] : []),
       { icon: DownloadIcon, tooltip: t('views.recordings.download'), onClick: handleDownload, loading: isDownloading.value, disabled: !eventActionable },
     ];
   },

@@ -376,7 +376,8 @@ const {
 
 const isPlaying = computed(() => master.mode.value === 'play');
 const visibleCamera = computed(() => props.cameraById.get(visibleCameraId.value));
-const canSearchSimilar = computed(() => Boolean(nvrPluginRef.value && visibleCamera.value?.assignments?.object));
+const isAdmin = computed(() => hasPermission(undefined, 'admin'));
+const canSearchSimilar = computed(() => Boolean(isAdmin.value && nvrPluginRef.value && visibleCamera.value?.assignments?.object));
 const showControl = computed(() => isHovered.value || initialHover.value);
 const showSpinner = computed(() => !scrubbing.value && (master.loading.value || master.mode.value === 'idle'));
 
@@ -876,11 +877,13 @@ watch(
 );
 
 watch(
-  [nvrPluginRef, isDownloading],
+  [nvrPluginRef, isDownloading, isAdmin],
   ([proxy]) => {
     if (!dialogRefProps.headerActions) return;
     dialogRefProps.headerActions.value = [
-      { icon: TraceIcon, tooltip: t('views.recordings.episode_trace.open'), onClick: () => openEpisodeTrace(props.episode, props.cameraById), disabled: !proxy },
+      ...(isAdmin.value
+        ? [{ icon: TraceIcon, tooltip: t('views.recordings.episode_trace.open'), onClick: () => openEpisodeTrace(props.episode, props.cameraById), disabled: !proxy }]
+        : []),
       { icon: DownloadIcon, tooltip: t('views.recordings.download'), onClick: handleDownload, loading: isDownloading.value, disabled: !proxy },
     ];
   },

@@ -1294,8 +1294,10 @@ const gridSearchActive = computed(() => !!gridSearch?.active.value);
 const infoText = computed<string | undefined>(() => undefined);
 const hovered = computed(() => (isHovered.value || initialHover.value) && control.value && !shortcutsEditMode.value);
 const isDisabled = computed(() => camera.value?.disabled === true);
-const canSearchSimilar = computed(() => props.onSearchSimilar !== undefined && Boolean(camera.value?.assignments?.object) && !isDisabled.value);
 const liveResting = computed(() => inStandby.value && !nvrPlaybackVisible.value);
+const canSearchSimilar = computed(
+  () => props.onSearchSimilar !== undefined && hasPermission(undefined, 'admin') && Boolean(camera.value?.assignments?.object) && !isDisabled.value,
+);
 const isSnoozed = computed(() => camera.value?.detectionSettings?.snooze === true);
 const isLoading = computed(() => {
   if (isDisabled.value) return false;
@@ -1478,7 +1480,7 @@ const streamMenuItems = computed<MenuItem[]>(() => {
     },
   });
 
-  if (props.onOpenTrace && nvrPlaybackVisible.value) {
+  if (props.onOpenTrace && nvrPlaybackVisible.value && hasPermission(undefined, 'admin')) {
     items.push({
       key: 'trace',
       label: t('views.recordings.open_trace'),

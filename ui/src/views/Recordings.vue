@@ -35,7 +35,7 @@
       :assistant-search-available="assistantAvailable"
       :assistant-search-loading="assistantSearching"
       :assistant-search-note="assistantNote"
-      :image-search-available="similarAvailable"
+      :image-search-available="imageSearchAvailable"
       @update:filters="onFilterUpdate"
       @semantic-search="onSemanticSearch"
       @assistant-search="onAssistantSearch"
@@ -659,6 +659,7 @@ const resultTotal = computed<number | undefined>(() => {
 });
 
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
+const imageSearchAvailable = computed(() => isAdmin.value && similarAvailable.value);
 
 const selectableEvents = computed(() => displayEvents.value.filter((e) => e.state === 'ended'));
 
@@ -834,7 +835,7 @@ function isFileDrag(event: DragEvent): boolean {
 }
 
 function onImageDragEnter(event: DragEvent): void {
-  if (similarAvailable.value && isFileDrag(event)) imageDrags.value++;
+  if (imageSearchAvailable.value && isFileDrag(event)) imageDrags.value++;
 }
 
 function onImageDragLeave(event: DragEvent): void {
@@ -844,7 +845,7 @@ function onImageDragLeave(event: DragEvent): void {
 function onImageDrop(event: DragEvent): void {
   imageDrags.value = 0;
   const image = Array.from(event.dataTransfer?.files ?? []).find((file) => file.type.startsWith('image/'));
-  if (image && similarAvailable.value) openImageSearch(image);
+  if (image && imageSearchAvailable.value) openImageSearch(image);
 }
 
 function openRecordingDialog(event: RecordedEvent, timestamp: number): void {

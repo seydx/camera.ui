@@ -304,7 +304,7 @@
 
         <div v-if="hoveredSensor.note" class="text-xs text-muted">{{ hoveredSensor.note }}</div>
 
-        <div v-if="hoveredSensor.sensorType === 'securitySystem'" class="flex flex-col gap-1">
+        <div v-if="isAdmin && hoveredSensor.sensorType === 'securitySystem'" class="flex flex-col gap-1">
           <Button
             v-for="state in SECURITY_STATES"
             :key="state.value"

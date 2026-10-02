@@ -127,7 +127,7 @@
         <TabList class="shrink-0 w-full mt-5">
           <Tab value="0" class="pt-0 text-sm flex-1">{{ $t('views.camera.recordings') }}</Tab>
           <Tab value="1" class="pt-0 text-sm flex-1">{{ $t('views.camera.cameras') }}</Tab>
-          <Tab value="2" class="pt-0 text-sm flex-1">{{ $t('views.camera.shares') }}</Tab>
+          <Tab v-if="hasPermission(undefined, 'admin')" value="2" class="pt-0 text-sm flex-1">{{ $t('views.camera.shares') }}</Tab>
         </TabList>
         <TabPanels class="mobile-sheet-panels px-0 pb-0 flex-1 min-h-0">
           <TabPanel value="0" class="h-full !overflow-hidden">
@@ -145,7 +145,7 @@
           <TabPanel value="1" class="h-full overflow-auto">
             <CuiCameraTable :active-camera="cameraName" />
           </TabPanel>
-          <TabPanel value="2" class="h-full overflow-auto">
+          <TabPanel v-if="hasPermission(undefined, 'admin')" value="2" class="h-full overflow-auto">
             <CuiCameraShares v-if="cameraId" :camera-id="cameraId" :camera-name="cameraName" />
           </TabPanel>
         </TabPanels>

@@ -1222,6 +1222,10 @@ onUnmounted(() => {
   cursor: default;
 }
 
+.sensor-shortcut.sensor-readonly .p-button {
+  pointer-events: none;
+}
+
 .sensor-tooltip {
   text-align: center;
   min-width: 80px;

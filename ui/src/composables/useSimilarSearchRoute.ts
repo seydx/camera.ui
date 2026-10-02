@@ -5,7 +5,7 @@ export function useSimilarSearchRoute() {
   const route = useRoute();
 
   const request = computed<SimilarSearchRequest | undefined>(() => {
-    if (!route.query.similar) return undefined;
+    if (!route.query.similar || !hasPermission(undefined, 'admin')) return undefined;
     const state = window.history.state as { similar?: SimilarSearchRequest } | null;
     return state?.similar?.query ? state.similar : undefined;
   });
@@ -33,6 +33,7 @@ export function useSimilarSearchRoute() {
   }
 
   function cameraSearch(): SimilarSearchRequest | undefined {
+    if (!hasPermission(undefined, 'admin')) return undefined;
     const state = window.history.state as { similar?: SimilarSearchRequest } | null;
     return state?.similar?.query ? state.similar : undefined;
   }

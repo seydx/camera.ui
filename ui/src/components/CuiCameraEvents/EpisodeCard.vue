@@ -169,7 +169,7 @@ const privacyByCamera = computed(() => {
 });
 
 const cardMenuItems = computed<MenuItem[]>(() => [
-  { key: 'trace', label: t('views.recordings.episode_trace.open'), icon: TraceIcon, onClick: () => openTrace() },
+  ...(isAdmin.value ? [{ key: 'trace', label: t('views.recordings.episode_trace.open'), icon: TraceIcon, onClick: () => openTrace() }] : []),
   { key: 'download', label: t('views.recordings.download'), icon: DownloadIcon, loading: isDownloading.value, onClick: () => handleDownload() },
 ]);
 
