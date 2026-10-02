@@ -173,6 +173,7 @@ export class NATS {
                   'rpc.plugin.*.child.rpc.nvrExportEstimate',
                   'rpc.plugin.*.child.rpc.nvrExportEpisode',
                   'rpc.plugin.*.child.rpc.searchEventsByText',
+                  'rpc.plugin.*.child.rpc.searchEventsByTextQuery',
                 ],
               },
             },

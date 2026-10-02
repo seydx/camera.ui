@@ -29,7 +29,7 @@
       :result-count="gridItems.length"
       :result-total="resultTotal"
       :result-capped="stats?.capped"
-      :semantic-count="isSemanticActive ? semanticEventIds.size : undefined"
+      :semantic-count="isSemanticActive ? semanticCount : undefined"
       :semantic-search-available="semanticAvailable"
       :semantic-search-loading="semanticSearching"
       :assistant-search-available="assistantAvailable"
@@ -125,8 +125,8 @@
             :items="gridItems"
             :min-item-width="smBreakpoint ? 160 : 180"
             :gap="8"
-            :has-more="hasMore && !isSimilarActive"
-            :load-more="loadMore"
+            :has-more="gridHasMore"
+            :load-more="gridLoadMore"
             :item-key="(item: UngroupedItem) => item.key"
             class="flex-1 min-h-0"
             :style="{ '--cui-scroll-end': 'calc(var(--cui-bottom-gap) - 8px)' }"
@@ -218,7 +218,7 @@
     <CuiFloatingButtonGroup v-if="availableCameras.length" :force-visible="selectionMode" :scroll-y="gridRef?.scrollY ?? 0">
       <template v-if="!selectionMode">
         <CuiFloatingButton
-          v-if="isAdmin && displayEvents.length && !isSimilarActive"
+          v-if="isAdmin && listedEvents.length && !isSimilarActive"
           grouped
           :tooltip-props="{ value: $t('views.recordings.select') }"
           :button-props="{ severity: 'secondary' }"
@@ -308,7 +308,7 @@ import type { SimilarImageSearchProps } from '@/components/CuiDialog/templates/S
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { RecordingsFilterState } from '@/components/CuiRecordings/types.js';
 import type { UngroupedItem } from '@/components/CuiRecordings/ungrouped.js';
-import type { GetEventsOptions, RecordedEvent, SimilarOptions } from '@camera.ui/nvr';
+import type { GetEventsOptions, RecordedEvent, SimilarOptions, TextSearchOptions } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 
 const assistantQuery = new AssistantQuery();
@@ -335,11 +335,13 @@ if (typeof VideoDecoder !== 'undefined') {
 }
 
 const {
+  result: semanticResult,
   results: semanticResults,
   isSearching: semanticSearching,
   isAvailable: semanticAvailable,
   hasSearched: semanticHasSearched,
   search: runSemanticSearch,
+  loadMore: loadMoreSemantic,
   clear: clearSemantic,
 } = useSemanticSearch();
 
@@ -401,8 +403,14 @@ const imageDrags = ref(0);
 const rangeStartMs = ref<number>();
 const ungrouped = ref(false);
 const hoveredEventId = ref<string | null>(null);
+const semanticText = ref('');
+const semanticThreshold = refDebounced(
+  computed(() => filters.value.minSemanticScore),
+  300,
+);
 
 let ungroupedTouched = false;
+let lastSemanticKey = '';
 let _prevFilterJSON = JSON.stringify(serverFilter.value);
 
 const { left: reindexAnchorLeft } = useElementBounding(reindexAnchorRef);
@@ -464,14 +472,38 @@ const cameraIds = computed(() => filters.value.cameraIds.filter((id) => roomCame
 
 const allCameraIds = computed(() => roomCameraIds.value);
 
+const episodesOnly = computed(() => filters.value.contentKind === 'episodes');
+
+const contentFiltered = computed(() => {
+  const f = filters.value;
+  return (
+    f.search.trim() !== '' ||
+    f.eventTypes.length > 0 ||
+    f.audioLabels.length > 0 ||
+    f.hasAttributes.length > 0 ||
+    f.vehicleColors.length > 0 ||
+    f.vehicleTypes.length > 0 ||
+    f.sensorEvents.length > 0 ||
+    f.minConfidence !== 0.5
+  );
+});
+
+const episodesWanted = computed(() => {
+  const f = filters.value;
+  return f.contentKind !== 'events' && (episodesOnly.value || (!contentFiltered.value && !f.gridRegions.length));
+});
+
 registerScrollToTop(() => gridRef.value?.scrollToTop());
 
 const {
   events,
+  episodes,
   isLoading,
   hasMore,
+  episodesHasMore,
   stats,
   loadMore,
+  loadMoreEpisodes,
   deleteEvents,
   reset: reloadEvents,
   loadFailed,
@@ -483,7 +515,7 @@ const {
   realtime: true,
   pageSize: 40,
   filter: serverFilter,
-  withEpisodes: true,
+  withEpisodes: episodesWanted,
   withStats: true,
 });
 
@@ -498,7 +530,29 @@ const semanticEventIds = computed(() => {
   return map;
 });
 
-const isSemanticActive = computed(() => semanticHasSearched.value);
+const isSemanticActive = computed(() => semanticHasSearched.value && !episodesOnly.value);
+
+const semanticEvents = computed<RecordedEvent[]>(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  eventStore.storeVersion.value;
+  const inline = new Map((semanticResult.value?.events ?? []).map((event) => [event.id, event]));
+  const regions = filters.value.gridRegions;
+  const result: RecordedEvent[] = [];
+  for (const match of semanticResults.value) {
+    const event = eventStore.getEvent(match.eventId) ?? inline.get(match.eventId);
+    if (event && (!regions.length || inGridRegions(event, regions))) result.push(event);
+  }
+  return result;
+});
+
+const semanticItems = computed<UngroupedItem[]>(() =>
+  ungrouped.value ? buildUngroupedItems(semanticEvents.value, true) : semanticEvents.value.map((event) => ({ event, key: event.id })),
+);
+
+const semanticCount = computed<number | string>(() => {
+  const more = semanticResult.value?.hasMore || semanticResult.value?.truncated;
+  return more ? `${semanticEvents.value.length}+` : semanticEvents.value.length;
+});
 
 const isSimilarActive = computed(() => Boolean(similarRequest.value));
 
@@ -530,6 +584,11 @@ const similarOptions = computed<SimilarOptions>(() => {
   };
 });
 
+const semanticOptions = computed<TextSearchOptions>(() => ({
+  ...similarOptions.value,
+  filter: toServerFilter(filters.value),
+}));
+
 const listLoading = computed(() => (isSimilarActive.value ? similarSearching.value : isLoading.value));
 
 const showEmptyState = computed(() => {
@@ -537,7 +596,7 @@ const showEmptyState = computed(() => {
     const result = similarResult.value;
     return Boolean(result) && result?.mode !== 'none' && !similarItems.value.length && !similarSearching.value;
   }
-  return !displayEvents.value.length && !isLoading.value && !semanticSearching.value;
+  return !listedEvents.value.length && !isLoading.value && !semanticSearching.value;
 });
 
 const emptyStateText = computed(() => {
@@ -559,45 +618,22 @@ const displayEvents = computed(() => {
   }
 
   if (f.gridRegions.length > 0) {
-    result = result.filter((e) => e.segments.some((s) => s.detections.some((d) => d.box && boxOverlapsRegions(d.box, f.gridRegions))));
+    result = result.filter((e) => inGridRegions(e, f.gridRegions));
   }
 
   if (f.favoritesOnly) {
     result = result.filter((e) => e.favorite);
   }
 
-  if (isSemanticActive.value) {
-    result = result.filter((e) => {
-      const score = semanticEventIds.value.get(e.id);
-      return score != null && score >= f.minSemanticScore;
-    });
-    result.sort((a, b) => (semanticEventIds.value.get(b.id) ?? 0) - (semanticEventIds.value.get(a.id) ?? 0));
-  }
-
   return result;
 });
 
-const episodesOnly = computed(() => filters.value.contentKind === 'episodes');
+const listedEvents = computed(() => (isSemanticActive.value ? semanticEvents.value : displayEvents.value));
 
-const contentFiltered = computed(() => {
-  const f = filters.value;
-  return (
-    f.search.trim() !== '' ||
-    f.eventTypes.length > 0 ||
-    f.audioLabels.length > 0 ||
-    f.hasAttributes.length > 0 ||
-    f.vehicleColors.length > 0 ||
-    f.vehicleTypes.length > 0 ||
-    f.sensorEvents.length > 0 ||
-    f.minConfidence !== 0.5
-  );
-});
 const assistantAvailable = computed(() => assistantStatus.value?.state === 'ready');
 
 const episodeGridItems = computed<UngroupedItem[]>(() => {
   if (filters.value.contentKind === 'events') return [];
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  eventStore.storeVersion.value;
   const f = filters.value;
 
   if (!episodesOnly.value) {
@@ -606,35 +642,24 @@ const episodeGridItems = computed<UngroupedItem[]>(() => {
     if (contentFiltered.value) return [];
   }
 
-  const scope = cameraIds.value.length > 0 ? cameraIds.value : allCameraIds.value;
-  let cutoff = rangeStartMs.value ?? 0;
-  let rangeEndMs = Infinity;
-  if (f.timeRange === 'custom' && f.customDateRange) {
-    cutoff = Math.max(cutoff, f.customDateRange[0].getTime());
-    rangeEndMs = f.customDateRange[1].getTime();
-  }
-
+  let cutoff = 0;
   if (hasMore.value && !episodesOnly.value) {
-    let oldest = Infinity;
+    cutoff = Infinity;
     for (const event of events.value) {
-      oldest = Math.min(oldest, event.thumbnailAt ?? event.startTime);
+      cutoff = Math.min(cutoff, event.thumbnailAt ?? event.startTime);
     }
-    cutoff = Math.max(cutoff, oldest);
   }
 
   const items: UngroupedItem[] = [];
-  for (const episode of eventStore.getEpisodes()) {
-    if (!episode.description) continue;
-    if (f.favoritesOnly && !episode.favorite) continue;
+  for (const episode of episodes.value) {
     if (cutoff && episode.endTime < cutoff) continue;
-    if (episode.startTime > rangeEndMs) continue;
-    if (scope.length > 0 && !episode.members.some((m) => scope.includes(m.cameraId))) continue;
     items.push({ event: undefined as unknown as RecordedEvent, key: `episode:${episode.id}`, episode });
   }
   return items;
 });
 const gridItems = computed<UngroupedItem[]>(() => {
   if (isSimilarActive.value) return similarItems.value;
+  if (isSemanticActive.value) return semanticItems.value;
   if (episodesOnly.value) return [...episodeGridItems.value].sort(newestFirst);
   const items: UngroupedItem[] =
     ungrouped.value && ungroupedItems.value.length ? [...ungroupedItems.value] : displayEvents.value.map((event) => ({ event, key: event.id }));
@@ -659,7 +684,14 @@ const resultTotal = computed<number | undefined>(() => {
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 const imageSearchAvailable = computed(() => isAdmin.value && similarAvailable.value);
 
-const selectableEvents = computed(() => displayEvents.value.filter((e) => e.state === 'ended'));
+const gridHasMore = computed(() => {
+  if (isSimilarActive.value) return false;
+  if (isSemanticActive.value) return semanticResult.value?.hasMore ?? false;
+  if (episodesOnly.value) return episodesHasMore.value;
+  return hasMore.value || (episodesWanted.value && episodesHasMore.value);
+});
+
+const selectableEvents = computed(() => listedEvents.value.filter((e) => e.state === 'ended'));
 
 const { selectionMode, selectedIds, allSelected, bulkBusy, enterSelectionMode, exitSelectionMode, toggleSelectAll, toggleSelection } = useCardSelection(
   selectableEvents,
@@ -777,8 +809,14 @@ async function onAssistantSearch(text: string): Promise<void> {
   assistantNote.value = '';
   try {
     const result = await searchAssistantFilters(text, locale.value, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const query = result.filters.semanticQuery.trim();
+    // set before the filters, or the rerun watch searches the previous text
+    semanticText.value = query;
     onFilterUpdate({ ...DEFAULT_FILTERS, ...result.filters, favoritesOnly: isAdmin.value && result.filters.favoritesOnly });
-    onSemanticSearch(result.filters.semanticQuery);
+    // the search takes the filters along, let them settle first
+    await nextTick();
+    if (query) searchSemantic(false);
+    else clearSemantic();
     assistantNote.value = result.note;
   } catch (error: any) {
     toast.add({ severity: 'error', detail: error?.response?.data?.message ?? t('views.recordings.assistant_search_failed'), life: 5000 });
@@ -788,11 +826,51 @@ async function onAssistantSearch(text: string): Promise<void> {
 }
 
 function onSemanticSearch(query: string): void {
-  if (!query.trim()) {
+  semanticText.value = query.trim();
+  if (!semanticText.value) {
     clearSemantic();
     return;
   }
-  runSemanticSearch(query);
+  searchSemantic(true);
+}
+
+function searchSemantic(force: boolean): void {
+  const options = { ...semanticOptions.value, threshold: filters.value.minSemanticScore };
+  const key = JSON.stringify([semanticText.value, options]);
+  if (!force && key === lastSemanticKey && (semanticSearching.value || semanticHasSearched.value)) return;
+  lastSemanticKey = key;
+  runSemanticSearch(semanticText.value, options);
+}
+
+function gridLoadMore(): Promise<void> {
+  if (isSemanticActive.value) return loadMoreSemantic();
+  if (episodesOnly.value || !hasMore.value) return loadMoreEpisodes();
+  return loadMore();
+}
+
+function inGridRegions(event: RecordedEvent, regions: RecordingsFilterState['gridRegions']): boolean {
+  return event.segments.some((s) => s?.detections.some((d) => d.box && boxOverlapsRegions(d.box, regions)));
+}
+
+function toServerFilter(f: RecordingsFilterState): GetEventsOptions {
+  const hasAnyContentFilter = f.eventTypes.length > 0 || f.sensorEvents.length > 0 || f.audioLabels.length > 0 || f.hasAttributes.length > 0;
+
+  return {
+    types: f.eventTypes.length > 0 ? f.eventTypes : undefined,
+    triggers: f.sensorEvents.length > 0 ? f.sensorEvents : undefined,
+    triggerLabels: f.audioLabels.length > 0 ? f.audioLabels : undefined,
+    attributes: f.hasAttributes.length > 0 ? f.hasAttributes : undefined,
+    attributeLabels: vehicleAttributeLabels(f),
+    filterLogicTriggers: hasAnyContentFilter ? f.filterLogicTriggers : undefined,
+    filterLogicAttributes: hasAnyContentFilter ? f.filterLogicAttributes : undefined,
+    search: f.search || undefined,
+    minConfidence: f.minConfidence > 0 ? f.minConfidence : undefined,
+    hasDetections: !hasAnyContentFilter,
+    withRecordingInfo: true,
+    hasRecording: f.onlyWithRecordings || undefined,
+    favoritesOnly: f.favoritesOnly || undefined,
+    startedSinceMs: rangeStartMs.value,
+  };
 }
 
 function vehicleAttributeLabels(f: RecordingsFilterState): Record<string, string[]> | undefined {
@@ -898,25 +976,7 @@ watch(
 watch(
   filters,
   (f) => {
-    const hasAnyContentFilter = f.eventTypes.length > 0 || f.sensorEvents.length > 0 || f.audioLabels.length > 0 || f.hasAttributes.length > 0;
-
-    const next: GetEventsOptions = {
-      types: f.eventTypes.length > 0 ? f.eventTypes : undefined,
-      triggers: f.sensorEvents.length > 0 ? f.sensorEvents : undefined,
-      triggerLabels: f.audioLabels.length > 0 ? f.audioLabels : undefined,
-      attributes: f.hasAttributes.length > 0 ? f.hasAttributes : undefined,
-      attributeLabels: vehicleAttributeLabels(f),
-      filterLogicTriggers: hasAnyContentFilter ? f.filterLogicTriggers : undefined,
-      filterLogicAttributes: hasAnyContentFilter ? f.filterLogicAttributes : undefined,
-      search: f.search || undefined,
-      minConfidence: f.minConfidence > 0 ? f.minConfidence : undefined,
-      hasDetections: !hasAnyContentFilter,
-      withRecordingInfo: true,
-      hasRecording: f.onlyWithRecordings || undefined,
-      favoritesOnly: f.favoritesOnly || undefined,
-      startedSinceMs: rangeStartMs.value,
-    };
-
+    const next = toServerFilter(f);
     const nextJSON = JSON.stringify(next);
     if (nextJSON !== _prevFilterJSON) {
       _prevFilterJSON = nextJSON;
@@ -945,9 +1005,16 @@ watch(
   { immediate: true },
 );
 
-watch([ungrouped, displayEvents, isSemanticActive], ([isUngrouped, events, ranked]) => {
-  ungroupedItems.value = isUngrouped ? buildUngroupedItems(events, ranked) : [];
+watch([ungrouped, displayEvents], ([isUngrouped, events]) => {
+  ungroupedItems.value = isUngrouped ? buildUngroupedItems(events) : [];
 });
+
+watch(
+  () => JSON.stringify([semanticOptions.value, semanticThreshold.value]),
+  () => {
+    if (semanticHasSearched.value && semanticText.value) searchSemantic(false);
+  },
+);
 
 watch(
   () => filters.value.cameraIds,

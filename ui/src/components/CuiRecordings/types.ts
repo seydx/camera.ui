@@ -79,7 +79,7 @@ export interface RecordingsFilterSidebarProps {
   resultCount: number;
   resultTotal?: number;
   resultCapped?: boolean;
-  semanticCount?: number;
+  semanticCount?: number | string;
   semanticSearchAvailable?: boolean;
   semanticSearchLoading?: boolean;
   assistantSearchAvailable?: boolean;
