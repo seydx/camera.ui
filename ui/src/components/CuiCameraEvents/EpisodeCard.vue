@@ -52,7 +52,7 @@
             <i-tabler:dots-vertical v-else class="w-3 h-3 text-white" />
           </button>
         </div>
-        <p class="text-[10px] text-white/70">{{ formatTime }}</p>
+        <p class="text-[10px] text-white/70">{{ formatDateTime }}</p>
       </div>
 
       <div
@@ -101,7 +101,7 @@ import DownloadIcon from '~icons/tabler/download';
 import TraceIcon from '~icons/tabler/list-search';
 
 import { closeOpenMenu } from '@/common/menuRegistry.js';
-import { extractErrorMessage } from '@/common/utils.js';
+import { extractErrorMessage, formatCardTime } from '@/common/utils.js';
 import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 
 import type { MenuItem } from '@/components/CuiMenu/types.js';
@@ -183,6 +183,8 @@ const previewIndicator = computed(() => {
   const clock = formatClock(preview.previewTimeMs.value);
   return camera ? `${camera} · ${clock}` : clock;
 });
+
+const formatDateTime = computed(() => formatCardTime(props.episode.startTime));
 
 const formatTime = computed(() => {
   const date = new Date(props.episode.startTime);

@@ -172,7 +172,7 @@ import TraceIcon from '~icons/tabler/list-search';
 import FaceEditIcon from '~icons/tabler/user-edit';
 
 import { closeOpenMenu } from '@/common/menuRegistry.js';
-import { extractErrorMessage } from '@/common/utils.js';
+import { extractErrorMessage, formatCardTime } from '@/common/utils.js';
 import FaceReassignDialog from '@/components/CuiDialog/templates/FaceReassign/FaceReassign.vue';
 import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import { eventAnchorTime, segmentLabel } from '@/utils/eventAnchor.js';
@@ -329,15 +329,7 @@ const hiddenTypes = computed(() => uniqueTypes.value.slice(footerLayout.value.ic
 const visibleThumbnails = computed(() => stripThumbnails.value.slice(0, footerLayout.value.tiles));
 const hiddenThumbnailCount = computed(() => stripThumbnails.value.length - footerLayout.value.tiles);
 
-const formatDateTime = computed(() => {
-  const date = new Date(shownSegment.value?.firstSeen ?? props.event.thumbnailAt ?? props.event.startTime);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return time;
-  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  return `${dateStr} ${time}`;
-});
+const formatDateTime = computed(() => formatCardTime(shownSegment.value?.firstSeen ?? props.event.thumbnailAt ?? props.event.startTime));
 
 const canDownload = computed(() => Boolean(nvrPluginRef.value && props.event.endTime && props.event.hasRecording !== false));
 

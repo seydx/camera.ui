@@ -41,6 +41,14 @@ export function formatTimestamp(timestamp: number, hideSeconds?: boolean): Forma
   };
 }
 
+export function formatCardTime(ms: number): string {
+  const date = new Date(ms);
+  const now = new Date();
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (date.toDateString() === now.toDateString()) return time;
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+}
+
 export function formatRelativeTime(value: string | number | Date): string {
   const date = value instanceof Date ? value : new Date(value);
 
