@@ -2,6 +2,7 @@ import fp from 'fastify-plugin';
 import { container } from 'tsyringe';
 import { WebSocket, WebSocketServer } from 'ws';
 
+import { createSourceName } from '../../utils/camera.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
 import { NatsSubFirewall } from './natsSubFirewall.js';
@@ -13,6 +14,8 @@ import type { ClientOptions, RawData } from 'ws';
 import type { ProxyServer } from '../../rpc/index.js';
 import type { AuthConfig } from '../../rpc/interfaces/config.js';
 import type { LoggerService } from '../../services/logger/index.js';
+import type { Database } from '../database/index.js';
+import type { DBToken } from '../types/index.js';
 
 export interface ProxyTLSOptions {
   cert: string | Buffer;
@@ -27,6 +30,8 @@ export interface ProxyOptions {
   target: 'nats' | 'go2rtc';
   tls?: ProxyTLSOptions;
 }
+
+const GO2RTC_VIEWER_MESSAGES = new Set(['mse', 'mse/stop', 'mp4', 'hls', 'mjpeg', 'webcodecs', 'webrtc/offer', 'webrtc/candidate', 'talkback']);
 
 function isValidCloseCode(code: number): boolean {
   return (code >= 1000 && code <= 1014 && code !== 1004 && code !== 1005 && code !== 1006) || (code >= 3000 && code <= 4999);
@@ -43,10 +48,12 @@ class WebSocketProxy {
   private usersService: UsersService;
   private proxy: ProxyServer;
   private logger: LoggerService;
+  private dbs: Database;
 
   constructor(fastify: FastifyInstance, options: ProxyOptions) {
     this.proxy = container.resolve<ProxyServer>('proxy');
     this.logger = container.resolve<LoggerService>('logger');
+    this.dbs = container.resolve<Database>('dbs');
     this.authService = new AuthService();
     this.usersService = new UsersService();
 
@@ -94,14 +101,17 @@ class WebSocketProxy {
       let natsCreds: AuthConfig = this.proxy.auth.server;
       let firewallConnId: string | null = null;
       let firewallUserId: string | undefined;
+      let go2rtcViewer = false;
 
       if (this.target === 'go2rtc') {
         const src = url.searchParams.get('src') ?? '';
-        if (dbToken.stream_scope && src !== dbToken.stream_scope) {
-          this.reject(request, socket, head, 4403, 'forbidden: src out of scope', token);
+        go2rtcViewer = this.isGo2rtcViewer(dbToken);
+        const denied = this.go2rtcSrcDenial(dbToken, src, go2rtcViewer);
+        if (denied) {
+          this.reject(request, socket, head, 4403, denied, token);
           return;
         }
-        targetUrl += `?src=${src}`;
+        targetUrl += `?src=${encodeURIComponent(src)}`;
 
         if (dbToken.user_id.startsWith('share_')) {
           targetUrl += `&tag=${encodeURIComponent(dbToken.user_id)}`;
@@ -112,8 +122,7 @@ class WebSocketProxy {
           return;
         }
 
-        const user = this.usersService.findById(dbToken.user_id);
-        const isAdmin = user?.role === 'admin' || user?.role === 'master';
+        const isAdmin = this.isAdmin(dbToken.user_id);
         natsCreds = isAdmin ? this.proxy.auth.server : this.proxy.auth.viewer;
 
         if (!isAdmin) {
@@ -144,7 +153,7 @@ class WebSocketProxy {
       });
 
       this.wss.handleUpgrade(request, socket, head, (clientWs) => {
-        this.proxyWebSockets(clientWs, serverWs, natsCreds, firewallConnId, firewallUserId);
+        this.proxyWebSockets(clientWs, serverWs, natsCreds, firewallConnId, firewallUserId, go2rtcViewer);
       });
     } catch (err) {
       this.logger.warn(`Proxy upgrade failed (500) target=${this.target}: ${(err as Error)?.message ?? err}`);
@@ -153,7 +162,14 @@ class WebSocketProxy {
     }
   }
 
-  private proxyWebSockets(client: WebSocket, server: WebSocket, natsCreds: AuthConfig, firewallConnId: string | null, firewallUserId?: string): void {
+  private proxyWebSockets(
+    client: WebSocket,
+    server: WebSocket,
+    natsCreds: AuthConfig,
+    firewallConnId: string | null,
+    firewallUserId: string | undefined,
+    go2rtcViewer: boolean,
+  ): void {
     if (firewallConnId) {
       const firewall = new NatsSubFirewall(
         firewallConnId,
@@ -180,6 +196,18 @@ class WebSocketProxy {
 
       client.on('message', (data, isBinary) => {
         if (server.readyState !== WebSocket.OPEN) return;
+
+        if (go2rtcViewer && !isBinary) {
+          const message = this.viewerMessage(data);
+          if (!message) {
+            this.logger.warn('Proxy closed go2rtc viewer connection (4403): message type not allowed');
+            server.close(1000);
+            client.close(4403, 'forbidden: message type not allowed');
+            return;
+          }
+          server.send(message);
+          return;
+        }
 
         if (!connectHandled && this.target === 'nats') {
           connectHandled = true;
@@ -238,6 +266,47 @@ class WebSocketProxy {
     this.wss.handleUpgrade(request, socket, head, (clientWs) => {
       clientWs.close(code, reason);
     });
+  }
+
+  private isAdmin(userId: string): boolean {
+    const role = this.usersService.findById(userId)?.role;
+    return role === 'admin' || role === 'master';
+  }
+
+  private isGo2rtcViewer(dbToken: DBToken): boolean {
+    return Boolean(dbToken.stream_scope) || dbToken.user_id.startsWith('share_') || !this.isAdmin(dbToken.user_id);
+  }
+
+  private go2rtcSrcDenial(dbToken: DBToken, src: string, viewer: boolean): string | undefined {
+    if (dbToken.stream_scope || dbToken.user_id.startsWith('share_')) {
+      return src && src === dbToken.stream_scope ? undefined : 'forbidden: src out of scope';
+    }
+    if (!viewer || this.isCameraStream(src)) {
+      return undefined;
+    }
+    return 'forbidden: src is not a camera stream';
+  }
+
+  private viewerMessage(data: RawData): string | undefined {
+    let message: { type?: unknown; value?: unknown } | null;
+    try {
+      message = JSON.parse(this.extractMessage(data));
+    } catch {
+      return undefined;
+    }
+    if (typeof message?.type !== 'string' || !GO2RTC_VIEWER_MESSAGES.has(message.type)) {
+      return undefined;
+    }
+    return JSON.stringify({ type: message.type, value: message.value });
+  }
+
+  private isCameraStream(src: string): boolean {
+    for (const { value: camera } of this.dbs.camerasDB.getRange()) {
+      if (camera.sources.some((source) => createSourceName(camera.name, source.name) === src)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private extractMessage(data: RawData): string {
