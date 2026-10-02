@@ -41,6 +41,7 @@
           <CuiCameraCard
             v-else
             :source-role="isNvrActive ? undefined : 'low-resolution'"
+            activity-mode="always-on"
             streaming-mode="auto"
             :camera-info="cameras!.result.find((cam) => cam._id === shortcut.cameraId)!"
             :nvr-controller="isNvrActive ? getOrCreateFollower(shortcut) : undefined"
