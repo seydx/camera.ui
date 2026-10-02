@@ -221,7 +221,7 @@ const previewBlocked = ref(false);
 
 const longPress = useLongPressPreview(
   rootRef,
-  () => startPreview(),
+  () => startPreview(true),
   () => stopPreview(),
 );
 const isPreviewActive = ref(false);
@@ -434,7 +434,7 @@ function formatClock(ms: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
-function startPreview(): void {
+function startPreview(immediate = false): void {
   if (!preview) return;
   if (activeImageIndex.value > 0) return;
   const canvas = previewCanvasRef.value;
@@ -445,7 +445,9 @@ function startPreview(): void {
     return;
   }
   isPreviewActive.value = true;
-  preview.onHoverStart(canvas, props.event.cameraId, props.event.id, props.event.startTime, to, props.camera?.zones?.privacy, previewFocusTrack(props.event));
+  preview.onHoverStart(canvas, props.event.cameraId, props.event.id, props.event.startTime, to, props.camera?.zones?.privacy, previewFocusTrack(props.event), {
+    immediate,
+  });
 }
 
 function handleMouseEnter(): void {
@@ -602,6 +604,8 @@ onMounted(() => {
     triggerLoad();
   }
 });
+
+onUnmounted(() => stopPreview());
 </script>
 
 <style scoped>

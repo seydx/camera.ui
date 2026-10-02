@@ -139,7 +139,7 @@ const previewBlocked = ref(false);
 
 const longPress = useLongPressPreview(
   cardRef,
-  () => startPreview(),
+  () => startPreview(true),
   () => stopPreview(),
 );
 
@@ -212,7 +212,7 @@ function formatClock(ms: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
-function startPreview(): void {
+function startPreview(immediate = false): void {
   if (!preview) return;
   const canvas = previewCanvasRef.value;
   if (!canvas) return;
@@ -221,7 +221,7 @@ function startPreview(): void {
     return;
   }
   isPreviewActive.value = true;
-  preview.onHoverStartSequence(canvas, `episode:${props.episode.id}`, previewParts.value, privacyByCamera.value);
+  preview.onHoverStartSequence(canvas, `episode:${props.episode.id}`, previewParts.value, privacyByCamera.value, { immediate });
 }
 
 function stopPreview(): void {
