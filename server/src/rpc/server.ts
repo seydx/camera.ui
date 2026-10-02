@@ -122,11 +122,16 @@ export class NATS {
                   'stream.rpc.>',
                   '_rpc.iterator.>',
 
-                  // coreManager — read-only metadata
-                  'rpc.coreManager.rpc.>',
+                  // coreManager: plugin metadata reads only, everything else on it is a write or server-internal
+                  'rpc.coreManager.rpc.getPlugin',
+                  'rpc.coreManager.rpc.getPluginsByInterface',
 
                   // deviceManager — sanitized camera lookup
                   'rpc.deviceManager.rpc.getCamera',
+
+                  // sensors: list and states only, the registry writes share this namespace
+                  'rpc.sensors.rpc.getSensors',
+                  'rpc.sensors.rpc.getSensorStates',
 
                   // Camera controller — view/playback reads only
                   'rpc.camera.*.controller.rpc.snapshot',
