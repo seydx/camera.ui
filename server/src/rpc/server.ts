@@ -122,7 +122,6 @@ export class NATS {
                   'rpc.camera.*.controller.rpc.snapshot',
                   'rpc.camera.*.controller.rpc.snapshotWithMeta',
                   'rpc.camera.*.controller.rpc.probeStream',
-                  'rpc.camera.*.controller.rpc.streamUrl',
                   'rpc.camera.*.controller.rpc.refreshStates',
 
                   // NVR specific — read-only access

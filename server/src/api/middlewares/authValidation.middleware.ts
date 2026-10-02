@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { createHmac } from 'node:crypto';
 import { container } from 'tsyringe';
 
+import { streamTokenMatches } from '../../utils/camera.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
 import { API_TOKEN_PREFIX } from '../types/index.js';
@@ -9,7 +10,7 @@ import { API_TOKEN_PREFIX } from '../types/index.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ConfigService } from '../../services/config/index.js';
 import type { DBUser } from '../database/types.js';
-import type { AuthLoginRequest, AuthNewLoginRequest, JwtTokenDecoded, TwoFactorPendingResponse } from '../types/index.js';
+import type { AuthLoginRequest, AuthNewLoginRequest, CamerasStreamRequest, JwtTokenDecoded, TwoFactorPendingResponse } from '../types/index.js';
 
 const FIRST_LOGIN_ALLOWED_ROUTES: ReadonlySet<string> = new Set(['GET /api/auth/check', 'POST /api/backup/restore']);
 
@@ -142,6 +143,16 @@ export async function validJWTNeeded(req: FastifyRequest<AuthLoginRequest>, repl
   }
 
   authService.bumpLastSeen(dbToken.id, req.ip);
+
+  return {} as FastifyReply;
+}
+
+export async function validStreamTokenNeeded(req: FastifyRequest<CamerasStreamRequest>, reply: FastifyReply): Promise<FastifyReply> {
+  const configService = container.resolve<ConfigService>('configService');
+
+  if (!streamTokenMatches(req.query.token, configService.STREAM_URL_TOKEN)) {
+    return reply.code(403).send({ statusCode: 403, message: 'Forbidden' });
+  }
 
   return {} as FastifyReply;
 }

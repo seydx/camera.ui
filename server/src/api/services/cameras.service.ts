@@ -836,7 +836,7 @@ export class CamerasService {
       source.urls = generatedSourceUrls(cameraId, this.configService.config.port, source);
 
       const sourceName = createSourceName(cameraname, source.name);
-      const baseUrls = go2rtcStreamUrls(sourceName, source, source.urls);
+      const baseUrls = go2rtcStreamUrls(sourceName, source, source.urls, this.configService.STREAM_URL_TOKEN);
 
       const cameraSource: CreateStreamData = {
         name: sourceName,

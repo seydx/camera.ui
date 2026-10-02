@@ -6,7 +6,7 @@ import { unlink } from 'node:fs/promises';
 import semver from 'semver';
 import { container } from 'tsyringe';
 
-import { createSourceName, generatedSourceUrls, go2rtcStreamUrls } from '../../utils/camera.js';
+import { createSourceName, generatedSourceUrls, go2rtcStreamUrls, stripStreamToken } from '../../utils/camera.js';
 import { createAutomationSchema } from '../schemas/automations.schema.js';
 import { createCameraBaseSchema } from '../schemas/cameras.schema.js';
 import { notificationSettingsSchema } from '../schemas/notifications.schema.js';
@@ -262,7 +262,7 @@ export class Database {
           if (raw === undefined) continue;
 
           const urls = Array.isArray(raw) ? raw : [raw];
-          source.urls = urls.filter((url) => !url.includes('#cameraui'));
+          source.urls = urls.filter((url) => !url.includes('#cameraui')).map(stripStreamToken);
           mutated = true;
         }
 
@@ -288,7 +288,7 @@ export class Database {
         validSourceNames.add(sourceName);
 
         source.urls = generatedSourceUrls(camera._id, port, source);
-        streams[sourceName] = go2rtcStreamUrls(sourceName, source, source.urls);
+        streams[sourceName] = go2rtcStreamUrls(sourceName, source, source.urls, this.configService.STREAM_URL_TOKEN);
 
         // a disabled camera must not be preloaded by go2rtc at its own startup
         if (source.hotMode && !camera.disabled) {

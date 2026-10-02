@@ -44,6 +44,7 @@ import type {
   PreviewCameraInput,
   SnapshotQueryInput,
   StreamParamsInput,
+  StreamQueryInput,
 } from '../schemas/cameras.schema.js';
 import type { PaginationQueryInput } from '../schemas/common.schema.js';
 import type { ConfigQueryInput, PatchConfigInput } from '../schemas/config.schema.js';
@@ -379,6 +380,7 @@ export interface CamerasParamsRequest {
 
 export interface CamerasStreamRequest {
   Params: StreamParamsInput;
+  Querystring: StreamQueryInput;
 }
 
 export interface CameraSnapshotQueryRequest {

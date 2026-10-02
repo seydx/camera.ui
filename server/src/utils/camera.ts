@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 import { GOP_REGEX, SOURCE_BACKCHANNEL_REGEX, SOURCE_HANDSHAKE_TIMEOUT_REGEX, SOURCE_TIMEOUT_REGEX } from '../api/utils/regex.js';
 
 import type { RTSPUrlOptions, SnapshotUrlOptions } from '@camera.ui/sdk';
@@ -7,6 +9,8 @@ const NO_BACKCHANNEL_FLAG = '#noBackchannel';
 const BACKCHANNEL_FLAG = '#backchannel=1';
 const BACKCHANNEL_OFF_FLAG = '#backchannel=0';
 const BACKCHANNEL_SCHEMES = ['rtsp://', 'rtsps://', 'cui://', 'onvif://'];
+const CUI_STREAM_URL_REGEX = /^cui:\/\/127\.0\.0\.1:\d+\/api\/cameras\/streams\/[^?#]*/;
+const STREAM_TOKEN_QUERY_REGEX = /\?token=[^#]*/;
 
 export interface SourceUrlFlags {
   preload: boolean;
@@ -61,15 +65,34 @@ export function generatedSourceUrls(cameraId: string, port: number, source: Gene
   });
 }
 
-export function go2rtcStreamUrls(sourceName: string, source: GeneratedSource, urls: string[]): string[] {
+export function go2rtcStreamUrls(sourceName: string, source: GeneratedSource, urls: string[], streamToken: string): string[] {
   const companion = `ffmpeg:${sourceName}#cameraui#audio=pcma#audio=opus#audio=aac#noVideo#noBackchannel#requirePrevAudio`;
   const isCompanion = (url: string): boolean => url.startsWith('ffmpeg:') && url.includes('#cameraui');
 
-  const own = urls.filter((url) => !isCompanion(url));
+  const own = urls.filter((url) => !isCompanion(url)).map((url) => withStreamToken(url, streamToken));
   if (source.muted || source.role === 'snapshot') {
     return own;
   }
   return [...own, companion];
+}
+
+export function stripStreamToken(url: string): string {
+  return CUI_STREAM_URL_REGEX.test(url) ? url.replace(STREAM_TOKEN_QUERY_REGEX, '') : url;
+}
+
+export function streamTokenMatches(given: unknown, expected: string): boolean {
+  if (typeof given !== 'string' || !given) {
+    return false;
+  }
+  return timingSafeEqual(createHash('sha256').update(given).digest(), createHash('sha256').update(expected).digest());
+}
+
+function withStreamToken(url: string, token: string): string {
+  const base = CUI_STREAM_URL_REGEX.exec(url)?.[0];
+  if (!base) {
+    return url;
+  }
+  return `${base}?token=${token}${stripStreamToken(url).slice(base.length)}`;
 }
 
 function applyNumberFlag(url: string, regex: RegExp, name: string, value: number | undefined): string {

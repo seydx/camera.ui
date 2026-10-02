@@ -99,8 +99,8 @@ export class ConfigService {
   readonly RESET_PASSWORD_FILE: string;
 
   readonly UI_PORT = parseInt(process.env.CAMERA_UI_UI_PORT!);
-
   readonly INGRESS_TRUST_IP = process.env.CAMERA_UI_INGRESS_TRUST ?? undefined;
+  readonly STREAM_URL_TOKEN = randomBytes(32).toString('base64url');
 
   private logger: LoggerService;
   private _config!: IConfig;

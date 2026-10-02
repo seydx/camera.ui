@@ -703,6 +703,10 @@ export const streamParamsSchema = zod.object({
   sourcename: zod.string(),
 });
 
+export const streamQuerySchema = zod.object({
+  token: zod.string().optional(),
+});
+
 export const cameraPluginParamsSchema = zod.object({
   cameraname: zod.string(),
   pluginname: zod.string(),
@@ -772,5 +776,6 @@ export type SensorParamsInput = zod.output<typeof cameraSensorConfigParamsSchema
 export type CameraPluginParamsInput = zod.output<typeof cameraPluginParamsSchema>;
 export type ScopedPluginParamsInput = zod.output<typeof scopedPluginParamsSchema>;
 export type StreamParamsInput = zod.output<typeof streamParamsSchema>;
+export type StreamQueryInput = zod.output<typeof streamQuerySchema>;
 export type CameraSourceParamsInput = zod.output<typeof cameraSourceParamsSchema>;
 export type CameraParamsInput = zod.output<typeof cameraParamsSchema>;

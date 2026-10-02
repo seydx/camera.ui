@@ -1,6 +1,6 @@
 import { CamerasController } from '../controllers/cameras.controller.js';
 import { onlyAdminCanDoThisAction } from '../middlewares/authPermission.middleware.js';
-import { validJWTNeeded } from '../middlewares/authValidation.middleware.js';
+import { validJWTNeeded, validStreamTokenNeeded } from '../middlewares/authValidation.middleware.js';
 import { pages } from '../middlewares/pagination.middleware.js';
 import {
   bulkDeleteCamerasSchema,
@@ -18,6 +18,7 @@ import {
   scopedSensorParamsSchema,
   snapshotQuerySchema,
   streamParamsSchema,
+  streamQuerySchema,
   zoneConfigSchema,
 } from '../schemas/cameras.schema.js';
 import { paginationQuerySchema } from '../schemas/common.schema.js';
@@ -68,11 +69,13 @@ export const CamerasRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
   app.withTypeProvider<ZodTypeProvider>().route({
     url: '/streams/:cameraid/:sourcename',
     method: 'GET',
+    preValidation: [validStreamTokenNeeded],
     handler: camerasController.getStreamUrl.bind(camerasController),
     schema: {
       tags: ['Cameras'],
       summary: 'Get the custom stream URL for a camera source',
       params: streamParamsSchema,
+      querystring: streamQuerySchema,
     },
   });
 
