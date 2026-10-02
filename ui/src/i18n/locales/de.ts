@@ -1282,6 +1282,7 @@ export default {
       tooltip: {
         activity_mode_activity: 'Aktivität',
         activity_mode_always_on: 'Immer An',
+        activity_mode_per_camera: 'Pro Kamera',
         activity_mode_standby: 'Standby',
         clear: 'Säubern',
         console: 'Konsole',

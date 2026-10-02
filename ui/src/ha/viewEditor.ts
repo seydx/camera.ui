@@ -15,7 +15,14 @@ interface ViewOption {
   label: string;
 }
 
-const LABELS: Record<string, string> = { entry: 'camera.ui server', view: 'camera.ui view', rearrange: 'Rearrange button' };
+const LABELS: Record<string, string> = { entry: 'camera.ui server', view: 'camera.ui view', rearrange: 'Rearrange button', activity_mode: 'Activity mode' };
+
+const ACTIVITY_MODES: ViewOption[] = [
+  { value: 'per-camera', label: 'Per Camera' },
+  { value: 'always-on', label: 'Always On' },
+  { value: 'activity', label: 'Activity' },
+  { value: 'standby', label: 'Standby' },
+];
 
 function entryIdFor(hass: HomeAssistant, config: HaViewCardConfig | null): string | undefined {
   if (config?.entry) return config.entry;
@@ -100,8 +107,9 @@ class CameraUiViewCardEditor extends HTMLElement {
         : []),
       { name: 'view', required: true, selector: { select: { mode: 'dropdown', options: this.options } } },
       { name: 'rearrange', selector: { boolean: {} } },
+      { name: 'activity_mode', selector: { select: { mode: 'dropdown', options: ACTIVITY_MODES } } },
     ];
-    this.form.data = { rearrange: true, ...this.config };
+    this.form.data = { rearrange: true, activity_mode: 'per-camera', ...this.config };
     this.form.computeLabel = (schema) => LABELS[schema.name] ?? schema.name;
   }
 }

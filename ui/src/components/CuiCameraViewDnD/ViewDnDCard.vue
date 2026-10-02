@@ -65,7 +65,7 @@ import { useDrop } from 'vue3-dnd';
 import type CuiCameraPipCard from '@/components/CuiCameraPipCard/CuiCameraPipCard.vue';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
+import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera } from '@shared/types';
 import type { DropTargetMonitor } from 'vue3-dnd';
@@ -111,10 +111,6 @@ async function toggleMicrophone(state?: boolean, enableSpeaker?: boolean): Promi
   await playerRef.value?.toggleMicrophone(state, enableSpeaker);
 }
 
-function togglePlayerActivityMode(state?: CameraActivityMode): void {
-  playerRef.value?.toggleActivityMode(state);
-}
-
 async function togglePlayerSourceRole(state?: StreamingRole): Promise<void> {
   await playerRef.value?.toggleSourceRole(state);
 }
@@ -134,7 +130,6 @@ function togglePip(state?: boolean): void {
 defineExpose({
   togglePlayerMute,
   toggleMicrophone,
-  togglePlayerActivityMode,
   togglePlayerSourceRole,
   togglePlayerStreamingMode,
   togglePlayerBbox,

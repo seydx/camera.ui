@@ -42,6 +42,7 @@ import CuiCameraViewDnD from '@/components/CuiCameraViewDnD/CuiCameraViewDnD.vue
 
 import type { CuiCameraCardModels, CuiCameraCardProps } from '@/components/CuiCameraCard/types.js';
 import type { CardState } from '@/components/CuiCameraViewDnD/types.js';
+import type { CameraActivityMode } from '@camera.ui/browser';
 import type { DBCamera, DBCamviewLayoutCamera } from '@shared/types';
 import type { HaViewCardConfig, HomeAssistant } from './types.js';
 
@@ -64,15 +65,11 @@ const { data: views, isLoading: viewsLoading } = usersQuery.getViewsQuery(
   { page: 1, pageSize: -1 },
 );
 
+const ACTIVITY_MODES: CameraActivityMode[] = ['always-on', 'activity', 'standby'];
+
 const viewDndRef = useTemplateRef<InstanceType<typeof CuiCameraViewDnD>>('viewDndRef');
 const rearrangeMode = ref(false);
 const cards = ref<CardState[]>([]);
-
-const cameraCardModels = reactive<CuiCameraCardModels>({
-  sourceRole: 'low-resolution',
-  activityMode: 'always-on',
-  streamingMode: 'auto',
-});
 
 const view = computed(() => {
   const list = views.value?.result ?? [];
@@ -87,6 +84,12 @@ const problem = computed(() => {
   if (!view.value) return `View not found: ${props.config.view}`;
   return '';
 });
+
+const cameraCardModels = computed<CuiCameraCardModels>(() => ({
+  sourceRole: 'low-resolution',
+  activityMode: ACTIVITY_MODES.find((mode) => mode === props.config.activity_mode),
+  streamingMode: 'auto',
+}));
 
 const cameraCardProps = computed<Omit<CuiCameraCardProps, 'cameraInfo'>>(() => ({
   doubleClickZoom: false,

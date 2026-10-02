@@ -65,9 +65,7 @@ const props = withDefaults(defineProps<CuiCameraCardProps>(), {
 
 const emit = defineEmits<CuiCameraPipCardEmits>();
 
-const activityMode = defineModel<CuiCameraCardModels['activityMode']>('activityMode', {
-  default: 'always-on',
-});
+const activityMode = defineModel<CuiCameraCardModels['activityMode']>('activityMode');
 const sourceRole = defineModel<CuiCameraCardModels['sourceRole']>('sourceRole');
 const streamingMode = defineModel<CuiCameraCardModels['streamingMode']>('streamingMode');
 
@@ -100,7 +98,7 @@ const cardARef = useTemplateRef<InstanceType<typeof CuiCameraCard>>('cardARef');
 const cardBRef = useTemplateRef<InstanceType<typeof CuiCameraCard>>('cardBRef');
 const swapped = ref(false);
 const showPip = ref(Boolean(pipCamera.value));
-const activityModeA = ref<CameraActivityMode>(activityMode.value ?? 'always-on');
+const activityModeA = ref<CameraActivityMode | undefined>(activityMode.value);
 const streamingModeA = ref<VideoStreamingMode | undefined>(streamingMode.value);
 const activityModeB = ref<CuiCameraCardModels['activityMode']>('always-on');
 const sourceRoleB = ref<StreamingRole>(pipSourceRole.value ?? 'low-resolution');
@@ -377,9 +375,6 @@ function toggleSourceRole(state?: StreamingRole) {
 function togglePictureInPicture() {
   return activeCard.value?.togglePictureInPicture();
 }
-function toggleActivityMode(state?: CuiCameraCardModels['activityMode']) {
-  return activeCard.value?.toggleActivityMode(state);
-}
 function toggleStreamingMode(state?: CuiCameraCardModels['streamingMode']) {
   return activeCard.value?.toggleStreamingMode(state);
 }
@@ -422,6 +417,8 @@ function captureScreenshot() {
 
 watch(activityModeA, (val) => (activityMode.value = val));
 
+watch(activityMode, (val) => (activityModeA.value = val));
+
 watch(streamingModeA, (val) => (streamingMode.value = val));
 
 watch(streamingMode, (val) => {
@@ -449,7 +446,6 @@ defineExpose({
   togglePlay,
   toggleSourceRole,
   togglePictureInPicture,
-  toggleActivityMode,
   toggleStreamingMode,
   toggleFs,
   toggleMute,

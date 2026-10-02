@@ -5,6 +5,7 @@
         ref="cameraCardRef"
         :key="camera.name"
         v-model:source-role="qualityRole"
+        activity-mode="always-on"
         streaming-mode="auto"
         :camera-info="camera.name"
         flat-card

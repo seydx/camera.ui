@@ -100,7 +100,7 @@ import { DndProvider } from 'vue3-dnd';
 
 import { CUI_CAMERA_VIEW_DND_DEFAULTS, DEFAULT_LAYOUTS, SIDEBAR_WIDTH, VIEW_GRID_INFO } from './types.js';
 
-import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
+import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewLayoutCamera } from '@shared/types';
 import type { CuiCameraViewDnDEmits, CuiCameraViewDnDProps, GsLayoutItem } from './types.js';
@@ -302,10 +302,6 @@ async function toggleAllPlayerMicrophone(state?: boolean, enableSpeaker?: boolea
   await Promise.allSettled((cardRefs.value || []).map((c) => c.toggleMicrophone(state, enableSpeaker)));
 }
 
-function toggleAllPlayerActivityMode(state?: CameraActivityMode): void {
-  for (const child of cardRefs.value || []) child.togglePlayerActivityMode(state);
-}
-
 async function toggleAllPlayerSourceRole(state?: StreamingRole): Promise<void> {
   await Promise.allSettled((cardRefs.value || []).map((c) => c.togglePlayerSourceRole(state)));
 }
@@ -487,7 +483,6 @@ defineExpose({
   toggleFullscreen,
   toggleAllPlayerMute,
   toggleAllPlayerMicrophone,
-  toggleAllPlayerActivityMode,
   toggleAllPlayerSourceRole,
   toggleAllPlayerStreamingMode,
   toggleAllPlayerBbox,

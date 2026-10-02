@@ -1271,6 +1271,7 @@ export default {
       tooltip: {
         activity_mode_activity: 'Activity',
         activity_mode_always_on: 'Always On',
+        activity_mode_per_camera: 'Per Camera',
         activity_mode_standby: 'Standby',
         clear: 'Clear',
         console: 'Console',

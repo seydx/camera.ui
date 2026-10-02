@@ -1,3 +1,4 @@
+import type { CameraActivityMode } from '@camera.ui/browser';
 import type { HaHost } from '@/connection/modes/ha.js';
 
 export interface HassEntityState {
@@ -36,6 +37,7 @@ export interface HaViewCardConfig {
   type: string;
   view?: string;
   rearrange?: boolean;
+  activity_mode?: CameraActivityMode | 'per-camera';
   entry?: string;
 }
 

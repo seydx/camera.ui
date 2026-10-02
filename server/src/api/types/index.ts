@@ -1,7 +1,7 @@
 import { numberFromEnv } from '../utils/utils.js';
 
 import type { UsableNetworkAddress } from '@camera.ui/common/network';
-import type { AssignedPlugin, CameraZones, PluginAssignments, PluginContract, ProbeConfig, SchemaConfig, SensorType } from '@camera.ui/sdk';
+import type { AssignedPlugin, CameraActivityMode, CameraZones, PluginAssignments, PluginContract, ProbeConfig, SchemaConfig, SensorType } from '@camera.ui/sdk';
 import type { Readable } from 'node:stream';
 import type { ApplicationResponse, DeviceSourceType } from '../../go2rtc/types.js';
 import type { PLUGIN_STATUS } from '../../plugins/types.js';
@@ -756,6 +756,7 @@ export interface CamviewLayoutOverride {
 export interface CamviewSettings {
   dragDisabled?: boolean;
   detections?: boolean;
+  activityMode?: CameraActivityMode;
   viewid?: string;
   layouts?: Record<string, CamviewLayoutOverride[]>;
 }

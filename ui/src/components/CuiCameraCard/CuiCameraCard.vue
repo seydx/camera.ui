@@ -46,7 +46,7 @@
               </div>
             </div>
 
-            <div v-if="inStandby && !camera?.disabled" key="sleep" class="absolute inset-0 bg-black/80 flex items-center justify-center z-7 pointer-events-none">
+            <div v-if="liveResting && !camera?.disabled" key="sleep" class="absolute inset-0 bg-black/80 flex items-center justify-center z-7 pointer-events-none">
               <div class="flex flex-col items-center justify-center text-center">
                 <i-solar:moon-sleep-bold class="text-white w-[50px] h-[50px]" />
                 <p v-if="isFullPlayer" class="text-white/80 text-sm max-w-xs mt-3">{{ $t('components.player.stream_paused') }}</p>
@@ -54,7 +54,7 @@
             </div>
 
             <div
-              v-if="showCenterSpinner && !inStandby && !isDisabled"
+              v-if="showCenterSpinner && !liveResting && !isDisabled"
               key="loading"
               class="absolute inset-0 flex flex-col items-center justify-center z-6 pointer-events-none"
             >
@@ -199,7 +199,7 @@
             v-model:pan="panValue"
             v-model:zoom="zoomValue"
             data-native-pip-keep
-            :disabled="resizable || (expandableCard && !isExpanded) || !isHoveredZoom || timelineState || inStandby || gridSearchActive || isDisabled"
+            :disabled="resizable || (expandableCard && !isExpanded) || !isHoveredZoom || timelineState || liveResting || gridSearchActive || isDisabled"
             :pan-enabled="zoomValue > 1"
             :enable-control-button="false"
             :dbl-click-enabled="false"
@@ -222,7 +222,7 @@
             <div ref="videoBoxRef" :data-zoomable-content="randomId" class="relative h-full min-w-0" :style="videoWrapperStyle">
               <div class="absolute inset-0 pointer-events-none" :class="showPtz || timelineOverVideo ? 'z-3' : 'z-7'">
                 <CuiShortcuts
-                  v-if="!inStandby && !isDisabled && shortcutsAvailable"
+                  v-if="!liveResting && !isDisabled && shortcutsAvailable"
                   :camera-name
                   :visible="shortcutsVisible"
                   :editing="shortcutsEditMode"
@@ -237,7 +237,7 @@
                     !gridSearchActive &&
                     !timelineOverVideo &&
                     !showPtz &&
-                    !inStandby &&
+                    !liveResting &&
                     !isDisabled
                   "
                   v-tooltip.bottom="{ value: shortcutsEditMode ? t('components.player.finish_editing') : t('components.player.edit_shortcuts') }"
@@ -263,7 +263,7 @@
                 />
 
                 <CuiPolygon
-                  v-if="zoneState && !inStandby && !isDisabled"
+                  v-if="zoneState && !liveResting && !isDisabled"
                   :camera-zones
                   :camera-lines
                   :motion-zones="cameraMotionZones"
@@ -271,7 +271,7 @@
                   show-labels
                 />
 
-                <CuiPolygon v-if="privacyOverlay && cameraPrivacyZones.length && !inStandby" :camera-zones="[]" :privacy-zones="cameraPrivacyZones" />
+                <CuiPolygon v-if="privacyOverlay && cameraPrivacyZones.length && !liveResting" :camera-zones="[]" :privacy-zones="cameraPrivacyZones" />
 
                 <CuiGridSearch
                   v-if="gridSearch?.active.value && !isDisabled"
@@ -349,7 +349,7 @@
           </VueZoomable>
 
           <div
-            v-if="!inStandby && (showCameraName || liveIndicatorOverlay)"
+            v-if="!liveResting && (showCameraName || liveIndicatorOverlay)"
             class="absolute top-0 w-full p-4 flex items-center gap-2 pointer-events-none"
             :class="isDisabled ? 'z-9' : 'z-6'"
           >
@@ -922,7 +922,7 @@ import type CuiBBoxPlayground from '@/components/CuiBBoxPlayground/CuiBBoxPlaygr
 import type { ShareFormProps } from '@/components/CuiDialog/templates/ShareForm/types.js';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
+import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { NvrPlayback } from '@camera.ui/nvr';
 import type { Detection, DetectionLabel, FaceDetection, StreamingRole, TrackedDetection } from '@camera.ui/sdk';
 import type { PassThrough } from '@primevue/core';
@@ -938,7 +938,7 @@ const props = withDefaults(defineProps<CuiCameraCardProps>(), CAMERA_CARD_DEFAUL
 
 const emit = defineEmits<CuiCameraCardEmits>();
 
-const activityMode = defineModel<CuiCameraCardModels['activityMode']>('activityMode', { default: 'always-on' });
+const activityMode = defineModel<CuiCameraCardModels['activityMode']>('activityMode');
 const sourceRole = defineModel<CuiCameraCardModels['sourceRole']>('sourceRole');
 const streamingMode = defineModel<CuiCameraCardModels['streamingMode']>('streamingMode');
 
@@ -1016,6 +1016,7 @@ const PLAYER_TINY_BREAKPOINT = 200;
 const PLAYER_FULL_BREAKPOINT = 350;
 const HORIZONTAL_TIMELINE_HEIGHT = 200;
 const JUMP_FRAME_TIMEOUT_MS = 10_000;
+const STREAM_WAKE_TIMEOUT_MS = 10_000;
 
 const randomId = randomLetter();
 const speedOptions = [0.25, 0.5, 1, 2, 4, 8];
@@ -1079,6 +1080,7 @@ let releaseNvrContainer: (() => void) | null = null;
 let pausedForPick: 'live' | 'playback' | undefined;
 let similarFrameAt = 0;
 let followingJump = false;
+let micRequest = 0;
 
 const {
   picking: similarPicking,
@@ -1120,7 +1122,7 @@ const {
   enabled: resizable,
   zoom: zoomValue,
   pan: panValue,
-  canDoubleTap: () => doubleClickZoom.value && !timelineState.value && !inStandby.value && !isDisabled.value,
+  canDoubleTap: () => doubleClickZoom.value && !timelineState.value && !liveResting.value && !isDisabled.value,
   onDoubleTap: (clientX, clientY) => onDoubleClickZoom({ clientX, clientY, preventDefault: () => {}, stopPropagation: () => {} } as MouseEvent),
 });
 
@@ -1187,7 +1189,7 @@ const cameraStream = useCameraStream({
     standbyTimeout: 5000,
     activityTimeout: 5000,
   },
-  autoStart: () => nvrMode.value === 'idle' && !camera.value?.disabled,
+  autoStart: () => nvrMode.value === 'idle' && (camera.value ? !camera.value.disabled : activityMode.value !== undefined),
   isolated: props.isolatedStream,
 });
 
@@ -1218,9 +1220,11 @@ const needsDetections = computed(
   () => !nvrPlaybackVisible.value && ((boundingBoxOverlay.value && bboxEnabled.value) || detectionIndicatorOverlay.value || detectionIconsOverlay.value),
 );
 const gatedCameraDevice = computed(() => (needsDetections.value ? cameraDevice.value : undefined));
+const wakesOnActivity = computed(() => !nvrPlaybackVisible.value && cameraStream.activityMode.value === 'activity');
+const activityCameraDevice = computed(() => (needsDetections.value || wakesOnActivity.value ? cameraDevice.value : undefined));
 
-const { sensor: motionSensor } = useMotionSensor(gatedCameraDevice, () => camera.value?.assignments?.motion?.id);
-const { sensor: objectSensor } = useObjectSensor(gatedCameraDevice, () => camera.value?.assignments?.object?.id);
+const { sensor: motionSensor } = useMotionSensor(activityCameraDevice, () => camera.value?.assignments?.motion?.id);
+const { sensor: objectSensor } = useObjectSensor(activityCameraDevice, () => camera.value?.assignments?.object?.id);
 const { sensor: faceSensor } = useFaceSensor(gatedCameraDevice, () => camera.value?.assignments?.face?.id);
 const { sensor: licensePlateSensor } = useLicensePlateSensor(gatedCameraDevice, () => camera.value?.assignments?.licensePlate?.id);
 const { sensors: classifierSensors } = useClassifierSensors(gatedCameraDevice);
@@ -1291,6 +1295,7 @@ const infoText = computed<string | undefined>(() => undefined);
 const hovered = computed(() => (isHovered.value || initialHover.value) && control.value && !shortcutsEditMode.value);
 const isDisabled = computed(() => camera.value?.disabled === true);
 const canSearchSimilar = computed(() => props.onSearchSimilar !== undefined && Boolean(camera.value?.assignments?.object) && !isDisabled.value);
+const liveResting = computed(() => inStandby.value && !nvrPlaybackVisible.value);
 const isSnoozed = computed(() => camera.value?.detectionSettings?.snooze === true);
 const isLoading = computed(() => {
   if (isDisabled.value) return false;
@@ -1318,7 +1323,7 @@ const showControl = computed(
   () =>
     control.value &&
     (hovered.value || controlBarPopoverOpen.value || morePopoverOpen.value) &&
-    !inStandby.value &&
+    !liveResting.value &&
     !isDisabled.value &&
     playerContainer.width.value >= 150 &&
     !gridSearchActive.value,
@@ -1335,7 +1340,7 @@ const showPtzToolbar = computed(
 const showDetectionIndicator = computed(() => detectionIndicatorOverlay.value && hasActiveDetection.value);
 const shortcutsAvailable = computed(() => showShortcuts.value || (fullscreenShortcuts.value && cameraStream.isFullscreen.value));
 const timelineVisible = computed(
-  () => timelineState.value && !showPtz.value && !inStandby.value && !gridSearchActive.value && (!cameraStream.isFullscreen.value || fullscreenTimeline.value),
+  () => timelineState.value && !showPtz.value && !liveResting.value && !gridSearchActive.value && (!cameraStream.isFullscreen.value || fullscreenTimeline.value),
 );
 // with room for it below the centered video (phones in portrait) the timeline moves to the bottom of the screen
 const timelineAtScreenBottom = computed(() => {
@@ -1625,7 +1630,7 @@ function onCardClick() {
 
   if (tapsForRedirect.value) {
     router.push(routerLink.value!);
-  } else if (tapsForExpand.value) {
+  } else if (tapsForExpand.value && !liveResting.value) {
     toggleExpand();
   }
 }
@@ -1734,7 +1739,7 @@ function onDoubleClickZoom(event: MouseEvent) {
     return;
   }
   if (!doubleClickZoom.value) return;
-  if (!isHoveredZoom.value || timelineState.value || inStandby.value || isDisabled.value) return;
+  if (!isHoveredZoom.value || timelineState.value || liveResting.value || isDisabled.value) return;
 
   event.preventDefault();
   event.stopPropagation();
@@ -1794,7 +1799,16 @@ function trackDetectionKinds(kinds: string[]) {
 }
 
 function resumeStream() {
-  if (!isDisabled.value) cameraStream.resumeFromStandby();
+  if (isDisabled.value || nvrPlaybackVisible.value) return;
+  if (inStandby.value) cameraStream.resumeFromStandby();
+  else cameraStream.resetIdleTimer();
+}
+
+async function wakeStream(): Promise<boolean> {
+  resumeStream();
+  if (inStandby.value) return false;
+  await until(() => streamFinishedLoading.value || inStandby.value).toBe(true, { timeout: STREAM_WAKE_TIMEOUT_MS });
+  return !inStandby.value;
 }
 
 async function captureScreenshot() {
@@ -1841,9 +1855,13 @@ function toggleMute(state?: boolean) {
 }
 
 async function toggleMicrophone(state?: boolean, enableSpeaker = false) {
-  if (!streamHasBackchannel.value) return;
+  const next = state ?? !micActive.value;
+  const request = ++micRequest;
+  // talk needs a running stream, and a fresh one knows its backchannel only after the probe
+  if (next && inStandby.value && !(await wakeStream())) return;
+  if (request !== micRequest || !streamHasBackchannel.value) return;
 
-  micActive.value = state !== undefined ? state : !micActive.value;
+  micActive.value = next;
 
   if (micActive.value) {
     try {
@@ -1862,10 +1880,6 @@ async function toggleMicrophone(state?: boolean, enableSpeaker = false) {
     await cameraStream.setMicrophone(null);
     stopIntercomService();
   }
-}
-
-function toggleActivityMode(state?: CameraActivityMode) {
-  activityMode.value = state ? state : activityMode.value === 'always-on' ? 'standby' : activityMode.value === 'standby' ? 'activity' : 'always-on';
 }
 
 async function toggleSourceRole(state?: StreamingRole) {
@@ -1928,6 +1942,12 @@ function togglePlay() {
     } else if (nvrMode.value === 'scrub') {
       nvr.value?.play(nvrCurrentTimestamp.value);
     }
+    return;
+  }
+
+  if (inStandby.value) {
+    resumeStream();
+    if (cameraStream.paused.value) cameraStream.play();
     return;
   }
 
@@ -2196,6 +2216,21 @@ watch(activityMode, (mode) => {
   if (mode) cameraStream.setActivityMode(mode);
 });
 
+if (props.expanded) {
+  watch(
+    [inStandby, streamFinishedLoading],
+    ([sleeping]) => {
+      if (sleeping) resumeStream();
+    },
+    { once: true },
+  );
+}
+
+watch(
+  () => micActive.value || showPtz.value || cameraStream.isFullscreen.value || isPip.value || nativePipMode.value || controlBarPopoverOpen.value || morePopoverOpen.value,
+  (awake) => cameraStream.setKeepAwake(awake),
+);
+
 watch(
   () => motionSensor.value?.properties.detections,
   (detections) => {
@@ -2283,7 +2318,7 @@ watch(resizable, () => {
 });
 
 watch(
-  () => [timelineState.value, inStandby.value, isDisabled.value],
+  () => [timelineState.value, liveResting.value, isDisabled.value],
   ([timeline, standby, disabled]) => {
     if (resizableInteracting.value || isMousePressed.value) return;
     const shouldDisable = timeline || standby || disabled;
@@ -2323,7 +2358,7 @@ watch(
 
 watch(isDisabled, (disabled, wasDisabled) => {
   if (wasDisabled && !disabled) {
-    cameraStream.stream.value?.restart();
+    if (!inStandby.value) cameraStream.stream.value?.restart();
   } else if (!wasDisabled && disabled) {
     cameraStream.stop();
   }
@@ -2367,7 +2402,6 @@ defineExpose({
   togglePlay,
   toggleSourceRole,
   togglePictureInPicture,
-  toggleActivityMode,
   toggleStreamingMode,
   toggleFs,
   toggleMute,

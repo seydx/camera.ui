@@ -168,6 +168,7 @@
                 ref="cameraCardRef"
                 :camera-info="cameraName"
                 source-role="low-resolution"
+                activity-mode="always-on"
                 streaming-mode="auto"
                 :toolbar="false"
                 :control="false"

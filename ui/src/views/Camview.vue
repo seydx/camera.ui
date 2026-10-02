@@ -316,6 +316,7 @@ import ActivityModeSleepIcon from '~icons/icon-park-solid/sleep';
 import MicrophoneIcon from '~icons/mage/microphone-fill';
 import StreamingModeAutoIcon from '~icons/material-symbols/motion-photos-auto-outline-rounded';
 import NewViewIcon from '~icons/mdi/card-plus-outline';
+import ActivityModePerCameraIcon from '~icons/mdi/cctv';
 import DetectionsOnIcon from '~icons/mdi/motion-sensor';
 import DetectionsOffIcon from '~icons/mdi/motion-sensor-off';
 import ActivityModeWebcamIcom from '~icons/mdi/webcam';
@@ -339,7 +340,7 @@ import type { CardState } from '@/components/CuiCameraViewDnD/types.js';
 import type { CamviewFormProps } from '@/components/CuiDialog/templates/CamviewForm/types.js';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
+import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit, DBCamviewLayout, DBCamviewLayoutCamera, DBCamviewViewSize } from '@shared/types';
 import type { ButtonProps } from 'primevue';
@@ -391,7 +392,6 @@ const timelineState = ref(false);
 const timelineSpaceOccupied = ref(false);
 const timelineAnimating = ref(false);
 const isMuted = ref(true);
-const activityMode = ref<CameraActivityMode>('always-on');
 const sourceRole = ref<StreamingRole>('low-resolution');
 const streamingMode = ref<VideoStreamingMode>('auto');
 const cards = ref<CardState[]>([]);
@@ -400,7 +400,7 @@ const expandedCameraId = ref<string | null>(null);
 const fullscreenCameraId = ref<string | null>(null);
 const cameraCardModels = reactive<CuiCameraCardModels>({
   sourceRole: sourceRole.value,
-  activityMode: activityMode.value,
+  activityMode: uiSettings.value.camview.activityMode,
   streamingMode: streamingMode.value,
 });
 
@@ -486,6 +486,8 @@ const isFullscreen = computed(() => Boolean(viewDndRef.value?.isFullscreen));
 
 const detectionsEnabled = computed(() => uiSettings.value.camview.detections !== false);
 
+const activityMode = computed(() => uiSettings.value.camview.activityMode);
+
 const cameraButtons = computed<{ label: string; icon: any; buttonProps?: ButtonProps; command: () => void }[]>(() => [
   {
     label: isFullscreen.value ? t('components.form.tooltip.fullscreen_off') : t('components.form.tooltip.fullscreen_on'),
@@ -513,14 +515,23 @@ const cameraButtons = computed<{ label: string; icon: any; buttonProps?: ButtonP
     command: () => togglePlayerStreamingMode(),
   },
   {
-    label:
-      activityMode.value === 'always-on'
-        ? t('components.form.tooltip.activity_mode_always_on')
+    label: `${t('components.form.label.activity_mode')}: ${
+      !activityMode.value
+        ? t('components.form.tooltip.activity_mode_per_camera')
+        : activityMode.value === 'always-on'
+          ? t('components.form.tooltip.activity_mode_always_on')
+          : activityMode.value === 'standby'
+            ? t('components.form.tooltip.activity_mode_standby')
+            : t('components.form.tooltip.activity_mode_activity')
+    }`,
+    icon: !activityMode.value
+      ? ActivityModePerCameraIcon
+      : activityMode.value === 'always-on'
+        ? ActivityModeWebcamIcom
         : activityMode.value === 'standby'
-          ? t('components.form.tooltip.activity_mode_standby')
-          : t('components.form.tooltip.activity_mode_activity'),
-    icon: activityMode.value === 'always-on' ? ActivityModeWebcamIcom : activityMode.value === 'standby' ? ActivityModeSleepIcon : ActivityModeActivityIcon,
-    command: () => togglePlayerActivityMode(),
+          ? ActivityModeSleepIcon
+          : ActivityModeActivityIcon,
+    command: togglePlayerActivityMode,
   },
   {
     label:
@@ -817,11 +828,9 @@ function togglePlayerMute() {
   viewDndRef.value?.toggleAllPlayerMute(isMuted.value);
 }
 
-function togglePlayerActivityMode(state?: CameraActivityMode) {
-  let mode = activityMode.value;
-  mode = state ? state : mode === 'always-on' ? 'standby' : mode === 'standby' ? 'activity' : 'always-on';
-  viewDndRef.value?.toggleAllPlayerActivityMode(mode);
-  activityMode.value = mode;
+function togglePlayerActivityMode() {
+  const mode = activityMode.value;
+  uiSettings.value.camview.activityMode = !mode ? 'always-on' : mode === 'always-on' ? 'standby' : mode === 'standby' ? 'activity' : undefined;
 }
 
 async function togglePlayerSourceRole(state?: StreamingRole) {
@@ -851,6 +860,8 @@ async function toggleIntercom(state: boolean) {
 watch(timelineState, (active) => {
   if (active) timelineAnimating.value = true;
 });
+
+watch(activityMode, (mode) => (cameraCardModels.activityMode = mode));
 
 watch(
   () => currentView.value?._id,
