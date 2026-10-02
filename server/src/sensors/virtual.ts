@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { DoorbellProperty, LockProperty, RING_AUTO_RESET_MS, SensorType } from '@camera.ui/sdk';
 import { container } from 'tsyringe';
 
@@ -93,7 +93,6 @@ export class VirtualSensorHost {
   }
 }
 
-@RPCClass
 class VirtualSensorRpcHandler {
   constructor(private host: VirtualSensorHost) {}
 

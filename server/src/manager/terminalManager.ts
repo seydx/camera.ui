@@ -1,5 +1,5 @@
 import { IS_ELECTRON } from '@camera.ui/common/utils';
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import pty from '@scrypted/node-pty';
 import { randomUUID } from 'node:crypto';
 import { container } from 'tsyringe';
@@ -69,7 +69,6 @@ interface TerminalSession {
   lastActivity: Date;
 }
 
-@RPCClass
 export class TerminalManager implements TerminalManagerInterface {
   private proxyServer: ProxyServer;
   private logger: LoggerService;

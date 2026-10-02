@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { container } from 'tsyringe';
 
 import { FloorPlanService } from '../api/services/floorplan.service.js';
@@ -25,7 +25,6 @@ import type {
 import type { ConfigService } from '../services/config/index.js';
 import type { TrainingCandidateManager } from './trainingCandidateManager.js';
 
-@RPCClass
 export class CoreManager implements CoreManagerInterface {
   private proxyServer: ProxyServer;
   private configService: ConfigService;

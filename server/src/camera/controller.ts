@@ -1,5 +1,5 @@
 import { isEqual, PromiseTimeout } from '@camera.ui/common/utils';
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { API_EVENT, filter, pairwise, SensorType, Subject } from '@camera.ui/sdk';
 import { container } from 'tsyringe';
 
@@ -54,7 +54,6 @@ const PRELOAD_KINDS: ProbeConfig = { video: true, audio: true, microphone: true 
 const COLD_PROBE_TIMEOUT_MS = 30_000;
 const SOURCE_CODEC_KEYS: (keyof SourceCodecInfo)[] = ['videoCodec', 'audioCodecs', 'backchannelAudioCodec'];
 
-@RPCClass
 export class CameraController extends CameraDevice implements CameraDeviceInterface {
   public readonly frameWorker: FrameWorker;
   public readonly sensorController: SensorController;

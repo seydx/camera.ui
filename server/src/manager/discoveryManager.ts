@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { isDiscoveryProvider } from '@camera.ui/sdk/internal';
 import { container } from 'tsyringe';
 
@@ -57,7 +57,6 @@ interface AdoptResult {
   cameraName: string;
 }
 
-@RPCClass
 export class DiscoveryManager implements DiscoveryManagerInterface {
   private api: CameraUiAPI;
   private proxyServer: ProxyServer;

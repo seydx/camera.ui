@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { canProvideSensorsToAnyCameras, hasInterface, PluginInterface, SensorType } from '@camera.ui/sdk';
 import { randomUUID } from 'node:crypto';
 import { container } from 'tsyringe';
@@ -51,7 +51,6 @@ interface SensorRuntime {
   modelSpec?: ModelSpec;
 }
 
-@RPCClass
 export class SensorRegistry {
   private readonly records = new Map<string, DBSensor>();
   private readonly runtime = new Map<string, SensorRuntime>();
@@ -991,6 +990,7 @@ export class SensorRegistry {
     return entries;
   }
 
+  @RPCMethod
   public getSensorHistory(sensorIds: string[], from: number, to: number): DBSensorHistoryEntry[] {
     const entries: DBSensorHistoryEntry[] = [];
 

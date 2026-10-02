@@ -1,5 +1,5 @@
 import { PromiseTimeout, sleep } from '@camera.ui/common/utils';
-import { isNoRespondersError, RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { isNoRespondersError, RPCMethod } from '@camera.ui/rpc';
 import { SensorType } from '@camera.ui/sdk';
 import { NamespaceManager } from '../../rpc/namespaces.js';
 import { DETECTION_SENSOR_TYPES } from '../../sensors/types.js';
@@ -156,7 +156,6 @@ function normalizedWindow(window: CropWindow, frameWidth: number, frameHeight: n
   return { x: window.x / frameWidth, y: window.y / frameHeight, width: window.width / frameWidth, height: window.height / frameHeight };
 }
 
-@RPCClass
 export class DetectionCoordinator {
   private frameSource: AnalysisSource;
   private frameScaler: FrameScaler;

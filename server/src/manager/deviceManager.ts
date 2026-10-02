@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { container } from 'tsyringe';
 
 import { CamerasService } from '../api/services/cameras.service.js';
@@ -10,7 +10,6 @@ import type { DeviceManagerInterface, DeviceManagerProxyEvents, DeviceManagerPro
 
 const DEVICE_LIFECYCLE_TIMEOUT_MS = 30_000;
 
-@RPCClass
 export class DeviceManager implements DeviceManagerInterface {
   private proxyServer: ProxyServer;
   private camerasService: CamerasService;

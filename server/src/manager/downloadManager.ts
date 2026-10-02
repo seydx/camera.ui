@@ -1,4 +1,4 @@
-import { RPCClass, RPCMethod } from '@camera.ui/rpc';
+import { RPCMethod } from '@camera.ui/rpc';
 import { randomUUID } from 'node:crypto';
 import { closeSync, createReadStream, existsSync, fstatSync, openSync, readSync, statSync, unlinkSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -43,7 +43,6 @@ const STREAM_POLL_MS = 50;
 const STREAM_FILE_WAIT_MS = 5000;
 const STREAM_MARKER_WAIT_POLL_MS = 250;
 
-@RPCClass
 export class DownloadManager implements DownloadManagerInterface {
   private proxyServer: ProxyServer;
   private logger: LoggerService;

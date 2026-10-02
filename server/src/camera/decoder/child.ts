@@ -3,7 +3,7 @@ const REMOTE_SUFFIX = process.title.includes('(remote)') ? ' (remote)' : '';
 
 import { Logger } from '@camera.ui/common/logger';
 import { SignalHandler } from '@camera.ui/common/utils';
-import { RPCClass, RPCMethod, createRPCClient } from '@camera.ui/rpc';
+import { RPCMethod, createRPCClient } from '@camera.ui/rpc';
 import { AV_LOG_WARNING } from 'node-av/constants';
 import { Log } from 'node-av/lib';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +33,6 @@ const ignorableLogMessages = [
   'Failed to send close message', // Windows tls
 ];
 
-@RPCClass
 export class FrameWorkerChild {
   public readonly proxy: RPCClient;
   public readonly namespaces: FrameWorkerNamespaces & CoreManagerNamespaces;
