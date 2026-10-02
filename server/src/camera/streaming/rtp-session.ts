@@ -14,8 +14,6 @@ import {
 import { avGetSampleFmtFromName, Codec } from 'node-av/lib';
 import { RtpPacket, RTPStream } from 'node-av/webrtc';
 
-import { setupNodeAvLog } from './node-av-log.js';
-
 import type {
   CameraDeviceSource,
   CameraInput,
@@ -63,7 +61,6 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
     this.#logger = cameraDevice.logger;
     this.#source = this.#cameraDevice.sources.find((s) => s.name === source.name)!;
     this.#url = typeof urlOrOptions === 'string' ? urlOrOptions : this.#source.generateRTSPUrl(urlOrOptions);
-    setupNodeAvLog(this.#logger);
   }
 
   get hasBackchannel(): boolean {

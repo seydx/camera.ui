@@ -5,6 +5,7 @@ import { API_EVENT } from '@camera.ui/sdk';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isPromise } from 'node:util/types';
 
+import { setupNodeAvLog } from '../../../camera/streaming/node-av-log.js';
 import { NamespaceManager } from '../../../rpc/namespaces.js';
 import { REPORT_DIR, WITH_REPORTS } from '../../../utils/crash.js';
 import { PluginStoreFile } from '../../store/pluginStoreFile.js';
@@ -84,6 +85,7 @@ export class PluginChild {
 
     this.logger = new Logger(this.loggerOptions);
     this.logger.setChildProcessMode(true);
+    setupNodeAvLog(this.logger);
 
     this.signalHandler = new SignalHandler({
       displayName: '[Signal]',

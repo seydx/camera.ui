@@ -2,8 +2,6 @@ import { SubscribedPublic } from '@camera.ui/common/utils';
 import { firstValueFrom, ReplaySubject, Subject } from '@camera.ui/sdk';
 import { FMP4_CODECS, FMP4Stream } from 'node-av/api';
 
-import { setupNodeAvLog } from './node-av-log.js';
-
 import type {
   CameraDeviceSource,
   CameraInput,
@@ -43,7 +41,6 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
     this.#logger = cameraDevice.logger;
     this.#source = this.#cameraDevice.sources.find((s) => s.name === source.name)!;
     this.#url = typeof urlOrOptions === 'string' ? urlOrOptions : this.#source.generateRTSPUrl(urlOrOptions);
-    setupNodeAvLog(this.#logger);
   }
 
   get initSegment(): Promise<Buffer> {
