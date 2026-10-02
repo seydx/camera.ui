@@ -5,7 +5,7 @@ import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
 import { ConfigService } from '../services/config/index.js';
-import { buildTrainSubmission, withProvenance } from './trainingSubmission.js';
+import { buildTrainSubmission, insideFrame, withProvenance } from './trainingSubmission.js';
 
 import type { LoggerService } from '@camera.ui/sdk';
 import type { Database } from '../api/database/index.js';
@@ -164,7 +164,10 @@ export class TrainingCandidateManager {
     this.lastIngestAt.set(payload.cameraId, payload.capturedAt);
 
     const id = randomUUID();
-    const proposals: DBTrainingCandidateBox[] = payload.boxes.map(({ label, x, y, width, height, source, score }) => ({ label, x, y, width, height, source, score }));
+    const proposals: DBTrainingCandidateBox[] = payload.boxes.flatMap(({ label, x, y, width, height, source, score }) => {
+      const framed = insideFrame({ x, y, width, height });
+      return framed ? [{ label, ...framed, source, score }] : [];
+    });
     await writeFile(join(this.imagesDir, `${id}.jpg`), payload.scene);
     this.dbs.trainingCandidatesDB.put(id, {
       id,

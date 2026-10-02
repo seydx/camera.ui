@@ -41,6 +41,14 @@ export function buildTrainSubmission(candidate: DBTrainingCandidate, image: Uint
   };
 }
 
+export function insideFrame<T extends Pick<DBTrainingCandidateBox, 'x' | 'y' | 'width' | 'height'>>(box: T): T | undefined {
+  const x = Math.max(0, box.x);
+  const y = Math.max(0, box.y);
+  const width = Math.min(1, box.x + box.width) - x;
+  const height = Math.min(1, box.y + box.height) - y;
+  return width > 0 && height > 0 ? { ...box, x, y, width, height } : undefined;
+}
+
 export function withProvenance(box: DBTrainingCandidateBox, proposals: DBTrainingCandidateBox[] | undefined): DBTrainingCandidateBox {
   if (!proposals) return box;
   const { proposal, score: _score, ...rest } = box;
