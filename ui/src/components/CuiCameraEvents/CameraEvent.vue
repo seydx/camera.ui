@@ -114,7 +114,7 @@ import {
   resolveThumbnail,
   segmentTypes,
   thumbnailToUrl,
-  useEventStore,
+  useEventPictures,
 } from '@camera.ui/nvr';
 import SparklesIcon from '~icons/tabler/sparkles';
 
@@ -123,7 +123,6 @@ import { eventAnchorTime, segmentLabel } from '@/utils/eventAnchor.js';
 import { resolveEventIcons } from '@/utils/eventIcons.js';
 
 import type { CameraStreamEventProps } from '@/components/CuiDialog/templates/CameraStreamEvent/types.js';
-import type { EventThumbnails } from '@camera.ui/nvr';
 import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
 import type { CameraEventProps } from './types.js';
 
@@ -132,7 +131,6 @@ const props = defineProps<CameraEventProps>();
 const dialog = useCuiDialog();
 const { t } = useI18n();
 const preview = inject(EventHoverPreviewKey, undefined);
-const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 
 // Live edge threshold — events starting within this window open as live stream.
 const LIVE_EDGE_MS = 10_000;
@@ -140,13 +138,11 @@ const LIVE_EDGE_MS = 10_000;
 const previewCanvasRef = useTemplateRef('previewCanvasRef');
 const cardRef = useTemplateRef('cardRef');
 const isPreviewActive = ref(false);
-const loadedThumbs = ref<EventThumbnails | null>(null);
-const thumbnailState = ref<'loading' | 'loaded' | 'empty'>('loading');
 const activeImageIndexRaw = ref(0);
 const previewBlocked = ref(false);
+const loadTriggered = shallowRef(false);
 
 let dialogInstance: DynamicDialogInstance | undefined;
-let loadTriggered = false;
 
 const { icons: eventIcons, generic: genericIcon } = resolveEventIcons();
 
@@ -158,10 +154,19 @@ const longPress = useLongPressPreview(
 
 const cardSegIndex = computed(() => (props.segment && props.segIndex !== undefined ? props.segIndex : undefined));
 
-const primary = computed(() => (loadedThumbs.value ? resolveThumbnail(loadedThumbs.value, props.event, 'card', cardSegIndex.value) : null));
+const { pictures, state: pictureState } = useEventPictures(
+  () => props.event,
+  () => [
+    { kind: 'cover', segIndex: cardSegIndex.value },
+    { kind: 'tiles', segIndex: cardSegIndex.value },
+  ],
+  () => loadTriggered.value,
+);
+
+const primary = computed(() => (pictures.value ? resolveThumbnail(pictures.value, props.event, 'card', cardSegIndex.value) : null));
 
 const carouselImages = computed<{ url: string; label?: string; type: string; crop: boolean }[]>(() => {
-  const thumbs = loadedThumbs.value;
+  const thumbs = pictures.value;
   const sceneUrl = primary.value?.url;
   if (!thumbs || !sceneUrl) return [];
 
@@ -204,6 +209,11 @@ const formatTime = computed(() => {
 const anchorTime = computed(() => props.segment?.firstSeen ?? eventAnchorTime(props.event));
 
 const isActive = computed(() => (props.segment ? props.live === true : props.event.state === 'active'));
+// a running span gets its picture later, a failed load shows the icon until the retry
+const thumbnailState = computed(() => {
+  if (primary.value?.url) return 'loaded';
+  return pictureState.value === 'loading' || isActive.value ? 'loading' : 'empty';
+});
 const description = computed(() => (props.segment ? props.segment.description : props.event.segments?.find((s) => s?.description)?.description));
 const hasDescription = computed(() => !isActive.value && Boolean(description.value));
 
@@ -264,27 +274,6 @@ function handleMouseLeave(): void {
   preview.onHoverEnd();
 }
 
-function applyThumbnails(thumbs: EventThumbnails): boolean {
-  const resolved = resolveThumbnail(thumbs, props.event, 'card', cardSegIndex.value);
-  if (!resolved.url) return false;
-  loadedThumbs.value = thumbs;
-  thumbnailState.value = 'loaded';
-  return true;
-}
-
-async function triggerLoad(retries = 2): Promise<void> {
-  const thumbs = await props.loadThumbnails(props.event.id, props.event.startTime);
-  if (thumbs && applyThumbnails(thumbs)) return;
-  // Retry after a short delay — loadThumbnails may return null if plugin/store
-  // isn't fully ready yet (race between event render and plugin initialization)
-  if (retries > 0) {
-    await new Promise((r) => setTimeout(r, 500));
-    return triggerLoad(retries - 1);
-  }
-  // a running event gets its picture later; the store watcher fills it in
-  thumbnailState.value = isActive.value ? 'loading' : 'empty';
-}
-
 function openCameraEvent(): void {
   if (longPress.consumesClick()) return;
   if (props.clickDisabled || !props.camera) return;
@@ -335,10 +324,9 @@ function openCameraEvent(): void {
 const { stop: stopObserver } = useIntersectionObserver(
   cardRef,
   ([entry]) => {
-    if (entry.isIntersecting && !loadTriggered) {
-      loadTriggered = true;
+    if (entry.isIntersecting && !loadTriggered.value) {
+      loadTriggered.value = true;
       stopObserver();
-      triggerLoad();
     }
   },
   {
@@ -346,46 +334,13 @@ const { stop: stopObserver } = useIntersectionObserver(
   },
 );
 
-watch(
-  () => eventStore.storeVersion.value,
-  () => {
-    if (!loadTriggered) return;
-    const cached = eventStore.getCachedThumbnails(props.event.id);
-    if (!cached) {
-      // invalidated (face reassign/rescan): refetch so the tiles rename live
-      triggerLoad();
-      return;
-    }
-    applyThumbnails(cached);
-  },
-);
-
-watch(
-  () => props.event.state,
-  (newState, oldState) => {
-    if (oldState === 'active' && newState === 'ended') {
-      triggerLoad();
-    }
-  },
-);
-
-watch(
-  () => props.event.lastUpdate,
-  () => {
-    if (isActive.value && loadTriggered) {
-      triggerLoad();
-    }
-  },
-);
-
 onMounted(() => {
   requestAnimationFrame(() => {
-    if (!loadTriggered && cardRef.value) {
+    if (!loadTriggered.value && cardRef.value) {
       const r = cardRef.value.getBoundingClientRect();
       if (r.right > 0 && r.left < window.innerWidth && r.bottom > 0 && r.top < window.innerHeight) {
-        loadTriggered = true;
+        loadTriggered.value = true;
         stopObserver();
-        triggerLoad();
       }
     }
   });

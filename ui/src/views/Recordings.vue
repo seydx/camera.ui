@@ -138,7 +138,6 @@
                 :event="item.event"
                 :camera-name="cameraMap.get(item.event.cameraId)"
                 :camera="cameraById.get(item.event.cameraId)"
-                :load-thumbnails="loadCardThumbnails"
                 :semantic-score="semanticEventIds.get(item.event.id)"
                 :seg-index="item.segIndex"
                 :selection-mode="selectionMode && item.event.state === 'ended'"
@@ -309,7 +308,7 @@ import type { SimilarImageSearchProps } from '@/components/CuiDialog/templates/S
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { RecordingsFilterState } from '@/components/CuiRecordings/types.js';
 import type { UngroupedItem } from '@/components/CuiRecordings/ungrouped.js';
-import type { EventThumbnails, GetEventsOptions, RecordedEvent, SimilarOptions } from '@camera.ui/nvr';
+import type { GetEventsOptions, RecordedEvent, SimilarOptions } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 
 const assistantQuery = new AssistantQuery();
@@ -473,7 +472,6 @@ const {
   hasMore,
   stats,
   loadMore,
-  loadThumbnails,
   deleteEvents,
   reset: reloadEvents,
   loadFailed,
@@ -795,12 +793,6 @@ function onSemanticSearch(query: string): void {
     return;
   }
   runSemanticSearch(query);
-}
-
-function loadCardThumbnails(eventId: string, startMs: number): Promise<EventThumbnails | null> {
-  const matched = similarEvents.value.get(eventId);
-  if (matched && !eventStore.getEvent(eventId)) return eventStore.loadThumbnails(eventId, matched.cameraId, startMs);
-  return loadThumbnails(eventId, startMs);
 }
 
 function vehicleAttributeLabels(f: RecordingsFilterState): Record<string, string[]> | undefined {

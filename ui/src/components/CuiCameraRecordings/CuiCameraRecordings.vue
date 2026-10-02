@@ -235,7 +235,6 @@
             hide-segment-badge
             :camera-name="cameraName"
             :camera="camera"
-            :load-thumbnails="loadThumbnails"
             @scroll-to-event="(ts: number) => emit('scrollToEvent', ts)"
             @open-trace="(atMs?: number) => openTrace(item.event, atMs)"
           />
@@ -336,7 +335,6 @@ const {
   isLoading,
   hasMore,
   loadMore,
-  loadThumbnails,
   pluginUnavailable: eventsUnavailable,
 } = useDetectionEvents({
   availableCameraIds: cameraIds,

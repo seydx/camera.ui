@@ -164,6 +164,7 @@ import {
   resolveThumbnail,
   segmentTypes,
   thumbnailToUrl,
+  useEventPictures,
   useEventStore,
 } from '@camera.ui/nvr';
 import AssistantIcon from '~icons/mdi/robot-outline';
@@ -180,7 +181,7 @@ import { resolveEventIcons } from '@/utils/eventIcons.js';
 
 import type { FaceReassignProps } from '@/components/CuiDialog/templates/FaceReassign/types.js';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { EventThumbnails, FaceReassignOptions } from '@camera.ui/nvr';
+import type { FaceReassignOptions } from '@camera.ui/nvr';
 import type { FaceTarget, RecordingCardEmits, RecordingCardProps } from './types.js';
 
 const props = defineProps<RecordingCardProps>();
@@ -194,6 +195,13 @@ const router = useRouter();
 const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
 const dialog = useCuiDialog();
+const { pictures, state: pictureState } = useEventPictures(
+  () => props.event,
+  () => [
+    { kind: 'cover', segIndex: props.segIndex },
+    { kind: 'tiles', segIndex: props.segIndex },
+  ],
+);
 
 const ICON_PX = 24;
 const TILE_PX = 30;
@@ -203,13 +211,6 @@ const GROUP_GAP_PX = 8;
 const FOOTER_STEP_PX = 8;
 
 const { icons: eventIcons } = resolveEventIcons();
-
-const cachedInit = eventStore.getCachedThumbnails(props.event.id);
-const initialState: 'loading' | 'loaded' | 'empty' = cachedInit
-  ? resolveThumbnail(cachedInit, props.event, 'card', props.segIndex).url
-    ? 'loaded'
-    : 'empty'
-  : 'loading';
 
 const preview = inject(EventHoverPreviewKey, undefined);
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
@@ -225,8 +226,6 @@ const longPress = useLongPressPreview(
   () => stopPreview(),
 );
 const isPreviewActive = ref(false);
-const loadedThumbs = ref<EventThumbnails | null>(cachedInit ?? null);
-const thumbnailState = ref<'loading' | 'loaded' | 'empty'>(initialState);
 const isDownloading = ref(false);
 const activeImageIndexRaw = ref(0);
 const favoriteOverride = ref<boolean | null>(null);
@@ -248,8 +247,8 @@ const semanticDisplay = computed(() => {
 });
 
 const primary = computed(() => {
-  if (!loadedThumbs.value) return null;
-  return resolveThumbnail(loadedThumbs.value, props.event, 'card', props.segIndex);
+  if (!pictures.value) return null;
+  return resolveThumbnail(pictures.value, props.event, 'card', props.segIndex);
 });
 
 const shownSegment = computed(() => {
@@ -258,6 +257,10 @@ const shownSegment = computed(() => {
 });
 
 const thumbnailUrl = computed(() => primary.value?.url);
+const thumbnailState = computed(() => {
+  if (thumbnailUrl.value) return 'loaded';
+  return pictureState.value === 'loading' || props.event.state === 'active' ? 'loading' : 'empty';
+});
 const primaryLabel = computed(() => primary.value?.label);
 const primaryType = computed(() => primary.value?.type ?? props.event.types[0] ?? 'motion');
 
@@ -268,7 +271,7 @@ const segPosition = computed(() => {
 });
 
 const carouselImages = computed<{ url: string; label?: string; type: string; crop: boolean; faceSeg?: number; attrIndex?: number }[]>(() => {
-  const thumbs = loadedThumbs.value;
+  const thumbs = pictures.value;
   const sceneUrl = primary.value?.url;
   if (!thumbs || !sceneUrl) return [];
 
@@ -454,20 +457,6 @@ function handleMouseLeave(): void {
   preview.onHoverEnd();
 }
 
-async function triggerLoad(retries = 2): Promise<void> {
-  const thumbs = await props.loadThumbnails(props.event.id, props.event.startTime);
-  if (thumbs) {
-    loadedThumbs.value = thumbs;
-    const p = resolveThumbnail(thumbs, props.event, 'card');
-    thumbnailState.value = p.url ? 'loaded' : 'empty';
-  } else if (retries > 0) {
-    await new Promise((r) => setTimeout(r, 500));
-    return triggerLoad(retries - 1);
-  } else {
-    thumbnailState.value = props.event.state === 'active' ? 'loading' : 'empty';
-  }
-}
-
 function handleClick(): void {
   if (longPress.consumesClick()) return;
   if (props.selectionMode) {
@@ -572,29 +561,10 @@ watch(carouselImages, (images) => {
   focusFace.value = undefined;
 });
 
-watch(
-  () => eventStore.storeVersion.value,
-  () => {
-    const cached = eventStore.getCachedThumbnails(props.event.id);
-    if (!cached) {
-      if (loadedThumbs.value) triggerLoad();
-      return;
-    }
-    loadedThumbs.value = cached;
-    if (resolveThumbnail(cached, props.event, 'card').url) thumbnailState.value = 'loaded';
-  },
-);
-
 useResizeObserver(footerRef, (entries) => {
   const width = entries[0]?.contentRect.width ?? 0;
   const stepped = Math.round(width / FOOTER_STEP_PX) * FOOTER_STEP_PX;
   if (stepped !== footerWidth.value) footerWidth.value = stepped;
-});
-
-onMounted(() => {
-  if (initialState === 'loading') {
-    triggerLoad();
-  }
 });
 
 onUnmounted(() => stopPreview());

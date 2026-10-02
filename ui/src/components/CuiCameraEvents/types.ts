@@ -1,4 +1,4 @@
-import type { EventThumbnails, RecordedEvent, RecordedSegment } from '@camera.ui/nvr';
+import type { RecordedEvent, RecordedSegment } from '@camera.ui/nvr';
 import type { DBCamera, HiddenEventTypes } from '@shared/types';
 
 export interface CuiCameraEventsProps {
@@ -16,6 +16,5 @@ export interface CameraEventProps {
   live?: boolean;
   cameraName?: string;
   camera?: DBCamera;
-  loadThumbnails: (eventId: string, startMs: number) => Promise<EventThumbnails | null>;
   clickDisabled?: boolean;
 }

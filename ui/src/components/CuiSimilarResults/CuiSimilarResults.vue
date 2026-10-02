@@ -25,7 +25,6 @@
           :event="item.event"
           :camera-name="cameraById.get(item.event.cameraId)?.name"
           :camera="cameraById.get(item.event.cameraId)"
-          :load-thumbnails="loadThumbnails"
           :semantic-score="item.score"
           :seg-index="item.segIndex"
           @scroll-to-event="(ts: number) => emit('open', { event: item.event, camera: cameraById.get(item.event.cameraId), timestamp: ts })"
@@ -45,13 +44,13 @@
 </template>
 
 <script setup lang="ts">
-import { useEventStore, useSimilarSearch } from '@camera.ui/nvr';
+import { useSimilarSearch } from '@camera.ui/nvr';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
 
 import { SIMILAR_SCORE_RANGES } from './types.js';
 
-import type { EventThumbnails, SimilarMatch } from '@camera.ui/nvr';
+import type { SimilarMatch } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 import type { CuiSimilarResultsEmits, CuiSimilarResultsProps, SimilarResultItem } from './types.js';
 
@@ -62,7 +61,6 @@ const props = defineProps<CuiSimilarResultsProps>();
 const emit = defineEmits<CuiSimilarResultsEmits>();
 
 const { t } = useI18n();
-const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 const { result, isSearching, isAvailable, licenseRequired, search, clear } = useSimilarSearch();
 
 const { data: camerasData } = camerasQuery.getCamerasQuery({ page: 1, pageSize: -1 });
@@ -98,11 +96,6 @@ function rangeOf(match: SimilarMatch): [number, number] | undefined {
   if (!found) return undefined;
   if (match.kind) return SIMILAR_SCORE_RANGES[match.kind];
   return found.mode === 'face' && found.label ? undefined : SIMILAR_SCORE_RANGES[found.mode];
-}
-
-function loadThumbnails(eventId: string, startMs: number): Promise<EventThumbnails | null> {
-  const event = result.value?.events.find((e) => e.id === eventId);
-  return event ? eventStore.loadThumbnails(eventId, event.cameraId, startMs) : Promise.resolve(null);
 }
 
 watch(items, (list) => {

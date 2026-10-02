@@ -1,5 +1,5 @@
 import type { GridRegion } from '@/components/CuiGridSearch/types.js';
-import type { EventThumbnails, RecordedEvent, SimilarResult } from '@camera.ui/nvr';
+import type { RecordedEvent, SimilarResult } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 
 export type RecordingsContentKind = 'all' | 'events' | 'episodes';
@@ -51,7 +51,6 @@ export interface RecordingCardProps {
   event: RecordedEvent;
   cameraName?: string;
   camera?: DBCamera;
-  loadThumbnails: (eventId: string, startMs: number) => Promise<EventThumbnails | null>;
   semanticScore?: number;
   segIndex?: number;
   hideSegmentBadge?: boolean;

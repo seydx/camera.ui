@@ -28,7 +28,6 @@
                 :live="item.live"
                 :camera-name="cameraMap.get(item.event.cameraId)"
                 :camera="cameraById.get(item.event.cameraId)"
-                :load-thumbnails="loadThumbnails"
                 :click-disabled="isSwiping"
               />
             </div>
@@ -124,7 +123,6 @@ const {
   isLoading,
   hasMore,
   loadMore,
-  loadThumbnails,
   pluginUnavailable: eventsUnavailable,
 } = useDetectionEvents({
   availableCameraIds,
