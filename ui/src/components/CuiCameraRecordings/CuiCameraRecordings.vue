@@ -254,7 +254,7 @@
 </template>
 
 <script setup lang="ts">
-import { EVENT_TYPE_OTHER, EventHoverPreviewKey, getBestScore, useDetectionEvents, useEventHoverPreview } from '@camera.ui/nvr';
+import { EVENT_TYPE_OTHER, EventHoverPreviewKey, useDetectionEvents, useEventHoverPreview } from '@camera.ui/nvr';
 import { DETECTION_ATTRIBUTES, DETECTION_LABELS } from '@camera.ui/sdk';
 
 import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
@@ -287,6 +287,8 @@ const { icons: DETECTION_ICONS, generic: GENERIC_ICON } = resolveEventIcons();
 
 const NON_FILTER_LABELS = new Set(['motion', 'audio']);
 const ATTR_SET = new Set<string>(DETECTION_ATTRIBUTES);
+const REGION_FILL_ITEMS = 12;
+const REGION_FILL_PAGES = 5;
 
 const typeOptions: { label: string; value: string; icon: Component }[] = [
   ...DETECTION_LABELS.filter((l) => !NON_FILTER_LABELS.has(l)).map((l) => ({
@@ -316,17 +318,26 @@ const minConfidence = ref(0);
 const datePopoverRef = useTemplateRef<{ toggle: (e: Event) => void; hide: () => void; show: (e: Event) => void }>('datePopoverRef');
 const confidencePopoverRef = useTemplateRef<{ toggle: (e: Event) => void }>('confidencePopoverRef');
 
+const searchQuery = refDebounced(search, 300);
+const confidence = refDebounced(minConfidence, 300);
+
+let regionFillPages = 0;
+
 const cameraIds = computed(() => [props.cameraId]);
 
 const serverFilter = computed<GetEventsOptions>(() => {
   const attrFilters = selectedTypes.value.filter((t) => ATTR_SET.has(t));
   const hasAnyFilter = selectedTypes.value.length > 0 || selectedTriggers.value.length > 0;
+  const day = selectedDate.value;
   return {
     types: selectedTypes.value.length > 0 ? selectedTypes.value.filter((t) => !ATTR_SET.has(t)) : undefined,
     triggers: selectedTriggers.value.length > 0 ? selectedTriggers.value : undefined,
     attributes: attrFilters.length > 0 ? attrFilters : undefined,
-    search: search.value || undefined,
+    search: searchQuery.value.trim() || undefined,
+    minConfidence: confidence.value > 0 ? confidence.value : undefined,
     hasDetections: !hasAnyFilter,
+    startMs: day ? new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime() : undefined,
+    endMs: day ? new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime() - 1 : undefined,
   };
 });
 
@@ -349,20 +360,8 @@ const formatSelectedDate = computed(() => {
   return selectedDate.value.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
 });
 
-// Date + grid regions only — attributes are now server-side.
 const displayEvents = computed(() => {
   let result = events.value.filter((e) => e.state === 'ended' || (e.segments?.length ?? 0) > 0);
-
-  if (selectedDate.value) {
-    const d = selectedDate.value;
-    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-    result = result.filter((e) => e.startTime >= dayStart && e.startTime < dayEnd);
-  }
-
-  if (minConfidence.value > 0) {
-    result = result.filter((e) => getBestScore(e) >= minConfidence.value);
-  }
 
   const regions = gridSearch?.regions.value;
   if (regions && regions.length > 0) {
@@ -373,6 +372,8 @@ const displayEvents = computed(() => {
 });
 
 const displayItems = computed(() => buildUngroupedItems(displayEvents.value));
+
+const regionsKey = computed(() => JSON.stringify(gridSearch?.regions.value ?? []));
 
 function toggleGridSearch() {
   if (!gridSearch) return;
@@ -393,6 +394,17 @@ function closeMobileSearch() {
 function openTrace(event: RecordedEvent, atMs?: number): void {
   if (props.camera) openEventTrace(event, props.camera, atMs);
 }
+
+watch([regionsKey, serverFilter], () => {
+  regionFillPages = 0;
+});
+
+watch([() => displayItems.value.length, hasMore, isLoading, regionsKey], ([count, more, loading]) => {
+  if (!gridSearch?.regions.value.length || !more || loading) return;
+  if (count >= REGION_FILL_ITEMS || regionFillPages >= REGION_FILL_PAGES) return;
+  regionFillPages++;
+  void loadMore();
+});
 </script>
 
 <style scoped>
