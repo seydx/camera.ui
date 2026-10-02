@@ -89,7 +89,7 @@ export class ProxyServer {
         enabled: !!workersConfig?.enabled,
         host: '0.0.0.0',
         port: workersConfig?.port ?? 7422,
-        users: credentials.map((cred) => ({ user: cred.user, password: cred.secret })),
+        users: credentials.map((cred) => ({ agentId: cred.agentId, user: cred.user, password: cred.secret })),
         tlsCertFile: configService.HOST_CERT_FILE,
         tlsKeyFile: configService.HOST_KEY_FILE,
       });

@@ -1,7 +1,7 @@
 import { Logger } from '@camera.ui/common/logger';
 import { fetchViableNetworkAddresses } from '@camera.ui/common/network';
 import { isEqual, SignalHandler } from '@camera.ui/common/utils';
-import { createRPCClient } from '@camera.ui/rpc';
+import { createRPCClient, ERROR_CODES, isNoRespondersError, isRPCError } from '@camera.ui/rpc';
 import { processes } from 'systeminformation';
 import { container } from 'tsyringe';
 
@@ -44,6 +44,7 @@ export class WorkerAgent implements WorkerAgentRPC {
 
   private proxy!: RPCClient;
   private managerProxy!: Promisify<WorkerManagerRPC>;
+  private sharedManagerProxy!: Promisify<WorkerManagerRPC>;
   private handlers = new Map<WorkerCapability, CapabilityHandler>();
 
   private pluginHostHandler?: PluginHostHandler;
@@ -54,6 +55,7 @@ export class WorkerAgent implements WorkerAgentRPC {
   private syncQueued = false;
   private isClosed = false;
   private masterAnswers = true;
+  private sharedMaster = false;
   private appliedUpdateChannel?: 'latest' | 'beta';
 
   private closeHandler?: () => Promise<void>;
@@ -116,9 +118,12 @@ export class WorkerAgent implements WorkerAgentRPC {
 
     this.logger.log(`Capabilities: [${this.capabilities.join(', ')}]`);
 
+    const secret = new WorkersService().getWorkerConnection()?.secret;
+
     // Local NATS (leaf node)
     this.proxy = createRPCClient({
       name: `worker-agent-${this.agentId}`,
+      connId: secret ? NamespaceManager.workerConnId(this.agentId, secret) : undefined,
       servers: this.natsServer.endpoints.filter((ep) => ep.startsWith('nats://')),
       timeout: 10_000,
       auth: {
@@ -143,7 +148,8 @@ export class WorkerAgent implements WorkerAgentRPC {
       }
     }
 
-    this.managerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.workerManagerRpc());
+    this.managerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.workerManagerRpc(this.agentId));
+    this.sharedManagerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.sharedWorkerManagerRpc());
 
     const rpcSubject = NamespaceManager.workerAgentRpc(this.agentId);
     this.closeHandler = await this.proxy.registerHandler(
@@ -175,7 +181,7 @@ export class WorkerAgent implements WorkerAgentRPC {
     this.isClosed = true;
 
     try {
-      this.proxy.publish(NamespaceManager.workerDisconnect(), { agentId: this.agentId });
+      this.proxy.publish(this.sharedMaster ? NamespaceManager.sharedWorkerDisconnect() : NamespaceManager.workerDisconnect(this.agentId), { agentId: this.agentId });
     } catch {
       // ignore — proxy might already be disconnected
     }
@@ -204,6 +210,7 @@ export class WorkerAgent implements WorkerAgentRPC {
       uptime: Date.now() - this.startTime,
       cameras: Array.from(this.handlers.values()).flatMap((h) => h.getActiveWorkIds()),
       capabilities: this.capabilities,
+      version: ConfigService.RUNNING_VERSION,
     };
   }
 
@@ -292,7 +299,7 @@ export class WorkerAgent implements WorkerAgentRPC {
 
       let response: WorkerSyncResponse;
       try {
-        response = await this.managerProxy.heartbeat(this.buildHeartbeat());
+        response = await this.sendHeartbeat(this.buildHeartbeat());
       } catch {
         // Master unreachable — keep running the current workloads and try
         // again on the next cycle. Convergence resumes when it is back.
@@ -363,6 +370,22 @@ export class WorkerAgent implements WorkerAgentRPC {
     }
   }
 
+  private async sendHeartbeat(heartbeat: WorkerHeartbeat): Promise<WorkerSyncResponse> {
+    try {
+      const response = await this.managerProxy.heartbeat(heartbeat);
+      this.sharedMaster = false;
+      return response;
+    } catch (error) {
+      // a master that has not been updated yet only listens on the shared subjects, and its update run updates workers first
+      if (isNoRespondersError(error) || (isRPCError(error) && error.code === ERROR_CODES.NOT_FOUND)) {
+        const response = await this.sharedManagerProxy.heartbeat(heartbeat);
+        this.sharedMaster = true;
+        return response;
+      }
+      throw error;
+    }
+  }
+
   private buildHeartbeat(): WorkerHeartbeat {
     return {
       agentId: this.agentId,
@@ -426,7 +449,7 @@ export class WorkerAgent implements WorkerAgentRPC {
 
   private forwardLog(entry: LogEntry): void {
     try {
-      this.proxy.publish(NamespaceManager.workerLogs(), entry);
+      this.proxy.publish(this.sharedMaster ? NamespaceManager.sharedWorkerLogs() : NamespaceManager.workerLogs(this.agentId), entry);
     } catch {
       // master will miss this line — local trace still has it
     }

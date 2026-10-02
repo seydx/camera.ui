@@ -1,5 +1,7 @@
 import * as zod from 'zod';
 
+import { SUBJECT_TOKEN } from '../../rpc/namespaces.js';
+
 export const assignCameraSchema = zod.object({
   cameraId: zod.string().min(1, 'Camera ID is required'),
   agentId: zod.string().min(1, 'Agent ID is required'),
@@ -21,7 +23,7 @@ export const updateWorkerSchema = zod
 
 export const pairWorkerSchema = zod.object({
   code: zod.string().min(1, 'Pairing code is required'),
-  agentId: zod.string().min(1, 'Agent ID is required'),
+  agentId: zod.string().regex(SUBJECT_TOKEN, 'Agent ID may only contain letters, digits, _ and -'),
   name: zod.string().min(1, 'Worker name is required'),
 });
 

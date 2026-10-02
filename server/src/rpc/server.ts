@@ -5,30 +5,40 @@ import { mkdtempSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { stripVTControlCharacters } from 'node:util';
 import { container } from 'tsyringe';
 
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
 import { LeafConnection } from './leafConnection.js';
+import { NamespaceManager, SUBJECT_TOKEN } from './namespaces.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
 import type { Interface } from 'node:readline';
-import { stripVTControlCharacters } from 'node:util';
 import type { SocketService } from '../api/websocket/index.js';
 import type { ServerRuntime } from '../api/websocket/types.js';
 import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
-import type { AuthConfig, NatsConfig, ProxyAuth } from './interfaces/config.js';
+import type { AuthConfig, NatsConfig, NatsUserConfig, ProxyAuth } from './interfaces/config.js';
 
 const SERVER_READY_MESSAGE = 'Server is ready';
 const SERVER_ERROR_MESSAGE = 'Error listening on port';
+
+const WORKER_LEAF_DENY = ['rpc.terminalManager.>', 'stream.rpc.terminalManager.>', 'terminalManager.>', 'tunnel.>', 'notifications.user.>', 'cast.>'];
+const SHARED_WORKER_SUBJECTS = ['rpc.workers.manager.rpc.>', 'workers.logs', 'workers.disconnect'];
+
+export interface LeafNodeUser {
+  agentId: string;
+  user: string;
+  password: string;
+}
 
 export interface LeafNodeConfig {
   enabled: boolean;
   host: string;
   port: number;
-  users: { user: string; password: string }[];
+  users: LeafNodeUser[];
   tlsCertFile: string;
   tlsKeyFile: string;
 }
@@ -309,7 +319,14 @@ export class NATS {
       host: '127.0.0.1',
       port: this._leafAcceptorPort,
       server_name: 'camera.ui-leaf-acceptor',
-      authorization: this.config.authorization,
+      // leafnodes users take no permissions, so leaf links log in here and only worker users may open one
+      authorization: {
+        timeout: this.config.authorization.timeout,
+        users: [
+          ...this.config.authorization.users.map((user): NatsUserConfig => ({ ...user, allowed_connection_types: ['STANDARD'] })),
+          ...leaf.users.map((user) => workerLeafUser(user, leaf.users)),
+        ],
+      },
       max_payload: this.config.max_payload,
       max_control_line: this.config.max_control_line,
       write_deadline: this.config.write_deadline,
@@ -328,9 +345,6 @@ export class NATS {
       tls: {
         cert_file: leaf.tlsCertFile,
         key_file: leaf.tlsKeyFile,
-      },
-      authorization: {
-        users: leaf.users.map((user) => ({ user: user.user, password: user.password })),
       },
     };
 
@@ -718,4 +732,25 @@ export class NATS {
         return false;
     }
   }
+}
+
+function workerLeafUser(worker: LeafNodeUser, workers: LeafNodeUser[]): NatsUserConfig {
+  const others = workers.filter(({ agentId }) => agentId !== worker.agentId && SUBJECT_TOKEN.test(agentId));
+  const otherAgents = others.map(({ agentId }) => agentId);
+  const otherPrivate = others.flatMap(({ agentId, password }) => {
+    const connId = NamespaceManager.workerConnId(agentId, password);
+    return [`rpc.workers.${agentId}.>`, `workers.${agentId}.>`, `rpc.reply.${connId}.>`, `_INBOX.${connId}.>`];
+  });
+
+  return {
+    user: worker.user,
+    password: worker.password,
+    allowed_connection_types: ['LEAFNODE'],
+    permissions: {
+      publish: { deny: [...WORKER_LEAF_DENY, ...SHARED_WORKER_SUBJECTS, ...otherPrivate, 'rpc.worker.>', 'worker.>'] },
+      subscribe: {
+        deny: [...WORKER_LEAF_DENY, ...SHARED_WORKER_SUBJECTS, ...otherPrivate, ...otherAgents.flatMap((agentId) => [`rpc.worker.${agentId}.>`, `worker.${agentId}.>`])],
+      },
+    },
+  };
 }

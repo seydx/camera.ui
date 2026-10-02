@@ -5,7 +5,7 @@ import { container } from 'tsyringe';
 import { CamerasService } from '../api/services/cameras.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
 import { WorkersService } from '../api/services/workers.service.js';
-import { NamespaceManager } from '../rpc/namespaces.js';
+import { NamespaceManager, SUBJECT_TOKEN } from '../rpc/namespaces.js';
 import { ConfigService } from '../services/config/index.js';
 import { describePlatformRequirement, isPlatformCompatible } from '../utils/platform.js';
 import { WorkerCapability, workloadKey } from './types.js';
@@ -24,6 +24,7 @@ import type {
   RemotePluginConfig,
   RemotePluginState,
   WorkerAgentRPC,
+  WorkerHealthInfo,
   WorkerHeartbeat,
   WorkerInfo,
   WorkerProcessSample,
@@ -32,6 +33,7 @@ import type {
 } from './types.js';
 
 const WORKER_TIMEOUT_MS = 15_000;
+const OUTDATED_PROBE_MS = 30_000;
 
 export class WorkerManager {
   private readonly logger: Logger;
@@ -43,10 +45,11 @@ export class WorkerManager {
   private workers = new Map<string, WorkerInfo>();
   private desired = new Map<string, { agentId: string; workload: WorkloadSpec }>();
 
-  private closeHeartbeatHandler?: () => Promise<void>;
-  private unsubscribeDisconnect?: () => void;
-  private unsubscribeLogs?: () => void;
+  private listeners = new Map<string, Promise<() => Promise<void>>>();
+  private probing = new Set<string>();
+  private outdated = new Set<string>();
   private timeoutCheckInterval?: NodeJS.Timeout;
+  private outdatedProbeInterval?: NodeJS.Timeout;
   private addressWarned = false;
   private workloadRevision = 0;
   private active = false;
@@ -88,34 +91,16 @@ export class WorkerManager {
 
     this.seedKnownWorkers();
 
-    const proxy = this.proxyServer.proxy;
-    if (!proxy) {
+    if (!this.proxyServer.proxy) {
       throw new Error('WorkerManager enabled before the proxy was initialized');
     }
 
-    this.closeHeartbeatHandler = await proxy.registerHandler(
-      NamespaceManager.workerManagerRpc(),
-      { heartbeat: (heartbeat: WorkerHeartbeat) => this.handleHeartbeat(heartbeat) },
-      { withoutDecorators: true },
-    );
-
-    const unsubDisconnectPromise = proxy.subscribe(NamespaceManager.workerDisconnect(), (data: { agentId: string }) => {
-      this.handleGracefulDisconnect(data.agentId);
-    });
-
-    unsubDisconnectPromise.then((unsub) => {
-      this.unsubscribeDisconnect = unsub;
-    });
-
-    const unsubLogsPromise = proxy.subscribe(NamespaceManager.workerLogs(), (entry: LogEntry) => {
-      this.handleForwardedLog(entry);
-    });
-
-    unsubLogsPromise.then((unsub) => {
-      this.unsubscribeLogs = unsub;
-    });
+    for (const { agentId } of this.workersService.listCredentials()) {
+      await this.listen(agentId);
+    }
 
     this.timeoutCheckInterval = setInterval(() => this.checkTimeouts(), 5_000);
+    this.outdatedProbeInterval = setInterval(() => this.probeOutdatedWorkers(), OUTDATED_PROBE_MS);
 
     if (reconcileAcceptor) {
       // Bring up the leaf-acceptor if workers are already paired.
@@ -163,12 +148,13 @@ export class WorkerManager {
       this.timeoutCheckInterval = undefined;
     }
 
-    await this.closeHeartbeatHandler?.();
-    this.closeHeartbeatHandler = undefined;
-    this.unsubscribeDisconnect?.();
-    this.unsubscribeDisconnect = undefined;
-    this.unsubscribeLogs?.();
-    this.unsubscribeLogs = undefined;
+    if (this.outdatedProbeInterval) {
+      clearInterval(this.outdatedProbeInterval);
+      this.outdatedProbeInterval = undefined;
+    }
+
+    await Promise.all(Array.from(this.listeners.keys()).map((agentId) => this.stopListening(agentId)));
+    this.outdated.clear();
     this.workers.clear();
     this.desired.clear();
   }
@@ -256,6 +242,7 @@ export class WorkerManager {
 
   public async noteWorkerPaired(agentId: string, name: string): Promise<void> {
     await this.workersService.rememberWorker(agentId, name);
+    await this.listen(agentId);
 
     if (!this.workers.has(agentId)) {
       const workerInfo: WorkerInfo = {
@@ -392,6 +379,9 @@ export class WorkerManager {
       this.restartPluginWorker(plugin.pluginName);
     }
 
+    await this.stopListening(agentId);
+    this.outdated.delete(agentId);
+
     const hadCredentials = await this.workersService.revokeCredentials(agentId);
     await this.workersService.forgetWorker(agentId);
     this.workers.delete(agentId);
@@ -512,6 +502,91 @@ export class WorkerManager {
     return proxy.createProxy<WorkerAgentRPC>(rpcSubject);
   }
 
+  private async listen(agentId: string): Promise<void> {
+    const proxy = this.proxyServer.proxy;
+    if (!this.active || !proxy || this.listeners.has(agentId)) {
+      return;
+    }
+
+    if (!SUBJECT_TOKEN.test(agentId)) {
+      this.logger.warn(`Worker ${agentId} has an invalid id, remove it and pair it again`);
+      return;
+    }
+
+    const listening = (async () => {
+      const closeHeartbeat = await proxy.registerHandler(
+        NamespaceManager.workerManagerRpc(agentId),
+        { heartbeat: (heartbeat: WorkerHeartbeat) => this.handleHeartbeat(agentId, heartbeat) },
+        { withoutDecorators: true },
+      );
+      const unsubscribeDisconnect = await proxy.subscribe(NamespaceManager.workerDisconnect(agentId), (data: { agentId: string }) => {
+        this.handleGracefulDisconnect(agentId, data?.agentId);
+      });
+      const unsubscribeLogs = await proxy.subscribe(NamespaceManager.workerLogs(agentId), (entry: LogEntry) => {
+        this.handleForwardedLog(agentId, entry);
+      });
+
+      return async () => {
+        unsubscribeDisconnect();
+        unsubscribeLogs();
+        await closeHeartbeat();
+      };
+    })();
+
+    this.listeners.set(agentId, listening);
+
+    try {
+      await listening;
+    } catch (error) {
+      this.listeners.delete(agentId);
+      throw error;
+    }
+  }
+
+  private async stopListening(agentId: string): Promise<void> {
+    const listening = this.listeners.get(agentId);
+    this.listeners.delete(agentId);
+
+    const close = await listening?.catch(() => undefined);
+    await close?.();
+  }
+
+  private probeOutdatedWorkers(): void {
+    for (const agentId of this.listeners.keys()) {
+      if (this.workers.get(agentId)?.online || this.probing.has(agentId) || this.outdated.has(agentId)) {
+        continue;
+      }
+
+      this.probing.add(agentId);
+      this.createWorkerProxy(agentId)
+        .ping()
+        .then((health) => {
+          if (!health?.version && this.listeners.has(agentId)) {
+            this.refuseOutdatedWorker(agentId, health);
+          }
+        })
+        .catch(() => {})
+        .finally(() => this.probing.delete(agentId));
+    }
+  }
+
+  private refuseOutdatedWorker(agentId: string, health: WorkerHealthInfo): void {
+    this.outdated.add(agentId);
+
+    const name = this.workers.get(agentId)?.name ?? health.name;
+    this.logger.warn(
+      `Worker ${name} (${agentId}) runs an older version that this server no longer accepts. Update it to ${ConfigService.RUNNING_VERSION} on its machine.`,
+    );
+
+    // it keeps what it ran before while this server already runs that work itself
+    if (health.cameras?.length) {
+      this.logger.warn(`Restarting worker ${name} (${agentId}), it still runs work that this server has taken over`);
+      this.createWorkerProxy(agentId)
+        .restart()
+        .catch(() => {});
+    }
+  }
+
   private nudge(agentId: string): void {
     try {
       this.proxyServer.proxy?.publish(NamespaceManager.workerSync(agentId), {});
@@ -553,7 +628,14 @@ export class WorkerManager {
     };
   }
 
-  private handleHeartbeat(heartbeat: WorkerHeartbeat): WorkerSyncResponse {
+  private handleHeartbeat(agentId: string, heartbeat: WorkerHeartbeat): WorkerSyncResponse {
+    if (heartbeat?.agentId !== agentId) {
+      this.logger.warn(`Rejected a heartbeat for ${heartbeat?.agentId} from worker ${agentId}`);
+      throw new Error(`Worker ${agentId} cannot send a heartbeat for ${heartbeat?.agentId}`);
+    }
+
+    this.outdated.delete(agentId);
+
     const existing = this.workers.get(heartbeat.agentId);
     const versionMismatch = heartbeat.version !== ConfigService.RUNNING_VERSION;
 
@@ -632,7 +714,12 @@ export class WorkerManager {
     }
   }
 
-  private handleGracefulDisconnect(agentId: string): void {
+  private handleGracefulDisconnect(agentId: string, reportedAgentId: string | undefined): void {
+    if (reportedAgentId !== agentId) {
+      this.logger.warn(`Ignored a disconnect for ${reportedAgentId} from worker ${agentId}`);
+      return;
+    }
+
     const worker = this.workers.get(agentId);
     if (!worker?.online) return;
 
@@ -655,13 +742,31 @@ export class WorkerManager {
     }
   }
 
-  private handleForwardedLog(entry: LogEntry): void {
+  private handleForwardedLog(agentId: string, entry: LogEntry): void {
     try {
       const logManager = container.resolve<LogManager>('logManager');
-      logManager.handleChildLog(entry);
+      logManager.handleChildLog(this.scopeForwardedLog(agentId, entry));
     } catch {
       // LogManager may not be available yet during startup
     }
+  }
+
+  private scopeForwardedLog(agentId: string, entry: LogEntry): LogEntry {
+    const pluginsService = new PluginsService();
+    const runsPlugin = (pluginId?: string): boolean => !!pluginId && pluginsService.getPluginDbById(pluginId)?.workerAgentId === agentId;
+    const pluginId = runsPlugin(entry.pluginId) ? entry.pluginId : undefined;
+
+    if (entry.targetType === 'plugin' && runsPlugin(entry.targetId)) {
+      return { ...entry, pluginId };
+    }
+
+    const camera = entry.targetType === 'camera' && entry.targetId ? this.camerasService.findById(entry.targetId) : undefined;
+    const servedPlugin = pluginId !== undefined && (camera?.pluginInfo?.id === pluginId || camera?.plugins.some(({ id }) => id === pluginId));
+    if (camera && (camera.workerAgentId === agentId || servedPlugin)) {
+      return { ...entry, pluginId };
+    }
+
+    return { ...entry, pluginId, targetId: undefined, targetType: 'system', suffix: this.workers.get(agentId)?.name ?? agentId };
   }
 
   private emitWorkerUpdate(worker: WorkerInfo): void {

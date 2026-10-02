@@ -62,6 +62,7 @@ export interface WorkerHealthInfo {
   uptime: number;
   cameras: string[];
   capabilities: WorkerCapability[];
+  version?: string;
   cpuUsage?: number;
   memoryUsage?: number;
 }

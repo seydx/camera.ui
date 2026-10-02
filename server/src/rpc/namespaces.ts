@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 export interface CoreManagerNamespaces {
   coreManagerSubject: string;
   coreManagerRpc: string;
@@ -82,6 +84,8 @@ export interface DownloadManagerNamespaces {
 export interface NotificationManagerNamespaces {
   notificationsPublishSubject: string;
 }
+
+export const SUBJECT_TOKEN = /^[\w-]+$/;
 
 export class NamespaceManager {
   static coreManagerNamespaces(): CoreManagerNamespaces {
@@ -213,7 +217,11 @@ export class NamespaceManager {
     return `worker.${agentId}.rpc`;
   }
 
-  static workerManagerRpc(): string {
+  static workerManagerRpc(agentId: string): string {
+    return `workers.${agentId}.manager.rpc`;
+  }
+
+  static sharedWorkerManagerRpc(): string {
     return 'workers.manager.rpc';
   }
 
@@ -221,11 +229,23 @@ export class NamespaceManager {
     return `worker.${agentId}.sync`;
   }
 
-  static workerDisconnect(): string {
+  static workerDisconnect(agentId: string): string {
+    return `workers.${agentId}.disconnect`;
+  }
+
+  static sharedWorkerDisconnect(): string {
     return 'workers.disconnect';
   }
 
-  static workerLogs(): string {
+  static workerLogs(agentId: string): string {
+    return `workers.${agentId}.logs`;
+  }
+
+  static sharedWorkerLogs(): string {
     return 'workers.logs';
+  }
+
+  static workerConnId(agentId: string, secret: string): string {
+    return createHmac('sha256', secret).update(agentId).digest('hex').slice(0, 32);
   }
 }

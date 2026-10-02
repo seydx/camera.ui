@@ -18,7 +18,10 @@ export interface NatsPermission {
   deny?: string[];
 }
 
+export type NatsConnectionType = 'STANDARD' | 'WEBSOCKET' | 'LEAFNODE' | 'MQTT';
+
 export interface NatsUserConfig extends AuthConfig {
+  allowed_connection_types?: NatsConnectionType[];
   permissions?: {
     publish?: NatsPermission;
     subscribe?: NatsPermission;
