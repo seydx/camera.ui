@@ -427,15 +427,14 @@ const selectedPlateBox = computed(() => {
   return box?.label === 'license_plate' ? box : null;
 });
 
-const ghosts = computed(() => {
-  if (!showGhosts.value) return [];
-  return previousBoxes.value.filter((ghost) => !boxes.value.some((box) => iou(box, ghost) >= GHOST_COVERED_IOU));
-});
-
 const suggestions = computed(() => {
   const taken = new Set(boxes.value.map((box) => box.proposal));
   return (current.value.proposals ?? []).flatMap((box, proposal) => (box.source === 'suggestion' && !taken.has(proposal) ? [{ ...box, proposal }] : []));
 });
+
+const openGhosts = computed(() => previousBoxes.value.filter((ghost) => !overlapsAny(ghost, boxes.value)));
+
+const ghosts = computed(() => (showGhosts.value ? openGhosts.value.filter((ghost) => !overlapsAny(ghost, suggestions.value)) : []));
 
 const hasBoxContent = computed(() => boxes.value.length > 0 || ghosts.value.length > 0 || suggestions.value.length > 0);
 
@@ -510,6 +509,10 @@ function labelStyle(box: DBTrainingCandidateBox): CSSProperties {
   return style;
 }
 
+function overlapsAny(box: DBTrainingCandidateBox, others: DBTrainingCandidateBox[]): boolean {
+  return others.some((other) => iou(box, other) >= GHOST_COVERED_IOU);
+}
+
 function iou(a: DBTrainingCandidateBox, b: DBTrainingCandidateBox): number {
   const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
   const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
@@ -532,7 +535,9 @@ function adoptGhost(ghost: DBTrainingCandidateBox): void {
 }
 
 function adoptAllGhosts(): void {
-  for (const ghost of ghosts.value) boxes.value.push(copied(ghost));
+  if (!showGhosts.value) return;
+  const matched = suggestions.value.filter((suggestion) => overlapsAny(suggestion, openGhosts.value));
+  boxes.value.push(...ghosts.value.map(copied), ...matched.map((suggestion) => ({ ...suggestion })));
 }
 
 function takeSuggestion(suggestion: DBTrainingCandidateBox): void {
