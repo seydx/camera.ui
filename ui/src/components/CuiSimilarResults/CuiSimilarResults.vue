@@ -28,6 +28,7 @@
           :semantic-score="item.score"
           :seg-index="item.segIndex"
           @scroll-to-event="(ts: number) => emit('open', { event: item.event, camera: cameraById.get(item.event.cameraId), timestamp: ts })"
+          @open-trace="(atMs?: number) => openTrace(item.event, atMs)"
         />
       </template>
     </CuiRecordingsGrid>
@@ -50,7 +51,7 @@ import { CamerasQuery } from '@/api/routes/cameras.js';
 
 import { SIMILAR_SCORE_RANGES } from './types.js';
 
-import type { SimilarMatch } from '@camera.ui/nvr';
+import type { RecordedEvent, SimilarMatch } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 import type { CuiSimilarResultsEmits, CuiSimilarResultsProps, SimilarResultItem } from './types.js';
 
@@ -62,6 +63,7 @@ const emit = defineEmits<CuiSimilarResultsEmits>();
 
 const { t } = useI18n();
 const { result, isSearching, isAvailable, licenseRequired, search, clear } = useSimilarSearch();
+const { openEventTrace } = useEventTraceDialog();
 
 const { data: camerasData } = camerasQuery.getCamerasQuery({ page: 1, pageSize: -1 });
 
@@ -96,6 +98,11 @@ function rangeOf(match: SimilarMatch): [number, number] | undefined {
   if (!found) return undefined;
   if (match.kind) return SIMILAR_SCORE_RANGES[match.kind];
   return found.mode === 'face' && found.label ? undefined : SIMILAR_SCORE_RANGES[found.mode];
+}
+
+function openTrace(event: RecordedEvent, atMs?: number): void {
+  const camera = cameraById.value.get(event.cameraId);
+  if (camera) openEventTrace(event, camera, atMs);
 }
 
 watch(items, (list) => {
