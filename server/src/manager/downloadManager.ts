@@ -1,17 +1,23 @@
 import { RPCMethod } from '@camera.ui/rpc';
 import { randomUUID } from 'node:crypto';
-import { closeSync, createReadStream, existsSync, fstatSync, openSync, readSync, statSync, unlinkSync } from 'node:fs';
-import { basename } from 'node:path';
+import { closeSync, createReadStream, existsSync, fstatSync, openSync, readSync, statSync } from 'node:fs';
+import { readFile, realpath, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { container } from 'tsyringe';
 
 import { DownloadsService } from '../api/services/downloads.service.js';
+import { NVR_PLUGIN_NAMES } from '../plugins/nvr.js';
+import { decodeEnvelope } from '../plugins/store/envelope.js';
+import { STORE_FILE_NAME } from '../plugins/store/pluginStoreFile.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
 import type { Promisify } from '@camera.ui/rpc';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerResponse } from 'node:http';
 import type { DownloadParamsRequest } from '../api/types/index.js';
+import type { PluginManager } from '../plugins/index.js';
 import type { RemoteAccessManager } from '../remote/index.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type {
@@ -22,6 +28,7 @@ import type {
   DownloadToken,
   PluginFileServeInterface,
 } from '../rpc/interfaces/download.js';
+import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 
 interface DownloadEntry {
@@ -43,26 +50,87 @@ const STREAM_POLL_MS = 50;
 const STREAM_FILE_WAIT_MS = 5000;
 const STREAM_MARKER_WAIT_POLL_MS = 250;
 
+const CONFIG_STORE_DIR = 'volume';
+const EXPORTS_DIR = '.exports';
+const ZONE_KINDS = ['closed', 'exports', 'plugin', 'plugins'] as const;
+
+type ZoneKind = (typeof ZONE_KINDS)[number];
+
+interface Zone {
+  root: string;
+  kind: ZoneKind;
+}
+
+async function tryRealpath(path: string): Promise<string | undefined> {
+  return realpath(path).catch(() => undefined);
+}
+
+async function realZones(kind: ZoneKind, paths: string[]): Promise<Zone[]> {
+  const roots = await Promise.all(paths.map(tryRealpath));
+  return roots.filter((root): root is string => !!root).map((root) => ({ root, kind }));
+}
+
+async function realTarget(path: string, followLink: boolean): Promise<string | undefined> {
+  const real = followLink ? await tryRealpath(path) : undefined;
+  if (real) return real;
+  const parent = await tryRealpath(dirname(path));
+  return parent ? join(parent, basename(path)) : undefined;
+}
+
+function segmentsBelow(root: string, path: string): string[] | undefined {
+  const rel = relative(root, path);
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return undefined;
+  return rel ? rel.split(sep) : [];
+}
+
+function zoneAllows(kind: ZoneKind, segments: string[]): boolean {
+  switch (kind) {
+    case 'closed':
+      return false;
+    case 'exports':
+      return segments.length > 0;
+    case 'plugin':
+      return segments.length > 0 && segments[0] !== CONFIG_STORE_DIR;
+    case 'plugins': {
+      // <plugin>/... or @scope/<plugin>/...
+      const depth = segments[0]?.startsWith('@') ? 2 : 1;
+      return segments.length > depth && segments[depth] !== CONFIG_STORE_DIR;
+    }
+  }
+}
+
+async function readPluginSetting(storagePath: string, key: string): Promise<string | undefined> {
+  try {
+    const value = decodeEnvelope(await readFile(join(storagePath, CONFIG_STORE_DIR, STORE_FILE_NAME))).plugin?.[key];
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class DownloadManager implements DownloadManagerInterface {
   private proxyServer: ProxyServer;
   private logger: LoggerService;
+  private configService: ConfigService;
   private downloadsService: DownloadsService;
 
   private namespaces = NamespaceManager.downloadManagerNamespaces();
   private closeProxy?: () => Promise<void>;
 
   private registry = new Map<string, DownloadEntry>();
+  private exportFolders = new Set<string>();
   private cleanupTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
     this.proxyServer = container.resolve<ProxyServer>('proxy');
     this.logger = container.resolve<LoggerService>('logger');
+    this.configService = container.resolve<ConfigService>('configService');
     this.downloadsService = new DownloadsService();
   }
 
   public async register(): Promise<void> {
     this.closeProxy = await this.proxyServer.proxy.registerHandler(this.namespaces.downloadManagerRpc, this);
-    this.restoreFromPersistedRegistry();
+    await this.restoreFromPersistedRegistry();
     this.cleanupTimer = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
   }
 
@@ -76,6 +144,10 @@ export class DownloadManager implements DownloadManagerInterface {
 
   @RPCMethod
   public async createDownload(options: CreateDownloadOptions): Promise<DownloadToken> {
+    if (!options.remotePluginId) {
+      await this.assertLocalPath(options.filePath);
+    }
+
     const token = randomUUID();
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     const expiresAt = Date.now() + ttlMs;
@@ -110,6 +182,11 @@ export class DownloadManager implements DownloadManagerInterface {
 
   @RPCMethod
   public async createStreamDownload(options: CreateStreamDownloadOptions): Promise<DownloadToken> {
+    if (!options.remotePluginId) {
+      await this.assertLocalPath(options.filePath);
+      if (options.markerPath) await this.assertLocalPath(options.markerPath);
+    }
+
     const token = randomUUID();
     const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
     const expiresAt = Date.now() + ttlMs;
@@ -150,9 +227,7 @@ export class DownloadManager implements DownloadManagerInterface {
     if (entry) {
       this.registry.delete(token);
       this.removePersistedEntry(token);
-      if (entry.cleanup !== 'never') {
-        this.tryDeleteFile(entry.filePath);
-      }
+      await this.deleteEntryFile(entry);
     }
   }
 
@@ -178,7 +253,7 @@ export class DownloadManager implements DownloadManagerInterface {
     if (Date.now() > entry.expiresAt) {
       this.registry.delete(token);
       this.removePersistedEntry(token);
-      this.expireEntry(entry);
+      this.deleteEntryFile(entry).catch(() => {});
       reply.code(404).send({ error: 'Download expired' });
       return;
     }
@@ -191,26 +266,27 @@ export class DownloadManager implements DownloadManagerInterface {
       return this.handleRemoteDownload(reply, token, entry);
     }
 
-    if (!existsSync(entry.filePath)) {
+    const filePath = await this.allowedLocalPath(entry.filePath, true);
+    if (!filePath || !existsSync(filePath)) {
       this.registry.delete(token);
       this.removePersistedEntry(token);
       reply.code(404).send({ error: 'File not found' });
       return;
     }
 
-    const stat = statSync(entry.filePath);
+    const stat = statSync(filePath);
 
     reply.header('Content-Type', entry.mimeType);
     reply.header('Content-Disposition', `attachment; filename="${entry.filename}"`);
     reply.header('Content-Length', stat.size);
 
-    const stream = createReadStream(entry.filePath);
+    const stream = createReadStream(filePath);
 
     if (entry.cleanup === 'on-download') {
       stream.on('end', () => {
         this.registry.delete(token);
         this.removePersistedEntry(token);
-        this.tryDeleteFile(entry.filePath);
+        this.deleteLocalFile(entry.filePath).catch(() => {});
       });
     }
 
@@ -290,7 +366,7 @@ export class DownloadManager implements DownloadManagerInterface {
     return `${externalUrl.replace(/\/+$/, '')}/api/download/${encodeURIComponent(token)}`;
   }
 
-  private restoreFromPersistedRegistry(): void {
+  private async restoreFromPersistedRegistry(): Promise<void> {
     const now = Date.now();
     let restored = 0;
     let evicted = 0;
@@ -298,17 +374,30 @@ export class DownloadManager implements DownloadManagerInterface {
     for (const entry of this.downloadsService.list()) {
       const token = entry._id;
 
+      // rows written before paths were checked can hold any type
+      if (typeof entry.filePath !== 'string' || (entry.markerPath != null && typeof entry.markerPath !== 'string')) {
+        this.downloadsService.remove(token);
+        evicted++;
+        continue;
+      }
+
       if (entry.streaming) {
         this.downloadsService.remove(token);
-        this.tryDeleteFile(entry.filePath);
-        if (entry.markerPath) this.tryDeleteFile(entry.markerPath);
+        await this.deleteLocalFile(entry.filePath);
+        if (entry.markerPath) await this.deleteLocalFile(entry.markerPath);
         evicted++;
         continue;
       }
 
       if (now > entry.expiresAt) {
         this.downloadsService.remove(token);
-        if (entry.cleanup !== 'never') this.tryDeleteFile(entry.filePath);
+        if (entry.cleanup !== 'never') await this.deleteLocalFile(entry.filePath);
+        evicted++;
+        continue;
+      }
+
+      if (!(await this.allowedLocalPath(entry.filePath, true))) {
+        this.downloadsService.remove(token);
         evicted++;
         continue;
       }
@@ -445,7 +534,8 @@ export class DownloadManager implements DownloadManagerInterface {
     }
 
     const fileReady = await this.waitForStreamFile(req, entry);
-    if (!fileReady) {
+    const filePath = fileReady ? await this.allowedLocalPath(entry.filePath, true) : undefined;
+    if (!filePath) {
       this.registry.delete(token);
       this.removePersistedEntry(token);
       reply.code(404).send({ error: 'Export file not created' });
@@ -483,7 +573,7 @@ export class DownloadManager implements DownloadManagerInterface {
       this.registry.delete(token);
       this.removePersistedEntry(token);
       if (entry.cleanup !== 'never') {
-        this.tryDeleteFile(entry.filePath);
+        this.deleteLocalFile(entry.filePath).catch(() => {});
       }
     };
 
@@ -492,7 +582,7 @@ export class DownloadManager implements DownloadManagerInterface {
     });
 
     try {
-      fd = openSync(entry.filePath, 'r');
+      fd = openSync(filePath, 'r');
 
       while (true) {
         if (destroyed) break;
@@ -573,33 +663,89 @@ export class DownloadManager implements DownloadManagerInterface {
   }
 
   private cleanup(): void {
+    this.recordingZones().catch(() => {});
+
     const now = Date.now();
     for (const [token, entry] of this.registry) {
       if (now > entry.expiresAt) {
         this.registry.delete(token);
         this.removePersistedEntry(token);
-        this.expireEntry(entry);
+        this.deleteEntryFile(entry).catch(() => {});
         this.logger.debug(`Download expired and cleaned up: ${token}`);
       }
     }
   }
 
-  private expireEntry(entry: DownloadEntry): void {
+  private async deleteEntryFile(entry: DownloadEntry): Promise<void> {
     if (entry.cleanup === 'never') return;
     if (entry.remotePluginId) {
-      this.deleteRemoteFile(entry).catch(() => {});
+      await this.deleteRemoteFile(entry).catch(() => {});
     } else {
-      this.tryDeleteFile(entry.filePath);
+      await this.deleteLocalFile(entry.filePath);
     }
   }
 
-  private tryDeleteFile(filePath: string): void {
+  private async assertLocalPath(filePath: unknown): Promise<void> {
+    if (typeof filePath !== 'string' || !filePath || filePath.includes('\0') || !(await this.allowedLocalPath(filePath, true))) {
+      throw new Error(`Download path ${String(filePath)} is outside the plugin storage and recording folders`);
+    }
+  }
+
+  private async allowedLocalPath(filePath: string, followLink: boolean): Promise<string | undefined> {
+    const target = await realTarget(resolve(filePath), followLink);
+    if (!target) return undefined;
+
+    for (const zone of await this.zones()) {
+      const segments = segmentsBelow(zone.root, target);
+      if (segments) return zoneAllows(zone.kind, segments) ? target : undefined;
+    }
+    return undefined;
+  }
+
+  private async zones(): Promise<Zone[]> {
+    const { HOME_PATH, STORAGE_PATH, RESTORE_STAGING_PATH, TMP_PATH, PLUGINS_STORAGE_PATH } = this.configService;
+    const loaded = container.isRegistered('pluginManager') ? [...container.resolve<PluginManager>('pluginManager').plugins.values()] : [];
+    const pluginFolders = [...new Set([...NVR_PLUGIN_NAMES, ...loaded.map((plugin) => plugin.pluginName)])].map((name) => join(PLUGINS_STORAGE_PATH, name));
+
+    const zones = [
+      ...(await realZones('closed', [HOME_PATH, STORAGE_PATH, RESTORE_STAGING_PATH, TMP_PATH, tmpdir()])),
+      ...(await this.recordingZones()),
+      ...[...this.exportFolders].map((root): Zone => ({ root, kind: 'exports' })),
+      ...(await realZones('plugin', pluginFolders)),
+      ...(await realZones('plugins', [PLUGINS_STORAGE_PATH])),
+    ];
+    return zones.sort((a, b) => b.root.length - a.root.length || ZONE_KINDS.indexOf(a.kind) - ZONE_KINDS.indexOf(b.kind));
+  }
+
+  private async recordingZones(): Promise<Zone[]> {
+    const paths = [process.env.CAMERAUI_PLUGIN_NVR_STORAGE_PATH];
+    for (const name of NVR_PLUGIN_NAMES) {
+      const storagePath = join(this.configService.PLUGINS_STORAGE_PATH, name);
+      paths.push(await readPluginSetting(storagePath, 'storagePath'), join(storagePath, 'recordings'));
+    }
+
+    const zones = await realZones(
+      'closed',
+      paths.filter((path): path is string => !!path && isAbsolute(path)),
+    );
+    // kept after a storage move, the NVR exports into the old folder until it has switched over
+    for (const { root } of zones) this.exportFolders.add(join(root, EXPORTS_DIR));
+    return zones;
+  }
+
+  private async deleteLocalFile(filePath: string): Promise<void> {
+    const target = await this.allowedLocalPath(filePath, false);
+    if (!target) {
+      this.logger.debug(`Download cleanup skipped, not inside a download folder: ${filePath}`);
+      return;
+    }
+
     try {
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
-      }
+      await unlink(target);
     } catch (err) {
-      this.logger.warn(`Failed to delete download file: ${filePath}`, err);
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.logger.warn(`Failed to delete download file: ${filePath}`, err);
+      }
     }
   }
 

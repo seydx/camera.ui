@@ -1,7 +1,7 @@
 import { PluginsService } from '../api/services/plugins.service.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
-const NVR_PLUGIN_NAMES = ['@camera.ui/camera-ui-nvr'];
+export const NVR_PLUGIN_NAMES = ['@camera.ui/camera-ui-nvr'];
 
 export function isNvrPluginName(pluginName: string): boolean {
   return NVR_PLUGIN_NAMES.includes(pluginName);
