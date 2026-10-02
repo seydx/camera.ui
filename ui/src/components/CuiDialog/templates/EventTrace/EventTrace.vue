@@ -357,11 +357,16 @@ const {
   allTicks,
   ensureFrames,
   fullFrame,
+  hasFullFrame,
+  exactFrames,
 } = useEventTrace();
 
 const THUMB_WIDTH = 144;
 const STRIP_GAP = 8;
 const BUNDLE_MAX_FRAMES = 60;
+const BUNDLE_FRAME_GROUP = 4;
+const BUNDLE_CLIP_MS = 10 * 60_000;
+const STAGE_THUMB_DELAY_MS = 250;
 const PREFETCH_AHEAD = 12;
 const PREFETCH_BEHIND = 4;
 const OPEN_EVENT_TAIL_MS = 2000;
@@ -390,9 +395,11 @@ const stripRef = useTemplateRef<HTMLElement>('stripRef');
 const stageRef = useTemplateRef<HTMLElement>('stageRef');
 const frameRef = useTemplateRef<HTMLElement>('frameRef');
 const thumbCanvases = new Map<number, HTMLCanvasElement>();
-const selectedIndex = ref(-1);
+const selectedTick = shallowRef<TraceTick>();
 const stagePicture = shallowRef<ImageBitmap>();
 const stageIsOwnFrame = ref(false);
+const stageTick = shallowRef<TraceTick>();
+const ownFrameSize = shallowRef<{ w: number; h: number }>();
 const stageVersion = ref(0);
 const stageLoading = ref(false);
 const showZones = ref(false);
@@ -405,6 +412,8 @@ const jumpAt = ref<Date>();
 const earlierBusy = ref(false);
 
 let stageRequest = 0;
+let dueTick: TraceTick | undefined;
+let thumbTimer: ReturnType<typeof setTimeout> | undefined;
 let wasPlayingBeforeScrub = false;
 let targetMs = props.startAtMs;
 let lastScrubSent = 0;
@@ -422,11 +431,14 @@ const {
   onTouchEnd: onStageTouchEnd,
 } = useStageZoom(stageRef, frameRef);
 
+const selectedIndex = computed(() => frames.value.findIndex((f) => f.tick === selectedTick.value));
 const selected = computed<TraceFrame | undefined>(() => frames.value[selectedIndex.value]);
 
+// the frame box keeps the own frame's aspect, a strip keyframe of another role letterboxes
 const stageAspect = computed(() => {
+  if (ownFrameSize.value) return ownFrameSize.value;
   const picture = stagePicture.value ?? selected.value?.thumb ?? frames.value.find((f) => f.thumb)?.thumb;
-  return picture ? { w: picture.width, h: picture.height } : { w: 16, h: 9 };
+  return picture?.width ? { w: picture.width, h: picture.height } : { w: 16, h: 9 };
 });
 
 const zones = computed(() => trace.value?.config?.zones ?? props.camera.zones);
@@ -515,8 +527,13 @@ const scrubMarks = computed(() => {
 const onStripScroll = useThrottleFn(loadVisible, 150, true);
 
 function select(index: number): void {
-  selectedIndex.value = index;
+  selectedTick.value = frames.value[index]?.tick;
   ensureFrames(index - PREFETCH_BEHIND, index + PREFETCH_AHEAD);
+}
+
+function revealSelected(): void {
+  scrollThumbIntoView('instant');
+  loadVisible();
 }
 
 function loadVisible(): void {
@@ -540,7 +557,6 @@ async function showEarlier(): Promise<void> {
     const scrollBefore = strip?.scrollLeft ?? 0;
     const added = await loadEarlier();
     if (added === 0) return;
-    if (selectedIndex.value >= 0) selectedIndex.value += added;
     await nextTick();
     if (strip) strip.scrollLeft = scrollBefore + added * (THUMB_WIDTH + STRIP_GAP);
     loadVisible();
@@ -562,11 +578,11 @@ async function jumpToTime(): Promise<void> {
 async function jumpToMs(tMs: number): Promise<void> {
   const target = Math.min(Math.max(tMs, props.event.startTime), props.event.endTime ?? Date.now());
   targetMs = target;
-  selectedIndex.value = -1;
+  selectedTick.value = undefined;
   thumbCanvases.clear();
   await jumpTrace(target);
   await nextTick();
-  loadVisible();
+  revealSelected();
   if (showPlayback.value) jumpTo(target);
 }
 
@@ -589,33 +605,58 @@ function drawThumb(canvas: HTMLCanvasElement, picture: ImageBitmap): void {
   coverPrivacy(ctx, picture.width, picture.height);
 }
 
-async function showStage(index: number): Promise<void> {
-  const frame = frames.value[index];
-  if (!frame) {
+async function showStage(tick: TraceTick | undefined): Promise<void> {
+  const request = ++stageRequest;
+  clearTimeout(thumbTimer);
+  dueTick = undefined;
+  if (!tick) {
+    stageLoading.value = false;
     setStagePicture(undefined, false);
     return;
   }
-  const request = ++stageRequest;
-  stageLoading.value = true;
-  const full = await fullFrame(index);
+  stageLoading.value = !hasFullFrame(tick);
+  if (stageLoading.value) {
+    thumbTimer = setTimeout(() => {
+      if (request !== stageRequest) return;
+      dueTick = tick;
+      showDueThumb();
+    }, STAGE_THUMB_DELAY_MS);
+  }
+  const full = await fullFrame(tick);
   if (request !== stageRequest) return;
+  clearTimeout(thumbTimer);
   stageLoading.value = false;
-  if (full) setStagePicture(full, true);
-  else setStagePicture(frame.thumb, false);
+  if (full) {
+    dueTick = undefined;
+    setStagePicture(full, true, tick);
+    return;
+  }
+  dueTick = tick;
+  if (!showDueThumb()) setStagePicture(undefined, false);
 }
 
-function setStagePicture(picture: ImageBitmap | undefined, own: boolean): void {
+function showDueThumb(): boolean {
+  const tick = dueTick;
+  const thumb = tick && frames.value.find((f) => f.tick === tick)?.thumb;
+  if (!thumb) return false;
+  if (stagePicture.value !== thumb) setStagePicture(thumb, false, tick);
+  return true;
+}
+
+function setStagePicture(picture: ImageBitmap | undefined, own: boolean, tick?: TraceTick): void {
+  if (!picture !== !stagePicture.value) stageVersion.value++;
+  if (picture && own) ownFrameSize.value = { w: picture.width, h: picture.height };
   stageIsOwnFrame.value = own;
   stagePicture.value = picture;
-  stageVersion.value++;
+  stageTick.value = picture ? tick : undefined;
 }
 
 function drawStage(): void {
   const canvas = stageCanvasRef.value;
-  const frame = selected.value;
+  const tick = stageTick.value;
   const picture = stagePicture.value;
-  if (!canvas || !frame || !picture) return;
-  if (stageIsOwnFrame.value) drawPicture(canvas, picture, frame.tick);
+  if (!canvas || !tick || !picture?.width) return;
+  if (stageIsOwnFrame.value) drawPicture(canvas, picture, tick);
   else drawThumb(canvas, picture);
 }
 
@@ -751,10 +792,10 @@ function redrawThumbs(): void {
   }
 }
 
-function scrollThumbIntoView(): void {
+function scrollThumbIntoView(behavior: ScrollBehavior): void {
   const strip = stripRef.value;
   const thumb = strip?.children[selectedIndex.value];
-  if (thumb instanceof HTMLElement) thumb.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  if (thumb instanceof HTMLElement) thumb.scrollIntoView({ block: 'nearest', inline: 'center', behavior });
 }
 
 function frameAspect(frame: TraceFrame): string {
@@ -977,35 +1018,22 @@ async function exportBundle(): Promise<void> {
   bundleBusy.value = true;
   try {
     const encoder = new TextEncoder();
-    const ticks = await allTicks();
+    const setup = trace.value?.config ?? null;
+    const range = bundleClipRange();
+    const [ticks, clip, pictures] = await Promise.all([allTicks(), exportClip(range), bundleFrames()]);
     const entries: ZipEntry[] = [];
 
+    const clipRange = clip && range ? { clipStartMs: range.startMs, clipEndMs: range.endMs } : {};
     entries.push({
       name: 'event.json',
-      data: encoder.encode(JSON.stringify({ camera: { id: props.camera._id, name: props.camera.name }, event: props.event }, null, 2)),
+      data: encoder.encode(JSON.stringify({ camera: { id: props.camera._id, name: props.camera.name }, event: props.event, ...clipRange }, null, 2)),
     });
 
-    const lines = [JSON.stringify({ setup: trace.value?.config ?? null, exportedAt: Date.now() }), ...ticks.map((tick) => JSON.stringify({ tick }))];
+    const lines = [JSON.stringify({ setup, exportedAt: Date.now() }), ...ticks.map((tick) => JSON.stringify({ tick }))];
     entries.push({ name: 'trace.jsonl', data: encoder.encode(`${lines.join('\n')}\n`) });
 
-    const clip = await exportClip();
     if (clip) entries.push({ name: 'clip.mp4', data: clip });
-
-    let rendered = 0;
-    for (const [index, frame] of frames.value.entries()) {
-      if (rendered >= BUNDLE_MAX_FRAMES) break;
-      const tick = frame.tick;
-      if (tick.world.length === 0 && !tick.attrs?.length && tick.detections.length === 0) continue;
-      const picture = await fullFrame(index);
-      if (!picture) continue;
-      const canvas = document.createElement('canvas');
-      drawPicture(canvas, picture, tick);
-      const jpeg = await canvasToJpeg(canvas);
-      if (!jpeg) continue;
-      const status = frames.value[index]?.status ?? 'approx';
-      entries.push({ name: `frames/${String(index).padStart(4, '0')}_${relativeSeconds(tick.tMs)}s_${status}.jpg`, data: jpeg });
-      rendered++;
-    }
+    entries.push(...pictures);
 
     await download({ blob: buildStoredZip(entries), filename: `trace-${props.camera.name}-${props.event.id.slice(0, 8)}.zip` });
   } catch (error) {
@@ -1016,11 +1044,48 @@ async function exportBundle(): Promise<void> {
   }
 }
 
-async function exportClip(): Promise<Uint8Array<ArrayBuffer> | undefined> {
+async function bundleFrames(): Promise<ZipEntry[]> {
+  const candidates = [...frames.value.entries()].filter(([, frame]) => {
+    const tick = frame.tick;
+    return tick.world.length > 0 || Boolean(tick.attrs?.length) || tick.detections.length > 0;
+  });
+  const entries: ZipEntry[] = [];
+  for (let start = 0; start < candidates.length && entries.length < BUNDLE_MAX_FRAMES; start += BUNDLE_FRAME_GROUP) {
+    const group = candidates.slice(start, start + BUNDLE_FRAME_GROUP);
+    const found = await exactFrames(group.map(([, frame]) => frame.tick));
+    for (const [index, frame] of group) {
+      const hit = found.get(frame.tick);
+      if (!hit) continue;
+      try {
+        if (entries.length >= BUNDLE_MAX_FRAMES) continue;
+        const canvas = document.createElement('canvas');
+        drawPicture(canvas, hit.bitmap, frame.tick);
+        const jpeg = await canvasToJpeg(canvas);
+        if (!jpeg) continue;
+        const status = hit.exact ? 'exact' : 'approx';
+        entries.push({ name: `frames/${String(index).padStart(4, '0')}_${relativeSeconds(frame.tick.tMs)}s_${status}.jpg`, data: jpeg });
+      } finally {
+        hit.bitmap.close();
+      }
+    }
+  }
+  return entries;
+}
+
+function bundleClipRange(): { startMs: number; endMs: number } | undefined {
+  const { startTime, endTime } = props.event;
+  if (!endTime) return undefined;
+  if (endTime - startTime <= BUNDLE_CLIP_MS) return { startMs: startTime, endMs: endTime };
+  const center = selected.value?.tick.tMs ?? startTime;
+  const startMs = Math.min(Math.max(center - BUNDLE_CLIP_MS / 2, startTime), endTime - BUNDLE_CLIP_MS);
+  return { startMs, endMs: startMs + BUNDLE_CLIP_MS };
+}
+
+async function exportClip(range: { startMs: number; endMs: number } | undefined): Promise<Uint8Array<ArrayBuffer> | undefined> {
   const nvrPlugin = nvrPluginRef.value as { nvrExport: (...args: any[]) => Promise<{ url: string }> } | undefined;
-  if (!nvrPlugin?.nvrExport || !props.event.endTime) return undefined;
+  if (!nvrPlugin?.nvrExport || !range) return undefined;
   try {
-    const result = await nvrPlugin.nvrExport(props.event.cameraId, props.event.startTime * 1000, props.event.endTime * 1000);
+    const result = await nvrPlugin.nvrExport(props.event.cameraId, range.startMs * 1000, range.endMs * 1000);
     const response = await fetch(result.url, { credentials: 'include' });
     if (!response.ok) return undefined;
     return new Uint8Array(await response.arrayBuffer());
@@ -1090,24 +1155,23 @@ watch(frames, (list) => {
   }
   nextTick(() => {
     redrawThumbs();
-    if (!stagePicture.value && !stageLoading.value && selected.value?.thumb) showStage(selectedIndex.value);
+    showDueThumb();
   });
 });
 
-watch(selectedIndex, (index) => {
-  showStage(index);
-  nextTick(scrollThumbIntoView);
-  const tick = frames.value[index]?.tick;
+watch(selectedTick, (tick) => {
+  showStage(tick);
+  nextTick(() => scrollThumbIntoView('smooth'));
   if (tick) jumpAt.value = new Date(tick.tMs);
   if (showPlayback.value && tick) jumpTo(tick.tMs);
 });
 
-watch([stagePicture, stageIsOwnFrame, stageCanvasRef, showZones], () => nextTick(drawStage));
+watch([stagePicture, stageIsOwnFrame, stageTick, stageCanvasRef, showZones], () => nextTick(drawStage));
 
 watch(
   status,
   (value) => {
-    if (value === 'ready') nextTick(loadVisible);
+    if (value === 'ready') nextTick(revealSelected);
     updateHeaderActions();
   },
   { immediate: true },
@@ -1123,6 +1187,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  clearTimeout(thumbTimer);
   if (showPlayback.value) nvrController.stop();
 });
 

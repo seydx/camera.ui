@@ -196,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { thumbnailToUrl, useEventStore } from '@camera.ui/nvr';
+import { useEventStore } from '@camera.ui/nvr';
 import VueZoomable from 'vue-zoomable';
 import DownloadIcon from '~icons/tabler/download';
 
@@ -205,7 +205,7 @@ import { buildStoredZip } from '@/utils/zipStore.js';
 
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
 import type { ZipEntry } from '@/utils/zipStore.js';
-import type { EpisodeTrace, EpisodeTraceCall } from '@camera.ui/nvr';
+import type { EpisodeTrace, EpisodeTraceCall, EpisodeTraceImage } from '@camera.ui/nvr';
 import type { EpisodeTracePlugin, EpisodeTraceProps } from './types.js';
 
 interface TraceImage {
@@ -252,6 +252,8 @@ const {
 } = useStageZoom(stageRef, imageRef);
 
 let loadStarted = false;
+let unmounted = false;
+const imageUrls: string[] = [];
 
 const selectedImage = computed(() => images.value[selectedIndex.value]);
 
@@ -312,6 +314,8 @@ function clock(ms: number): string {
 }
 
 async function load(plugin: EpisodeTracePlugin): Promise<void> {
+  imagesLoading.value = true;
+  const pictures = plugin.getEpisodeTraceImages(props.episode.id).catch((): EpisodeTraceImage[] => []);
   try {
     const result = await plugin.getEpisodeTrace(props.episode.id);
     if (!result) {
@@ -320,13 +324,15 @@ async function load(plugin: EpisodeTracePlugin): Promise<void> {
     }
     trace.value = result;
     status.value = 'ready';
-    imagesLoading.value = true;
-    const list = await plugin.getEpisodeTraceImages(props.episode.id);
+    const list = await pictures;
+    if (unmounted) return;
     images.value = list
       .filter((image) => image.data && image.data.length > 0)
       .map((image) => {
         const data = new Uint8Array(image.data!);
-        return { note: image.note, data, url: thumbnailToUrl(data) ?? '' };
+        const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+        imageUrls.push(url);
+        return { note: image.note, data, url };
       });
   } catch (error) {
     log.error('Episode trace failed:', error);
@@ -424,6 +430,11 @@ watch(
 );
 
 watch([status, bundleBusy], updateHeaderActions, { immediate: true });
+
+onBeforeUnmount(() => {
+  unmounted = true;
+  for (const url of imageUrls) URL.revokeObjectURL(url);
+});
 </script>
 
 <style scoped>
