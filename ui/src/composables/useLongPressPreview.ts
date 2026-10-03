@@ -16,14 +16,17 @@ export function useLongPressPreview(target: MaybeElementRef, onStart: () => void
       suppressClick = true;
       onStart();
     },
-    {
-      delay: LONG_PRESS_MS,
-      onMouseUp: (_duration, _distance, _isLongPress, event) => {
-        if (event.pointerType === 'touch') lastTouchAt = Date.now();
-        if (!active) return;
-        active = false;
-        onEnd();
-      },
+    { delay: LONG_PRESS_MS },
+  );
+
+  useEventListener(
+    () => unrefElement(target),
+    ['pointerup', 'pointercancel', 'pointerleave'],
+    (event: PointerEvent) => {
+      if (event.pointerType === 'touch') lastTouchAt = Date.now();
+      if (!active) return;
+      active = false;
+      onEnd();
     },
   );
 

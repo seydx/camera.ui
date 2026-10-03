@@ -69,9 +69,16 @@
         <i-svg-spinners:ring-resize class="w-7 h-7 text-white" />
       </div>
 
-      <div v-if="previewIndicator" class="absolute bottom-2 left-1/2 -translate-x-1/2 z-[4] pointer-events-none">
-        <span class="text-[10px] font-semibold text-white bg-black/60 px-1.5 py-0.5 rounded-md whitespace-nowrap" style="font-variant-numeric: tabular-nums">
-          {{ previewIndicator }}
+      <div v-if="previewIndicator" class="absolute bottom-2 inset-x-2 flex justify-center z-[4] pointer-events-none">
+        <span
+          class="flex max-w-full min-w-0 text-[10px] font-semibold text-white bg-black/60 px-1.5 py-0.5 rounded-md whitespace-nowrap"
+          style="font-variant-numeric: tabular-nums"
+        >
+          <template v-if="previewCamera">
+            <span class="min-w-0 truncate">{{ previewCamera }}</span>
+            <span class="shrink-0 px-1">·</span>
+          </template>
+          <span class="shrink-0">{{ previewIndicator }}</span>
         </span>
       </div>
     </div>
@@ -179,9 +186,12 @@ const previewIndicator = computed(() => {
   if (!isPreviewActive.value) return '';
   if (preview.status.value === 'unavailable') return t('views.recordings.no_preview');
   if (preview.status.value !== 'playing' || !preview.previewTimeMs.value) return '';
-  const camera = props.cameraById.get(preview.previewCameraId.value)?.name;
-  const clock = formatClock(preview.previewTimeMs.value);
-  return camera ? `${camera} · ${clock}` : clock;
+  return formatClock(preview.previewTimeMs.value);
+});
+
+const previewCamera = computed(() => {
+  if (!preview || previewBlocked.value || !isPreviewActive.value || preview.status.value !== 'playing') return undefined;
+  return props.cameraById.get(preview.previewCameraId.value)?.name;
 });
 
 const formatDateTime = computed(() => formatCardTime(props.episode.startTime));
