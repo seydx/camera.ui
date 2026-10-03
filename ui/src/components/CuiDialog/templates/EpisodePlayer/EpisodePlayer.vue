@@ -61,10 +61,12 @@
         </div>
       </Transition>
 
-      <div class="absolute top-0 left-0 right-0 p-3 z-[3] flex items-center gap-2 pointer-events-none">
-        <span class="text-sm font-semibold p-2 bg-black/60 rounded-xl text-white truncate">{{ activeCameraName }}</span>
-        <span class="ml-auto text-sm font-medium p-2 bg-black/60 rounded-xl text-white tabular-nums shrink-0">{{ clockLabel }}</span>
-      </div>
+      <Transition name="fade-2">
+        <div v-if="showControl && !similarPicking" class="absolute top-0 left-0 right-0 p-3 z-[3] flex items-center gap-2 pointer-events-none">
+          <span class="text-sm font-semibold p-2 bg-black/60 rounded-xl text-white truncate">{{ activeCameraName }}</span>
+          <span class="ml-auto text-sm font-medium p-2 bg-black/60 rounded-xl text-white tabular-nums shrink-0">{{ clockLabel }}</span>
+        </div>
+      </Transition>
 
       <Transition name="fade-2">
         <div v-if="showControl" class="absolute bottom-0 inset-x-0 z-[5] dark-mode">
