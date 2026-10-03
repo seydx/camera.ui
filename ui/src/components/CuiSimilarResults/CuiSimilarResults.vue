@@ -38,7 +38,7 @@
       <span v-else-if="result && result.mode !== 'none'">{{ t('views.recordings.similar_empty') }}</span>
     </div>
 
-    <div class="p-3 shrink-0">
+    <div class="p-3 shrink-0" :class="{ 'pb-safe-offset-3': safeBottom }">
       <Button :label="t('components.similar.show_all')" severity="secondary" size="small" class="w-full" @click="emit('showAll')" />
     </div>
   </div>

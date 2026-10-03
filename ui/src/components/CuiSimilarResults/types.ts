@@ -4,6 +4,7 @@ import type { DBCamera } from '@shared/types';
 
 export interface CuiSimilarResultsProps {
   request: SimilarSearchRequest;
+  safeBottom?: boolean;
 }
 
 export interface SimilarResultOpen {

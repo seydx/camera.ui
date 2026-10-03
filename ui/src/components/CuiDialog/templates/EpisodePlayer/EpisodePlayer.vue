@@ -175,6 +175,7 @@
       v-if="similarRequest"
       :request="similarRequest"
       :class="mdBreakpoint ? 'similar-below' : 'similar-side'"
+      :safe-bottom="mdBreakpoint"
       @open="openSimilarMatch"
       @close="similarRequest = undefined"
       @show-all="showAllSimilar"
