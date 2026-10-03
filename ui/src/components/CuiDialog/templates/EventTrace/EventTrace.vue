@@ -207,7 +207,7 @@
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto">
-        <div v-if="selected" class="flex flex-col gap-2 px-4 py-3">
+        <div v-if="selected" class="flex flex-col gap-2 px-4 py-3" :class="{ 'pb-safe-offset-3': mdBreakpoint }">
           <div class="tile">
             <div class="tile-head">
               <i-tabler:activity class="w-3.5 h-3.5" />
@@ -335,6 +335,7 @@ const props = defineProps<EventTraceProps>();
 const log = useLogger();
 const toast = useCuiToast();
 const { t } = useI18n();
+const { mdBreakpoint } = useSharedCuiBreakpoint();
 const dialogRefProps = inject<DialogRefProps>('dialogRefProps')!;
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
 const nvrController = useNvrPlayback(
