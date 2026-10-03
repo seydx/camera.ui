@@ -601,30 +601,28 @@ function onPointerMove(event: PointerEvent): void {
   const { x, y } = pointerPos(event);
   const slop = event.pointerType === 'touch' ? TOUCH_TAP_SLOP_PX : TAP_SLOP_PX;
   if (Math.hypot(event.clientX - state.clientX, event.clientY - state.clientY) > slop) state.moved = true;
-  if (event.pointerType === 'touch' && state.moved) {
-    if (loupeWanted(state)) updateLoupe(event);
-    else loupe.value = null;
-  }
 
   if (state.mode === 'draw') {
     if (state.moved) {
       const rect = normalizedRect(state.startX, state.startY, x, y);
       draft.value = rect.width >= MIN_SIZE && rect.height >= MIN_SIZE ? { label: lastLabel.value, source: 'drawn', ...rect } : null;
     }
-    return;
+  } else if (state.mode === 'move') {
+    if (state.moved) {
+      const box = boxes.value[state.index];
+      box.x = Math.min(1 - state.origin.width, Math.max(0, state.origin.x + (x - state.startX)));
+      box.y = Math.min(1 - state.origin.height, Math.max(0, state.origin.y + (y - state.startY)));
+    }
+  } else {
+    const anchorX = state.corner === 'nw' || state.corner === 'sw' ? state.origin.x + state.origin.width : state.origin.x;
+    const anchorY = state.corner === 'nw' || state.corner === 'ne' ? state.origin.y + state.origin.height : state.origin.y;
+    Object.assign(boxes.value[state.index], normalizedRect(anchorX, anchorY, x, y));
   }
 
-  if (state.mode === 'move') {
-    if (!state.moved) return;
-    const box = boxes.value[state.index];
-    box.x = Math.min(1 - state.origin.width, Math.max(0, state.origin.x + (x - state.startX)));
-    box.y = Math.min(1 - state.origin.height, Math.max(0, state.origin.y + (y - state.startY)));
-    return;
+  if (event.pointerType === 'touch' && state.moved) {
+    if (loupeWanted(state)) updateLoupe(event, loupeFocus(state, x, y));
+    else loupe.value = null;
   }
-
-  const anchorX = state.corner === 'nw' || state.corner === 'sw' ? state.origin.x + state.origin.width : state.origin.x;
-  const anchorY = state.corner === 'nw' || state.corner === 'ne' ? state.origin.y + state.origin.height : state.origin.y;
-  Object.assign(boxes.value[state.index], normalizedRect(anchorX, anchorY, x, y));
 }
 
 function onPointerUp(event: PointerEvent): void {
@@ -655,7 +653,12 @@ function loupeWanted(state: DragState): boolean {
   return Math.max(box.width * rect.width, box.height * rect.height) <= LOUPE_MAX_BOX_PX;
 }
 
-function updateLoupe(event: PointerEvent): void {
+function loupeFocus(state: DragState, x: number, y: number): { x: number; y: number } {
+  const box = state.mode === 'move' ? boxes.value[state.index] : undefined;
+  return box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : { x, y };
+}
+
+function updateLoupe(event: PointerEvent, focus: { x: number; y: number }): void {
   const frameRect = frameRef.value?.getBoundingClientRect();
   const stageRect = stageRef.value?.getBoundingClientRect();
   if (!frameRect || !stageRect || frameRect.width === 0 || frameRect.height === 0) {
@@ -671,8 +674,8 @@ function updateLoupe(event: PointerEvent): void {
     y,
     frameW: frameRect.width,
     frameH: frameRect.height,
-    tx: half - (event.clientX - frameRect.left) * LOUPE_ZOOM,
-    ty: half - (event.clientY - frameRect.top) * LOUPE_ZOOM,
+    tx: half - focus.x * frameRect.width * LOUPE_ZOOM,
+    ty: half - focus.y * frameRect.height * LOUPE_ZOOM,
   };
 }
 
