@@ -100,3 +100,4 @@ release-local.ts
 /.log
 tests
 **/tests/**/*.py
+bench/

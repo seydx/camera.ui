@@ -27,6 +27,7 @@ mypy.ini
 ruff.toml
 __pycache__
 
+/bench
 /bin
 /src
 /requirements.txt
