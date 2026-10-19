@@ -1,0 +1,30 @@
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The [troubleshooting page](https://docs.cameraui.com/troubleshooting/) covers the most common problems. Please write in your own words, see the [AI policy](https://github.com/cameraui/camera.ui/blob/master/AI_POLICY.md).
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you need help with?
+      description: What you are trying to do and what happens instead.
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: Version and installation
+      description: The version is shown under **Settings → System**.
+      placeholder: 2.4.0, Docker
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The lines around the problem from **Logs** in the menu. Remove passwords, tokens and public addresses.
+      render: shell

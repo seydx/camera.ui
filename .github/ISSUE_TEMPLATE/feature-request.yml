@@ -1,39 +1,34 @@
 name: 🚀 Feature Request
-description: Suggest an improvement or a new feature for this project.
-title: 'Feature Request: '
+description: Suggest a new feature or an improvement.
+title: "Feature Request: "
 labels: [enhancement]
 assignees:
   - seydx
-
 body:
   - type: markdown
     attributes:
       value: |
-        Hi. Thanks for taking the time to contribute to camera.ui! Please fill out the following template to help us understand your feature request better.
+        Please search the [existing requests](https://github.com/cameraui/camera.ui/issues?q=label%3Aenhancement) first and add a 👍 to the one that fits. One idea per request, in your own words, see the [AI policy](https://github.com/cameraui/camera.ui/blob/master/AI_POLICY.md).
+
+        Asking for a camera brand? Name the models and how they connect today: ONVIF, RTSP, or only the vendor's app or cloud.
 
   - type: textarea
-    id: problem
+    id: goal
     attributes:
-      label: Current Situation
-      description: Please provide an overview of the current situation and illustrate potential problems or shortcomings.
-      placeholder: A clear and concise description of the problem or situation that should be addressed.
+      label: What do you want to do?
+      description: The situation and what you want to achieve. Describe the need, not only the solution.
+      placeholder: I want to ... so that ...
     validations:
       required: true
 
   - type: textarea
-    id: solution
+    id: idea
     attributes:
-      label: Proposed Change
-      description: Please provide a clear and concise description of the solution or change you propose and how it should work.
-      placeholder: A clear and concise description of the solution or change you propose and how it should work.
-    validations:
-      required: true
+      label: How could it work?
+      description: Your idea for camera.ui. Mockups or examples from other apps help.
 
   - type: textarea
-    id: additional-context
+    id: extra
     attributes:
-      label: Additional Context
-      description: |
-        Please provide any additional context that might be relevant for your request.
-        You may add screenshots, log output or configuration files.
-      placeholder: Any additional context that might be relevant for your request.
+      label: Anything else?
+      description: What you do today instead, links, screenshots.

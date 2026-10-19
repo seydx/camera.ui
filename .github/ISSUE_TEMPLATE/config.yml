@@ -1,11 +1,14 @@
 blank_issues_enabled: false
 contact_links:
-  - name: camera.ui Support
-    url: https://github.com/cameraui/camera.ui/discussions/new/choose
-    about: Get support for setting up or troubleshooting camera.ui
-  - name: Twitter @seyd_x
-    url: https://twitter.com/seyd_x
-    about: Feel free to dm me on Twitter.
-  - name: Reddit u/seydx
-    url: https://www.reddit.com/u/seydx/
-    about: Feel free to dm me on Reddit.
+  - name: 💬 Questions and help
+    url: https://github.com/cameraui/camera.ui/discussions/new?category=q-a
+    about: Setup questions and troubleshooting go to Discussions.
+  - name: 🗨️ Discord
+    url: https://discord.gg/bBGnGcbz8N
+    about: Chat with the community.
+  - name: 🧩 Bug in an official plugin
+    url: https://github.com/cameraui/plugins/issues
+    about: HomeKit, Reolink, Eufy, ONVIF and the other official plugins have their own issues.
+  - name: 🔒 Security vulnerability
+    url: https://github.com/cameraui/camera.ui/blob/master/SECURITY.md
+    about: Please report it privately, not as an issue.

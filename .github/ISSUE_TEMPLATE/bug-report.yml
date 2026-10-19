@@ -1,6 +1,6 @@
 name: 🐞 Bug Report
-description: Report a Bug to help us improve
-title: 'Bug: '
+description: Something in camera.ui doesn't work as it should.
+title: "Bug: "
 labels: [bug]
 assignees:
   - seydx
@@ -8,89 +8,109 @@ body:
   - type: markdown
     attributes:
       value: |
-        Hi. Thanks for taking the time to fill out this bug report!
+        Thanks for taking the time to report a bug.
 
-        Before we start, be sure you are aware of the following points:
-        - Review our Troubleshooting and FAQ pages in the Wiki to ensure your issue isn't already solved by those steps.
-        - Avoid duplicating any existing issues which already track or resolve your problem.
-        - If your issue is specific to a certain plugin, create the issue on the plugin's GitHub page instead. Only create an issue here if you are sure it's our fault.
-        - Aim to find a descriptive and precise title for your bug report.
-        - Please add the `beta` or `alpha` label, if your issue is related to a current Beta or Alpha release.
+        - Questions and setup help go to [Discussions](https://github.com/cameraui/camera.ui/discussions/new?category=q-a) or [Discord](https://discord.gg/bBGnGcbz8N).
+        - Bugs in an official plugin (HomeKit, Reolink, Eufy, ...) go to [cameraui/plugins](https://github.com/cameraui/plugins/issues).
+        - Please write the report yourself, see the [AI policy](https://github.com/cameraui/camera.ui/blob/master/AI_POLICY.md).
 
   - type: textarea
+    id: problem
     attributes:
-      label: Describe the Bug
-      placeholder: A clear and concise description of what the bug is.
+      label: What happened?
+      description: What you did, what you expected and what happened instead.
     validations:
       required: true
+
   - type: textarea
+    id: steps
     attributes:
-      label: To Reproduce
-      placeholder: Steps to reproduce the behavior.
+      label: How can we reproduce it?
+      description: The steps that lead to the problem. If it happens on its own, since when and how often?
+      placeholder: |
+        1.
+        2.
+        3.
     validations:
       required: true
-  - type: textarea
+
+  - type: input
+    id: version
     attributes:
-      label: Expected Behavior
-      placeholder: A clear and concise description of what you expected to happen.
+      label: camera.ui version
+      description: Shown under **Settings → System**. For a problem in an app, add the app version too.
+      placeholder: 2.4.0
     validations:
       required: true
-  - type: textarea
-    id: Logs
+
+  - type: input
+    id: last-working
     attributes:
-      label: Relevant Log Output
-      placeholder: Bug reports that do not contain logs may be closed without warning. Show the camera.ui logs here. Remove any sensitive information. Please Turn on Debug Mode before submitting your Issue so more logs can be shared to fix the issue being submitted.
+      label: Last version that worked
+      description: If it worked before, the last version where it did.
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Server installation
+      options:
+        - Desktop app (macOS)
+        - Desktop app (Windows)
+        - Desktop app (Linux)
+        - Docker
+        - Proxmox
+        - Linux (bare-metal)
+        - Home Assistant app
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: Where do you see it?
+      multiple: true
+      options:
+        - Web browser
+        - Desktop app
+        - iPhone or iPad app
+        - Android app
+        - Apple TV app
+        - Home Assistant
+        - Only on the server, no app involved
+    validations:
+      required: true
+
+  - type: input
+    id: devices
+    attributes:
+      label: Camera, device and browser
+      description: Whatever is involved, for example the camera model and how it was added, or the phone and its OS version.
+      placeholder: Reolink RLC-811A via ONVIF, iPhone 16 on iOS 26.1
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Server: **Logs** in the menu, copy the lines around the problem or download the log.
+        App: the **Console** export, with **Record logs** on in **Settings → Appearance**.
+        Remove passwords, tokens and public addresses before posting.
       render: shell
     validations:
       required: true
+
   - type: textarea
-    id: Config
+    id: extra
     attributes:
-      label: Config for camera.ui
-      placeholder: Paste your camera.ui config.yml here. Remove any sensitive information.
-      render: shell
-    validations:
-      required: true
-  - type: textarea
-    id: go2rtc
+      label: Anything else?
+      description: Screenshots, a screen recording, or for remote access problems the **Copy details** text from **Settings → Remote Access**.
+
+  - type: checkboxes
+    id: checks
     attributes:
-      label: Config for go2rtc
-      placeholder: Paste your go2rtc config.yml here. Remove any sensitive information.
-      render: shell
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Screenshots
-      description: If applicable add screenshots to help explain your problem.
-      placeholder: You can attach images or log files by clicking this area to highlight it and then dragging files in.
-    validations:
-      required: false
-  - type: markdown
-    attributes:
-      value: |
-        Environment
-  - type: input
-    attributes:
-      label: Node.js Version
-      placeholder: v14.17.6
-    validations:
-      required: true
-  - type: input
-    attributes:
-      label: NPM Version
-      placeholder: v7.22.0
-    validations:
-      required: true
-  - type: input
-    attributes:
-      label: camera.ui Version
-      placeholder: v1.0.0
-    validations:
-      required: true
-  - type: input
-    attributes:
-      label: Operating System
-      placeholder: Raspbian / Ubuntu / Debian / Windows / macOS / Docker / Electron
-    validations:
-      required: true
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and didn't find this one.
+          required: true
+        - label: The problem still happens on the latest release or beta.
+          required: true
