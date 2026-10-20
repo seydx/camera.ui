@@ -35,6 +35,12 @@ from plugins.runtime.python.config_db import (
     PluginConfigStoreRPC,
     RemotePluginConfigDb,
 )
+from plugins.runtime.python.host_protocol import (
+    INSTANCE_ID_ENV,
+    host_stop_budget,
+    listen_for_host_stop,
+    reset_signals_in_forks,
+)
 from plugins.runtime.python.namespaces import NamespaceManager
 from plugins.runtime.python.plugin_api import PluginAPI
 from plugins.runtime.python.proxy.camera_device import CameraDeviceProxy
@@ -128,7 +134,7 @@ class PluginChild:
         self.signal_handler = SignalHandler(
             {
                 "display_name": "[Signal]",
-                "timeout_duration": 2,
+                "timeout_duration": host_stop_budget(2),
                 "logger": self.logger,
                 "close_function": self.stop_plugin,
             }
@@ -137,6 +143,8 @@ class PluginChild:
     async def run(self) -> None:
         try:
             self.signal_handler.setup_handlers()
+            reset_signals_in_forks()
+            listen_for_host_stop(self.signal_handler)
 
             try:
                 await self.connect_proxy()
@@ -483,7 +491,8 @@ class PluginChild:
                     return
                 await self._on_resume(resume.get("runId") if resume else None)
             case PLUGIN_COMMAND.STOP.value:
-                await self.stop_plugin()
+                # exits too, nobody would watch a stopped plugin left running
+                self._stop_task = asyncio.create_task(self.signal_handler.gracefully_close("stop command"))
             case _:
                 pass
 

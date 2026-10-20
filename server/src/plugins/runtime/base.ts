@@ -1,23 +1,22 @@
 import { Logger } from '@camera.ui/common/logger';
 import { API_EVENT } from '@camera.ui/sdk';
-import { execFile } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { platform } from 'node:os';
 import { join } from 'node:path';
 import { container } from 'tsyringe';
 
 import { CLOUD_SERVICE_URL } from '../../services/config/constants.js';
 import { exitInfo } from '../../utils/process-exit.js';
+import { PLUGIN_STOP_BUDGET_MS, SupervisedChild, supervisedSpawn } from '../../utils/supervised-child.js';
 
 import type { LogEntry } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
 import type { CameraUiAPI } from '../../api.js';
-import type { ProcInfo } from '../../api/database/checks.js';
 import type { ProxyServer } from '../../rpc/index.js';
 import type { SensorRegistry } from '../../sensors/registry.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { LogManager } from '../../services/logger/logManager.js';
+import type { ChildExit, SupervisedSpawn } from '../../utils/supervised-child.js';
 import type { PluginManager } from '../index.js';
 
 export interface RuntimePlugin {
@@ -54,7 +53,8 @@ export abstract class BasePluginRuntime extends EventEmitter {
   protected pluginManager?: PluginManager;
 
   protected worker?: ChildProcess;
-  protected processInfo?: ProcInfo;
+  protected child?: SupervisedChild;
+  protected pendingSpawn?: SupervisedSpawn;
 
   private loggerService: LoggerService;
   private logManager: LogManager;
@@ -89,52 +89,18 @@ export abstract class BasePluginRuntime extends EventEmitter {
 
   public abstract start(signal?: AbortSignal, instanceId?: string): Promise<void>;
 
-  public stop(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      this.stopRequested = true;
+  public prepare(_signal?: AbortSignal): Promise<void> {
+    return Promise.resolve();
+  }
 
-      if (!this.worker || this.worker.killed || this.worker.exitCode !== null || this.worker.signalCode !== null) {
-        resolve();
-        return;
-      }
-
-      const killTimeout = setTimeout(() => {
-        this.logger.trace(`Plugin ${this.plugin.displayName} still running after grace, force-closing.`);
-        this.forceKill();
-        resolve();
-      }, 3000);
-
-      this.worker.once('exit', (code, signal) => {
-        clearTimeout(killTimeout);
-        this.logger.log(`Plugin ${this.plugin.displayName} closed (${exitInfo(code, signal)})`);
-        this.worker = undefined;
-        resolve();
-      });
-
-      if (platform() === 'win32') {
-        // no signals on windows, go straight for the tree
-        this.forceKill();
-      } else {
-        this.worker.kill('SIGTERM');
-      }
-    });
+  public async stop(budgetMs?: number): Promise<void> {
+    this.stopRequested = true;
+    await this.child?.stop(budgetMs);
   }
 
   public kill(): void {
-    this.forceKill();
-  }
-
-  private forceKill(): void {
     this.stopRequested = true;
-    const pid = this.worker?.pid;
-    // the win32 venv python.exe is a launcher stub whose child is the real
-    // interpreter; terminating only the stub leaves a hidden process behind
-    // that keeps every file in the plugin dir locked (EPERM on update)
-    if (pid && platform() === 'win32') {
-      execFile('taskkill', ['/pid', String(pid), '/T', '/F'], () => {});
-      return;
-    }
-    this.worker?.kill('SIGKILL');
+    this.child?.kill();
   }
 
   public getPID(): number {
@@ -150,18 +116,34 @@ export abstract class BasePluginRuntime extends EventEmitter {
     this.removeAllListeners();
   }
 
-  protected onSpawn(pid: number, command: string, args: string[], titles: string[], resolve: (value: void | PromiseLike<void>) => void): void {
-    this.logger.log(`Initializing process with PID: ${pid}`);
+  public get instanceId(): string | undefined {
+    return this.child?.instanceId;
+  }
 
-    this.processInfo = this.configService.addProcess({
-      pid,
-      command,
-      args,
-      titles,
-      startTime: Date.now(),
+  protected prepareSpawn(instanceId?: string): SupervisedSpawn {
+    this.pendingSpawn = supervisedSpawn(PLUGIN_STOP_BUDGET_MS, { signalStop: this.plugin.isGo, instanceId });
+    return this.pendingSpawn;
+  }
+
+  protected attach(
+    worker: ChildProcess,
+    spawn: SupervisedSpawn,
+    info: { command: string; args: string[]; titles: string[] },
+    resolve: (value: void | PromiseLike<void>) => void,
+    reject: (reason?: any) => void,
+  ): void {
+    this.worker = worker;
+
+    worker.once('spawn', () => {
+      this.child = new SupervisedChild(worker, spawn, { role: 'plugin', ...info });
+      this.logger.log(`Initializing process with PID: ${worker.pid}`);
+      resolve();
     });
+    worker.on('error', this.onError.bind(this, reject));
+    worker.on('exit', this.onExit.bind(this));
 
-    resolve();
+    worker.stdout?.on('data', this.onData.bind(this));
+    worker.stderr?.on('data', this.onData.bind(this));
   }
 
   protected onError(reject: (reason?: any) => void, error: Error): void {
@@ -170,11 +152,11 @@ export abstract class BasePluginRuntime extends EventEmitter {
   }
 
   protected onExit(code: number | null, signal: NodeJS.Signals | null): void {
-    const expected = this.stopRequested || this.isShuttingDown;
+    const expected = this.stopRequested || this.isShuttingDown || Boolean(this.child?.requested);
     this.stopRequested = false;
     const exit: ChildExit = { code, signal, requested: expected, uptimeMs: this.child ? Date.now() - this.child.startedAt : 0 };
 
-    const details = exitInfo(code, signal, { pid: this.processInfo?.pid ?? this.worker?.pid, startTime: this.processInfo?.startTime });
+    const details = exitInfo(code, signal, { pid: this.worker?.pid, startTime: this.child?.startedAt });
 
     if (expected) {
       this.logger.log(`Plugin ${this.plugin.displayName} exited (${details})`);
@@ -191,7 +173,6 @@ export abstract class BasePluginRuntime extends EventEmitter {
       // registry not initialized (worker mode)
     }
 
-    this.configService.removeProcessByPID(this.processInfo?.pid);
     this.worker = undefined;
     this.child = undefined;
     this.emit('exit', exit);
@@ -258,6 +239,7 @@ export abstract class BasePluginRuntime extends EventEmitter {
       CAMERAUI_FFMPEG_PATH: this.api ? undefined : this.configService.go2rtcConfig.ffmpeg.bin,
       PLUGIN_CONFIG_STORE_RPC: !this.api ? '1' : undefined,
       ...(this.plugin.remoteEnv ?? {}),
+      ...this.pendingSpawn?.env,
       CAMERA_UI_RUNMODE: process.env.CAMERA_UI_RUNMODE,
       ENV_MODE: process.env.NODE_ENV,
       CLOUD_MODE: CLOUD_SERVICE_URL === 'https://cloud.cameraui.com' ? 'production' : 'development',

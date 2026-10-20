@@ -164,6 +164,8 @@ export class DarwinInstaller extends BasePlatform {
       '        <true/>',
       '    <key>KeepAlive</key>',
       '        <true/>',
+      '    <key>ExitTimeOut</key>',
+      '        <integer>30</integer>',
       '    <key>Label</key>',
       `        <string>${this.plistName}</string>`,
       '    <key>ProgramArguments</key>',

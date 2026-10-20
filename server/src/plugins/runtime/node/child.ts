@@ -102,12 +102,14 @@ export class PluginChild {
 
     this.signalHandler = new SignalHandler({
       displayName: '[Signal]',
-      timeoutDuration: 2000,
+      timeoutDuration: hostStopBudget(2000),
       logger: this.logger,
       reportErrors: WITH_REPORTS,
       reportDirectory: REPORT_DIR,
+      ignoreSIGINT: hostSpeaksStopLine(),
       closeFunction: this.stopPlugin.bind(this),
     });
+    listenForHostStop(this.signalHandler);
   }
 
   public async run(): Promise<void> {
@@ -385,7 +387,8 @@ export class PluginChild {
         await this.onResume(message.data.runId);
         break;
       case PLUGIN_COMMAND.STOP:
-        this.stopPlugin();
+        // exits too, nobody would watch a stopped plugin left running
+        this.signalHandler.close('stop command');
         break;
     }
   }

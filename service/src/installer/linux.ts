@@ -462,7 +462,9 @@ export class LinuxInstaller extends BasePlatform {
       `ExecStart=${this.cli.selfPath} run $CAMERA_UI_OPTS`,
       'Restart=always',
       'RestartSec=3',
-      'KillMode=process',
+      // SIGTERM to the launcher only, so the server and its children stop in order
+      'KillMode=mixed',
+      'TimeoutStopSec=30',
       // eslint-disable-next-line @stylistic/max-len
       'CapabilityBoundingSet=CAP_IPC_LOCK CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SETGID CAP_SETUID CAP_SYS_CHROOT CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_SYS_ADMIN',
       'AmbientCapabilities=CAP_NET_RAW CAP_NET_BIND_SERVICE',

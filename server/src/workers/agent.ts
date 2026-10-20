@@ -243,14 +243,8 @@ export class WorkerAgent implements WorkerAgentRPC {
     }
   }
 
-    this.signalHandler = new SignalHandler({
-      displayName: '[WorkerAgent]',
-      timeoutDuration: 5000,
-      logger: this.logger,
-      reportErrors: WITH_REPORTS,
-      reportDirectory: REPORT_DIR,
-      closeFunction: this.close.bind(this),
-    });
+  public get bootId(): string {
+    return this.boot;
   }
 
   public async start(): Promise<void> {
@@ -352,15 +346,9 @@ export class WorkerAgent implements WorkerAgentRPC {
     this.logger.log('WorkerAgent started and ready for commands');
   }
 
-  public async close(): Promise<void> {
-    this.logger.log('Shutting down WorkerAgent...');
-
-    this.isClosed = true;
-
-    try {
-      this.proxy.publish(this.sharedMaster ? NamespaceManager.sharedWorkerDisconnect() : NamespaceManager.workerDisconnect(this.agentId), { agentId: this.agentId });
-    } catch {
-      // ignore — proxy might already be disconnected
+  public async close(reason: ShutdownReason = 'unknown'): Promise<void> {
+    if (this.isClosed) {
+      return;
     }
 
     this.isClosed = true;
@@ -427,11 +415,9 @@ export class WorkerAgent implements WorkerAgentRPC {
       throw new Error('An update is running on this worker, it restarts by itself when the update is done');
     }
 
-    // Defer so the RPC response is sent before the connection drops
-    setTimeout(async () => {
-      await this.close();
-      process.exit(0);
-    }, 100);
+    this.logger.log('Restart requested by the master');
+    // the answer to this call has to leave before the connection drops
+    setTimeout(() => this.requestShutdown('restart'), 100);
   }
 
   public async update(version?: string): Promise<void> {

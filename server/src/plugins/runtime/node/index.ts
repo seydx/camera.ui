@@ -33,7 +33,8 @@ export class NodePluginRuntime extends BasePluginRuntime {
 
       this.logger.debug(`Forking plugin: ${this.plugin.pluginName}`);
 
-      this.worker = fork(nodePluginPath, [...processNames], {
+      const supervision = this.prepareSpawn(instanceId);
+      const worker = fork(nodePluginPath, [...processNames], {
         env: {
           ...this.processEnv(),
           ...this.getEnv(),
@@ -42,15 +43,12 @@ export class NodePluginRuntime extends BasePluginRuntime {
         },
         cwd: this.plugin.mainPath,
         silent: true,
-        execArgv: IS_DEV && !IS_ELECTRON ? ['--import=tsx', '--trace-warnings'] : undefined,
+        detached: supervision.detached,
+        windowsHide: supervision.windowsHide,
+        execArgv: IS_DEV && !IS_ELECTRON ? [`--import=${import.meta.resolve('tsx')}`, '--trace-warnings'] : undefined,
       });
 
-      this.worker.once('spawn', this.onSpawn.bind(this, this.worker.pid!, command, args, processNames, resolve));
-      this.worker.on('error', this.onError.bind(this, reject));
-      this.worker.on('exit', this.onExit.bind(this));
-
-      this.worker.stdout?.on('data', this.onData.bind(this));
-      this.worker.stderr?.on('data', this.onData.bind(this));
+      this.attach(worker, supervision, { command, args, titles: processNames }, resolve, reject);
     });
   }
 

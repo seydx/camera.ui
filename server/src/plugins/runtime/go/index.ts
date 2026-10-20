@@ -21,18 +21,15 @@ export class GoPluginRuntime extends BasePluginRuntime {
 
       this.logger.debug(`Spawning Go plugin: ${binaryPath}`);
 
-      this.worker = spawn(binaryPath, processNames, {
+      const supervision = this.prepareSpawn(instanceId);
+      const worker = spawn(binaryPath, processNames, {
         env: { ...this.processEnv(), ...this.getEnv() },
         cwd: this.plugin.mainPath,
-        windowsHide: true,
+        detached: supervision.detached,
+        windowsHide: supervision.windowsHide,
       });
 
-      this.worker.on('spawn', this.onSpawn.bind(this, this.worker.pid!, binaryPath, processNames, processNames, resolve));
-      this.worker.on('error', this.onError.bind(this, reject));
-      this.worker.on('exit', this.onExit.bind(this));
-
-      this.worker.stdout?.on('data', this.onData.bind(this));
-      this.worker.stderr?.on('data', this.onData.bind(this));
+      this.attach(worker, supervision, { command: binaryPath, args: processNames, titles: processNames }, resolve, reject);
     });
   }
 

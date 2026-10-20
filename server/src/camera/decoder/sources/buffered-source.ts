@@ -137,7 +137,7 @@ export class BufferedSource implements AnalysisSource {
   public async stop(): Promise<void> {
     if (!this.shouldRun && !this.producerPromise) return;
     this.shouldRun = false;
-    this.reconnect.wake();
+    this.reconnect.cancel();
     this.wakePacketWaiters();
 
     if (this.inflightDecode) {
@@ -295,6 +295,7 @@ export class BufferedSource implements AnalysisSource {
       // dead go2rtc trips this; a stalled camera is the plugin's call
       timeoutUs: 60_000_000,
       hardwareContext: this.hwContext,
+      signal: this.reconnect.signal,
     });
 
     this.input = input;

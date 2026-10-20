@@ -14,6 +14,7 @@ export interface VideoInputOptions {
   decoder?: FrameWorkerDecoderSettings;
   timeoutUs?: number;
   hardwareContext?: HardwareContext | null;
+  signal?: AbortSignal;
 }
 
 export interface VideoInput {
@@ -31,6 +32,7 @@ export async function openVideoInput(url: string, logger: Logger, options: Video
       user_agent: 'camera.ui Decoder',
       avioflags: 'direct',
     },
+    signal: options.signal,
   });
 
   const videoStream = input.video();

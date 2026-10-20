@@ -554,7 +554,7 @@ export class FrameWorker extends Subscribed {
 
       this.logger.error(`Frame Worker did not report ready within ${READY_TIMEOUT_MS / 1000}s`);
       this.setStatus(PLUGIN_STATUS.ERROR);
-      this.process?.kill('SIGKILL');
+      this.supervised?.kill();
       this.settleStart?.(new Error('Frame Worker did not report ready'));
       this.attemptRestart();
     }, READY_TIMEOUT_MS);
@@ -564,68 +564,48 @@ export class FrameWorker extends Subscribed {
     this.logger.debug('Starting Frame Worker');
     this.logger.trace('Worker path:', nodeDecoderPath);
 
-    const env = this.buildWorkerEnv();
+    const supervision = supervisedSpawn(DECODER_STOP_BUDGET_MS, { env: this.buildWorkerEnv() });
     const processName = `camera.ui - Frame Worker [${this.camera.name}]`;
 
     this.process = fork(nodeDecoderPath, [processName], {
       env: {
         ...process.env,
-        ...env,
+        ...supervision.env,
       },
       silent: true,
+      detached: supervision.detached,
+      windowsHide: supervision.windowsHide,
       execArgv: IS_DEV && !IS_ELECTRON ? ['--import=tsx'] : undefined,
+    });
+    this.supervised = new SupervisedChild(this.process, supervision, {
+      role: 'frame',
+      command: process.execPath,
+      args: [processName],
+      titles: [processName, 'camera.ui - Frame Worker'],
     });
 
     this.setupProcessListeners();
   }
 
   private async terminateProcess(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      if (!this.process) {
-        this.setStatus(PLUGIN_STATUS.STOPPED);
-        resolve();
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        this.logger.warn('Worker did not terminate gracefully. Forcing closure.');
-        this.process?.kill('SIGKILL');
-        this.setStatus(PLUGIN_STATUS.STOPPED);
-        resolve();
-      }, 3000);
-
-      this.process.once('exit', (code, signal) => {
-        clearTimeout(timeout);
-        this.setStatus(PLUGIN_STATUS.STOPPED);
-        this.logger.log(`Frame Worker closed (${exitInfo(code, signal)})`);
-        resolve();
-      });
-
-      this.process.kill('SIGTERM');
-    });
+    const exit = await this.supervised?.stop();
+    if (this.supervised && !exit) {
+      this.logger.warn('Frame Worker did not exit after the kill');
+    }
+    this.setStatus(PLUGIN_STATUS.STOPPED);
   }
 
-  private setupProcessListeners(processName: string): void {
-    if (!this.process) {
+  private setupProcessListeners(): void {
+    const child = this.process;
+    if (!child) {
       return;
     }
 
-    this.process.once('spawn', () => {
-      this.logger.log(`Process started with PID: ${this.process?.pid}`);
-
-      const pid = this.process?.pid;
-      if (pid) {
-        this.configService.addProcess({
-          pid,
-          startTime: Date.now(),
-          command: process.execPath,
-          args: [processName],
-          titles: [processName, 'camera.ui - Frame Worker'],
-        });
-      }
+    child.once('spawn', () => {
+      this.logger.log(`Process started with PID: ${child.pid}`);
     });
 
-    this.process.on('error', (error) => {
+    child.on('error', (error) => {
       this.setStatus(PLUGIN_STATUS.ERROR);
       this.logger.error('Frame Worker reported an error!', error);
     });
@@ -640,8 +620,6 @@ export class FrameWorker extends Subscribed {
         this.logger.error(`Frame Worker exited unexpectedly (${details})`);
       }
 
-      this.setStatus(PLUGIN_STATUS.STOPPED);
-      this.configService.removeProcessByPID(this.process?.pid);
       this.settleStart?.(new Error(`Frame Worker exited before it was ready (${details})`));
       if (this.process === child) {
         this.clearProcessState();

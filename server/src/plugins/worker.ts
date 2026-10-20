@@ -499,7 +499,10 @@ export class PluginWorker {
   }
 
   private async kill(): Promise<void> {
-    await this.sendMessage({ type: PLUGIN_COMMAND.STOP }).catch(() => {});
+    // go plugins before the stop line read no stdin, windows has no SIGTERM
+    if (this.plugin.isGo && process.platform === 'win32') {
+      await this.sendMessage({ type: PLUGIN_COMMAND.STOP }).catch(() => {});
+    }
 
     this.disconnectCameras();
 

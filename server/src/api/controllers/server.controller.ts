@@ -353,7 +353,7 @@ export class ServerController {
   public async restart(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply | void> {
     try {
       reply.code(204).send();
-      setTimeout(() => req.system.close(), 500);
+      setTimeout(() => req.system.close('restart'), 500);
       return reply;
     } catch (error: any) {
       return reply.code(500).send({
@@ -366,7 +366,7 @@ export class ServerController {
   public async reset(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply | void> {
     try {
       this.configService.reset();
-      req.system.close();
+      req.system.close('reset');
       return reply.code(204).send();
     } catch (error: any) {
       return reply.code(500).send({

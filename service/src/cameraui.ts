@@ -3,7 +3,7 @@
 process.title = 'camera.ui-service';
 
 import { isPortInUse } from '@camera.ui/common/net';
-import { getUserHomeDir } from '@camera.ui/common/node';
+import { getUserHomeDir, SHUTDOWN_DEADLINE_MS } from '@camera.ui/common/node';
 import { IS_DEV, IS_DOCKER, SignalHandler, sleep } from '@camera.ui/common/utils';
 import { program } from 'commander';
 import { request } from 'https';
@@ -23,6 +23,7 @@ import { LinuxInstaller } from './installer/linux.js';
 import { Win32Installer } from './installer/win32.js';
 import { CLILogger } from './logger.js';
 import { ServerManager } from './manager.js';
+import { RestartBudget } from './restart-budget.js';
 import { Spinner } from './spinner.js';
 
 import type { PathLike } from 'node:fs';
@@ -58,13 +59,8 @@ export class CameraUiCLI {
   private shuttingDownNodemon = false;
 
   private restartTimeout?: NodeJS.Timeout;
-
-  private restartAttempts = 0;
+  private readonly restartBudget = new RestartBudget();
   private lastStartTime = 0;
-  private readonly MAX_RESTART_ATTEMPTS = 5;
-  private readonly BASE_RESTART_DELAY = 2000;
-  private readonly MAX_RESTART_DELAY = 60000;
-  private readonly STABLE_RUN_MS = 30000;
 
   get abortRestart(): boolean {
     return this.shuttingDownNodemon || this.serverManager.serverCrashed;
@@ -482,7 +478,7 @@ export class CameraUiCLI {
 
     this.signalHandler = new SignalHandler({
       displayName: '[Signal]',
-      timeoutDuration: 10000,
+      timeoutDuration: SHUTDOWN_DEADLINE_MS + 3000,
       reportErrors: debugDir !== undefined,
       reportDirectory: debugDir ? join(debugDir, 'reports') : undefined,
       logger: {
@@ -520,7 +516,11 @@ export class CameraUiCLI {
   }
 
   private async stop(): Promise<void> {
-    await this.serverManager.stop();
+    this.shuttingDown = true;
+    clearTimeout(this.restartTimeout);
+
+    // signals carry no intent, except the restart nodemon asks for
+    await this.serverManager.stop(this.shuttingDownNodemon ? 'restart' : 'unknown');
     this.logging.close();
   }
 
@@ -692,25 +692,20 @@ export class CameraUiCLI {
       return;
     }
 
-    if (Date.now() - this.lastStartTime > this.STABLE_RUN_MS) {
-      this.restartAttempts = 0;
-    }
-
-    if (this.restartAttempts >= this.MAX_RESTART_ATTEMPTS) {
-      this.logger(`camera.ui keeps exiting — gave up after ${this.restartAttempts} restarts; letting the service manager take over`, 'fail');
+    const plan = this.restartBudget.next(code, signal, Date.now() - this.lastStartTime);
+    if (plan.delayMs === undefined) {
+      const reason = plan.clean ? 'keeps restarting itself' : 'keeps exiting';
+      this.logger(`camera.ui ${reason}, gave up after ${plan.attempt} restarts; letting the service manager take over`, 'fail');
       process.exit(1);
     }
-
-    this.restartAttempts++;
-    const delay = Math.min(this.BASE_RESTART_DELAY * 2 ** (this.restartAttempts - 1), this.MAX_RESTART_DELAY);
 
     clearTimeout(this.restartTimeout);
     this.restartTimeout = setTimeout(() => {
       if (!this.shuttingDown && !this.abortRestart) {
-        this.logger(`Restarting camera.ui (attempt ${this.restartAttempts}/${this.MAX_RESTART_ATTEMPTS})...`, 'info');
+        this.logger(plan.clean ? 'Restarting camera.ui...' : `Restarting camera.ui (attempt ${plan.attempt}/${plan.limit})...`, 'info');
         this.run();
       }
-    }, delay);
+    }, plan.delayMs);
   }
 }
 

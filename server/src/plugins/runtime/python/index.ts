@@ -56,7 +56,8 @@ export class PythonPluginRuntime extends BasePluginRuntime {
       const caCertFile = join(this.py.serverPackagesPath, 'certifi', 'cacert.pem');
       const caCertEnv = existsSync(caCertFile) ? { SSL_CERT_FILE: caCertFile, REQUESTS_CA_BUNDLE: caCertFile } : {};
 
-      this.worker = spawn(this.py.pluginPythonPath, args, {
+      const supervision = this.prepareSpawn(instanceId);
+      const worker = spawn(this.py.pluginPythonPath, args, {
         env: {
           ...this.processEnv(),
           PYTHONUNBUFFERED: '1',
@@ -67,15 +68,11 @@ export class PythonPluginRuntime extends BasePluginRuntime {
           PYTHONSTARTUP: undefined,
         },
         cwd: this.plugin.mainPath,
-        windowsHide: true,
+        detached: supervision.detached,
+        windowsHide: supervision.windowsHide,
       });
 
-      this.worker.on('spawn', this.onSpawn.bind(this, this.worker.pid!, command, args, processNames, resolve));
-      this.worker.on('error', this.onError.bind(this, reject));
-      this.worker.on('exit', this.onExit.bind(this));
-
-      this.worker.stdout?.on('data', this.onData.bind(this));
-      this.worker.stderr?.on('data', this.onData.bind(this));
+      this.attach(worker, supervision, { command, args, titles: processNames }, resolve, reject);
     });
   }
 

@@ -11,14 +11,20 @@ export class ReconnectLoop {
   private readonly backoff = new ReconnectBackoff();
   private sleepTimer?: NodeJS.Timeout;
   private sleepResolve?: () => void;
+  private abort = new AbortController();
 
   constructor(
     private readonly logger: Logger,
     private readonly label: string,
   ) {}
 
+  public get signal(): AbortSignal {
+    return this.abort.signal;
+  }
+
   public async run(shouldRun: () => boolean, cycle: () => Promise<CycleOutcome>): Promise<void> {
     this.backoff.reset();
+    this.abort = new AbortController();
 
     while (shouldRun()) {
       let outcome: CycleOutcome;
@@ -47,6 +53,16 @@ export class ReconnectLoop {
 
   public connected(): void {
     this.backoff.reset();
+  }
+
+  public retryNow(): void {
+    this.backoff.reset();
+    this.wake();
+  }
+
+  public cancel(): void {
+    this.abort.abort();
+    this.wake();
   }
 
   public wake(): void {

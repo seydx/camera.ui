@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { watchReconnect } from '../../plugins/runtime/node/proxy/reconnect.js';
 import { NamespaceManager } from '../../rpc/namespaces.js';
 import { REPORT_DIR, WITH_REPORTS } from '../../utils/crash.js';
+import { HANDSHAKE_LEVEL, hostSpeaksStopLine, hostStopBudget, INSTANCE_ID_ENV, listenForHostStop } from '../../utils/host-protocol.js';
 import { DetectionCoordinator } from './detection-coordinator.js';
 
 import type { LoggerOptions } from '@camera.ui/common';
@@ -109,12 +110,14 @@ export class FrameWorkerChild {
 
     this.signalHandler = new SignalHandler({
       displayName: '[Signal]',
-      timeoutDuration: 1000,
+      timeoutDuration: hostStopBudget(1000),
       logger: this.logger,
       reportErrors: WITH_REPORTS,
       reportDirectory: REPORT_DIR,
+      ignoreSIGINT: hostSpeaksStopLine(),
       closeFunction: this.close.bind(this),
     });
+    listenForHostStop(this.signalHandler);
   }
 
   public async run(): Promise<void> {

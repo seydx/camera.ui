@@ -1,6 +1,9 @@
 import fp from 'fastify-plugin';
 import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
+
+import type { ShutdownReason } from '@camera.ui/common/node';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { Go2Rtc } from '../../go2rtc/index.js';
 import type { CameraUi } from '../../master.js';
@@ -23,8 +26,8 @@ class System {
     this.go2rtc = container.resolve<Go2Rtc>('go2rtc');
   }
 
-  public close(): void {
-    process.kill(process.pid, 'SIGTERM');
+  public close(reason: ShutdownReason): void {
+    this.cameraui.shutdown(reason);
   }
 
   public async restart(): Promise<void> {

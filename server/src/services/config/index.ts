@@ -1,4 +1,4 @@
-import { getUserHomeDir } from '@camera.ui/common/node';
+import { getUserHomeDir, PidRegistry } from '@camera.ui/common/node';
 import { APP_SERVER_NAME, IS_DEV, IS_DOCKER, IS_ELECTRON, mergeWith, structuredClone } from '@camera.ui/common/utils';
 import { go2rtcPath } from '@camera.ui/go2rtc';
 import { natsServerPath } from '@camera.ui/nats';
@@ -25,9 +25,7 @@ import { execSafePath } from '../../utils/path.js';
 import { DEFAULT_CONFIG, DEFAULT_GO2RTC_CONFIG, ELECTRON_ASAR_UNPACKED } from './constants.js';
 
 import type { LoggerOptions } from '@camera.ui/common/logger';
-import type { ProcInfo } from '../../api/database/checks.js';
-import type { Database } from '../../api/database/index.js';
-import type { Go2RtcApi } from '../../go2rtc/api/index.js';
+import type { PidRegistryEntry } from '@camera.ui/common/node';
 import type { DeepPartial } from '../../types.js';
 import type { LoggerService } from '../logger/index.js';
 import type { ConfigServiceOptions, EnvironmentInfo, Go2RtcConfig, IConfig, Secrets, SSLConfig } from './types.js';
@@ -137,16 +135,8 @@ export class ConfigService {
       .filter(Boolean);
   }
 
-  get processes(): ProcInfo[] {
-    try {
-      return JSON.parse(readFileSync(this.PIDS_FILE, 'utf-8'));
-    } catch {
-      return [];
-    }
-  }
-
-  set processes(pids: ProcInfo[]) {
-    writeFileSync(this.PIDS_FILE, JSON.stringify(pids));
+  get processes(): PidRegistryEntry[] {
+    return this.pidRegistry.all;
   }
 
   get loggerOptions(): LoggerOptions {
@@ -363,6 +353,11 @@ export class ConfigService {
     this.safetyEmptyDir(this.PLUGINS_INSTALL_PATH);
   }
 
+  private get pidRegistry(): PidRegistry {
+    this._pidRegistry ??= new PidRegistry(this.PIDS_FILE);
+    return this._pidRegistry;
+  }
+
   private cleanupWebRtcFilters(webRtcConfig: any): void {
     for (const key of ['candidates', 'ips', 'networks', 'interfaces', 'udp_ports']) {
       if (!webRtcConfig.filters[key]?.length) {
@@ -375,25 +370,16 @@ export class ConfigService {
     }
   }
 
-  public addProcess(proc: ProcInfo): ProcInfo {
-    const processes = this.processes;
-    processes.push(proc);
-    writeFileSync(this.PIDS_FILE, JSON.stringify(processes));
-    return proc;
+  public addProcess(proc: PidRegistryEntry): PidRegistryEntry {
+    return this.pidRegistry.add(proc);
   }
 
   public removeProcessByPID(pid?: number): void {
-    if (!pid) {
-      return;
-    }
+    this.pidRegistry.remove(pid);
+  }
 
-    const processes = this.processes;
-    const index = processes.findIndex((process) => process.pid === pid);
-
-    if (index > -1) {
-      processes.splice(index, 1);
-      writeFileSync(this.PIDS_FILE, JSON.stringify(processes));
-    }
+  public flushProcesses(): Promise<void> {
+    return this.pidRegistry.flush();
   }
 
   public go2rtcAddress(mod: 'api' | 'rtsp' | 'onvif' | 'srtp' | 'rtmp' | 'webrtc' | 'ws' = 'api'): string {

@@ -1,3 +1,5 @@
+import type { ServerHealthyMessage, ServerStartedMessage, WorkerStatusMessage } from '@camera.ui/common/node';
+
 export type MethodKeys<T> = keyof {
   [K in keyof T as T[K] extends (...args: any) => any ? K : never]: any;
 };
@@ -57,8 +59,7 @@ export interface AppUpdateAvailableMessage {
   remoteInstall?: boolean;
 }
 
-export interface AppStartedMessage {
-  type: 'STARTED';
+export interface AppStartedMessage extends ServerStartedMessage {
   port: number;
 }
 

@@ -76,7 +76,7 @@ export class AudioSource {
 
     this.ended = true;
     this.wakeWaiter();
-    this.reconnect.wake();
+    this.reconnect.cancel();
     this.input?.interrupt();
 
     if (this.producerPromise) {
@@ -146,6 +146,7 @@ export class AudioSource {
         rtsp_transport: 'tcp',
         user_agent: 'camera.ui Decoder',
       },
+      signal: this.reconnect.signal,
     });
 
     const audioStream = this.input.audio();

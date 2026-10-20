@@ -112,7 +112,7 @@ export class FrameSource implements AnalysisSource {
     // hold it up
     this.ended = true;
     this.wakeWaiter();
-    this.reconnect.wake();
+    this.reconnect.cancel();
     this.input?.interrupt();
 
     if (this.producerPromise) {
@@ -199,6 +199,7 @@ export class FrameSource implements AnalysisSource {
     const { input, videoStream, hardwareContext, fps } = await openVideoInput(this.config.streamUrl, this.logger, {
       decoder: this.config.decoder,
       hardwareContext: this._hardwareContext,
+      signal: this.reconnect.signal,
     });
 
     this.input = input;

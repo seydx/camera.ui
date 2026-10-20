@@ -97,11 +97,9 @@ export class FileTransport implements LogTransport {
   public async close(): Promise<void> {
     if (this.closed) return;
 
-    this.closed = true;
-    clearTimeout(this.flushTimer);
     clearInterval(this.truncateTimer);
-
-    await this.flush();
+    this.flushSync();
+    this.closed = true;
 
     return new Promise((resolve) => {
       if (this.stream) {

@@ -139,25 +139,36 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
           return child;
         }),
     };
+  }
+
+  private forkFrameWorker(settings: CameraSettings, instanceId: string): SupervisedChild {
+    const proxyAuth = this.natsServer.localAuth;
+    const name = cameraName(settings);
+    const processName = `camera.ui - Frame Worker [${name}] (remote)`;
+
+    const supervision = supervisedSpawn(DECODER_STOP_BUDGET_MS, {
+      instanceId,
+      env: {
+        CAMERA_ID: settings.config.cameraId,
+        CAMERA_NAME: name,
+        PROXY_USER: proxyAuth.user,
+        PROXY_PASSWORD: proxyAuth.password,
+        PROXY_ENDPOINTS: this.natsServer.endpoints.join(','),
+        PROXY_CERT: this.configService.ssl.cert.toString('utf-8'),
+        PROXY_KEY: this.configService.ssl.key.toString('utf-8'),
+        PROXY_CA: this.configService.ssl.ca.toString('utf-8'),
+        LOGGER_LEVEL: settings.live?.loggerLevel ?? settings.config.loggerLevel ?? this.configService.config.logger.level,
+        CAMERAUI_WORKER_LINK_SUBJECT: NamespaceManager.workerLinkSubject(this.agentId),
+      },
+    });
 
     this.logger.debug(`Forking FrameWorker for ${name}`);
 
     const child = fork(nodeDecoderPath, [processName], {
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...supervision.env },
       silent: true,
-    });
-
-    child.once('spawn', () => {
-      this.logger.log(`FrameWorker for ${config.cameraName} started with PID: ${child.pid}`);
-      if (child.pid) {
-        this.configService.addProcess({
-          pid: child.pid,
-          startTime: Date.now(),
-          command: process.execPath,
-          args: [processName],
-          titles: [processName],
-        });
-      }
+      detached: supervision.detached,
+      windowsHide: supervision.windowsHide,
     });
 
     child.on('error', (error) => {
@@ -180,14 +191,7 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
       });
     }
 
-    managed.logBuffer += data.toString();
-
-    const lines = managed.logBuffer.split('\n');
-    managed.logBuffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      this.processLogLine(line, config, pid);
-    }
+    return new SupervisedChild(child, supervision, { role: 'frame', command: process.execPath, args: [processName], titles: [processName] });
   }
 
   private processLogLine(line: string, cameraId: string, pid?: number): void {

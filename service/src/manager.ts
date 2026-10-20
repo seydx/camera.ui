@@ -1,4 +1,16 @@
-import { APP_SERVER_NAME, getNpmPath, IS_DEV } from '@camera.ui/common';
+import { APP_SERVER_NAME, IS_DEV, npmCommand } from '@camera.ui/common';
+import {
+  killTree,
+  readRegistrySync,
+  REAP_GRACE_MS,
+  reapRegistry,
+  SHUTDOWN_DEADLINE_MS,
+  SUPERVISOR_IPC_ENV,
+  SUPERVISOR_IPC_LEVEL,
+  supervisorSpeaksShutdown,
+  UPDATE_STATE_FILE,
+  writeFileAtomic,
+} from '@camera.ui/common/node';
 import { fork, spawn } from 'node:child_process';
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
@@ -20,7 +32,11 @@ interface ErrorMessage {
   fatal?: boolean;
 }
 
-type ServerMessage = UpdateMessage | ErrorMessage;
+interface StoppingMessage {
+  type: 'STOPPING';
+}
+
+type ServerMessage = UpdateMessage | ErrorMessage | ServerStartedMessage | ServerHealthyMessage | StoppingMessage;
 
 // CLI to Server communication
 interface UpdateStartedMessage {
@@ -56,6 +72,10 @@ function isNetworkError(error: unknown): boolean {
   return /econnreset|etimedout|esockettimedout|eai_again|enotfound|econnrefused|socket hang up|epipe|network|aborted|fetch failed/.test(haystack);
 }
 
+function describeReaped({ entry }: ReapResult): string {
+  return `${basename(entry.command)} (${entry.pid})`;
+}
+
 export class ServerManager {
   public serverCrashed = false;
 
@@ -68,6 +88,14 @@ export class ServerManager {
   private forkedProcess?: ChildProcess;
   private onCloseHandler?: (code: number | null, signal: NodeJS.Signals | null) => void;
   private updating = false;
+  private started?: ServerStartedMessage;
+  private stoppingSeen = false;
+  private stopRequested = false;
+  private homeTaken = false;
+  private healthGate?: HealthGate;
+  private rolledBack?: SupervisorRolledBackMessage;
+  private reapTimer?: NodeJS.Timeout;
+  private reaping = Promise.resolve();
 
   constructor(cli: CameraUiCLI) {
     this.cli = cli;
@@ -95,6 +123,10 @@ export class ServerManager {
   }
 
   private get serverBinPath(): string {
+    if (!IS_DEV && process.platform === 'win32') {
+      return join(this.serverModulesPath, APP_SERVER_NAME, 'dist', 'server', 'bin', 'cameraui-server.js');
+    }
+
     const serverBinDirPath = IS_DEV ? this.serverPath : this.serverModulesPath;
     return join(serverBinDirPath, this.binDir, this.serverBinName);
   }
@@ -169,6 +201,8 @@ export class ServerManager {
     const env = {
       ...process.env,
       FORCE_COLOR: '1',
+      [SUPERVISOR_IPC_ENV]: String(SUPERVISOR_IPC_LEVEL),
+      ...(IS_DEV ? { TSX_TSCONFIG_PATH: join(this.serverPath, 'tsconfig.json') } : {}),
     };
 
     const childProcessOpts: ForkOptions = {
@@ -176,6 +210,8 @@ export class ServerManager {
       uid: this.cli.allowRunRoot && this.cli.uid ? this.cli.uid : undefined,
       gid: this.cli.allowRunRoot && this.cli.gid ? this.cli.gid : undefined,
       silent: true,
+      // no shared console, so the Ctrl+C from NSSM reaches only the launcher
+      windowsHide: true,
     };
 
     const forkArgs = [this.cli.homePath];
@@ -200,33 +236,45 @@ export class ServerManager {
     this.forkedProcess.once('close', onClose);
   }
 
-  public stop(): Promise<void> {
-    const proc = this.forkedProcess;
-    if (!proc) {
-      this.reset();
-      return Promise.resolve();
-    }
+  public stop(reason: ShutdownReason): Promise<void> {
+    this.stopRequested = true;
 
-    if (this.onCloseHandler) {
+    const proc = this.forkedProcess;
+    if (proc && this.onCloseHandler) {
       proc.removeListener('close', this.onCloseHandler);
       this.onCloseHandler = undefined;
     }
 
+    // the last server may have exited already, its 'close' does not fire again
+    if (proc?.exitCode !== null || proc.signalCode !== null) {
+      this.reset();
+      return this.reapLeftovers();
+    }
+
     return new Promise<void>((resolve) => {
+      const timers: NodeJS.Timeout[] = [];
       const done = (): void => {
-        clearTimeout(forceKill);
+        timers.forEach((timer) => clearTimeout(timer));
         this.reset();
         resolve();
       };
 
       proc.once('close', done);
-      const forceKill = setTimeout(() => {
-        this.cli.logger('camera.ui did not exit in time; sending SIGKILL', 'warn');
-        proc.kill('SIGKILL');
-      }, 8000);
+
+      if (supervisorSpeaksShutdown(this.started)) {
+        timers.push(...this.requestShutdown(proc, reason));
+        return;
+      }
+
+      timers.push(
+        setTimeout(() => {
+          this.cli.logger('camera.ui did not exit in time; sending SIGKILL', 'warn');
+          proc.kill('SIGKILL');
+        }, LEGACY_KILL_MS),
+      );
 
       proc.kill();
-    });
+    }).then(() => this.reapLeftovers());
   }
 
   private reset(): void {
@@ -236,6 +284,8 @@ export class ServerManager {
     this.forkedProcess?.stdout?.destroy();
     this.forkedProcess?.stderr?.destroy();
     this.forkedProcess = undefined;
+    this.started = undefined;
+    this.stoppingSeen = false;
   }
 
   public async update(version = 'latest', stdout?: boolean): Promise<void> {
@@ -300,6 +350,7 @@ export class ServerManager {
         case 'START_ERROR': {
           if (message.fatal) {
             this.serverCrashed = true;
+            this.homeTaken ||= (message.error ?? '').startsWith(HOME_TAKEN_ERROR);
           }
           break;
         }

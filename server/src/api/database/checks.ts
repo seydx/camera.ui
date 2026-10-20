@@ -1,14 +1,13 @@
-import { isProcessRunning } from '@camera.ui/common/node';
+import { reapRegistry } from '@camera.ui/common/node';
 import { open } from 'lmdb';
 import { constants, existsSync } from 'node:fs';
 import { access, unlink } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { container } from 'tsyringe';
 
-import { killProcess, readProcessSnapshots } from '../../utils/process.js';
+import { inject } from '../../container.js';
 
-import type { ConfigService } from '../../services/config/index.js';
-import type { ProcessSnapshot } from '../../utils/process.js';
+import type { PidRegistryEntry, ReapResult } from '@camera.ui/common/node';
 
 export interface PathExistenceResult {
   path: string;
@@ -39,7 +38,7 @@ export interface PortAvailabilityResult {
 }
 
 export interface OrphanedProcessesResult {
-  processInfo: ProcInfo;
+  processInfo: PidRegistryEntry;
   killed?: boolean;
   wasOrphaned?: boolean;
   error?: Error;
@@ -48,15 +47,6 @@ export interface OrphanedProcessesResult {
 export interface PathPermission {
   path: string;
   mode: number;
-}
-
-export interface ProcInfo {
-  pid: number;
-  startTime: number;
-  command: string;
-  args: string[];
-  titles?: string[];
-  uniqueId?: string;
 }
 
 async function isPortAvailable(port: number): Promise<boolean> {
@@ -72,23 +62,6 @@ async function isPortAvailable(port: number): Promise<boolean> {
     });
     server.listen(port);
   });
-}
-
-function isOwnProcess(processInfo: ProcInfo, proc: ProcessSnapshot | undefined): boolean {
-  if (!proc) {
-    return false;
-  }
-
-  const isCommandMatch = Boolean(proc.name === processInfo.command || proc.cmd?.includes(processInfo.command));
-  const areArgsMatch = processInfo.args.every((arg) => proc.cmd?.includes(arg));
-  const idMatch = Boolean(processInfo.uniqueId ? proc.cmd?.includes(processInfo.uniqueId) : false);
-  const titleMatch = Boolean(processInfo.titles ? processInfo.titles.some((title) => proc.name?.includes(title) || proc.cmd?.includes(title)) : false);
-
-  if (idMatch || titleMatch || (isCommandMatch && areArgsMatch)) {
-    return true;
-  }
-
-  return false;
 }
 
 export async function checkPathsExist(pathsToCheck: string[]): Promise<PathExistenceResult[]> {
@@ -161,58 +134,22 @@ export async function checkPortAvailability(portsToCheck: number[]): Promise<Por
   return results;
 }
 
-export async function checkOrphanedProcesses(processInfos: ProcInfo[]): Promise<OrphanedProcessesResult[]> {
-  const configService = container.resolve<ConfigService>('configService');
-  const results: OrphanedProcessesResult[] = [];
-  const running = new Set(processInfos.filter((processInfo) => isProcessRunning(processInfo.pid)).map((processInfo) => processInfo.pid));
+export async function checkOrphanedProcesses(entries: PidRegistryEntry[]): Promise<OrphanedProcessesResult[]> {
+  const configService = inject('configService');
 
-  let snapshots = new Map<number, ProcessSnapshot>();
-  let snapshotError: Error | undefined;
-  if (running.size > 0) {
-    try {
-      snapshots = await readProcessSnapshots([...running]);
-    } catch (error) {
-      snapshotError = error as Error;
-    }
+  let reaped: ReapResult[];
+  try {
+    reaped = await reapRegistry(entries);
+  } catch (error) {
+    return entries.map((processInfo) => ({ processInfo, error: error as Error }));
   }
 
-  for (const processInfo of processInfos) {
-    try {
-      if (snapshotError && running.has(processInfo.pid)) {
-        results.push({ processInfo, error: snapshotError });
-        continue;
-      }
-
-      const isRunning = running.has(processInfo.pid);
-      if (isRunning) {
-        const isOwnProc = isOwnProcess(processInfo, snapshots.get(processInfo.pid));
-        if (isOwnProc) {
-          const info: OrphanedProcessesResult = {
-            processInfo,
-            wasOrphaned: true,
-          };
-
-          try {
-            await killProcess(processInfo.pid);
-            info.killed = true;
-          } catch (error) {
-            info.killed = false;
-            info.error = error as Error;
-          }
-
-          results.push(info);
-        } else {
-          results.push({ processInfo, wasOrphaned: false });
-          configService.removeProcessByPID(processInfo.pid);
-        }
-      } else {
-        results.push({ processInfo, wasOrphaned: false });
-        configService.removeProcessByPID(processInfo.pid);
-      }
-    } catch (err) {
-      results.push({ processInfo, error: err as Error });
+  return reaped.map(({ entry, outcome, error }) => {
+    if (outcome !== 'failed') {
+      configService.removeProcessByPID(entry.pid);
     }
-  }
 
-  return results;
+    const wasOrphaned = outcome === 'killed' || outcome === 'failed';
+    return { processInfo: entry, wasOrphaned, killed: wasOrphaned ? outcome === 'killed' : undefined, error };
+  });
 }

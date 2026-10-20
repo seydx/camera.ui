@@ -31,8 +31,12 @@ export class Win32Installer extends BasePlatform {
         `":CAMERA_UI_HOME_PATH=${this.cli.homePath}` +
         `:CAMERA_UI_STORAGE_PATH=${this.cli.storagePath}"`;
 
+      // nssm's default 1.5 s after Ctrl+C is too short to stop the server
+      const stopTimeoutCmd = `"${nssmPath}" set ${this.cli.serviceName} AppStopMethodConsole 25000`;
+
       execSync(installCmd);
       execSync(setUserDirCmd);
+      execSync(stopTimeoutCmd);
 
       await this.configureFirewall();
       await this.start();
