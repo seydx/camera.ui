@@ -3431,7 +3431,12 @@ export default {
         system_types: {
           system_plugin_update_available: 'Plugin-Updates verfügbar',
           system_plugin_crashed: 'Plugin abgestürzt / wiederhergestellt',
+          system_plugin_incompatible: 'Plugin nicht mit dem Server kompatibel',
           system_update_available: 'Server-Update verfügbar',
+          system_app_update_available: 'App-Update verfügbar',
+          system_worker_update_available: 'Worker-Updates verfügbar',
+          system_cloud_reauth_required: 'Cloud-Anmeldung erforderlich',
+          system_backup_failed: 'Geplantes Backup fehlgeschlagen',
         },
       },
       instances: {

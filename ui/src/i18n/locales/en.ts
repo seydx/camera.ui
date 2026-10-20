@@ -3408,7 +3408,12 @@ export default {
         system_types: {
           system_plugin_update_available: 'Plugin updates available',
           system_plugin_crashed: 'Plugin crashed / recovered',
+          system_plugin_incompatible: 'Plugin incompatible with server',
           system_update_available: 'Server update available',
+          system_app_update_available: 'App update available',
+          system_worker_update_available: 'Worker updates available',
+          system_cloud_reauth_required: 'Cloud sign-in required',
+          system_backup_failed: 'Scheduled backup failed',
         },
       },
       permissions: {
