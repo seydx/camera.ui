@@ -3439,7 +3439,7 @@ export default {
         group_info_moments:
           'AI-written descriptions for the moments of an event. They replace the plain detection push; the delay decides how long an event has to stay calm before the summary goes out.',
         group_info_episodes:
-          'Combines related sightings from several cameras into one episode with a single story. Camera groups limit which cameras may join, the timing settings shape when an episode closes.',
+          'Combines related sightings from several cameras into one episode, with a story from the AI provider or a title without one. The timing settings shape when an episode closes.',
         license_title: 'License & Cloud',
         license_description: 'Connect this NVR to the camera.ui cloud for license and cloud features.',
         license_disconnected: 'Not connected',

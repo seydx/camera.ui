@@ -3693,7 +3693,7 @@ export default {
         group_info_moments:
           'KI-Beschreibungen für die Momente eines Ereignisses. Sie ersetzen den einfachen Erkennungs-Push; die Verzögerung bestimmt, wie lange ein Ereignis ruhig bleiben muss, bevor die Zusammenfassung rausgeht.',
         group_info_episodes:
-          'Fasst zusammengehörige Sichtungen mehrerer Kameras zu einer Episode mit einer Geschichte zusammen. Kameragruppen begrenzen, welche Kameras dazugehören dürfen, die Zeiteinstellungen bestimmen, wann eine Episode endet.',
+          'Fasst zusammengehörige Sichtungen mehrerer Kameras zu einer Episode zusammen, mit einer Geschichte vom KI-Anbieter oder ohne ihn mit einem Titel. Die Zeiteinstellungen bestimmen, wann eine Episode endet.',
         not_available: 'Nicht verfügbar',
         license_title: 'Lizenz & Cloud',
         license_description: 'Verbinden Sie diesen NVR mit der camera.ui Cloud für Lizenz- und Cloud-Funktionen.',
