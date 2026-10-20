@@ -23,6 +23,12 @@ import type { LoggerService } from '../../services/logger/index.js';
 import type { CloudApi } from '../api/index.js';
 
 const TUNNEL_CREDENTIALS_SUBJECT = 'tunnel.server.credentials';
+const TUNNEL_AUTH_FAILED_SUBJECT = 'tunnel.client.auth-failed';
+
+const INVALID_TOKEN_REASON = 'invalid token';
+const FORCED_REFRESH_INTERVAL_MS = 5 * 60_000;
+
+const LEVEL_TOKEN = /^(?:\S+\s+)?(TRC|DBG|INF|WRN|ERR|FTL|PNC)\b/;
 
 const BASE_RESTART_DELAY_MS = 1_000;
 const MAX_RESTART_DELAY_MS = 60_000;
@@ -43,6 +49,8 @@ export class TunnelClient {
   private cloudApi: CloudApi;
 
   private credentialsUnsub?: () => void;
+  private authFailedUnsub?: () => void;
+  private lastForcedRefreshAt = 0;
 
   private started = false;
   private restarting = false;
@@ -202,6 +210,8 @@ export class TunnelClient {
     this.manuallyKilled = true;
     this.credentialsUnsub?.();
     this.credentialsUnsub = undefined;
+    this.authFailedUnsub?.();
+    this.authFailedUnsub = undefined;
     this.stdoutLine?.close();
     this.stderrLine?.close();
     await this.kill();
@@ -222,6 +232,9 @@ export class TunnelClient {
         return { success: false, error: error instanceof Error ? error.message : String(error) };
       }
     });
+    this.authFailedUnsub = await this.proxyServer.proxy.subscribe<{ error?: string; reason?: string }>(TUNNEL_AUTH_FAILED_SUBJECT, (event) =>
+      this.handleAuthFailed(event),
+    );
   }
 
   public async restart(): Promise<void> {
@@ -286,6 +299,30 @@ export class TunnelClient {
 
       this.start();
     }, delay);
+  }
+
+  private async handleAuthFailed(event: { error?: string; reason?: string } | undefined): Promise<void> {
+    const reason = event?.reason ?? /AUTH_FAIL:\s*(.+)$/.exec(event?.error ?? '')?.[1];
+    if (reason?.trim() !== INVALID_TOKEN_REASON) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastForcedRefreshAt < FORCED_REFRESH_INTERVAL_MS) {
+      return;
+    }
+    this.lastForcedRefreshAt = now;
+
+    try {
+      await this.cloudApi.credentialStore.forceRefresh();
+      this.logger.log('The cloud rejected the tunnel token, fetched a new one');
+    } catch (error) {
+      if (error instanceof NotAuthorizedError) {
+        await this.pauseForReauth();
+        return;
+      }
+      this.logger.warn('Could not refresh the cloud token after the tunnel login was rejected:', error instanceof Error ? error.message : String(error));
+    }
   }
 
   private async pauseForReauth(): Promise<void> {

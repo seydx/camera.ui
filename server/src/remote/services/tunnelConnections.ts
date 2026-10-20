@@ -1,5 +1,10 @@
 const REGISTERED = /Registered tunnel connection\b.*?\bconnIndex=(\d+)/;
-const UNREGISTERED = /Unregistered tunnel connection\b.*?\bconnIndex=(\d+)/;
+const UNREGISTERED = /(?:Unregistered tunnel connection|Serve tunnel error|Lost connection with the edge|Connection terminated)\b.*?\bconnIndex=(\d+)/;
+
+interface Waiter {
+  settle: (registered: boolean) => void;
+  untilExit: boolean;
+}
 
 export class TunnelConnections {
   private connections = new Set<string>();

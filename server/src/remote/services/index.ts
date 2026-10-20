@@ -436,10 +436,11 @@ export class RemoteAccessService {
     if (mode === 'cloudflare') {
       this.cloudflareService.start();
     } else if (mode === 'customDomain') {
-      const url = this.remoteConfig.customDomain.url;
+      const url = this.remoteConfig.customDomain.url?.trim();
       if (url) {
-        this.customDomainService.testDomain(url);
+        this.customDomainService.configure(url);
         this.urlReadiness.ensureReady(url);
+        this.customDomainService.testDomain(url);
       } else {
         this.customDomainService.reset();
       }

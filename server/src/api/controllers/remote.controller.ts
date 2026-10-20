@@ -125,7 +125,7 @@ export class RemoteController {
 
   public async pairPoll(req: FastifyRequest<AuthLoginRequest & RemotePairPollRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const registrationId = await this.remoteAccessManager.getRegistrationId();
+      const registrationId = this.remoteAccessManager.pushToken ?? '';
       const enabled = this.remoteAccessManager.getStatus().enabled;
       const result = await this.service.pollPairing(enabled, registrationId, req.body?.name);
       return reply.code(200).send(result);

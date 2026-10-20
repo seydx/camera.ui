@@ -100,8 +100,13 @@ export class UrlReadinessGate {
   }
 }
 
-function normalizeUrl(url: string): string {
-  return url.replace(/\/+$/, '');
+export function normalizeUrl(url: string): string {
+  const trimmed = url.trim();
+  try {
+    return new URL(trimmed).toString().replace(/\/+$/, '');
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
 }
 
 export async function publicDnsAnswer(hostname: string): Promise<DnsAnswer> {

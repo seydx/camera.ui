@@ -1,6 +1,8 @@
 import { API_EVENT } from '@camera.ui/sdk';
 import { container } from 'tsyringe';
 
+import { RemoteService } from '../api/services/remote.service.js';
+import { inject, provide } from '../container.js';
 import { PushService } from './push.js';
 import { RemoteAccessService } from './services/index.js';
 import { ProxyService } from './tunnel/index.js';
@@ -18,6 +20,7 @@ export class RemoteAccessManager {
   private logger: Logger;
   private configService: ConfigService;
 
+  private remoteService: RemoteService;
   private proxyService: ProxyService;
   private pushService: PushService;
   private remoteAccessService: RemoteAccessService;
@@ -31,7 +34,9 @@ export class RemoteAccessManager {
 
     this.logger = loggerService.createSystemLogger('Remote');
 
-    this.pushService = new PushService();
+    this.remoteService = new RemoteService();
+    this.pushService = new PushService(this.logger);
+    this.pushService.on('connected', () => this.deliverPushToken());
     this.proxyService = new ProxyService(this.pushService, this.logger);
     this.remoteAccessService = new RemoteAccessService(this.logger, this.proxyService);
 
@@ -41,9 +46,13 @@ export class RemoteAccessManager {
     });
   }
 
+  public get pushToken(): string | undefined {
+    return this.pushService.registrationId;
+  }
+
   public async start(): Promise<void> {
-    await this.pushService.connect();
-    this.remoteAccessService.start();
+    this.syncPush();
+    await this.remoteAccessService.start();
   }
 
   public stop(): void {
@@ -57,11 +66,8 @@ export class RemoteAccessManager {
   }
 
   public async reconcileDirect(): Promise<void> {
+    this.syncPush();
     await this.remoteAccessService.reconcile();
-  }
-
-  public async getRegistrationId(): Promise<string> {
-    return this.pushService.getRegistrationId();
   }
 
   public getStatus(): RemoteAccessStatus {
@@ -94,5 +100,26 @@ export class RemoteAccessManager {
 
   public async cloudflareManagedLogout(): Promise<void> {
     await this.remoteAccessService.managedLogout();
+  }
+
+  private syncPush(): void {
+    if (this.remoteService.getCloud().oauth) {
+      this.pushService.connectInBackground();
+    }
+  }
+
+  private async deliverPushToken(): Promise<void> {
+    const token = this.pushService.registrationId;
+    const cloudApi = inject('cloudApi');
+    const creds = await cloudApi.credentialStore.peek();
+    if (!token || !creds || creds.needs_reauth) {
+      return;
+    }
+
+    try {
+      await cloudApi.serverRoute.update({ disabled: !this.remoteAccessService.getStatus().enabled, fcm_token: token });
+    } catch (error: any) {
+      this.logger.warn('Could not send the push token to the cloud:', error?.message ?? error);
+    }
   }
 }

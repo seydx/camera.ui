@@ -3,7 +3,7 @@ import axios from 'axios';
 import { proxyRefreshLooksValid, proxyTokenLooksValid } from './cloudSession.js';
 
 import type { Logger } from '@camera.ui/logger';
-import type { AuthApi, CloudSessionHolder } from './types.js';
+import type { AuthApi, CloudSessionHolder, ProxyMintResult } from './types.js';
 
 export interface CloudSessionLifecycleOptions {
   readonly api: AuthApi;
@@ -54,11 +54,8 @@ export function createCloudSessionLifecycle(options: CloudSessionLifecycleOption
         logger?.debug('cloud-session', 'refresh OK via RT');
         return;
       } catch (err) {
-        if (axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
-          logger?.warn('cloud-session', 'RT rejected — falling through to L1');
-        } else {
-          throw err;
-        }
+        if (!isRejected(err)) throw err;
+        logger?.warn('cloud-session', 'RT rejected, falling through to L1');
       }
     }
 
@@ -74,7 +71,13 @@ export function createCloudSessionLifecycle(options: CloudSessionLifecycleOption
       throw new Error('no L1 access token in secure storage');
     }
 
-    const minted = await api.remintProxyFromL1(session.cloudApiBase, session.serverId, l1Token, signal);
+    let minted: ProxyMintResult;
+    try {
+      minted = await api.remintProxyFromL1(session.cloudApiBase, session.serverId, l1Token, signal);
+    } catch (err) {
+      if (isRejected(err)) await onL1Unavailable?.();
+      throw err;
+    }
     if (signal.aborted) return;
     cloudSession.set({
       ...session,
@@ -99,4 +102,8 @@ export function createCloudSessionLifecycle(options: CloudSessionLifecycleOption
   }
 
   return { ensureFresh, wake };
+}
+
+function isRejected(err: unknown): boolean {
+  return axios.isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403);
 }

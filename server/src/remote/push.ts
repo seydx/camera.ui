@@ -3,17 +3,26 @@ import { EventEmitter } from 'node:events';
 
 import { RemoteService } from '../api/services/remote.service.js';
 
+import type { Logger } from '@camera.ui/common';
 import type { Types } from '@eneris/push-receiver/dist/client.js';
+
+const CONNECT_TIMEOUT_MS = 60_000;
+const RETRY_MIN_MS = 30_000;
+const RETRY_MAX_MS = 15 * 60_000;
 
 export class PushService extends EventEmitter {
   private remoteService: RemoteService;
   private pushReceiver: PushReceiver;
-  private registrationIdPromise = Promise.withResolvers<string>();
 
   private _connected = false;
   private connectionPromise: Promise<void> | null = null;
 
-  constructor() {
+  private keepConnected = false;
+  private backgroundAttempt?: Promise<void>;
+  private retryTimer?: NodeJS.Timeout;
+  private retryDelay = RETRY_MIN_MS;
+
+  constructor(private logger: Logger) {
     super();
 
     this.remoteService = new RemoteService();
@@ -36,10 +45,6 @@ export class PushService extends EventEmitter {
       const config = this.getPushReceiverConfig();
       config.credentials = newCredentials;
       this.savePushReceiverConfig(config);
-
-      if (newCredentials.fcm?.token) {
-        this.registrationIdPromise.resolve(newCredentials.fcm.token);
-      }
     });
 
     this.pushReceiver.onNotification(({ message }) => {
@@ -48,12 +53,14 @@ export class PushService extends EventEmitter {
       this.savePushReceiverConfig(config);
       this.emit('notification', message);
     });
-
-    this.registrationIdPromise.promise.catch(() => {});
   }
 
   public get connected(): boolean {
     return this._connected;
+  }
+
+  public get registrationId(): string | undefined {
+    return this.getPushReceiverConfig().credentials?.fcm?.token;
   }
 
   public async connect(): Promise<void> {
@@ -61,38 +68,74 @@ export class PushService extends EventEmitter {
       return;
     }
 
-    if (this.connectionPromise) {
-      return this.connectionPromise;
-    }
-
-    this.connectionPromise = this.pushReceiver.connect();
-    await this.connectionPromise;
-    this.connectionPromise = null;
-    this._connected = true;
+    this.connectionPromise ??= this.openConnection().finally(() => {
+      this.connectionPromise = null;
+    });
+    return this.connectionPromise;
   }
 
-  public async getRegistrationId(): Promise<string> {
-    if (!this._connected) {
-      await this.connect();
+  public connectInBackground(): void {
+    this.keepConnected = true;
+    if (this._connected || this.retryTimer || this.backgroundAttempt) {
+      return;
     }
 
-    const config = this.getPushReceiverConfig();
-    if (config.credentials?.fcm?.token) {
-      return config.credentials.fcm.token;
-    }
-
-    return this.registrationIdPromise.promise;
+    this.backgroundAttempt = this.connect()
+      .then(
+        () => {
+          this.retryDelay = RETRY_MIN_MS;
+        },
+        (error) => {
+          if (!this.keepConnected) {
+            return;
+          }
+          this.logger.warn(`Push connection failed, retrying in ${Math.round(this.retryDelay / 1000)}s:`, error?.message ?? error);
+          this.retryTimer = setTimeout(() => {
+            this.retryTimer = undefined;
+            if (this.keepConnected) {
+              this.connectInBackground();
+            }
+          }, this.retryDelay);
+          this.retryTimer.unref();
+          this.retryDelay = Math.min(this.retryDelay * 2, RETRY_MAX_MS);
+        },
+      )
+      .finally(() => {
+        this.backgroundAttempt = undefined;
+      });
   }
 
   public disconnect(): void {
-    if (!this._connected) {
+    this.keepConnected = false;
+    clearTimeout(this.retryTimer);
+    this.retryTimer = undefined;
+
+    if (!this._connected && !this.connectionPromise) {
       return;
     }
 
     this._connected = false;
-    this.registrationIdPromise.reject(new Error('Disconnected from PushReceiver'));
-
     this.pushReceiver.destroy();
+  }
+
+  private async openConnection(): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`no answer from FCM within ${CONNECT_TIMEOUT_MS / 1000}s`)), CONNECT_TIMEOUT_MS);
+      timer.unref();
+    });
+
+    try {
+      await Promise.race([this.pushReceiver.connect(), timeout]);
+      this._connected = true;
+      this.emit('connected');
+    } catch (error) {
+      // the receiver keeps its socket and retry timer, a second connect must not run beside them
+      this.pushReceiver.destroy();
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private getPushReceiverConfig(): Partial<Types.ClientConfig> {
