@@ -24,7 +24,9 @@ import { RUNTIME_STATUS } from '../services/config/types.js';
 import { MdnsService } from '../services/mdns/index.js';
 import { paint } from '../utils/colors.js';
 import { syncInterfaceCache } from '../utils/interface-cache.js';
-import { IngressSession } from './ingress.js';
+import { trustEntry } from '../utils/trusted-addresses.js';
+import { sweepExpiredTokens } from './database/tokenSweep.js';
+import { IngressAuth } from './ingress.js';
 import { HeaderPlugin } from './plugins/header.plugin.js';
 import { ProxyPlugin } from './plugins/proxy.plugin.js';
 import { PROXY_AUTH_HEADER, ProxyAuth } from './proxy-auth.js';
@@ -210,15 +212,16 @@ export class Server {
 
     const host = this.configService.config.host ?? '0.0.0.0';
     const trustIp = this.configService.INGRESS_TRUST_IP;
-    const ingress = trustIp ? new IngressSession() : undefined;
-    const app = Fastify({ bodyLimit: 1e8, logController: new LogController({ disableRequestLogging: true }) });
-    this.trackConnections(app.server);
+    const ingress = trustIp ? new IngressAuth(trustIp) : undefined;
+    const app = this.createForwarder();
 
-    if (ingress && trustIp) {
+    if (ingress) {
+      // this plaintext port signs requests in, only the Home Assistant proxy may connect
+      app.server.on('connection', (socket: Socket) => {
+        if (!ingress.isTrusted(socket.remoteAddress)) socket.destroy();
+      });
       app.addHook('onRequest', async (req) => {
-        if (req.ip.replace(/^::ffff:/, '') === trustIp) {
-          (req as IngressRequest).ingressToken = await ingress.getAccessToken();
-        }
+        (req as IngressRequest).ingressToken = await ingress.accessToken(req.ip, req.headers);
       });
     }
 

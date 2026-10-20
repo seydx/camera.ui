@@ -3,6 +3,8 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
+import { INGRESS_DEVICE_PREFIX, INGRESS_USERNAME } from '../../services/config/constants.js';
 import { CamerasService } from '../services/cameras.service.js';
 import { UsersService } from '../services/users.service.js';
 
@@ -175,10 +177,31 @@ export class UsersController {
         });
       }
 
+      // a password of its own would keep a panel viewer in after Home Assistant removed the user
+      if (
+        req.body.password !== undefined &&
+        user.role !== 'master' &&
+        req.locals.user!._id === user._id &&
+        req.locals.jwt?.device_id?.startsWith(INGRESS_DEVICE_PREFIX)
+      ) {
+        return reply.code(403).send({
+          statusCode: 403,
+          message: 'Forbidden: the Home Assistant panel can not set a password for this account',
+        });
+      }
+
       if (user.role === 'master' && req.body.role && req.body.role !== (user.role as any)) {
         return reply.code(409).send({
           statusCode: 409,
           message: 'Role of master can not be changed',
+        });
+      }
+
+      // ingress finds this user by name at boot, a rename would provision a second master
+      if (this.configService.INGRESS_TRUST_IP && user.username === INGRESS_USERNAME && req.body.username !== undefined && req.body.username !== user.username) {
+        return reply.code(409).send({
+          statusCode: 409,
+          message: 'The Home Assistant user can not be renamed',
         });
       }
 

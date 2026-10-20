@@ -26,6 +26,14 @@ export const ELECTRON_ASAR_UNPACKED = 'app';
 
 export const PROCESS_IDENTIFIER = '--id=camera.ui';
 
+export const INGRESS_USERNAME = 'homeassistant';
+
+export const MIN_DATABASE_VERSION = '2.1.1';
+
+export const INGRESS_DEVICE_PREFIX = 'ingress_';
+
+export const PROXY_AUTH_DEVICE_PREFIX = 'proxyauth_';
+
 export const DEFAULT_ICE_SERVERS: IceServer[] = [
   {
     urls: ['stun:stun.l.google.com:19302'],

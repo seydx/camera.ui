@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
+import { INGRESS_DEVICE_PREFIX } from '../../services/config/constants.js';
 import { verifyUserPassword } from '../middlewares/authValidation.middleware.js';
 import { AuthService } from '../services/auth.service.js';
 import { ServerService } from '../services/server.service.js';
@@ -587,6 +589,11 @@ export class AuthController {
     try {
       const user = req.locals.user!;
       const name = req.body.name;
+
+      // a token of its own would keep a panel viewer in after Home Assistant removed the user
+      if (user.role !== 'master' && req.locals.jwt?.device_id?.startsWith(INGRESS_DEVICE_PREFIX)) {
+        return reply.code(403).send({ statusCode: 403, message: 'Forbidden: the Home Assistant panel can not create API tokens for this account' });
+      }
 
       const duplicate = this.service.listApiTokensByUserId(user._id).some((t) => t.name === name);
       if (duplicate) {

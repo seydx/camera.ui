@@ -94,6 +94,7 @@ import type {
   DBNotificationSettings,
   DBPlugin,
   DBRemote,
+  DBRoles,
   DBRoomCatalog,
   DBSensor,
   DBSensorHistoryEntry,
@@ -104,8 +105,6 @@ import type {
   DBUser,
   DBWorkerState,
 } from './types.js';
-
-const INGRESS_USERNAME = 'homeassistant';
 
 export class Database {
   static readonly VERSION = '2.3.1';
@@ -543,26 +542,26 @@ export class Database {
     }
 
     this.logger.attention('Ingress mode: provisioning the homeassistant user...');
-    const user = this.generateIngressUser();
+    const user = ingressUser(INGRESS_USERNAME, 'master');
     await this.usersDB.put(user._id, user);
   }
+}
 
-  private generateIngressUser(): DBUser {
-    return {
-      _id: randomUUID(),
-      avatar: 'logo-256.png',
-      username: INGRESS_USERNAME,
-      password: hashPassword(randomBytes(32).toString('base64')),
-      role: 'master',
-      firstLogin: false,
-      preferences: {
-        camview: {
-          views: [],
-        },
-        cameras: {},
+export function ingressUser(username: string, role: DBRoles, _id: string = randomUUID()): DBUser {
+  return {
+    _id,
+    avatar: 'logo-256.png',
+    username,
+    password: hashPassword(randomBytes(32).toString('base64')),
+    role,
+    firstLogin: false,
+    preferences: {
+      camview: {
+        views: [],
       },
-    };
-  }
+      cameras: {},
+    },
+  };
 }
 
 function hashPassword(password: string): string {

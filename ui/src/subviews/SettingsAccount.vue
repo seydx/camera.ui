@@ -88,7 +88,7 @@
           </Card>
         </div>
 
-        <div>
+        <div v-if="!isIngress">
           <span class="card-title">{{ $t('views.settings.password') }}</span>
           <Card class="cui-card">
             <template #content>
@@ -232,7 +232,7 @@
           </Card>
         </div>
 
-        <div>
+        <div v-if="apiTokensVisible">
           <span class="card-title">{{ $t('views.settings.api_tokens.title') }}</span>
           <Card class="cui-card">
             <template #content>
@@ -468,6 +468,7 @@ const biometricEnabled = ref(false);
 const biometricToggling = ref(false);
 
 const biometricCardVisible = computed(() => isCapacitor && biometryAvailable.value && !firststeps.value);
+const apiTokensVisible = computed(() => !isIngress || user.value?.role === 'master');
 
 const sessionsTablePt: PassThrough<DataTablePassThroughOptions> = {
   bodyRow: {
