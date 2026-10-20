@@ -179,7 +179,6 @@ class DeviceStorage(DeviceStorageInterface):
 
         return None
 
-    @RPCMethod
     async def setInternalValue(self, key: str, value: Any) -> None:  # type: ignore[override]
         if self.__apply_internal_value(key, value):
             await self.save()
@@ -203,14 +202,20 @@ class DeviceStorage(DeviceStorageInterface):
     async def getConfig(self) -> SchemaConfig:
         await self.__resolve_on_get_functions(self.schemas)
         filtered_schema: Any = remove_callbacks_from_schemas(self.schemas)
-        schema_config: SchemaConfig = {"schema": filtered_schema, "config": self.values}
+        schema_config: SchemaConfig = {"schema": filtered_schema, "config": self.__schema_owned(self.values)}
         return schema_config
 
     @RPCMethod
     async def setConfig(self, new_config: dict[str, Any]) -> None:
         validate_store_value("config", new_config)
+        owned = self.__schema_owned(new_config)
+        ignored = [key for key in new_config if key not in owned]
+        if ignored:
+            cast(Any, self.__api).logger.warn(
+                f"setConfig ignored keys without a schema: {', '.join(ignored)}"
+            )
         old_config = deepcopy(self.values)
-        self.values = merge_with(self.values, new_config, merge)
+        self.values = merge_with(self.values, owned, merge)
 
         await self.save()
         self.__trigger_on_set_for_changes(old_config, self.values)
@@ -320,6 +325,14 @@ class DeviceStorage(DeviceStorageInterface):
                 schema_value = await self.getValue(schema["key"])
                 if schema_value is not None:
                     ObjectPath.set(self.values, schema["key"], schema_value)
+
+    def __schema_owned(self, values: dict[str, Any] | None) -> dict[str, Any]:
+        keys = [schema["key"] for schema in self.schemas]
+        return {
+            key: value
+            for key, value in (values or {}).items()
+            if any(k == key or k.startswith(f"{key}.") or k.startswith(f"{key}[") for k in keys)
+        }
 
     def __trigger_on_set_for_changes(self, old_config: dict[str, Any], new_config: dict[str, Any]) -> None:
         for config_key in list(new_config.keys()):

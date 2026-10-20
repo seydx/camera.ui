@@ -104,7 +104,6 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
     }
   }
 
-  @RPCMethod
   public async setInternalValue(key: string, value: unknown): Promise<void> {
     if (this.#applyInternalValue(key, value)) {
       await this.save();
@@ -134,16 +133,21 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
   public async getConfig(): Promise<SchemaConfig> {
     await this.#resolveOnGetFunctions(this.schemas);
     const filteredSchema = removeCallbacksFromSchemas(this.schemas);
-    const schemaConfig: SchemaConfig = { schema: filteredSchema, config: this.values };
+    const schemaConfig: SchemaConfig = { schema: filteredSchema, config: this.#schemaOwned(this.values) };
     return schemaConfig;
   }
 
   @RPCMethod
   public async setConfig(newConfig: T): Promise<void> {
     validateStoreValue('config', newConfig);
+    const owned = this.#schemaOwned(newConfig);
+    const ignored = Object.keys(newConfig ?? {}).filter((key) => !(key in owned));
+    if (ignored.length > 0) {
+      this.#api.logger.warn(`setConfig ignored keys without a schema: ${ignored.join(', ')}`);
+    }
     const oldConfig = structuredClone(this.values);
 
-    this.values = mergeWith(this.values, newConfig, (source: any, target: any) => {
+    this.values = mergeWith(this.values, owned, (source: any, target: any) => {
       if (Array.isArray(source)) {
         return target;
       }
@@ -265,6 +269,16 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
         }
       }
     }
+  }
+
+  #schemaOwned(values: Record<string, any> | undefined): Record<string, any> {
+    const owned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(values ?? {})) {
+      if (this.schemas.some((schema) => schema.key === key || schema.key.startsWith(`${key}.`) || schema.key.startsWith(`${key}[`))) {
+        owned[key] = value;
+      }
+    }
+    return owned;
   }
 
   #triggerOnSetForChanges(oldConfig: Record<string, any>, newConfig: Record<string, any>): void {
