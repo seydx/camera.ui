@@ -73,6 +73,8 @@ class SensorManagerProxy:
         self._cleanups: dict[str, CloseHandler] = {}
         self._external: dict[str, Sensor[Any, Any, Any]] = {}
         self._consumed: dict[str, SensorProxy] = {}
+        self._unsent: dict[str, set[str]] = {}
+        self._report_writes: dict[str, Callable[[str, SensorType, dict[str, Any]], Awaitable[None]]] = {}
         self._global_unsubscribe: CloseHandler | None = None
         self._closed = False
 
@@ -180,11 +182,23 @@ class SensorManagerProxy:
 
     def untrack_camera_sensor(self, sensor_id: str) -> None:
         self._external.pop(sensor_id, None)
+        self._unsent.pop(sensor_id, None)
+
+    def settle_write(self, sensor_id: str, properties: dict[str, Any], sent: bool) -> None:
+        keys = self._unsent.get(sensor_id, set())
+        if sent:
+            keys.difference_update(properties)
+        else:
+            keys.update(properties)
+        if keys:
+            self._unsent[sensor_id] = keys
+        else:
+            self._unsent.pop(sensor_id, None)
 
     def on_rpc_reconnected(self) -> None:
         if self._closed:
             return
-        self._tasks.add(self._resync_all_consumed())
+        self._tasks.add(self._resync())
 
     async def close(self) -> None:
         self._closed = True
@@ -220,6 +234,7 @@ class SensorManagerProxy:
 
     def _unbind(self, sensor_id: str) -> Sensor[Any, Any, Any] | None:
         sensor = self._owned.pop(sensor_id, None)
+        self._unsent.pop(sensor_id, None)
         if sensor is None:
             return None
         cleanup = self._cleanups.pop(sensor_id, None)
@@ -309,6 +324,24 @@ class SensorManagerProxy:
         self._global_unsubscribe = await self._proxy.subscribe(
             ns.sensors_subject, self._on_global_sensor_event
         )
+
+    async def _resync(self) -> None:
+        await self._send_unsent()
+        await self._resync_all_consumed()
+
+    async def _send_unsent(self) -> None:
+        for sensor_id, keys in list(self._unsent.items()):
+            sensor = self._owned.get(sensor_id) or self._external.get(sensor_id)
+            if sensor is None:
+                self._unsent.pop(sensor_id, None)
+                continue
+            properties = {key: sensor.getValue(key) for key in keys}
+            try:
+                await self._update_property_values(sensor_id, properties)
+            except Exception:
+                # still unreachable, the next announce tries again
+                continue
+            self.settle_write(sensor_id, properties, True)
 
     async def _resync_all_consumed(self) -> None:
         for sensor_id in list(self._consumed):
@@ -503,8 +536,12 @@ class SensorManagerProxy:
             return
 
         async def notify_registry() -> None:
-            with contextlib.suppress(Exception):
-                await self._registry_proxy.updatePropertyValues(sensor.id, properties)
+            try:
+                await self._update_property_values(sensor.id, properties)
+            except Exception:
+                self.settle_write(sensor.id, properties, False)
+                return
+            self.settle_write(sensor.id, properties, True)
 
         self._tasks.add(notify_registry())
 

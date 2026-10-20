@@ -109,6 +109,12 @@ export class Server {
 
     this.trackConnections(this.app.server);
     this.trackConnections(this.internalApp.server);
+
+    this.app.server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      tryInject('workerManager')?.tunnels.accept(req, socket, head);
+    });
+
+    this.watchCertificate();
     this.setupListeners();
     await this.registerPlugins();
     await this.registerRouters();

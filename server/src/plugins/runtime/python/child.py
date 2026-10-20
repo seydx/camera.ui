@@ -39,6 +39,7 @@ from plugins.runtime.python.namespaces import NamespaceManager
 from plugins.runtime.python.plugin_api import PluginAPI
 from plugins.runtime.python.proxy.camera_device import CameraDeviceProxy
 from plugins.runtime.python.proxy.file_serve import PluginFileServer
+from plugins.runtime.python.resync import ResyncScheduler
 from plugins.runtime.python.store import PluginStoreFile
 from plugins.runtime.python.typings import (
     PLUGIN_COMMAND,
@@ -179,6 +180,12 @@ class PluginChild:
         self._connect_failed.set()
 
     async def _on_rpc_reconnected(self) -> None:
+        self._resync.trigger()
+
+    def _on_worker_link(self, _message: Any) -> None:
+        self._resync.trigger()
+
+    def _resync_managers(self) -> None:
         if self.stopped or self.api is None:
             return
         self.api.sensor_manager.on_rpc_reconnected()
@@ -242,6 +249,11 @@ class PluginChild:
             if os.environ.get("PLUGIN_REMOTE_MODE"):
                 self.file_server = PluginFileServer(self.proxy, plugin_info["id"])
                 await self.file_server.register()
+
+            # a worker's own connection stays up when its link to the master drops
+            link_subject = os.environ.get("CAMERAUI_WORKER_LINK_SUBJECT")
+            if link_subject:
+                await self.proxy.subscribe(link_subject, self._on_worker_link)
 
             self.api.device_manager.set_plugin(self.plugin)
             self.api.sensor_manager.set_plugin(self.plugin)
@@ -389,6 +401,7 @@ class PluginChild:
             return
 
         self.stopped = True
+        self._resync.close()
 
         if self.api:
             completed = await self.api.emit_and_wait(

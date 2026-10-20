@@ -203,7 +203,7 @@ export class WorkerManager {
   private holdsExpired = false;
   private booted = false;
   private addressWarned = false;
-  private workloadRevision = 0;
+  private tunnelWarned = new Set<string>();
   private active = false;
 
   constructor() {
@@ -457,14 +457,32 @@ export class WorkerManager {
       return undefined;
     }
 
-    if (worker.update.updating) {
-      throw new Error(`Worker ${worker.name} is already updating`);
+    return {
+      worker: worker.name,
+      system: worker.system,
+      sample: worker.online ? worker.processes?.find((process) => process.capability === capability && process.id === id) : undefined,
+    };
+  }
+
+  public async streamUrlFromHere(pluginId: string | undefined, url: string): Promise<string> {
+    const target = loopbackTarget(url);
+    if (!target || !pluginId) {
+      return url;
     }
 
-    this.logger.log(`Updating worker ${worker.name} (${agentId}) to ${version}`);
+    const plugins = new PluginsService();
+    const pluginProcess = plugins.getPluginProcessById(pluginId);
+    // until placed again, the instance its worker kept answers
+    const agentId = pluginProcess?.isLocal ? undefined : (pluginProcess?.workerAgentId ?? plugins.getPluginDbById(pluginId)?.workerAgentId);
+    if (!agentId) {
+      return url;
+    }
 
-    const workerProxy = this.createWorkerProxy(agentId);
-    await workerProxy.update(version);
+    const local = await this.tunnels.listen(`${agentId}|${hostPort(target)}`, target, `worker ${this.nameOf(agentId)}`, (to, token) =>
+      this.openTunnel(agentId, to, token),
+    );
+    return withHostPort(url, local);
+  }
 
   public nameOf(agentId: string): string {
     return this.workers.get(agentId)?.name ?? agentId;

@@ -56,6 +56,7 @@ export class DeviceManagerProxy implements DeviceManager {
       this.#proxy,
       () => this.#refreshAllDevices(),
       (error) => this.#logger.debug('Device reconnect watch ended:', error),
+      { debounce: true },
     );
 
     this.#closeRequests = await this.#proxy.onRequest<DeviceManagerListenerMessagePayload>(this.#namespaces.pluginDeviceManagerSubject, (event) => {

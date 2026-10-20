@@ -25,6 +25,16 @@ import type { AuthConfig, NatsConfig, NatsUserConfig, ProxyAuth } from './interf
 const SERVER_READY_MESSAGE = 'Server is ready';
 const SERVER_ERROR_MESSAGE = 'Error listening on port';
 
+const LEAF_ACCEPTOR_RESTART_MS = [250, 1000, 5000, 15_000, 30_000];
+const LEAF_ACCEPTOR_CALM_MS = 60_000;
+
+const WORKER_NATS_RESTART_MS = [500, 1000, 2000, 5000];
+const WORKER_NATS_CRASH_LIMIT = 5;
+const WORKER_NATS_CRASH_WINDOW_MS = 60_000;
+
+const NATS_LEVEL = /^\[(TRC|DBG|INF|WRN|ERR|FTL)\]\s/;
+const PROBE_HANGUP = 'TLS leafnode handshake error: EOF';
+
 const WORKER_LEAF_DENY = ['rpc.terminalManager.>', 'stream.rpc.terminalManager.>', 'terminalManager.>', 'tunnel.>', 'notifications.user.>', 'cast.>'];
 const SHARED_WORKER_SUBJECTS = ['rpc.workers.manager.rpc.>', 'workers.logs', 'workers.disconnect'];
 
@@ -71,6 +81,10 @@ export class NATS {
 
   private leafAcceptorProcess?: ChildProcess;
   private restartingLeafAcceptor = false;
+  private leafAcceptorRestartTimer?: NodeJS.Timeout;
+  private leafAcceptorLastExit = 0;
+  private leafAcceptorCrashes = 0;
+  private _leafAcceptorError?: string;
   private clusterListenerEnabled = false;
 
   private logger: Logger;
@@ -309,6 +323,9 @@ export class NATS {
         reconnect: '500ms',
         remotes: this.leafNodeRemotes.map((remote) => ({
           url: remote.url,
+          disabled: remote.disabled,
+          compression: 'off',
+          ignore_discovered_servers: true,
           tls: {
             ca_file: remote.caFile,
           },
@@ -366,6 +383,9 @@ export class NATS {
     (config as any).leafnodes = {
       host: leaf.host,
       port: leaf.port,
+      // s2 does not shrink camera frames, off here disables it for old workers too
+      compression: 'off',
+      no_advertise: true,
       tls: {
         cert_file: leaf.tlsCertFile,
         key_file: leaf.tlsKeyFile,
@@ -409,8 +429,8 @@ export class NATS {
 
     const promises = this.clusterProcesses.map((process) => this.kill(process));
 
+    this.cancelLeafAcceptorRestart();
     if (this.leafAcceptorProcess) {
-      this.restartingLeafAcceptor = true; // suppress auto-restart
       promises.push(this.kill(this.leafAcceptorProcess));
     }
 
@@ -534,12 +554,8 @@ export class NATS {
           this.leafAcceptorProcess = undefined;
         }
         if (!this.restartingLeafAcceptor && !isShuttingDown() && !this.manuallyKilled) {
-          this.logger.warn('Leaf-acceptor exited unexpectedly — restarting in 3s');
-          setTimeout(() => {
-            if (!this.restartingLeafAcceptor && !isShuttingDown() && !this.manuallyKilled) {
-              this.startLeafAcceptor().catch((error) => this.logger.error('Failed to restart leaf-acceptor:', error));
-            }
-          }, 3000);
+          this._leafAcceptorError ??= failure ?? 'Nats leaf-acceptor exited unexpectedly';
+          this.scheduleLeafAcceptorRestart();
         }
       });
 
@@ -560,6 +576,40 @@ export class NATS {
       rl.on('line', onLine);
       rlErr.on('line', onLine);
     });
+  }
+
+  private scheduleLeafAcceptorRestart(): void {
+    const now = Date.now();
+    this.leafAcceptorCrashes = now - this.leafAcceptorLastExit > LEAF_ACCEPTOR_CALM_MS ? 0 : this.leafAcceptorCrashes + 1;
+    this.leafAcceptorLastExit = now;
+    const delay = LEAF_ACCEPTOR_RESTART_MS[Math.min(this.leafAcceptorCrashes, LEAF_ACCEPTOR_RESTART_MS.length - 1)];
+
+    this.logger.warn(`Leaf-acceptor is not running, starting it again in ${delay} ms`);
+    clearTimeout(this.leafAcceptorRestartTimer);
+    this.leafAcceptorRestartTimer = setTimeout(() => {
+      this.leafAcceptorRestartTimer = undefined;
+      if (this.leafAcceptorProcess || this.restartingLeafAcceptor || isShuttingDown() || this.manuallyKilled) return;
+      this.launchLeafAcceptor('Failed to restart leaf-acceptor');
+    }, delay);
+  }
+
+  private launchLeafAcceptor(failure: string): void {
+    this.startLeafAcceptor().catch((error) => {
+      this.logger.error(`${failure}: ${error.message}`);
+      this._leafAcceptorError ??= error.message;
+      if (this.leafAcceptorRestartTimer || this.leafAcceptorProcess || this.restartingLeafAcceptor || isShuttingDown() || this.manuallyKilled) return;
+      this.scheduleLeafAcceptorRestart();
+    });
+  }
+
+  private cancelLeafAcceptorRestart(): void {
+    clearTimeout(this.leafAcceptorRestartTimer);
+    this.leafAcceptorRestartTimer = undefined;
+  }
+
+  private spawnNats(args: string[]): ChildProcessWithoutNullStreams {
+    // GOGC 400 saves most GC cycles on frames above 64 KB, only for nats and not the Go plugins
+    return spawn(this.configService.NATS_BINARY, args, { windowsHide: true, env: { GOGC: '400', ...process.env } });
   }
 
   private setupProcess(natsProcess: ChildProcess, args: string[], configFile: string, name: string, resolve: () => void, reject: (error: Error) => void): void {

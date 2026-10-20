@@ -263,10 +263,25 @@ export interface WorkerManagerRPC {
   heartbeat(heartbeat: WorkerHeartbeat): Promise<WorkerSyncResponse>;
 }
 
+export interface HostPort {
+  host: string;
+  port: number;
+}
+
 export interface WorkerAgentRPC {
   ping(): Promise<WorkerHealthInfo>;
   restart(): Promise<void>;
   update(version?: string): Promise<void>;
+  openTunnel(target: HostPort, token: string): Promise<void>;
+}
+
+export interface CrossHostFrameLink {
+  cameraId: string;
+  cameraName: string;
+  cameraWorker?: string;
+  pluginName: string;
+  pluginWorker?: string;
+  sensorTypes: string[];
 }
 
 export interface KnownWorker {

@@ -310,8 +310,13 @@ export class WorkerAgent implements WorkerAgentRPC {
     const rpcSubject = NamespaceManager.workerAgentRpc(this.agentId);
     this.closeHandler = await this.proxy.registerHandler(
       rpcSubject,
-      { ping: () => this.ping(), restart: () => this.restart(), update: (version?: string) => this.update(version) },
-      { isolatedConnection: true, withoutDecorators: true },
+      {
+        ping: () => this.ping(),
+        restart: () => this.restart(),
+        update: (version?: string) => this.update(version),
+        openTunnel: (target: HostPort, token: string) => this.openTunnel(target, token),
+      },
+      { withoutDecorators: true },
     );
 
     this.unsubscribeSync = await this.proxy.subscribe(NamespaceManager.workerSync(this.agentId), (nudge?: WorkerNudge) => this.onNudge(nudge));

@@ -578,7 +578,8 @@ export class CamerasController {
         });
       }
 
-      return reply.code(200).send({ streamUrl });
+      const workers = tryInject('workerManager');
+      return reply.code(200).send({ streamUrl: (await workers?.streamUrlFromHere(camera.pluginInfo?.id, streamUrl)) ?? streamUrl });
     } catch (error: any) {
       return reply.code(500).send({
         statusCode: 500,

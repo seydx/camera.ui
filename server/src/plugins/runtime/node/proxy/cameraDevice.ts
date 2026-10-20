@@ -238,8 +238,11 @@ export class CameraDeviceProxy extends CameraDevice {
     }
   }
 
-  public async _refreshStates(): Promise<void> {
-    const response: RefreshedStates = await this.#cameraControllerProxy.refreshStates();
+  public _refreshStates(): Promise<void> {
+    const run = this.#refreshing.then(() => this.#refreshStates());
+    this.#refreshing = run.catch(() => {});
+    return run;
+  }
 
   public async _reattach(): Promise<void> {
     for (const { sensor } of [...this.#ownedSensors.values()]) {
@@ -307,7 +310,13 @@ export class CameraDeviceProxy extends CameraDevice {
     // writes are fire-and-forget for the sensor author, a failed RPC must not
     // surface as an unhandled rejection
     sensor._init((properties) => {
-      pushProperties(properties).catch((error) => this.logger.debug(`Property write for sensor ${sensor.id} failed:`, error));
+      pushProperties(properties).then(
+        () => this.#sensorManager._settleWrite(sensor, properties, true),
+        (error) => {
+          this.#sensorManager._settleWrite(sensor, properties, false);
+          this.logger.debug(`Property write for sensor ${sensor.id} failed:`, error);
+        },
+      );
     });
 
     sensor._initSource((patch) => {

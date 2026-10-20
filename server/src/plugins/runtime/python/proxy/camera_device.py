@@ -681,8 +681,12 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             return
 
         async def notify_registry() -> None:
-            with contextlib.suppress(Exception):
-                await self._sensor_registry_proxy.updatePropertyValues(sensor_id, properties)
+            try:
+                await self._update_property_values(sensor_id, properties)
+            except Exception:
+                self._sensor_manager.settle_write(sensor_id, properties, False)
+                return
+            self._sensor_manager.settle_write(sensor_id, properties, True)
 
         self._tasks.add(notify_registry())
 

@@ -41,6 +41,7 @@ export class SensorManagerProxy implements SensorManager {
   #cleanups = new Map<string, () => Promise<void>>();
   #external = new Map<string, Sensor<any>>();
   #consumed = new Map<string, SensorProxy>();
+  #unsent = new Map<string, Set<string>>();
 
   #globalUnsubscribe?: () => void;
   #stopReconnectWatch?: () => void;
@@ -140,6 +141,29 @@ export class SensorManagerProxy implements SensorManager {
   /** @internal */
   public _untrackCameraSensor(sensorId: string): void {
     this.#external.delete(sensorId);
+    this.#unsent.delete(sensorId);
+  }
+
+  /** @internal */
+  public _settleWrite(sensor: Sensor<any, any, any>, properties: Record<string, unknown>, sent: boolean): void {
+    if (DETECTION_SENSOR_TYPES.has(sensor.type)) return;
+    const keys = this.#unsent.get(sensor.id) ?? new Set<string>();
+    for (const key of Object.keys(properties)) {
+      if (sent) keys.delete(key);
+      else keys.add(key);
+    }
+    if (keys.size > 0) this.#unsent.set(sensor.id, keys);
+    else this.#unsent.delete(sensor.id);
+  }
+
+  public async reattach(): Promise<void> {
+    // re-registering carries the current values, camera sensors included
+    this.#unsent.clear();
+    for (const sensor of [...this.#owned.values()]) {
+      const registration = await this.#registryProxy.registerSensor(this.#registrationJson(sensor), this.#plugin.id);
+      sensor._setAssignedCameras(registration.assignedCameraIds);
+    }
+    await this.#resyncAllConsumed();
   }
 
   public async close(): Promise<void> {
@@ -182,6 +206,7 @@ export class SensorManagerProxy implements SensorManager {
       .catch(() => {});
     this.#cleanups.delete(sensorId);
     this.#owned.delete(sensorId);
+    this.#unsent.delete(sensorId);
     sensor._cleanup();
     return sensor;
   }
@@ -227,7 +252,13 @@ export class SensorManagerProxy implements SensorManager {
     // writes are fire-and-forget for the sensor author, a failed RPC must not
     // surface as an unhandled rejection
     sensor._init((properties) => {
-      pushProperties(properties).catch((error) => this.#logger.debug(`Property write for sensor ${sensor.id} failed:`, error));
+      pushProperties(properties).then(
+        () => this._settleWrite(sensor, properties, true),
+        (error) => {
+          this._settleWrite(sensor, properties, false);
+          this.#logger.debug(`Property write for sensor ${sensor.id} failed:`, error);
+        },
+      );
     });
 
     sensor._initCapabilities((capabilities) => {
@@ -272,8 +303,12 @@ export class SensorManagerProxy implements SensorManager {
 
     this.#stopReconnectWatch ??= watchReconnect(
       this.#proxy,
-      () => this.#resyncAllConsumed(),
+      async () => {
+        await this.#sendUnsent();
+        await this.#resyncAllConsumed();
+      },
       (error) => this.#logger.debug('Sensor reconnect watch ended:', error),
+      { debounce: true },
     );
 
     const ns = NamespaceManager.sensorRegistryNamespaces();
@@ -282,6 +317,23 @@ export class SensorManagerProxy implements SensorManager {
         this.#logger.warn('Sensor event handling failed:', error);
       });
     });
+  }
+
+  async #sendUnsent(): Promise<void> {
+    for (const [sensorId, keys] of [...this.#unsent]) {
+      const sensor = this.#owned.get(sensorId) ?? this.#external.get(sensorId);
+      if (!sensor) {
+        this.#unsent.delete(sensorId);
+        continue;
+      }
+      const properties = Object.fromEntries([...keys].map((key) => [key, sensor.getValue(key)]));
+      try {
+        await this.#registryProxy.updatePropertyValues(sensorId, properties);
+        this._settleWrite(sensor, properties, true);
+      } catch {
+        // still unreachable, the next announce tries again
+      }
+    }
   }
 
   async #resyncAllConsumed(): Promise<void> {

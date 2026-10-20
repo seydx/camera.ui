@@ -6,7 +6,8 @@ import { extractBundledPlugin } from '../../plugins/bundle.js';
 import { PluginManager } from '../../plugins/index.js';
 import { resolvePluginMain } from '../../plugins/main-file.js';
 import { RuntimeFactory } from '../../plugins/runtime/index.js';
-import { isShuttingDown } from '../../shutdown-state.js';
+import { NamespaceManager } from '../../rpc/namespaces.js';
+import { workerName } from '../../services/config/defaults.js';
 import { checkProtocolCompat } from '../../utils/engines.js';
 import { extractPackage, installDependencies } from '../../utils/npm/index.js';
 import { describePlatformRequirement, isPlatformCompatible } from '../../utils/platform.js';
@@ -324,6 +325,9 @@ export class PluginHostHandler implements CapabilityHandler<WorkerCapability.Plu
         CAMERAUI_MASTER_ADDRESS: masterAddress,
         CAMERAUI_RTSP_USERNAME: spec.rtspUsername,
         CAMERAUI_RTSP_PASSWORD: spec.rtspPassword,
+        CAMERAUI_WORKER_LINK_SUBJECT: NamespaceManager.workerLinkSubject(this.agentId),
+        CAMERAUI_WORKER_ID: this.agentId,
+        CAMERAUI_WORKER_NAME: workerName(this.configService.config.worker),
       },
     };
   }

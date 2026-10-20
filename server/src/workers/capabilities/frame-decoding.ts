@@ -1,6 +1,8 @@
 import { Logger } from '@camera.ui/common/logger';
 import { fork } from 'node:child_process';
 
+import { inject } from '../../container.js';
+import { NamespaceManager } from '../../rpc/namespaces.js';
 import { nodeDecoderPath } from '../../utils/path.js';
 import { DECODER_STOP_BUDGET_MS, SupervisedChild, supervisedSpawn } from '../../utils/supervised-child.js';
 import { Slots } from '../lifecycle/limits.js';
