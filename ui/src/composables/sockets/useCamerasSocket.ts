@@ -75,6 +75,7 @@ const state = reactive<CamerasSocketState>({
 let scope: ReturnType<typeof effectScope> | null = null;
 let channel: SocketChannel | null = null;
 let isSubscribed = false;
+let subscribing: Promise<SubscribeResult> | null = null;
 let refCount = 0;
 let disposalTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -101,7 +102,11 @@ function ensureChannel(): SocketChannel {
       subscribeInternal();
     });
     watch(ch.connected, (connected, was) => {
-      if (!connected && was) isSubscribed = false;
+      if (!connected && was) {
+        isSubscribed = false;
+        // socket.io drops pending acks on disconnect, a stale request would block the resubscribe
+        subscribing = null;
+      }
     });
 
     ch.on<DiscoveryManagerProxyEvents['cameras:discovered']>('cameras:discovered', (data) => {
@@ -151,8 +156,18 @@ async function subscribeInternal(): Promise<SubscribeResult> {
   if (!channel || isSubscribed) {
     return { success: isSubscribed, devices: state.devices, isScanning: state.isScanning, hiddenDevices: state.hiddenDevices };
   }
+  if (!subscribing) {
+    const pending: Promise<SubscribeResult> = requestSubscribe(channel).finally(() => {
+      if (subscribing === pending) subscribing = null;
+    });
+    subscribing = pending;
+  }
+  return subscribing;
+}
+
+async function requestSubscribe(ch: SocketChannel): Promise<SubscribeResult> {
   try {
-    const result = await channel.request<SubscribeResult>('cameras:subscribe', {});
+    const result = await ch.request<SubscribeResult>('cameras:subscribe', {});
     isSubscribed = result.success;
     if (result.devices) state.devices = result.devices;
     if (result.isScanning !== undefined) state.isScanning = result.isScanning;
@@ -185,6 +200,7 @@ function teardown(): void {
   scope = null;
   channel = null;
   isSubscribed = false;
+  subscribing = null;
   resetState();
 }
 
