@@ -13,14 +13,29 @@ import {
 } from '@camera.ui/common/node';
 import { fork, spawn } from 'node:child_process';
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { mkdir, rm } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 
+import type {
+  ReapResult,
+  ServerHealthyMessage,
+  ServerStartedMessage,
+  ShutdownReason,
+  SupervisorRolledBackMessage,
+  SupervisorShutdownMessage,
+  UpdateState,
+} from '@camera.ui/common/node';
 import type { ForkOptions } from 'child_process';
 import type { ChildProcess } from 'node:child_process';
 import type { CameraUiCLI } from './cameraui.js';
 
-// Server to CLI communication
+const STOPPING_ACK_MS = 1000;
+const LEGACY_KILL_MS = 8000;
+const HEALTHY_WINDOW_MS = 5 * 60_000;
+const LEGACY_STABLE_MS = 120_000;
+const ROLLBACK_AFTER_CRASHES = 3;
+const HOME_TAKEN_ERROR = 'Another camera.ui is already running with the home ';
+
 interface UpdateMessage {
   type: 'UPDATE_SERVER';
   version?: string;
@@ -64,7 +79,17 @@ interface UpdateFailedMessage {
   error: string;
 }
 
-type CLIMessage = UpdateStartedMessage | UpdateOutputMessage | UpdateErrorMessage | UpdateCompleteMessage | UpdateFailedMessage;
+type CLIMessage =
+  UpdateStartedMessage | UpdateOutputMessage | UpdateErrorMessage | UpdateCompleteMessage | UpdateFailedMessage | SupervisorShutdownMessage | SupervisorRolledBackMessage;
+
+interface HealthGate {
+  from: string;
+  to: string;
+  crashes: number;
+  lastCrash?: string;
+  window: NodeJS.Timeout;
+  stable?: NodeJS.Timeout;
+}
 
 function isNetworkError(error: unknown): boolean {
   const err = error as { message?: string; stderr?: string };
@@ -122,6 +147,18 @@ export class ServerManager {
     return join(this.serverPath, 'node_modules');
   }
 
+  private get serverBackupPath(): string {
+    return `${this.serverModulesPath}.bak`;
+  }
+
+  private get updateStatePath(): string {
+    return join(this.serverPath, UPDATE_STATE_FILE);
+  }
+
+  private get pidsFilePath(): string {
+    return join(this.cli.storagePath, 'camera.ui.pids');
+  }
+
   private get serverBinPath(): string {
     if (!IS_DEV && process.platform === 'win32') {
       return join(this.serverModulesPath, APP_SERVER_NAME, 'dist', 'server', 'bin', 'cameraui-server.js');
@@ -151,13 +188,12 @@ export class ServerManager {
       await mkdir(this.serverPath, { recursive: true });
       await this.cli.chownPath(this.serverPath);
 
-      const backupModules = `${this.serverModulesPath}.bak`;
-      if (!existsSync(this.serverModulesPath) && existsSync(backupModules)) {
+      if (!existsSync(this.serverModulesPath) && existsSync(this.serverBackupPath)) {
         this.cli.logger('Restoring previous server install from backup (interrupted swap)', 'warn');
-        renameSync(backupModules, this.serverModulesPath);
+        renameSync(this.serverBackupPath, this.serverModulesPath);
       }
 
-      this.finalizeStagedInstall();
+      await this.finalizeStagedInstall();
 
       const installed = existsSync(join(this.serverModulesPath, APP_SERVER_NAME));
       const state = this.readState();
@@ -173,7 +209,7 @@ export class ServerManager {
       if (!installed || abiChanged || incomplete) {
         this.cli.logger('Installing camera.ui server ...', 'info');
         await this.stageInstall(state.version ?? 'latest', true);
-        this.finalizeStagedInstall();
+        await this.finalizeStagedInstall();
 
         if (!this.isServerHealthy()) {
           throw new Error('Server install verification failed — files incomplete after install');
@@ -190,7 +226,19 @@ export class ServerManager {
       return;
     }
 
-    this.finalizeStagedInstall();
+    // a reap still in flight must not race the children of the next server
+    clearTimeout(this.reapTimer);
+    await this.reaping;
+
+    if (this.healthGate && this.healthGate.crashes >= ROLLBACK_AFTER_CRASHES) {
+      await this.rollBack(this.healthGate);
+    }
+
+    await this.finalizeStagedInstall();
+
+    if (this.stopRequested) {
+      return;
+    }
 
     if (!existsSync(this.serverBinPath)) {
       throw new Error(`Server binary not found at: ${this.serverBinPath}`);
@@ -232,8 +280,11 @@ export class ServerManager {
     });
 
     this.forkedProcess.on('message', this.handleServerMessage.bind(this));
-    this.onCloseHandler = onClose;
-    this.forkedProcess.once('close', onClose);
+    this.onCloseHandler = (code, signal) => {
+      this.onServerExit(code, signal);
+      onClose(code, signal);
+    };
+    this.forkedProcess.once('close', this.onCloseHandler);
   }
 
   public stop(reason: ShutdownReason): Promise<void> {
@@ -354,10 +405,180 @@ export class ServerManager {
           }
           break;
         }
+        case 'STARTED': {
+          this.started = message;
+          this.onServerStarted();
+          break;
+        }
+        case 'HEALTHY': {
+          await this.acceptUpdate('is healthy');
+          break;
+        }
+        case 'STOPPING': {
+          this.stoppingSeen = true;
+          break;
+        }
       }
     } catch (error) {
       this.send({ type: 'UPDATE_FAILED', error: error.message });
     }
+  }
+
+  private onServerStarted(): void {
+    if (this.rolledBack) {
+      this.send(this.rolledBack);
+      this.rolledBack = undefined;
+    }
+
+    const gate = this.healthGate;
+    if (gate && !supervisorSpeaksShutdown(this.started)) {
+      clearTimeout(gate.stable);
+      gate.stable = setTimeout(() => this.acceptUpdate(`ran ${LEGACY_STABLE_MS / 1000} s without a crash`), LEGACY_STABLE_MS);
+    }
+  }
+
+  private onServerExit(code: number | null, signal: NodeJS.Signals | null): void {
+    const gate = this.healthGate;
+    clearTimeout(gate?.stable);
+
+    // exit code 0 is a restart the server asked for itself
+    if (gate && code !== 0) {
+      gate.crashes++;
+      gate.lastCrash = signal ? `signal ${signal}` : `code ${code}`;
+      if (gate.crashes >= ROLLBACK_AFTER_CRASHES) {
+        clearTimeout(gate.window);
+      }
+    }
+
+    clearTimeout(this.reapTimer);
+    this.reapTimer = setTimeout(() => {
+      if (!this.isRunning) {
+        this.reapLeftovers();
+      }
+    }, REAP_GRACE_MS);
+  }
+
+  private requestShutdown(proc: ChildProcess, reason: ShutdownReason): NodeJS.Timeout[] {
+    this.stoppingSeen = false;
+
+    const message: SupervisorShutdownMessage = { type: 'SHUTDOWN', reason, deadlineMs: SHUTDOWN_DEADLINE_MS };
+    proc.send(message, (error) => {
+      if (error) {
+        this.cli.logger(`Could not send the shutdown request to camera.ui (${error.message}), terminating it`, 'warn');
+        proc.kill();
+      }
+    });
+
+    return [
+      setTimeout(() => {
+        if (!this.stoppingSeen) {
+          this.cli.logger(`camera.ui did not confirm the shutdown request within ${STOPPING_ACK_MS / 1000} s`, 'warn');
+        }
+      }, STOPPING_ACK_MS),
+      setTimeout(() => {
+        this.cli.logger(`camera.ui did not exit within ${SHUTDOWN_DEADLINE_MS / 1000} s, killing it`, 'warn');
+        const { pid } = proc;
+        if (pid) {
+          killTree({ pid }).catch(() => proc.kill('SIGKILL'));
+        } else {
+          proc.kill('SIGKILL');
+        }
+      }, SHUTDOWN_DEADLINE_MS),
+    ];
+  }
+
+  private reapLeftovers(): Promise<void> {
+    clearTimeout(this.reapTimer);
+    if (this.homeTaken) {
+      return this.reaping;
+    }
+
+    this.reaping = this.reaping
+      .then(async () => {
+        const results = await reapRegistry(readRegistrySync(this.pidsFilePath));
+
+        const killed = results.filter(({ outcome }) => outcome === 'killed');
+        if (killed.length > 0) {
+          this.cli.logger(`Stopped leftovers of the last camera.ui run: ${killed.map(describeReaped).join(', ')}`, 'warn');
+        }
+
+        for (const result of results.filter(({ outcome }) => outcome === 'failed')) {
+          this.cli.logger(`Could not stop leftover process ${describeReaped(result)}: ${result.error?.message}`, 'warn');
+        }
+      })
+      .catch((error) => this.cli.logger(`Could not clean up after camera.ui: ${error.message}`, 'warn'));
+
+    return this.reaping;
+  }
+
+  private async armHealthGate(from: string, to: string): Promise<void> {
+    this.closeHealthGate();
+
+    await rm(this.updateStatePath, { force: true }).catch(() => {});
+
+    this.healthGate = {
+      from,
+      to,
+      crashes: 0,
+      window: setTimeout(() => this.acceptUpdate(`did not report healthy within ${HEALTHY_WINDOW_MS / 60_000} min, keeping it`, 'warn'), HEALTHY_WINDOW_MS),
+    };
+  }
+
+  private closeHealthGate(): HealthGate | undefined {
+    const gate = this.healthGate;
+    clearTimeout(gate?.window);
+    clearTimeout(gate?.stable);
+    this.healthGate = undefined;
+    return gate;
+  }
+
+  private async acceptUpdate(note: string, level: 'info' | 'warn' = 'info'): Promise<void> {
+    const gate = this.closeHealthGate();
+    if (!gate) {
+      return;
+    }
+
+    this.cli.logger(`camera.ui ${gate.to} ${note}, removing the backup of ${gate.from}`, level);
+    await rm(this.serverBackupPath, { recursive: true, force: true }).catch((error) =>
+      this.cli.logger(`Could not remove the backup of ${gate.from}: ${error.message}`, 'warn'),
+    );
+    await this.writeUpdateState({ target: gate.to, from: gate.from, result: 'applied', at: Date.now() });
+  }
+
+  private async rollBack(gate: HealthGate): Promise<void> {
+    if (!existsSync(this.serverBackupPath)) {
+      this.closeHealthGate();
+      this.cli.logger(`camera.ui ${gate.to} keeps crashing, but the backup of ${gate.from} is gone`, 'fail');
+      return;
+    }
+
+    const reason = `crashed ${gate.crashes} times before it reported healthy, last with ${gate.lastCrash}`;
+    this.cli.logger(`camera.ui ${gate.to} ${reason}, rolling back to ${gate.from}`, 'warn');
+
+    // leftovers of the failed version may still hold files in it open
+    await this.reapLeftovers();
+
+    this.closeHealthGate();
+
+    const failedModules = `${this.serverModulesPath}.failed`;
+    try {
+      rmSync(failedModules, { recursive: true, force: true });
+      renameSync(this.serverModulesPath, failedModules);
+      try {
+        renameSync(this.serverBackupPath, this.serverModulesPath);
+      } catch (error) {
+        renameSync(failedModules, this.serverModulesPath);
+        throw error;
+      }
+    } catch (error) {
+      this.cli.logger(`Could not roll back to ${gate.from}: ${error.message}`, 'fail');
+      return;
+    }
+
+    this.writeState();
+    this.rolledBack = { type: 'ROLLED_BACK', from: gate.to, to: gate.from, reason };
+    await this.writeUpdateState({ target: gate.to, from: gate.from, result: 'rolled-back', reason, at: Date.now() });
+    await rm(failedModules, { recursive: true, force: true }).catch(() => {});
   }
 
   private async stageInstall(version: string, stdout?: boolean): Promise<void> {
@@ -448,7 +669,7 @@ export class ServerManager {
     return existsSync(join(stagedModules, APP_SERVER_NAME, 'package.json')) && existsSync(join(stagedModules, this.binDir, this.serverBinName));
   }
 
-  private finalizeStagedInstall(): void {
+  private async finalizeStagedInstall(): Promise<void> {
     const stagingPath = join(this.serverPath, '.staging');
     const stagedModules = join(stagingPath, 'node_modules');
 
@@ -465,7 +686,9 @@ export class ServerManager {
       return;
     }
 
-    const backupModules = `${this.serverModulesPath}.bak`;
+    const backupModules = this.serverBackupPath;
+    const from = this.installedVersion(this.serverModulesPath);
+    const target = this.installedVersion(stagedModules) ?? 'unknown';
 
     try {
       rmSync(backupModules, { recursive: true, force: true });
@@ -483,13 +706,23 @@ export class ServerManager {
         throw error;
       }
 
-      rmSync(backupModules, { recursive: true, force: true });
+      if (!from) {
+        rmSync(backupModules, { recursive: true, force: true });
+      }
       rmSync(stagingPath, { recursive: true, force: true });
       this.writeState();
       this.cli.logger('Staged server update applied', 'info');
     } catch (error) {
       // Keep the staging dir — the swap is retried on the next start.
       this.cli.logger(`Could not apply staged server update: ${error.message}`, 'warn');
+      if (from) {
+        await this.writeUpdateState({ target, from, result: 'swap-failed', reason: error.message, at: Date.now() });
+      }
+      return;
+    }
+
+    if (from) {
+      await this.armHealthGate(from, target);
     }
   }
 
@@ -657,18 +890,28 @@ export class ServerManager {
   }
 
   private writeState(): void {
-    let version = 'latest';
-    try {
-      const pkg = JSON.parse(readFileSync(join(this.serverModulesPath, APP_SERVER_NAME, 'package.json'), 'utf8'));
-      version = pkg.version ?? version;
-    } catch {
-      // fall back to the tag if the installed package.json is unreadable
-    }
+    const version = this.installedVersion(this.serverModulesPath) ?? 'latest';
 
     try {
       writeFileSync(this.serverStatePath, JSON.stringify({ version, nodeAbi: process.versions.modules }));
     } catch (error) {
       this.cli.logger(`Could not persist server install state: ${error.message}`, 'warn');
+    }
+  }
+
+  private installedVersion(modulesPath: string): string | undefined {
+    try {
+      return JSON.parse(readFileSync(join(modulesPath, APP_SERVER_NAME, 'package.json'), 'utf8')).version;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async writeUpdateState(state: UpdateState): Promise<void> {
+    try {
+      await writeFileAtomic(this.updateStatePath, JSON.stringify(state));
+    } catch (error) {
+      this.cli.logger(`Could not write the update result: ${error.message}`, 'warn');
     }
   }
 }

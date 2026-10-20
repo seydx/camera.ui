@@ -5,9 +5,8 @@ process.title = 'camera.ui';
 import 'reflect-metadata';
 import './utils/env.js';
 
-import { IS_ELECTRON, SignalHandler, sleep } from '@camera.ui/common/utils';
-import { execSync } from 'node:child_process';
-import { container } from 'tsyringe';
+import { SUPERVISOR_IPC_LEVEL } from '@camera.ui/common/node';
+import { randomBytes } from 'node:crypto';
 
 import { checkOrphanedProcesses } from './api/database/checks.js';
 import { Database } from './api/database/index.js';
@@ -52,9 +51,10 @@ class CameraUiWorker {
 
     // Worker-mode database: only opens workerStateDB, skips migrations + master setup.
     this.database = new Database(true);
+  }
 
-    // No Go2RTC, no HTTP server in worker mode
-    this.proxy = new ProxyServer({ workerMode: true });
+  public get bootId(): string | undefined {
+    return this.agent?.bootId;
   }
 
   public async start(): Promise<void> {
@@ -119,7 +119,7 @@ async function launch(): Promise<void> {
     try {
       worker = new CameraUiWorker();
       await worker.start();
-      sendIPCMessage({ type: 'STARTED', port: 0 });
+      sendIPCMessage({ type: 'STARTED', port: 0, ipc: SUPERVISOR_IPC_LEVEL, role: 'worker', bootId: worker.bootId ?? BOOT_ID });
     } catch (error) {
       (worker?.logger ?? console).error('Failed to start camera.ui worker', error);
       await reportStartError(error);
@@ -135,7 +135,8 @@ async function launch(): Promise<void> {
     const { CameraUi } = await import('./master.js');
     cameraui = new CameraUi();
     await cameraui.start();
-    sendIPCMessage({ type: 'STARTED', port: cameraui.port });
+    sendIPCMessage({ type: 'STARTED', port: cameraui.port, ipc: SUPERVISOR_IPC_LEVEL, role: 'master', bootId: BOOT_ID });
+    sendIPCMessage({ type: 'HEALTHY', version: ConfigService.RUNNING_VERSION });
   } catch (error) {
     (cameraui?.logger ?? console).error('Failed to start camera.ui', error);
 

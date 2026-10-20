@@ -93,4 +93,12 @@ export interface AppUpdateChannelMessage {
 }
 
 export type IPCMessage =
-  AppStartedMessage | AppStoppingMessage | AppStartFailedMessage | AppStartProgressMessage | AppUpdateMessage | AppUpdateCheckMessage | AppUpdateChannelMessage;
+  | AppStartedMessage
+  | AppStoppingMessage
+  | AppStartFailedMessage
+  | AppStartProgressMessage
+  | AppUpdateMessage
+  | AppUpdateCheckMessage
+  | AppUpdateChannelMessage
+  | ServerHealthyMessage
+  | WorkerStatusMessage;
