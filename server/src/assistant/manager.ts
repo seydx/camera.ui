@@ -43,7 +43,7 @@ import { RECAP_TOOL, recapCard } from './recap.js';
 import { AssistantToolRegistry, toolGroup } from './registry.js';
 import { retryOnOverflow, withEmptyTurnRetry } from './retry.js';
 import { questionText, ROUTE_TIMEOUT_MS, ROUTED_TOOLS, routeTools } from './router.js';
-import { AssistantScheduler, PUSH_BODY_MAX } from './scheduler.js';
+import { AssistantScheduler, deliveryPrompt, pushBody } from './scheduler.js';
 import { SEARCH_SCHEMA, searchPrompt, toSearchResult } from './search.js';
 import { skillSources, toolsNamedBySkills, withNextSteps } from './skills.js';
 import { AssistantThreadStore, contentParts } from './threads.js';
@@ -69,6 +69,7 @@ import type {
   DBAssistantMcpServer,
   DBAssistantModel,
   DBAssistantProfile,
+  DBAssistantScheduleDelivery,
   DBRoles,
   DBUser,
 } from '../api/database/types.js';
@@ -361,11 +362,10 @@ export class AssistantManager {
       const devices = await manager.listAllDevices(user._id, user.role);
       const targets = devices.filter((device) => device.ownerUserId === user._id).map((device) => device.id);
       if (!targets.length) throw new Error('The user has no notification devices');
-      const body = input.text.length > PUSH_BODY_MAX ? `${input.text.slice(0, PUSH_BODY_MAX - 1)}…` : input.text;
       await manager.notify({
         notification: {
           title: input.title,
-          body,
+          body: pushBody(input.text, input.thread),
           severity: Severity.Info,
           thumbnail: input.image ? new Uint8Array(Buffer.from(input.image.data, 'base64')) : undefined,
           tag: input.tag,
@@ -739,7 +739,15 @@ export class AssistantManager {
   public async runPrompt(
     user: DBUser,
     prompt: string,
-    opts: { timezone?: string; language?: string; image?: ToolImage; instructions?: string; profile?: DBAssistantProfile; modelId?: string },
+    opts: {
+      timezone?: string;
+      language?: string;
+      image?: ToolImage;
+      instructions?: string;
+      profile?: DBAssistantProfile;
+      modelId?: string;
+      delivery?: DBAssistantScheduleDelivery;
+    },
   ): Promise<{ text: string; image?: ToolImage; attachments: Record<string, DBAssistantAttachment> }> {
     const settings = this.settings();
     if (!settings.enabled || this.status(user.role).state !== 'ready') throw new Error('The assistant is not ready');
@@ -764,10 +772,9 @@ export class AssistantManager {
     const plan = this.plan(settings, entry, sections, available);
     const tools = applyPlan(available, plan);
     const systemPrompts = [
-      ...cachedPrompts(composePrompt(sections, plan), model.provider),
-      // prettier-ignore
-      'This run is scheduled and unattended: nobody reads along and nobody can confirm anything. ' +
-      'Answer completely in one go, as a report the user reads later on the phone. No questions back, no markdown headings.',
+      ...composePrompt(sections, plan),
+      'This run is scheduled and unattended: nobody reads along and nobody can confirm anything. Answer completely in one go, no questions back.',
+      deliveryPrompt(opts.delivery),
       ...(opts.profile?.instructions.trim() ? [opts.profile.instructions.trim()] : []),
       ...(opts.instructions ? [opts.instructions] : []),
     ];

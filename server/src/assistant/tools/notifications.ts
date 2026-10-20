@@ -16,7 +16,7 @@ const PUSH_VIDEO_MAX_BYTES = 5 * 1024 * 1024;
 
 const sendNotificationInput = zod.object({
   title: zod.string().min(1).max(120),
-  body: zod.string().max(1000).optional(),
+  body: zod.string().max(1000).optional().describe('Plain text, two short sentences at most: the lock screen shows about four lines'),
   severity: zod.enum(['info', 'warn', 'error']).optional().describe('Default info'),
   eventId: zod.string().optional().describe('Attach the picture of this event'),
   camera: zod.string().optional().describe('Attach a live picture of this camera, never for a past moment'),

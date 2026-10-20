@@ -6,7 +6,7 @@ import { container } from 'tsyringe';
 import { UsersService } from '../api/services/users.service.js';
 
 import type { Database } from '../api/database/index.js';
-import type { DBAssistantAttachment, DBAssistantSchedule } from '../api/database/types.js';
+import type { DBAssistantAttachment, DBAssistantSchedule, DBAssistantScheduleDelivery } from '../api/database/types.js';
 import type { CreateAssistantScheduleInput, PatchAssistantScheduleInput } from '../api/schemas/assistant.schema.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type { LoggerService } from '../services/logger/index.js';
@@ -15,6 +15,32 @@ import type { AssistantManager } from './manager.js';
 const MAX_SCHEDULES_PER_USER = 20;
 
 export const PUSH_BODY_MAX = 1500;
+
+export function deliveryPrompt(delivery?: DBAssistantScheduleDelivery): string {
+  switch (delivery) {
+    case 'push':
+      return 'The answer goes out as a push notification, and the lock screen shows about four lines: plain text without markdown or lists, two short sentences at most.';
+    case 'both':
+      // prettier-ignore
+      return 'The answer is a report the user reads later on the phone, no markdown headings. ' +
+        'Open it with one plain sentence that sums it up and leave a blank line after it: that sentence alone goes out as the push notification.';
+    default:
+      return 'The answer is a report the user reads later on the phone, no markdown headings.';
+  }
+}
+
+export function pushBody(text: string, lead: boolean): string {
+  const plain = text
+    .replace(/\*\*(.+?)\*\*|__(.+?)__/g, '$1$2')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^#+[ \t]*/gm, '')
+    .replace(/^[ \t]*[-*][ \t]+/gm, '• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const body = lead ? plain.split(/\n\s*\n/)[0] : plain;
+  return body.length > PUSH_BODY_MAX ? `${body.slice(0, PUSH_BODY_MAX - 1)}…` : body;
+}
 
 export function validateCron(expression: string, timezone?: string): string | undefined {
   try {
@@ -172,6 +198,7 @@ export class AssistantScheduler {
         language: current.language,
         profile,
         modelId: current.modelId ?? undefined,
+        delivery: current.deliver,
       });
       if (!result.text.trim()) throw new Error('The model returned no text');
 
@@ -197,11 +224,10 @@ export class AssistantScheduler {
     const targets = devices.filter((device) => device.ownerUserId === user._id).map((device) => device.id);
     if (!targets.length) throw new Error('The user has no notification devices');
 
-    const body = text.length > PUSH_BODY_MAX ? `${text.slice(0, PUSH_BODY_MAX - 1)}…` : text;
     await manager.notify({
       notification: {
         title: schedule.title,
-        body,
+        body: pushBody(text, schedule.deliver === 'both'),
         severity: Severity.Info,
         thumbnail: image ? new Uint8Array(Buffer.from(image.data, 'base64')) : undefined,
         tag: `assistant-schedule:${schedule._id}`,

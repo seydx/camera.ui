@@ -25,7 +25,8 @@ export async function actionAssistant(ctx: ActionContext, data: Record<string, u
   const manager = container.resolve<AssistantManager>('assistantManager');
   try {
     const profile = typeof data.profileId === 'string' && data.profileId ? manager.profiles.get(user._id, data.profileId) : undefined;
-    const result = await manager.runPrompt(user, prompt, { image, instructions: SILENT_RULE, profile });
+    const delivery = deliver === 'push' || deliver === 'thread' || deliver === 'both' ? deliver : undefined;
+    const result = await manager.runPrompt(user, prompt, { image, instructions: SILENT_RULE, profile, delivery });
     const silent = result.text.trim().toUpperCase() === SILENT || !result.text.trim();
     setResult(ctx, silent ? '' : result.text, !silent, 'true');
     if (silent || deliver === 'none') return;
