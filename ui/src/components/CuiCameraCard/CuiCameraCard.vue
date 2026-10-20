@@ -288,7 +288,10 @@
                 <CuiSimilarPicker v-if="similarPicking && camera" :camera :frame="similarFrame" @pick="onSimilarPick" @close="closeSimilarPick" />
               </div>
 
-              <div v-if="nvrNoData || nvrLicenseRequired || codecUnsupported || nvrPlaybackFailed" class="absolute inset-0 z-3 pointer-events-none overflow-hidden">
+              <div
+                v-if="nvrNoData || nvrLicenseRequired || codecUnsupported || nvrPlaybackFailed || liveStreamFailed"
+                class="absolute inset-0 z-3 pointer-events-none overflow-hidden"
+              >
                 <div class="w-full h-full blur-xs">
                   <CuiCameraSnapshot v-if="camera" :camera :show-loading-screen="false" :image-style="{ objectFit: 'fill' }" />
                 </div>
@@ -296,7 +299,7 @@
                   <div class="flex flex-col items-center justify-center text-center">
                     <i-mdi:license v-if="nvrLicenseRequired" class="text-white w-[50px] h-[50px]" />
                     <i-mdi:movie-off v-else-if="codecUnsupported" class="text-white w-[50px] h-[50px]" />
-                    <i-mdi:alert-circle-outline v-else-if="nvrPlaybackFailed" class="text-white w-[50px] h-[50px]" />
+                    <i-mdi:alert-circle-outline v-else-if="nvrPlaybackFailed || liveStreamFailed" class="text-white w-[50px] h-[50px]" />
                     <i-mdi:video-off v-else class="text-white w-[50px] h-[50px]" />
                     <p v-if="isFullPlayer" class="text-white/80 text-sm max-w-xs mt-3">
                       {{
@@ -308,8 +311,13 @@
                               : $t('components.player.codec_unsupported')
                             : nvrPlaybackFailed
                               ? $t('components.player.playback_failed')
-                              : $t('components.player.no_recording')
+                              : liveStreamFailed
+                                ? $t('components.player.stream_unavailable')
+                                : $t('components.player.no_recording')
                       }}
+                    </p>
+                    <p v-if="isFullPlayer && liveStreamFailed && streamError" class="text-white/50 text-xs max-w-xs mt-1 px-4 break-words line-clamp-3">
+                      {{ streamError.message }}
                     </p>
                   </div>
                 </div>
@@ -1205,6 +1213,8 @@ const {
   unsupported: streamUnsupported,
   isReconnecting: reconnecting,
   inStandby,
+  stalled: streamStalled,
+  error: streamError,
 } = cameraStream;
 
 const { start: startDetectionIndicatorTimeout } = useTimeoutFn(
@@ -1296,6 +1306,7 @@ const infoText = computed<string | undefined>(() => undefined);
 const hovered = computed(() => (isHovered.value || initialHover.value) && control.value && !shortcutsEditMode.value);
 const isDisabled = computed(() => camera.value?.disabled === true);
 const liveResting = computed(() => inStandby.value && !nvrPlaybackVisible.value);
+const liveStreamFailed = computed(() => !nvrPlaybackVisible.value && !isDisabled.value && !liveResting.value && streamStatus.value === 'error');
 const canSearchSimilar = computed(
   () => props.onSearchSimilar !== undefined && hasPermission(undefined, 'admin') && Boolean(camera.value?.assignments?.object) && !isDisabled.value,
 );
@@ -1308,7 +1319,8 @@ const isLoading = computed(() => {
 });
 const showCenterSpinner = computed(() => {
   if (isDisabled.value) return false;
-  return nvrPlaybackVisible.value ? nvrLoading.value : isLoading.value;
+  if (nvrPlaybackVisible.value) return nvrLoading.value;
+  return streamStatus.value !== 'error' && (isLoading.value || streamStalled.value);
 });
 const streamHasSound = computed(() => {
   if (nvrPlaybackVisible.value) return nvr.value?.hasAudio.value ?? false;
@@ -1318,7 +1330,7 @@ const streamHasIntercom = computed(() => Boolean(navigator.mediaDevices) && stre
 const micButtonDisabled = computed(() => !streamHasIntercom.value || isLoading.value || nvrPlaybackVisible.value);
 const streamIsLoading = computed(() => {
   if (nvrPlaybackVisible.value) return nvrLoading.value || timelineScrolling.value;
-  if (isDisabled.value || streamUnsupported.value) return false;
+  if (isDisabled.value || streamUnsupported.value || streamStatus.value === 'error') return false;
   return !streamFinishedLoading.value || timelineScrolling.value;
 });
 const showCameraName = computed(() => cameraNameOverlay.value && hovered.value && !mdBreakpoint.value && isFullPlayer.value && !gridSearchActive.value);

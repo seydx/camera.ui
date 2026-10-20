@@ -140,6 +140,35 @@ export function useStreamStatus() {
     return state.streamCodecs[cameraId]?.[sourceName];
   }
 
+  function onSourceCodecsChange(cameraId: MaybeRefOrGetter<string | undefined>, sourceName: MaybeRefOrGetter<string | undefined>, callback: () => void): void {
+    let known: readonly [string, string, string] | undefined;
+    watch(
+      () => {
+        const camera = toValue(cameraId);
+        const source = toValue(sourceName);
+        const codecs = camera && source ? state.streamCodecs[camera]?.[source] : undefined;
+        if (!camera || !source || !codecs) return undefined;
+        return [camera, source, JSON.stringify([codecs.video.map((c) => c.codec), codecs.audio.map((c) => c.codec)])] as const;
+      },
+      (next) => {
+        if (!next) return;
+        if (known?.[0] === next[0] && known[1] === next[1] && known[2] !== next[2]) callback();
+        known = next;
+      },
+      { immediate: true },
+    );
+  }
+
+  tryOnScopeDispose(() => {
+    refCount--;
+    if (refCount > 0) return;
+    refCount = 0;
+    disposalTimer = setTimeout(() => {
+      disposalTimer = null;
+      if (refCount <= 0) teardown();
+    }, DISPOSAL_GRACE_MS);
+  });
+
   return {
     streamStatus: computed(() => state.streamStatus),
     getCameraStatus,
@@ -147,6 +176,7 @@ export function useStreamStatus() {
     getSourceStatus,
     getSourceConnections,
     getSourceCodecs,
+    onSourceCodecsChange,
     connect,
     disconnect,
     refresh,

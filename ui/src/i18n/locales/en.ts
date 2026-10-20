@@ -1441,6 +1441,7 @@ export default {
       source_role_unknown: 'Unknown',
       stream_info: 'Stream info',
       stream_paused: 'Stream paused to conserve resources. Click on stream to resume.',
+      stream_unavailable: 'Stream unavailable',
       streaming_mode_auto: 'Auto',
       streaming_mode_mse: 'MSE',
       streaming_mode_unknown: 'Unknown',
