@@ -589,6 +589,9 @@ export class ServerManager {
     const stagingPath = join(this.serverPath, '.staging');
     const stagedModules = join(stagingPath, 'node_modules');
 
+    // a fresh home has no folder for the lock yet
+    await mkdir(this.serverPath, { recursive: true });
+    await this.cli.chownPath(this.serverPath);
     this.acquireUpdateLock();
 
     try {
@@ -619,11 +622,13 @@ export class ServerManager {
   }
 
   private acquireUpdateLock(): void {
+    let cause: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         writeFileSync(this.updateLockPath, String(process.pid), { flag: 'wx' });
         return;
-      } catch {
+      } catch (error) {
+        cause = error;
         const holder = this.updateLockHolder();
         if (holder !== undefined) {
           throw new Error(`Another update is already in progress (pid ${holder})`);
@@ -632,7 +637,7 @@ export class ServerManager {
         rmSync(this.updateLockPath, { force: true });
       }
     }
-    throw new Error('Could not acquire the update lock');
+    throw new Error(`Could not acquire the update lock: ${(cause as Error)?.message ?? cause}`);
   }
 
   private releaseUpdateLock(): void {

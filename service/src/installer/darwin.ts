@@ -7,6 +7,8 @@ import { resolve } from 'node:path';
 
 import { BasePlatform } from './base.js';
 
+import type { PersistedInstall } from './base.js';
+
 export class DarwinInstaller extends BasePlatform {
   private user?: string;
 
@@ -95,12 +97,16 @@ export class DarwinInstaller extends BasePlatform {
     await this.start(true);
   }
 
-  public getPersistedHomePath(): string | undefined {
+  public getPersistedInstall(): PersistedInstall {
     try {
       const plist = readFileSync(this.plistPath, 'utf8');
-      return /<key>CAMERA_UI_HOME_PATH<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1];
+      return {
+        homePath: /<key>CAMERA_UI_HOME_PATH<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1],
+        worker: plist.includes('<string>--worker</string>'),
+        user: /<key>UserName<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1],
+      };
     } catch {
-      return undefined;
+      return {};
     }
   }
 

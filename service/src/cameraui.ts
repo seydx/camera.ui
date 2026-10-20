@@ -88,12 +88,12 @@ export class CameraUiCLI {
   }
 
   constructor() {
-    this.nodeVersionCheck();
     this.createInstaller();
     this.cli();
     this.setEnv();
 
     this.logging = new CLILogger(this.logPath, this.action);
+    this.nodeVersionCheck();
     this.serverManager = new ServerManager(this);
 
     this.runAction();
@@ -217,10 +217,19 @@ export class CameraUiCLI {
   }
 
   private nodeVersionCheck(): void {
-    // 115 = v20;
-    if (parseInt(process.versions.modules, 10) < 64) {
-      this.logger(`ERROR: Node.js v20 or greater is required. Current: ${process.version}.`, 'fail');
+    const [major, minor, patch] = process.versions.node.split('.').map(Number);
+    const [minMajor, minMinor, minPatch] = MIN_NODE_VERSION.split('.').map(Number);
+
+    if (major < 22) {
+      this.logger(`ERROR: Node.js ${MIN_NODE_VERSION} or newer is required. Current: ${process.version}.`, 'fail');
       process.exit(1);
+    }
+
+    if ((major - minMajor || minor - minMinor || patch - minPatch) < 0) {
+      this.logger(
+        `WARNING: camera.ui needs Node.js ${MIN_NODE_VERSION} or newer, this machine runs ${process.version}. Server updates wait until Node.js is updated.`,
+        'warn',
+      );
     }
   }
 
@@ -363,6 +372,15 @@ export class CameraUiCLI {
       process.exit(1);
     }
 
+    if (this.action === 'reinstall') {
+      const persisted = this.installer.getPersistedInstall();
+      if (persisted.homePath) {
+        this.homePath ??= persisted.homePath;
+      }
+      this.worker ||= persisted.worker === true;
+      this.asUser ??= persisted.user;
+    }
+
     if (!this.homePath) {
       if (IS_DEV) {
         this.homePath = join(__dirname, '..', '..', '..', '..', '.camera.ui');
@@ -468,6 +486,7 @@ export class CameraUiCLI {
     try {
       await this.homePathCheck();
       this.logging.init();
+      this.installer.warnOutdatedService();
       await this.serverManager.ensureInstalled();
     } catch (e) {
       this.logger(e.message, 'fail');

@@ -10,6 +10,8 @@ import { osInfo } from 'systeminformation';
 
 import { BasePlatform } from './base.js';
 
+import type { PersistedInstall } from './base.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -157,12 +159,38 @@ export class LinuxInstaller extends BasePlatform {
     process.exit(0);
   }
 
-  public getPersistedHomePath(): string | undefined {
+  public getPersistedInstall(): PersistedInstall {
+    const persisted: PersistedInstall = {};
+
     try {
       const env = readFileSync(this.systemdEnvPath, 'utf8');
-      return /^CAMERA_UI_HOME_PATH="?([^"\n]+)"?$/m.exec(env)?.[1];
+      persisted.homePath = /^CAMERA_UI_HOME_PATH="?([^"\n]+)"?$/m.exec(env)?.[1];
+      persisted.worker = /^CAMERA_UI_OPTS=.* --worker\b/m.test(env);
     } catch {
-      return undefined;
+      // no env file, nothing installed
+    }
+
+    try {
+      persisted.user = /^User=(.+)$/m.exec(readFileSync(this.systemdServicePath, 'utf8'))?.[1];
+    } catch {
+      // no unit
+    }
+
+    return persisted;
+  }
+
+  public warnOutdatedService(): void {
+    try {
+      if (readFileSync(this.systemdServicePath, 'utf8').includes('KillMode=process')) {
+        // prettier-ignore
+        this.cli.logger(
+          `The ${this.systemdServiceName} service still uses KillMode=process, so stopping it can cut off cameras and plugins. ` +
+          'Run "sudo cameraui reinstall" to update it.',
+          'warn',
+        );
+      }
+    } catch {
+      // no unit, not started by systemd
     }
   }
 

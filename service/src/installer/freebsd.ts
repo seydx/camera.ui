@@ -7,6 +7,8 @@ import { dirname, resolve } from 'node:path';
 
 import { BasePlatform } from './base.js';
 
+import type { PersistedInstall } from './base.js';
+
 export class FreeBSDInstaller extends BasePlatform {
   private get rcServiceName(): string {
     return this.cli.serviceName.toLowerCase();
@@ -97,12 +99,16 @@ export class FreeBSDInstaller extends BasePlatform {
     }
   }
 
-  public getPersistedHomePath(): string | undefined {
+  public getPersistedInstall(): PersistedInstall {
     try {
       const rcScript = readFileSync(this.rcServicePath, 'utf8');
-      return /_home_path:="([^"]+)"/.exec(rcScript)?.[1];
+      return {
+        homePath: /_home_path:="([^"]+)"/.exec(rcScript)?.[1],
+        worker: /^command_args=.* --worker"/m.test(rcScript),
+        user: /_user:="([^"]+)"/.exec(rcScript)?.[1],
+      };
     } catch {
-      return undefined;
+      return {};
     }
   }
 

@@ -9,6 +9,8 @@ import { finished } from 'node:stream/promises';
 
 import { BasePlatform } from './base.js';
 
+import type { PersistedInstall } from './base.js';
+
 export class Win32Installer extends BasePlatform {
   public async install(): Promise<void> {
     this.checkIsAdmin();
@@ -100,14 +102,14 @@ export class Win32Installer extends BasePlatform {
     await this.start(true);
   }
 
-  public getPersistedHomePath(): string | undefined {
+  public getPersistedInstall(): PersistedInstall {
     try {
       const output = execSync(`reg query "HKLM\\SYSTEM\\CurrentControlSet\\Services\\${this.cli.serviceName}\\Parameters" /v AppParameters`, {
         encoding: 'utf8',
       });
-      return / -H "([^"]+)"/.exec(output)?.[1];
+      return { homePath: / -H "([^"]+)"/.exec(output)?.[1], worker: / --worker\b/.test(output) };
     } catch {
-      return undefined;
+      return {};
     }
   }
 

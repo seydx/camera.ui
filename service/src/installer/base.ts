@@ -1,5 +1,11 @@
 import type { CameraUiCLI } from '../cameraui.js';
 
+export interface PersistedInstall {
+  homePath?: string;
+  worker?: boolean;
+  user?: string;
+}
+
 export class BasePlatform {
   constructor(public cli: CameraUiCLI) {}
 
@@ -50,7 +56,9 @@ export class BasePlatform {
     return null;
   }
 
-  public getPersistedHomePath(): string | undefined {
-    return undefined;
+  public getPersistedInstall(): PersistedInstall {
+    return {};
   }
+
+  public warnOutdatedService(): void {}
 }

@@ -3,8 +3,7 @@ import { join } from 'node:path';
 
 import { APP_SERVER_NAME, IS_ELECTRON, sleep } from '@camera.ui/common/utils';
 import { pathExists, readJson, remove, writeJson } from 'fs-extra/esm';
-import { lt, valid } from 'semver';
-import { container } from 'tsyringe';
+import { coerce, satisfies } from 'semver';
 
 import { ConfigService } from '../../services/config/index.js';
 import { assertServerUpdateSpace } from '../../utils/disk-space.js';
@@ -159,6 +158,7 @@ export class UpdatesService {
   }
 
   public async init(): Promise<void> {
+    this.warnBelowMinimumNode();
     await this.resolveStamp();
     this.emitStatus();
   }
@@ -653,6 +653,13 @@ export class UpdatesService {
 
   private async clearStamp(): Promise<void> {
     await remove(this.stampPath()).catch(() => {});
+  }
+
+  private warnBelowMinimumNode(): void {
+    if (satisfies(coerce(process.version) ?? process.version, `>=${ConfigService.MIN_NODE_VERSION}`)) return;
+    this.logger.warn(
+      `camera.ui needs Node.js ${ConfigService.MIN_NODE_VERSION} or newer, this machine runs ${process.version}. Server updates wait until Node.js is updated.`,
+    );
   }
 
   private async resolveStamp(): Promise<void> {
