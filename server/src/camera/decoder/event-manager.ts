@@ -239,6 +239,8 @@ export class DetectionEventManager {
   private static readonly CLOSE_RECHECK_MS = 200;
   private static readonly CLOSE_WAIT_MAX_MS = 8_000;
   private static readonly PERSON_TRACKS_MAX = 256;
+  private static readonly PRE_EVENT_READS_MAX = 32;
+  private static readonly KEEPALIVE_MS = 5_000;
 
   private activeEvent: RecordedEvent | null = null;
   private activeSegment: RecordedSegment | null = null;
@@ -255,6 +257,7 @@ export class DetectionEventManager {
   private eventThumbnailAt = 0;
   private segmentClosePendingSince: number | null = null;
   private lingerTimer: NodeJS.Timeout | null = null;
+  private keepAliveTimer: NodeJS.Timeout | null = null;
   private openVectorJobs = 0;
   private lastSegmentClosedAt = 0;
   private parkedVectors: { capturedAt: number; attach: () => void }[] = [];
@@ -554,6 +557,8 @@ export class DetectionEventManager {
       this.activeEvent.thumbnailAt = this.eventThumbnailAt || undefined;
     }
     this.publish('start', this.eventThumbnail ? { scene: this.eventThumbnail } : undefined);
+    clearInterval(this.keepAliveTimer ?? undefined);
+    this.keepAliveTimer = setInterval(() => this.keepAlive(), DetectionEventManager.KEEPALIVE_MS);
     if (data.trainingFrame) this.offerTrainingCandidate(data.trainingFrame, data, now);
 
     const triggerTypes = [...new Set(triggers.map((t) => t.type))].join(',');
@@ -592,6 +597,8 @@ export class DetectionEventManager {
       clearTimeout(this.lingerTimer);
       this.lingerTimer = null;
     }
+    clearInterval(this.keepAliveTimer ?? undefined);
+    this.keepAliveTimer = null;
     this.eventPlateVotes.clear();
 
     if (this.onEventEndCallback) {
@@ -1464,6 +1471,18 @@ export class DetectionEventManager {
     if (now - this.lastPublishTime >= UPDATE_THROTTLE_MS) {
       this.publishSegment(type);
     }
+  }
+
+  private keepAlive(): void {
+    if (!this.activeEvent || Date.now() - this.lastPublishTime < DetectionEventManager.KEEPALIVE_MS) return;
+    // the recorder ends an event a new decoder does not mention, so a quiet segment still publishes
+    if (this.activeSegment) {
+      this.publishSegment('segment-update');
+      return;
+    }
+    this.activeEvent.segments = [];
+    const trace = this.trace.take();
+    this.publish('update', trace ? { trace } : undefined);
   }
 
   private publishUpdateThrottled(): void {

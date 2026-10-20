@@ -72,8 +72,51 @@ interface NvrIngest {
   ingestDetectionEvent(cameraId: string, type: DetectionEventType, event: RecordedEvent, attachments?: EventAttachments): Promise<void>;
 }
 
+const FOLD_AFTER = 32;
+const MAX_QUEUED = 256;
+const PROGRESS_TYPES: ReadonlySet<DetectionEventType> = new Set(['update', 'segment-update']);
+
+interface QueuedMessage {
+  type: DetectionEventType;
+  event: RecordedEvent;
+  attachments?: EventAttachments;
+}
+
+function hasMoment(attachments?: EventAttachments): boolean {
+  return attachments?.strip !== undefined || attachments?.card !== undefined;
+}
+
+function mergeAttachments(older?: EventAttachments, newer?: EventAttachments): EventAttachments | undefined {
+  if (!older || !newer) return newer ?? older;
+
+  const merged: EventAttachments = {};
+  const scene = newer.scene ?? older.scene;
+  if (scene) merged.scene = scene;
+  const moment = hasMoment(newer) ? newer : older;
+  if (moment.strip) merged.strip = moment.strip;
+  if (moment.card) merged.card = moment.card;
+  if (older.trace || newer.trace) merged.trace = [...(older.trace ?? []), ...(newer.trace ?? [])];
+
+  if (older.attributes || newer.attributes) {
+    const length = Math.max(older.attributes?.length ?? 0, newer.attributes?.length ?? 0);
+    const crops: (Uint8Array | undefined)[] = [];
+    const landmarks: (Point[] | undefined)[] = [];
+    for (let index = 0; index < length; index++) {
+      const source = newer.attributes?.[index] ? newer : older;
+      crops.push(source.attributes?.[index]);
+      landmarks.push(source.attributeLandmarks?.[index]);
+    }
+    merged.attributes = crops;
+    if (landmarks.some((points) => points?.length)) merged.attributeLandmarks = landmarks;
+  }
+  return merged;
+}
+
 export class NvrSink {
   private rpc?: NvrIngest;
+  private tail: Promise<void> = Promise.resolve();
+  private queued = 0;
+  private waiting?: QueuedMessage;
 
   constructor(
     private readonly proxy: RPCClient,
@@ -90,9 +133,35 @@ export class NvrSink {
 
   public send(type: DetectionEventType, event: RecordedEvent, attachments?: EventAttachments): void {
     if (!this.rpc) return;
+    if (this.queued >= FOLD_AFTER && this.fold(type, event, attachments)) return;
+    if (this.queued >= MAX_QUEUED) {
+      this.logger.debug(`NVR plugin is ${this.queued} messages behind, dropped the ${type} message`);
+      return;
+    }
 
-    this.rpc.ingestDetectionEvent(event.cameraId, type, event, attachments).catch((error: unknown) => {
-      this.logger.debug(`NVR plugin did not take the ${type} message:`, error);
+    const message: QueuedMessage = { type, event: structuredClone(event), attachments };
+    this.waiting = message;
+    this.queued++;
+    this.tail = this.tail.then(async () => {
+      if (this.waiting === message) this.waiting = undefined;
+      try {
+        await this.rpc?.ingestDetectionEvent(message.event.cameraId, message.type, message.event, message.attachments);
+      } catch (error) {
+        this.logger.debug(`NVR plugin did not take the ${type} message:`, error);
+      } finally {
+        this.queued--;
+      }
     });
+  }
+
+  private fold(type: DetectionEventType, event: RecordedEvent, attachments?: EventAttachments): boolean {
+    const waiting = this.waiting;
+    if (waiting?.type !== type || !PROGRESS_TYPES.has(type)) return false;
+    if (waiting.event.id !== event.id || waiting.event.segmentIndex !== event.segmentIndex) return false;
+    if (hasMoment(waiting.attachments) && hasMoment(attachments)) return false;
+
+    waiting.event = structuredClone(event);
+    waiting.attachments = mergeAttachments(waiting.attachments, attachments);
+    return true;
   }
 }

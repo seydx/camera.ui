@@ -42,6 +42,12 @@ import type { CoordinatorSourceUrl, FrameWorkerPerfSnapshot, ObjectBenchmarkResu
 
 const READY_TIMEOUT_MS = 30_000;
 
+interface CameraChange {
+  property: string;
+  oldData: unknown;
+  newData: unknown;
+}
+
 export class FrameWorker extends Subscribed {
   private readonly configService: ConfigService;
   private readonly socketService: SocketService;
@@ -428,74 +434,7 @@ export class FrameWorker extends Subscribed {
     this.addSubscriptions(
       this.camera
         .onPropertyChange(['name', 'sources', 'detectionSettings', 'ptzAutotrack', 'zones', 'frameWorkerSettings', 'interfaceSettings'])
-        .subscribe(({ property, newData, oldData }) => {
-          if (this.status !== PLUGIN_STATUS.STARTED) {
-            return;
-          }
-
-          if (property === 'sources') {
-            const newSource = (newData as CameraInput[]).map((source) => ({
-              name: source.name,
-              urls: source.urls,
-              role: source.role,
-            }));
-
-            const oldSource = (oldData as CameraInput[]).map((source) => ({
-              name: source.name,
-              urls: source.urls,
-              role: source.role,
-            }));
-
-            if (isEqual(newSource, oldSource)) {
-              return;
-            }
-
-            this.restart();
-            return;
-          }
-
-          if (property === 'name') {
-            this.logger.suffix = this.camera.name;
-            if (this.status === PLUGIN_STATUS.STARTED) {
-              this.pushChildUpdate('name', this.frameWorkerChildProxy.updateCameraName(this.camera.name));
-            }
-            return;
-          }
-
-          if (property === 'frameWorkerSettings') {
-            const newSettings = newData as CameraFrameWorkerSettings;
-            const oldSettings = oldData as CameraFrameWorkerSettings;
-            if (!isEqual(this.effectiveDecoder(newSettings), this.effectiveDecoder(oldSettings), true)) {
-              this.restart();
-              return;
-            }
-            this.pushChildUpdate('frame worker settings', this.frameWorkerChildProxy.updateFrameWorkerSettings(this.resolveFrameWorkerSettings(newSettings)));
-            return;
-          }
-
-          if (property === 'detectionSettings') {
-            const newSettings = newData as CameraDetectionSettings;
-            if (newSettings.snooze !== (oldData as CameraDetectionSettings).snooze) {
-              return;
-            }
-            this.pushChildUpdate('detection settings', this.frameWorkerChildProxy.updateDetectionSettings(newSettings));
-            return;
-          }
-
-          if (property === 'ptzAutotrack') {
-            this.pushChildUpdate('autotrack settings', this.frameWorkerChildProxy.updatePtzAutotrackSettings(newData as PtzAutotrackSettings));
-            return;
-          }
-
-          if (property === 'zones') {
-            this.pushChildUpdate('zones', this.frameWorkerChildProxy.updateZoneConfig(newData as CameraZones));
-            return;
-          }
-
-          if (property === 'interfaceSettings') {
-            this.pushChildUpdate('interface settings', this.frameWorkerChildProxy.updateInterfaceSettings(newData as CameraUiSettings));
-          }
-        }),
+        .subscribe((change) => this.onCameraChange(change)),
 
       this.camera.onConnected.subscribe((connected) => {
         if (connected) {
@@ -512,16 +451,116 @@ export class FrameWorker extends Subscribed {
     for (const event of ['plugin:started', 'plugin:stopped', 'plugin:crashed'] as const) {
       const handler = (payload: InternalEventPayload): void => {
         if (!isNvrPluginName((payload as PluginEventPayload).pluginName)) return;
-        if (this.status !== PLUGIN_STATUS.STARTED) return;
-        this.pushChildUpdate('NVR namespace', this.frameWorkerChildProxy.updateNvrRpc(nvrRpcNamespace()));
+        if (this.status === PLUGIN_STATUS.STARTED) {
+          this.pushNvrRpc();
+        } else if (this.status === PLUGIN_STATUS.STARTING) {
+          this.nvrRpcStale = true;
+        }
       };
       bus.onEvent(event, handler);
       this.addSubscriptions(new Disposable(() => bus.offEvent(event, handler)));
     }
   }
 
-  private startWorkerProcess(): Promise<void> {
-    return new Promise<void>(async (resolve, reject) => {
+  private onCameraChange(change: CameraChange): void {
+    const { property, newData, oldData } = change;
+
+    if (property === 'name') {
+      this.logger.suffix = this.camera.name;
+      this.placement.label = `camera ${this.camera.name}`;
+      if (this.isRemoteWorker) {
+        this.workerManager.refreshLive(WorkerCapability.FrameDecoding, this.camera.id);
+      }
+      if (this.status === PLUGIN_STATUS.STARTED) {
+        this.pushChildUpdate('name', this.frameWorkerChildProxy.updateCameraName(this.camera.name));
+      } else {
+        this.deferChange(change);
+      }
+      return;
+    }
+
+    if (this.status !== PLUGIN_STATUS.STARTED) {
+      this.deferChange(change);
+      return;
+    }
+
+    if (property === 'sources') {
+      const newSource = (newData as CameraInput[]).map((source) => ({
+        name: source.name,
+        urls: source.urls,
+        role: source.role,
+      }));
+
+      const oldSource = (oldData as CameraInput[]).map((source) => ({
+        name: source.name,
+        urls: source.urls,
+        role: source.role,
+      }));
+
+      if (isEqual(newSource, oldSource)) {
+        return;
+      }
+
+      this.restart();
+      return;
+    }
+
+    if (property === 'frameWorkerSettings') {
+      const newSettings = newData as CameraFrameWorkerSettings;
+      const oldSettings = oldData as CameraFrameWorkerSettings;
+      if (!isEqual(this.effectiveDecoder(newSettings), this.effectiveDecoder(oldSettings), true)) {
+        this.restart();
+        return;
+      }
+      this.pushChildUpdate('frame worker settings', this.frameWorkerChildProxy.updateFrameWorkerSettings(this.resolveFrameWorkerSettings(newSettings)));
+      return;
+    }
+
+    if (property === 'detectionSettings') {
+      const newSettings = newData as CameraDetectionSettings;
+      if (newSettings.snooze !== (oldData as CameraDetectionSettings).snooze) {
+        return;
+      }
+      this.pushChildUpdate('detection settings', this.frameWorkerChildProxy.updateDetectionSettings(newSettings));
+      return;
+    }
+
+    if (property === 'ptzAutotrack') {
+      this.pushChildUpdate('autotrack settings', this.frameWorkerChildProxy.updatePtzAutotrackSettings(newData as PtzAutotrackSettings));
+      return;
+    }
+
+    if (property === 'zones') {
+      this.pushChildUpdate('zones', this.frameWorkerChildProxy.updateZoneConfig(newData as CameraZones));
+      return;
+    }
+
+    if (property === 'interfaceSettings') {
+      this.pushChildUpdate('interface settings', this.frameWorkerChildProxy.updateInterfaceSettings(newData as CameraUiSettings));
+    }
+  }
+
+  private deferChange(change: CameraChange): void {
+    if (this.status !== PLUGIN_STATUS.STARTING) {
+      return;
+    }
+    const queued = this.deferredChanges.get(change.property);
+    this.deferredChanges.set(change.property, queued ? { ...change, oldData: queued.oldData } : change);
+  }
+
+  private catchUpChild(): void {
+    if (this.nvrRpcStale) {
+      this.pushNvrRpc();
+    }
+    const changes = [...this.deferredChanges.values()];
+    this.deferredChanges.clear();
+    for (const change of changes) {
+      this.onCameraChange(change);
+    }
+  }
+
+  private startLocal(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       this.settleStart = (error?: Error) => {
         clearTimeout(this.readyTimeout);
         this.readyTimeout = undefined;
@@ -789,6 +828,7 @@ export class FrameWorker extends Subscribed {
       return;
     }
 
+    const changed = this.status !== newStatus;
     this._status = newStatus;
 
     const runtime: WorkerRuntime = {
@@ -799,8 +839,21 @@ export class FrameWorker extends Subscribed {
       },
     };
 
-    this.camera.updateFrameWorkerState(newStatus === PLUGIN_STATUS.STARTED);
+    if (changed) {
+      this.camera.updateFrameWorkerState(newStatus === PLUGIN_STATUS.STARTED);
+      if (newStatus === PLUGIN_STATUS.STARTED) {
+        this.catchUpChild();
+      } else if (newStatus !== PLUGIN_STATUS.STARTING) {
+        this.deferredChanges.clear();
+        this.nvrRpcStale = false;
+      }
+    }
     this.socketService.io.of('/status').emit('frameworker-process-status', runtime);
+  }
+
+  private pushNvrRpc(): void {
+    this.nvrRpcStale = false;
+    this.pushChildUpdate('NVR namespace', this.frameWorkerChildProxy.updateNvrRpc(nvrRpcNamespace()));
   }
 
   private handleLogData(data: Buffer): void {
