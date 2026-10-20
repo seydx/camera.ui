@@ -51,12 +51,29 @@ export function nerfDart(registry: string): string {
   }
 }
 
+function parseEnv(): Record<string, string> {
+  const config: Record<string, string> = {};
+
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!value || !/^npm_config_/i.test(name)) {
+      continue;
+    }
+
+    const key = name.slice('npm_config_'.length);
+    config[key.startsWith('//') ? key : key.replace(/(?!^)_/g, '-').toLowerCase()] = interpolateEnv(value);
+  }
+
+  return config;
+}
+
 export type NpmConfig = Record<string, string>;
 
 export function resolveNpmOptions(): NpmConfig {
+  const env = parseEnv();
   const merged: Record<string, string> = {
-    ...parseNpmrc(join(homedir(), '.npmrc')),
+    ...parseNpmrc(env.userconfig || join(homedir(), '.npmrc')),
     ...parseNpmrc(join(process.cwd(), '.npmrc')),
+    ...env,
   };
 
   const registry = merged.registry || DEFAULT_REGISTRY;
