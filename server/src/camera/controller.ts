@@ -359,6 +359,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       cameraState: this.connected,
       frameWorkerState: this.frameWorker.status === PLUGIN_STATUS.STARTED,
       sensorStates: this.sensorController.getStatesForCamera(),
+      stateSubject: true,
     };
   }
 
@@ -772,5 +773,8 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   private triggerProxyEvent(stateName: 'snapshot:updated', data: SnapshotUpdatedEvent): void;
   private triggerProxyEvent(stateName: CameraDeviceListenerMessagePayload['type'], data?: Camera | boolean | SnapshotUpdatedEvent): void {
     this.proxy.publish(this.namespaces.cameraSubject, { type: stateName, data });
+    if (stateName !== 'snapshot:updated') {
+      this.proxy.publish(this.namespaces.cameraStateSubject, { type: stateName, data });
+    }
   }
 }

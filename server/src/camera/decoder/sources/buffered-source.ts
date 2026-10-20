@@ -5,7 +5,7 @@ import { FrameHandle } from './frame-handle.js';
 import { ReconnectLoop } from './reconnect-loop.js';
 import { RtpIndex } from './rtp-index.js';
 import { SnapshotFetcher } from './snapshot-fetcher.js';
-import { createFrameFilter, openVideoInput } from './video-input.js';
+import { configureLowDelayDecoder, createFrameFilter, openVideoInput } from './video-input.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { FrameWorkerDecoderSettings } from '@camera.ui/sdk';
@@ -97,6 +97,10 @@ export class BufferedSource implements AnalysisSource {
     return this.cachedFrameAt;
   }
 
+  public get videoWidth(): number | undefined {
+    return this.connected ? this.videoStream?.codecpar.width : undefined;
+  }
+
   public get hardwareContext(): HardwareContext | null {
     return this.hwContext ?? null;
   }
@@ -163,9 +167,16 @@ export class BufferedSource implements AnalysisSource {
   }
 
   public async getFrame(maxAgeMs: number): Promise<FrameHandle | null> {
+    return (await this.streamFrame(maxAgeMs)) ?? (await this.snapshots?.fetch()) ?? null;
+  }
+
+  public async streamFrame(maxAgeMs: number): Promise<FrameHandle | null> {
     const decoded = maxAgeMs > 0 ? await this.decodeNewest(maxAgeMs) : null;
-    if (decoded) return FrameHandle.fromClonedFrame(decoded.frame, decoded.rtp);
-    return (await this.snapshots?.fetch()) ?? null;
+    return decoded ? FrameHandle.fromClonedFrame(decoded.frame, decoded.rtp) : null;
+  }
+
+  public hasFreshFrame(maxAgeMs: number): boolean {
+    return this.cachedFrame !== undefined && Date.now() - this.cachedFrameAt <= maxAgeMs;
   }
 
   public async decodeNewest(maxAgeMs: number): Promise<DecodedFrame | null> {
@@ -388,6 +399,7 @@ export class BufferedSource implements AnalysisSource {
       this.decoder ??= await Decoder.create(this.videoStream, {
         hardware: this.hwContext ?? undefined,
         exitOnError: false,
+        configure: configureLowDelayDecoder,
       });
 
       for (const p of pending) {

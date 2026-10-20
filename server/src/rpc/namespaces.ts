@@ -25,6 +25,7 @@ export interface PluginNamespaces {
 
 export interface CameraNamespaces {
   cameraSubject: string;
+  cameraStateSubject: string;
   cameraControllerRpc: string;
 }
 
@@ -49,6 +50,7 @@ export interface SensorCameraViewNamespaces {
 
 export interface SensorEventNamespaces {
   sensorSubject: string;
+  sensorStateSubject: string;
 }
 
 export interface SensorProviderNamespaces {
@@ -132,6 +134,7 @@ export class NamespaceManager {
   static cameraNamespaces(cameraId: string): CameraNamespaces {
     return {
       cameraSubject: `camera.${cameraId}.subscriber`,
+      cameraStateSubject: `camera.${cameraId}.state`,
       cameraControllerRpc: `camera.${cameraId}.controller.rpc`,
     };
   }
@@ -173,6 +176,7 @@ export class NamespaceManager {
   static sensorEventNamespaces(sensorId: string): SensorEventNamespaces {
     return {
       sensorSubject: `sensor.${sensorId}.subject`,
+      sensorStateSubject: `sensor.${sensorId}.state`,
     };
   }
 

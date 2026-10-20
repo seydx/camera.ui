@@ -73,6 +73,7 @@ export class FrameWorkerChild {
 
   constructor() {
     this.proxy = createRPCClient({
+      ...CLIENT_OPTIONS,
       name: NamespaceManager.frameWorkerNamespaces(process.env.CAMERA_ID!).frameWorkerChild,
       servers: process.env.PROXY_ENDPOINTS!.split(','),
       auth: {

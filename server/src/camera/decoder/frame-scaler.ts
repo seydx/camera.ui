@@ -3,13 +3,17 @@ import { SWS_AREA, SWS_BICUBIC } from 'node-av/constants';
 import { Frame } from 'node-av/lib';
 
 import { PrivacyMask } from '../privacy/mask.js';
+import { OutputPool } from './output-pool.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { Detection, VideoFrameData, VideoInputSpec } from '@camera.ui/sdk';
 import type { HardwareContext, ScalerCrop } from 'node-av/api';
 import type { CroppedRegion } from '../../rpc/interfaces/detection.js';
+import type { OutputLease } from './output-pool.js';
 
 type ScaledFormat = 'rgb' | 'nv12' | 'gray';
+
+type OutputScaleOptions = ScaleOptions & { resize: { width: number; height: number }; format: ScaledFormat };
 
 export interface JpegCrop {
   index: number;
@@ -58,6 +62,11 @@ export interface LetterboxedFrame {
 
 const LETTERBOX_FILL = 114;
 
+function packedBytes(width: number, height: number, format: ScaledFormat): number {
+  if (format === 'nv12') return width * height + 2 * Math.ceil(width / 2) * Math.ceil(height / 2);
+  return width * height * (format === 'gray' ? 1 : 3);
+}
+
 export class FrameScaler {
   private readonly MIN_THUMBNAIL_CROP = 64;
 
@@ -66,6 +75,7 @@ export class FrameScaler {
   private disposed = false;
   private privacy: PrivacyMask;
   private maskedFrame?: { pts: bigint; width: number; height: number; revision: number; frame: Frame };
+  private readonly outputs = new OutputPool();
 
   constructor(
     private hardwareContext?: HardwareContext | null,
@@ -85,7 +95,11 @@ export class FrameScaler {
     return this.scale(frame, spec.width, spec.height, spec.format);
   }
 
-  public async letterboxToSpec(frame: Frame, spec: VideoInputSpec): Promise<LetterboxedFrame | null> {
+  public leaseOutputs(): OutputLease {
+    return this.outputs.lease();
+  }
+
+  public async letterboxToSpec(frame: Frame, spec: VideoInputSpec, lease?: OutputLease): Promise<LetterboxedFrame | null> {
     // nv12 is semi-planar, padding it row by row would tear the chroma plane apart
     if (spec.format === 'nv12') {
       const stretched = await this.scaleToSpec(frame, spec);
@@ -95,6 +109,10 @@ export class FrameScaler {
     const ratio = Math.min(spec.width / frame.width, spec.height / frame.height);
     const innerWidth = Math.max(2, Math.round((frame.width * ratio) / 2) * 2);
     const innerHeight = Math.max(2, Math.round((frame.height * ratio) / 2) * 2);
+
+    if (lease) {
+      return this.letterboxPooled(frame, spec, Math.min(innerWidth, spec.width), Math.min(innerHeight, spec.height), lease);
+    }
 
     const inner = await this.scale(frame, Math.min(innerWidth, spec.width), Math.min(innerHeight, spec.height), spec.format);
     if (!inner) return null;
@@ -140,7 +158,12 @@ export class FrameScaler {
     });
   }
 
-  public async cropToSpec(frame: Frame, window: { x: number; y: number; width: number; height: number }, spec: VideoInputSpec): Promise<LetterboxedFrame | null> {
+  public async cropToSpec(
+    frame: Frame,
+    window: { x: number; y: number; width: number; height: number },
+    spec: VideoInputSpec,
+    lease?: OutputLease,
+  ): Promise<LetterboxedFrame | null> {
     const crop = this.quantizeCrop(
       {
         x: Math.round(window.x * frame.width),
@@ -153,9 +176,10 @@ export class FrameScaler {
       2,
     );
 
-    const data = await this.withScaler(crop.width, spec.width, (scaler) =>
-      scaler.toBuffer(frame, { crop, resize: { width: spec.width, height: spec.height }, format: spec.format }),
-    );
+    const options: OutputScaleOptions = { crop, resize: { width: spec.width, height: spec.height }, format: spec.format };
+    const data = lease
+      ? await this.scaleInto(frame, crop.width, options, this.takeRaw(lease, packedBytes(spec.width, spec.height, spec.format)))
+      : await this.withScaler(crop.width, spec.width, (scaler) => scaler.toBuffer(frame, options));
     const scaled: ScaledFrame = { data, width: spec.width, height: spec.height, format: spec.format };
 
     return {
@@ -333,6 +357,7 @@ export class FrameScaler {
   public dispose(): void {
     this.disposed = true;
     this.clearCache();
+    this.outputs.clear();
   }
 
   private async letterboxCrop(frame: Frame, detection: Detection, baseCrop: ScalerCrop, t: ScaleTarget): Promise<CroppedRegion> {
@@ -360,12 +385,72 @@ export class FrameScaler {
 
   private padInto(inner: ScaledFrame, width: number, height: number, padX: number, padY: number): Buffer {
     const channels = inner.format === 'gray' ? 1 : 3;
-    const data = Buffer.alloc(width * height * channels, LETTERBOX_FILL);
     const rowBytes = inner.width * channels;
+
+    // full-width rows: the picture is one block, allocUnsafe only when it covers every byte between the bars
+    const blockBytes = inner.height * rowBytes;
+    if (padX === 0 && inner.width === width && inner.data.length >= blockBytes) {
+      const total = width * height * channels;
+      const start = padY * rowBytes;
+      const data = Buffer.allocUnsafe(total);
+      data.fill(LETTERBOX_FILL, 0, start);
+      inner.data.copy(data, start, 0, blockBytes);
+      data.fill(LETTERBOX_FILL, start + blockBytes, total);
+      return data;
+    }
+
+    const data = Buffer.alloc(width * height * channels, LETTERBOX_FILL);
     for (let y = 0; y < inner.height; y++) {
       inner.data.copy(data, ((padY + y) * width + padX) * channels, y * rowBytes, (y + 1) * rowBytes);
     }
     return data;
+  }
+
+  private async letterboxPooled(frame: Frame, spec: VideoInputSpec, innerWidth: number, innerHeight: number, lease: OutputLease): Promise<LetterboxedFrame | null> {
+    if (innerWidth < 2 || innerHeight < 2) return null;
+
+    const { width, height, format } = spec;
+    const geometry: LetterboxGeometry = {
+      padX: Math.floor((width - innerWidth) / 2),
+      padY: Math.floor((height - innerHeight) / 2),
+      innerWidth,
+      innerHeight,
+      targetWidth: width,
+      targetHeight: height,
+    };
+    const options: OutputScaleOptions = { resize: { width: innerWidth, height: innerHeight }, format };
+    const innerBytes = packedBytes(innerWidth, innerHeight, format);
+
+    if (innerWidth === width && innerHeight === height) {
+      const data = await this.scaleInto(frame, frame.width, options, this.takeRaw(lease, innerBytes));
+      const exact: ScaledFrame = { data, width, height, format };
+      return { padded: exact, inner: exact, geometry };
+    }
+
+    // the bars are filled on creation, a reused buffer of the same geometry only gets a new picture
+    const padded = lease.take(`pad:${width}x${height}:${innerWidth}x${innerHeight}:${format}`, packedBytes(width, height, format), LETTERBOX_FILL);
+    const rowBytes = innerBytes / innerHeight;
+    const fullRows = geometry.padX === 0 && innerWidth === width;
+    const start = geometry.padY * rowBytes;
+    const target = fullRows ? padded.subarray(start, start + innerBytes) : this.takeRaw(lease, innerBytes);
+    const data = await this.scaleInto(frame, frame.width, options, target);
+    const inner: ScaledFrame = { data, width: innerWidth, height: innerHeight, format };
+
+    if (!fullRows) {
+      const channels = rowBytes / innerWidth;
+      for (let y = 0; y < innerHeight; y++) {
+        data.copy(padded, ((geometry.padY + y) * width + geometry.padX) * channels, y * rowBytes, (y + 1) * rowBytes);
+      }
+    }
+    return { padded: { data: padded, width, height, format }, inner, geometry };
+  }
+
+  private async scaleInto(frame: Frame, sourceWidth: number, options: OutputScaleOptions, output: Buffer): Promise<Buffer> {
+    return this.withScaler(sourceWidth, options.resize.width, (scaler) => scaler.toBuffer(frame, { ...options, output }));
+  }
+
+  private takeRaw(lease: OutputLease, bytes: number): Buffer {
+    return lease.take(`raw:${bytes}`, bytes);
   }
 
   private expandCropToAspect(crop: ScalerCrop, frameWidth: number, frameHeight: number, aspect: number): ScalerCrop {

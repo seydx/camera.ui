@@ -216,7 +216,6 @@ export class ServerSensor implements SensorLike {
       sensorType: this.type,
       property: property as SensorPropertyType,
       value,
-      previousValue,
       timestamp: Date.now(),
     };
 

@@ -77,6 +77,7 @@ import type {
 import type { TraceFaceRead, TraceTick } from './event-trace.js';
 import type { LetterboxGeometry } from './frame-scaler.js';
 import type { CropWindow, MomentFormatName, MomentTarget } from './moment-crop.js';
+import type { OutputLease } from './output-pool.js';
 import type { AnyModelSpec, RegisteredPlugin } from './plugin-registry.js';
 import type { AnalysisSource, FrameSnap } from './sources/analysis-source.js';
 import type { SnapshotConfig } from './sources/snapshot-fetcher.js';
@@ -152,6 +153,8 @@ const MOTION_INTERVAL_MS = 200;
 const TICK_SLACK_MS = 20;
 const MAIN_STREAM_HOLD_MS = 5000;
 const EXTERNAL_FRAME_MAX_AGE_MS = 1000;
+const THUMBNAIL_REFRESH_MIN_MS = 1000;
+const EMPTY_WRITE_REFRESH_MS = 5000;
 
 function momentPictures(rendered: RenderedMoment): Pick<SegmentMoment, 'strip' | 'card' | 'stripWindow' | 'cardWindow'> {
   return { strip: rendered.strip, card: rendered.card, stripWindow: rendered.stripWindow, cardWindow: rendered.cardWindow };
@@ -178,6 +181,7 @@ export class DetectionCoordinator {
 
   private readonly activeSensorTriggerTypes = new Map<string, string>();
   private readonly secondaryBboxSeen = new Map<string, number>();
+  private readonly emptyWrittenAt = new Map<string, Map<string, number>>();
   private readonly faceIdentities = new Set<string>();
   private faceIdentitiesClearedAt = 0;
   private readonly platesSeen = new Set<string>();
@@ -209,6 +213,7 @@ export class DetectionCoordinator {
   private mainStreamActive = false;
   private idleSince = 0;
   private lastMotionAt = 0;
+  private lastThumbnailRefreshAt = 0;
 
   private loopRunning = false;
   private loopPromise?: Promise<void>;
@@ -285,6 +290,8 @@ export class DetectionCoordinator {
     this.eventManager.onSegmentClosed(() => {
       if (!this.dwell.hasActive() && this.worldSpans.size === 0) {
         this.eventManager.forceEndActiveEvent();
+        // cascade and dwell ended inside the linger, their stop calls were skipped
+        this.stopAdHocVideoLoopIfIdle();
       }
     });
 
@@ -583,6 +590,9 @@ export class DetectionCoordinator {
 
   @RPCMethod
   public async onSensorAdded(sensor: CoordinatorSensorInfo): Promise<void> {
+    // main reseeds the values of a (re-)registered sensor
+    this.emptyWrittenAt.delete(sensor.sensorId);
+
     if (sensor.role === 'witness') {
       this.feedingSensors.delete(sensor.sensorId);
       this.witnessSensors.add(sensor.sensorId);
@@ -610,6 +620,7 @@ export class DetectionCoordinator {
 
   @RPCMethod
   public async onSensorRemoved(sensorId: string): Promise<void> {
+    this.emptyWrittenAt.delete(sensorId);
     this.witnessSensors.delete(sensorId);
     this.classifierLabels.delete(sensorId);
     const sensorType = this.feedingSensors.get(sensorId);
@@ -687,11 +698,8 @@ export class DetectionCoordinator {
       if (!wantsFrame) reportSnapshot.trace = externalTrace(reportSnapshot.timestamp, externalDetections, undefined);
       this.eventManager.processResults(reportSnapshot);
 
-      // re-shoot the event thumbnail: smart-camera reports arrive after the
-      // motion-start shot, often before the subject fully entered the frame
-      if (filtered.detected === true && this.eventManager.hasActiveEvent()) {
-        this.thumbnailer.fetchEventThumbnailAsync();
-      }
+      // smart-camera reports arrive after the motion-start shot, often before the subject is fully in frame
+      if (filtered.detected === true) this.refreshEventThumbnail();
 
       if (!wantsFrame) return;
 
@@ -780,7 +788,7 @@ export class DetectionCoordinator {
       const boxes = ((filtered.detections as Detection[] | undefined) ?? []).filter((d) => d.box);
       if (boxes.length > 0) snapshot.trace = motionTrace(snapshot.timestamp, boxes, true);
       this.eventManager.processResults(snapshot);
-      this.thumbnailer.fetchEventThumbnailAsync();
+      if (filtered.detected === true) this.refreshEventThumbnail();
       return;
     }
 
@@ -996,10 +1004,32 @@ export class DetectionCoordinator {
   }
 
   private writeSensorProperties(sensorId: string, properties: Record<string, unknown>): void {
+    const now = Date.now();
+    let written = this.emptyWrittenAt.get(sensorId);
+    let sent = properties;
+    for (const [property, value] of Object.entries(properties)) {
+      if (!Array.isArray(value) || value.length > 0) {
+        written?.delete(property);
+        continue;
+      }
+
+      const at = written?.get(property);
+      if (at !== undefined && now - at < EMPTY_WRITE_REFRESH_MS) {
+        if (sent === properties) sent = { ...properties };
+        delete sent[property];
+        continue;
+      }
+
+      if (!written) this.emptyWrittenAt.set(sensorId, (written = new Map()));
+      written.set(property, now);
+    }
+    if (Object.keys(sent).length === 0) return;
+
     const msg: SensorWriteMessage = {
       sensorId,
-      properties,
-      timestamp: Date.now(),
+      properties: sent,
+      timestamp: now,
+      instanceId: this.config.session?.instanceId,
     };
     this.proxy.publish(NamespaceManager.sensorCameraViewNamespaces(this.config.cameraId).sensorWriteSubject, msg);
   }
@@ -1379,6 +1409,7 @@ export class DetectionCoordinator {
 
     this.logger.debug('Starting video detection loop');
     this.loopRunning = true;
+    this.emptyWrittenAt.clear();
     this.thumbnailer.sync(this.mainStreamSourceWanted);
     this.loopPromise = this.runDetectionLoop();
   }
@@ -1411,9 +1442,8 @@ export class DetectionCoordinator {
   }
 
   private startAdHocVideoLoopIfNeeded(): void {
-    // localizerWanted covers what the registry cannot see: an object assist or
-    // an external object sensor needs the loop for the localizer's anchors
-    if (!this.loopRunning && (this.plugins.needsAdHocLoop() || this.localizerWanted)) {
+    // an external object sensor alone does not start it, without a frame plugin nobody reads the frames
+    if (!this.loopRunning && (this.plugins.needsAdHocLoop() || this.plugins.hasEligibleObjectAssist())) {
       this.adHocVideoLoop = true;
       this.logger.debug('Starting ad-hoc video loop for sensor cascade trigger');
       this.startVideoLoop();
@@ -1559,6 +1589,15 @@ export class DetectionCoordinator {
       this.logger.debug('HQ frame unavailable for the opening tick:', error);
     }
     return undefined;
+  }
+
+  private refreshEventThumbnail(): void {
+    if (!this.eventManager.hasActiveEvent()) return;
+    const now = Date.now();
+    // each shot decodes the main stream, a report burst needs only one
+    if (!this.eventManager.needsThumbnail() && now - this.lastThumbnailRefreshAt < THUMBNAIL_REFRESH_MIN_MS) return;
+    this.lastThumbnailRefreshAt = now;
+    this.thumbnailer.fetchEventThumbnailAsync();
   }
 
   private updateStreamState(): void {
@@ -1848,10 +1887,10 @@ export class DetectionCoordinator {
     if (wantsEventThumb) {
       try {
         const thumbStart = Date.now();
-        const thumb = await this.thumbnailer.captureEventThumbnail((this.hqUpgrade ?? analysis).frame);
+        const thumb = await this.thumbnailer.captureEventThumbnail(this.hqUpgrade ?? analysis);
         this.perf.jpegMs += Date.now() - thumbStart;
         if (thumb.jpeg) snapshot.eventThumbnail = thumb.jpeg;
-        hqThumbAttached = thumb.fromHq;
+        hqThumbAttached = thumb.sharp;
       } catch (error) {
         this.logger.error('Event thumbnail generation error:', error);
       }
@@ -2310,7 +2349,7 @@ export class DetectionCoordinator {
   }
 
   private async seedLocalizerReference(): Promise<void> {
-    if (!this.localizerWanted || !this.frameSource.decodeOldestKeyframe) return;
+    if (!this.loopRunning || !this.localizerWanted || !this.frameSource.decodeOldestKeyframe) return;
 
     try {
       const frame = await this.frameSource.decodeOldestKeyframe();
@@ -2359,10 +2398,10 @@ export class DetectionCoordinator {
     if (this.objectIntervalSamples < CADENCE_MIN_SAMPLES) return;
   }
 
-  private async scaleForObject(rawFrame: Frame, scaler: FrameScaler): Promise<PluginFrame | undefined> {
+  private async scaleForObject(rawFrame: Frame, scaler: FrameScaler, lease?: OutputLease): Promise<PluginFrame | undefined> {
     const objectPlugin = this.plugins.get(SensorType.Object);
     if (!objectPlugin?.requiresFrames) return undefined;
-    return this.scaleFrameForPlugin(rawFrame, objectPlugin, scaler);
+    return this.scaleFrameForPlugin(rawFrame, objectPlugin, scaler, lease);
   }
 
   private async runObjectDetection(objectPlugin: RegisteredPlugin, analysis: AnalysisFrame, pluginMotionBoxes: Detection[]): Promise<Detection[] | undefined> {
@@ -2374,13 +2413,16 @@ export class DetectionCoordinator {
       ? this.detectionWindow.plan(motionAnchors, this.trackAnchorBoxes, analysis.frame.width, analysis.frame.height, inputSpec.width)
       : null;
 
+    // this plugin's buffers only, assist and the secondary stage allocate their own
+    const lease = analysis.scaler.leaseOutputs();
+
     if (windows && windows.length > 0) {
       this.perf.zoomTicks++;
       this.perf.zoomWindows += windows.length;
       detectionRecord.zoom({ kind: 'object', anchors: motionAnchors, tracks: this.trackAnchorBoxes, windows });
       const inferStart = Date.now();
-      const perWindow = await Promise.all(
-        windows.map((window) => this.detectInWindow(objectPlugin, analysis.frame, analysis.scaler, window, inputSpec as VideoInputSpec)),
+      const perWindow = await lease.releaseAfter(
+        Promise.all(windows.map((window) => this.detectInWindow(objectPlugin, analysis.frame, analysis.scaler, window, inputSpec as VideoInputSpec, lease))),
       );
       this.perf.objectMs += Date.now() - inferStart;
       this.perf.objectCount++;
@@ -2389,16 +2431,13 @@ export class DetectionCoordinator {
     }
 
     const scaleStart = Date.now();
-    const objectFrame = await this.scaleForObject(analysis.frame, analysis.scaler);
+    const objectFrame = await this.scaleForObject(analysis.frame, analysis.scaler, lease);
     this.perf.scaleMs += Date.now() - scaleStart;
     if (!objectFrame || !this.loopRunning) return undefined;
 
     const inferStart = Date.now();
-    const result = await PromiseTimeout(
-      objectPlugin.proxy.detectObjects(objectFrame.model),
-      DETECT_TIMEOUT_MS,
-      undefined,
-      `Object detection timed out after ${DETECT_TIMEOUT_MS}ms`,
+    const result = await lease.releaseAfter(
+      PromiseTimeout(objectPlugin.proxy.detectObjects(objectFrame.model), DETECT_TIMEOUT_MS, undefined, `Object detection timed out after ${DETECT_TIMEOUT_MS}ms`),
     );
     this.perf.objectMs += Date.now() - inferStart;
     this.perf.objectCount++;
@@ -2411,9 +2450,10 @@ export class DetectionCoordinator {
     scaler: FrameScaler,
     window: BoundingBox,
     spec: VideoInputSpec,
+    lease?: OutputLease,
   ): Promise<{ detections: Detection[]; cropMs: number }> {
     const scaleStart = Date.now();
-    const cropped = await scaler.cropToSpec(frame, window, spec);
+    const cropped = await scaler.cropToSpec(frame, window, spec, lease);
     const cropMs = Date.now() - scaleStart;
     if (!cropped) return { detections: [], cropMs };
 
@@ -2426,11 +2466,16 @@ export class DetectionCoordinator {
     return { detections: FrameScaler.undoLetterbox(ensureDetectionBoxes(result.detections), cropped.geometry), cropMs };
   }
 
-  private async scaleFrameForPlugin(rawFrame: Frame, plugin: RegisteredPlugin, scaler: FrameScaler = this.frameScaler): Promise<PluginFrame | undefined> {
+  private async scaleFrameForPlugin(
+    rawFrame: Frame,
+    plugin: RegisteredPlugin,
+    scaler: FrameScaler = this.frameScaler,
+    lease?: OutputLease,
+  ): Promise<PluginFrame | undefined> {
     const inputSpec = plugin.modelSpec?.input;
     if (!isVideoInputSpec(inputSpec)) return undefined;
 
-    const letterboxed = await scaler.letterboxToSpec(rawFrame, inputSpec);
+    const letterboxed = await scaler.letterboxToSpec(rawFrame, inputSpec, lease);
     if (!letterboxed) return undefined;
 
     return {

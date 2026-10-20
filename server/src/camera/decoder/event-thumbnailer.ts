@@ -15,6 +15,7 @@ export const EVENT_THUMB_HQ_MAX_WIDTH = MOMENT_FORMATS[1].width;
 export const EVENT_THUMB_HQ_QUALITY = MOMENT_QUALITY;
 
 const HQ_FRAME_MAX_AGE_MS = 500;
+const SHARP_SOURCE_MIN_WIDTH = EVENT_THUMB_HQ_MAX_WIDTH * 2;
 
 interface EventThumbnailerDeps {
   frameSource: AnalysisSource;
@@ -95,15 +96,20 @@ export class EventThumbnailer {
     return { frame: decoded.frame, scaler, rtp: decoded.rtp };
   }
 
-  public async captureEventThumbnail(fallbackFrame: Frame): Promise<{ jpeg?: Buffer; fromHq: boolean }> {
+  public async captureEventThumbnail(fallback: { frame: Frame; scaler: FrameScaler }): Promise<{ jpeg?: Buffer; sharp: boolean }> {
+    if (fallback.frame.width >= SHARP_SOURCE_MIN_WIDTH && !this.hqSource?.hasFreshFrame(HQ_FRAME_MAX_AGE_MS)) {
+      const jpeg = await fallback.scaler.frameToJPEG(fallback.frame, EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY);
+      if (jpeg) return { jpeg, sharp: true };
+    }
+
     const hq = await this.acquireHqFrame();
     try {
       if (hq) {
         const jpeg = await hq.scaler.frameToJPEG(hq.frame, EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY);
-        if (jpeg) return { jpeg, fromHq: true };
+        if (jpeg) return { jpeg, sharp: true };
       }
-      const jpeg = await this.deps.frameScaler.frameToJPEG(fallbackFrame, EVENT_THUMB_MAX_WIDTH);
-      return { jpeg: jpeg ?? undefined, fromHq: false };
+      const jpeg = await fallback.scaler.frameToJPEG(fallback.frame, EVENT_THUMB_MAX_WIDTH);
+      return { jpeg: jpeg ?? undefined, sharp: false };
     } finally {
       hq?.frame[Symbol.dispose]?.();
     }
@@ -112,9 +118,9 @@ export class EventThumbnailer {
   public fetchEventThumbnailAsync(): void {
     void (async () => {
       try {
-        const hqJpeg = await this.hqSource?.snapshotJpeg(EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY);
-        if (hqJpeg) {
-          this.deps.eventManager.publishEventThumbnail(hqJpeg);
+        const sharpJpeg = await this.sharpJpeg();
+        if (sharpJpeg) {
+          this.deps.eventManager.publishEventThumbnail(sharpJpeg);
           return;
         }
 
@@ -138,7 +144,7 @@ export class EventThumbnailer {
     this.upgradeInflight = true;
     void (async () => {
       try {
-        const jpeg = await source.snapshotJpeg(EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY);
+        const jpeg = await this.sharpJpeg();
         if (jpeg && this.deps.eventManager.hasActiveEvent()) {
           this.deps.eventManager.publishEventThumbnail(jpeg);
         }
@@ -148,5 +154,17 @@ export class EventThumbnailer {
         this.upgradeInflight = false;
       }
     })();
+  }
+
+  private async sharpJpeg(): Promise<Buffer | null> {
+    const low = this.deps.frameSource;
+    if ((low.videoWidth ?? 0) >= SHARP_SOURCE_MIN_WIDTH && !this.hqSource?.hasFreshFrame(HQ_FRAME_MAX_AGE_MS)) {
+      await using handle = await low.streamFrame(HQ_FRAME_MAX_AGE_MS);
+      if (handle) {
+        const jpeg = await this.deps.frameScaler.frameToJPEG(handle.frame, EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY);
+        if (jpeg) return jpeg;
+      }
+    }
+    return (await this.hqSource?.snapshotJpeg(EVENT_THUMB_HQ_MAX_WIDTH, EVENT_THUMB_HQ_QUALITY)) ?? null;
   }
 }

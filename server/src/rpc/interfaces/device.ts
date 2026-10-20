@@ -33,6 +33,7 @@ export interface RefreshedStates {
   cameraState: boolean;
   frameWorkerState: boolean;
   sensorStates: Record<string, SensorRefreshedState>;
+  stateSubject?: boolean;
 }
 
 export interface SnapshotUpdatedEvent {

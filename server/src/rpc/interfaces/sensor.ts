@@ -52,6 +52,7 @@ export interface SensorRegistration {
   id: string;
   assignedCameraIds: string[];
   active: boolean;
+  stateSubject?: boolean;
 }
 
 export interface RegisterSensorOptions {

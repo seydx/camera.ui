@@ -80,6 +80,10 @@ export class FrameSource implements AnalysisSource {
     return this.producerError;
   }
 
+  public get videoWidth(): number | undefined {
+    return this.connected ? this.input?.video()?.codecpar.width : undefined;
+  }
+
   public async start(): Promise<void> {
     if (this.shouldRun) {
       this.logger.warn('start() called while already streaming — skipped');
@@ -147,11 +151,13 @@ export class FrameSource implements AnalysisSource {
   }
 
   public async getFrame(maxAgeMs: number): Promise<FrameHandle | null> {
-    if (maxAgeMs > 0 && this.connected && this.latest && Date.now() - this.latestAt <= maxAgeMs) {
-      const cloned = this.latest.frame.clone();
-      if (cloned) return FrameHandle.fromClonedFrame(cloned, this.latest.rtp);
-    }
-    return this.snapshots.fetch();
+    return (await this.streamFrame(maxAgeMs)) ?? this.snapshots.fetch();
+  }
+
+  public async streamFrame(maxAgeMs: number): Promise<FrameHandle | null> {
+    if (maxAgeMs <= 0 || !this.connected || !this.latest || Date.now() - this.latestAt > maxAgeMs) return null;
+    const cloned = this.latest.frame.clone();
+    return cloned ? FrameHandle.fromClonedFrame(cloned, this.latest.rtp) : null;
   }
 
   private wakeWaiter(): void {

@@ -38,6 +38,7 @@ function stamp(timestamp: number): string {
   return String(Math.max(timestamp, 0)).padStart(15, '0');
 }
 const HISTORY_COALESCE_MS = 1000;
+const TICK_RATE_PROPERTIES: ReadonlySet<string> = new Set(['detections', 'staticDetections', 'decibels']);
 
 export interface GetSensorsOptions {
   connectedOnly?: boolean;
@@ -76,11 +77,8 @@ export class SensorRegistry {
       assignedCameraIds: (sensorId) => this.records.get(sensorId)?.assignedCameraIds ?? [],
       cameraDetectionSettings: (cameraId) => this.dbs.camerasDB.get(cameraId)?.detectionSettings.sensor,
       getCoordinator: (cameraId) => this.coordinatorFor(cameraId),
-      publishSensorEvent: (sensorId, event) => {
-        const ns = NamespaceManager.sensorEventNamespaces(sensorId);
-        this.safePublish(ns.sensorSubject, event);
-      },
-      emitBus: (event, payload) => this.emitBus(event, payload),
+      publishSensorEvent: (sensorId, event) => this.publishSensorEvent(sensorId, event),
+      emitBus: emitInternalEvent,
       createPluginSensorRpc: (pluginId, sensorId) => {
         const ns = NamespaceManager.sensorProviderNamespaces(pluginId, sensorId).sensorRpc;
         return this.proxy.createProxy<SensorLike>(ns);
@@ -206,6 +204,7 @@ export class SensorRegistry {
       id: record._id,
       assignedCameraIds: [...record.assignedCameraIds],
       active: true,
+      stateSubject: true,
     };
   }
 
@@ -1046,13 +1045,11 @@ export class SensorRegistry {
     return this.pluginsService.getPluginById(pluginId)?.contract;
   }
 
-  private emitBus<T extends InternalEventPayload>(event: InternalEvent, payload: T): void {
-    try {
-      const bus = container.resolve<InternalEventBus>('internalBus');
-      bus.emitEvent(event, payload);
-    } catch {
-      // ignore
-    }
+  private publishSensorEvent(sensorId: string, event: { type: string; data: unknown }): void {
+    const ns = NamespaceManager.sensorEventNamespaces(sensorId);
+    this.safePublish(ns.sensorSubject, event);
+    if (event.type === 'property:changed' && TICK_RATE_PROPERTIES.has((event.data as { property: string }).property)) return;
+    this.safePublish(ns.sensorStateSubject, event);
   }
 
   private safePublish<T>(subject: string, data: T): void {

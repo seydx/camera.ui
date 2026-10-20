@@ -1,5 +1,6 @@
 import { Demuxer, FilterAPI, FilterPreset } from 'node-av/api';
-import { AV_HWDEVICE_TYPE_OPENCL } from 'node-av/constants';
+import { AV_HWDEVICE_TYPE_OPENCL, FF_THREAD_SLICE } from 'node-av/constants';
+import { availableParallelism } from 'node:os';
 
 import { createHardwareContext } from '../hardware.js';
 
@@ -9,6 +10,7 @@ import type { HardwareContext } from 'node-av/api';
 import type { Stream } from 'node-av/lib';
 
 const FALLBACK_FPS = 20;
+const MAX_LOW_DELAY_FRAME_THREADS = 4;
 
 export interface VideoInputOptions {
   decoder?: FrameWorkerDecoderSettings;
@@ -61,6 +63,16 @@ export function createFrameFilter(hardwareContext: HardwareContext | null, fps: 
   }
 
   return FilterAPI.create(chain.build(), { hardware: hardwareContext });
+}
+
+export function configureLowDelayDecoder(context: CodecContext): void {
+  if (context.hwDeviceCtx) {
+    context.threadType = FF_THREAD_SLICE;
+    return;
+  }
+
+  const cpus = availableParallelism();
+  context.threadCount = cpus > 1 ? Math.min(cpus + 1, MAX_LOW_DELAY_FRAME_THREADS) : 1;
 }
 
 function acquireHardware(logger: Logger, decoder?: FrameWorkerDecoderSettings): HardwareContext | null {

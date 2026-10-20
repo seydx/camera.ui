@@ -14,12 +14,14 @@ export interface AnalysisSource {
   readonly isRunning: boolean;
   readonly lastError: Error | undefined;
   readonly generation: number;
+  readonly videoWidth: number | undefined;
   start(): Promise<void>;
   detach(): Promise<void>;
   stop(): Promise<void>;
   retryNow(): void;
   nextFrame(lastId: number): Promise<FrameSnap | undefined>;
   getFrame(maxAgeMs: number): Promise<FrameHandle | null>;
+  streamFrame(maxAgeMs: number): Promise<FrameHandle | null>;
   takeDecodeStats(): { ms: number; frames: number };
   decodeOldestKeyframe?(): Promise<Frame | null>;
 }
