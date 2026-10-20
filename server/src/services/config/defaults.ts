@@ -1,6 +1,7 @@
 import { IS_ELECTRON } from '@camera.ui/common/utils';
+import { hostname } from 'node:os';
 
-import type { API, Ffmpeg, Log, Logger, PluginsSettings, RTMP, RTSP, SRTP, Webrtc } from './types.js';
+import type { API, Ffmpeg, Log, Logger, PluginsSettings, RTMP, RTSP, SRTP, Webrtc, WorkerConfig } from './types.js';
 
 export const ELECTRON_PORT_OFFSET = IS_ELECTRON ? 100 : 0;
 
@@ -9,6 +10,7 @@ const listenWithOffset = (host: string, base: number): string => `${host}:${with
 
 // server
 export const DEFAULT_CONFIG_PORT = withOffset(3443);
+export const MASTER_API_PORT = 3443;
 export const DEFAULT_CONFIG_HOST = '0.0.0.0';
 export const DEFAULT_CONFIG_LOGGER: Logger = {
   level: 'trace',
@@ -58,3 +60,10 @@ export const DEFAULT_GO2RTC_CONFIG_FFMPEG: Ffmpeg = {
   rtsp: '-fflags +discardcorrupt+nobuffer -flags low_delay -probesize 500000 -analyzeduration 0 -avioflags direct -user_agent go2rtc/ffmpeg -rtsp_transport tcp -i {input}',
   output: '-user_agent ffmpeg/go2rtc -rtsp_transport tcp -f rtsp {output}',
 };
+
+export function workerName(worker: WorkerConfig | undefined): string {
+  const name = worker?.name?.trim();
+  if (name) return name;
+  const host = hostname().split('.')[0];
+  return host ? host : 'worker';
+}

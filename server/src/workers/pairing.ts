@@ -2,12 +2,17 @@ import { IS_ELECTRON } from '@camera.ui/common/utils';
 import { X509Certificate } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { request } from 'node:https';
+import { connect as connectTcp, isIP } from 'node:net';
+import { connect as connectTls } from 'node:tls';
 
 import { WorkersService } from '../api/services/workers.service.js';
+import { DESKTOP_PORT_OFFSET, MASTER_API_PORT, workerName as nameOf } from '../services/config/defaults.js';
+import { browseCameraUi } from '../services/mdns/browse.js';
 import { FatalBootError } from '../utils/ipc.js';
 import { PAIR_RETRY_MS, UNPAIRED_POLL_MS } from './lifecycle/timing.js';
 
 import type { Logger } from '@camera.ui/common/logger';
+import type { DBWorkerConnection } from '../api/database/types.js';
 import type { ConfigService } from '../services/config/index.js';
 import type { WorkerConfig } from '../services/config/types.js';
 
@@ -110,8 +115,42 @@ export function verifyMaster(host: string, port: number, ca: string, timeoutMs =
   });
 }
 
-  if (connection?.master === master && (!pairingCode || pairingCode === connection.pairingCode)) {
-    return;
+export async function findMovedMaster(connection: DBWorkerConnection): Promise<Pick<DBWorkerConnection, 'master' | 'leafPort' | 'apiPort'> | undefined> {
+  const stillThere = await verifyMaster(connection.master, connection.leafPort, connection.ca).then(
+    () => true,
+    () => false,
+  );
+  if (stillThere) return undefined;
+
+  const current = new Set([connection.master, ...(await lookup(connection.master, { all: true }).catch(() => [])).map((entry) => entry.address)]);
+  const leafPorts = [...new Set([connection.leafPort, ...DEFAULT_LEAF_PORTS])];
+  const candidates = (await browseCameraUi(BROWSE_MS)).servers.flatMap((server) =>
+    server.addresses.filter((host) => !current.has(host)).flatMap((host) => leafPorts.map((leafPort) => ({ master: host, leafPort, apiPort: server.port }))),
+  );
+  if (!candidates.length) return undefined;
+
+  return Promise.any(
+    candidates.map(async (candidate) => {
+      await verifyMaster(candidate.master, candidate.leafPort, connection.ca);
+      return candidate;
+    }),
+  ).catch(() => undefined);
+}
+
+export class PairingWait {
+  private timer?: NodeJS.Timeout;
+  private delay = PAIR_RETRY_MS[0];
+  private stopped = false;
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: Logger,
+    private readonly onResult: (result: PairingState) => void,
+  ) {}
+
+  public start(state: 'pairing' | 'unpaired'): void {
+    this.stopped = false;
+    this.schedule(state);
   }
 
   public stop(): void {
@@ -170,16 +209,38 @@ async function pairWithCode(workersService: WorkersService, worker: WorkerConfig
     return { state: 'pairing', reason: message, triedCode: true };
   }
 
-  workersService.saveWorkerConnection({
-    master,
-    leafPort: response.leafPort,
-    user: response.user,
-    secret: response.secret,
-    ca: response.ca,
-    pairingCode,
-  });
+  workersService.saveWorkerConnection({ master, leafPort: response.leafPort, user: response.user, secret: response.secret, ca: response.ca });
+  workersService.markCodeUsed(code);
+  logger.log(`Paired with master ${master} as ${response.user}, CA fingerprint ${fingerprintOf(response.ca)}`);
+  return { state: 'paired' };
+}
 
-  logger.log(`Paired with master ${master} as ${response.user}`);
+function fingerprintOf(pem: string): string {
+  try {
+    return new X509Certificate(pem).fingerprint256;
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function repoint(workersService: WorkersService, connection: DBWorkerConnection, master: string, logger: Logger): Promise<PairingState> {
+  try {
+    await verifyMaster(master, connection.leafPort, connection.ca);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const moved = `worker.master changed from ${connection.master} to ${master}`;
+    return {
+      state: 'pairing',
+      reason:
+        error instanceof MasterProofError
+          ? `${moved}, which is not the master this worker was paired with (${message}). Pair with a new code if it is another one.`
+          : `${moved}, which does not answer yet: ${message}`,
+    };
+  }
+
+  workersService.saveWorkerConnection({ ...connection, master, configuredMaster: undefined, apiPort: undefined });
+  logger.log(`The master moved from ${connection.master} to ${master}, connecting there with the same pairing`);
+  return { state: 'paired' };
 }
 
 function pairRequest(host: string, port: number, body: { code: string; agentId: string; name: string }): Promise<PairResponse> {

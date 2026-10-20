@@ -740,7 +740,9 @@ export interface DBWorkerConnection {
   user: string;
   secret: string;
   ca: string;
-  pairingCode: string;
+  pairingCode?: string;
+  configuredMaster?: string;
+  apiPort?: number;
 }
 
 export interface DBNotificationSettings {

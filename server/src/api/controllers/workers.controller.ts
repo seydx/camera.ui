@@ -1,5 +1,5 @@
 import { fetchViableNetworkAddresses, isLoopbackAddress } from '@camera.ui/common/network';
-import { container } from 'tsyringe';
+import { X509Certificate } from 'node:crypto';
 
 import { updatesService } from '../services/updates.service.js';
 import { WorkersService } from '../services/workers.service.js';
@@ -60,6 +60,7 @@ export class WorkersController {
         port: workers?.port ?? 7422,
         suggestedAddresses,
         pairedWorkers: this.workersService.listCredentials().length,
+        acceptorError: workers?.enabled ? inject('proxy').server.leafAcceptorError : undefined,
       });
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
@@ -134,6 +135,7 @@ export class WorkersController {
         address,
         leafPort: workersConfig.port ?? 7422,
         apiPort: configService.config.port,
+        caFingerprint: new X509Certificate(configService.ssl.ca).fingerprint256,
       });
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });

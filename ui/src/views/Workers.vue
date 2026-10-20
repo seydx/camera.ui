@@ -65,6 +65,10 @@
         </Card>
       </div>
 
+      <Message v-if="workersEnabled && workersConfig?.acceptorError" severity="error" size="small" :closable="false">
+        {{ $t('views.workers.acceptor_error', { error: workersConfig.acceptorError }) }}
+      </Message>
+
       <div v-if="workersEnabled">
         <span class="card-title">{{ $t('views.workers.workers') }}</span>
         <CuiChartTable v-if="workers.length" :items="workers" :headers="workerHeaders" :chart-data="workerChartData" />
@@ -255,8 +259,19 @@
                       />
                     </InputGroupAddon>
                   </InputGroup>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
+                  <Message v-if="pairingMinutesLeft > 0" severity="secondary" variant="simple" size="small" class="cui-input-hint">
                     {{ $t('views.workers.pairing_expires', { minutes: pairingMinutesLeft }) }}
+                  </Message>
+                  <Message v-else severity="warn" variant="simple" size="small" class="cui-input-hint">
+                    {{ $t('views.workers.pairing_expired') }}
+                  </Message>
+                </div>
+
+                <div v-if="pairing.caFingerprint" class="flex flex-col field-gap">
+                  <label class="cui-label">{{ $t('views.workers.ca_fingerprint') }}</label>
+                  <span class="text-xs font-mono break-all">{{ pairing.caFingerprint }}</span>
+                  <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
+                    {{ $t('views.workers.ca_fingerprint_hint') }}
                   </Message>
                 </div>
 
@@ -388,7 +403,7 @@ const masterVersion = computed(() => updatesStore.targetServerVersion ?? apiInfo
 
 const pairingMinutesLeft = computed(() => {
   if (!pairing.value) return 0;
-  return Math.max(0, Math.round((pairing.value.expiresAt - Date.now()) / 60_000));
+  return Math.max(0, Math.ceil((pairing.value.expiresAt - now.value.getTime()) / 60_000));
 });
 
 const replaceOptions = computed(() => workers.value.map((worker) => ({ label: worker.name, value: worker.agentId })));
@@ -1110,11 +1125,11 @@ onBeforeMount(async () => {
 });
 
 watch(
-  workersConfig,
-  (config) => {
-    if (!config) return;
-    addressDraft.value = config.address;
-    portDraft.value = config.port;
+  () => [workersConfig.value?.address, workersConfig.value?.port] as const,
+  ([address, port]) => {
+    if (address === undefined || port === undefined) return;
+    addressDraft.value = address;
+    portDraft.value = port;
   },
   { immediate: true },
 );

@@ -1110,6 +1110,7 @@ export interface WorkersConfigResponse {
   port: number;
   suggestedAddresses: string[];
   pairedWorkers: number;
+  acceptorError?: string;
 }
 
 export interface WorkerPairingResponse {
@@ -1118,6 +1119,7 @@ export interface WorkerPairingResponse {
   address: string | null;
   leafPort: number;
   apiPort: number;
+  caFingerprint: string;
 }
 
 export interface WorkerRestartRequest {

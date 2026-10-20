@@ -14,6 +14,7 @@ import {
   DEFAULT_GO2RTC_CONFIG_SRTP,
   DEFAULT_GO2RTC_CONFIG_WEBRTC,
   ELECTRON_PORT_OFFSET,
+  MASTER_API_PORT,
 } from './defaults.js';
 
 import type { IceServer } from '@camera.ui/sdk/internal';
@@ -47,7 +48,7 @@ export const DEFAULT_CONFIG: IConfig = {
   },
   worker: {
     master: '',
-    apiPort: DEFAULT_CONFIG_PORT,
+    apiPort: MASTER_API_PORT,
     pairingCode: '',
     name: '',
     capabilities: [],

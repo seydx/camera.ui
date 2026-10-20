@@ -10,6 +10,7 @@ import { container } from 'tsyringe';
 
 import { WorkersService } from '../api/services/workers.service.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
+import { MASTER_API_PORT, workerName } from '../services/config/defaults.js';
 import { ConfigService } from '../services/config/index.js';
 import { assertServerUpdateSpace } from '../utils/disk-space.js';
 import { MIN_SUPPORTED_PROTOCOL_LEVEL } from '../utils/engines.js';
@@ -116,6 +117,7 @@ export class WorkerAgent implements WorkerAgentRPC {
   private readonly natsServer: NATS;
   private readonly workersService = new WorkersService();
   private readonly startTime = Date.now();
+  private readonly workerName: string;
 
   private proxy?: RPCClient;
   private managerProxy!: Promisify<WorkerManagerRPC>;
@@ -407,7 +409,7 @@ export class WorkerAgent implements WorkerAgentRPC {
   public async ping(): Promise<WorkerHealthInfo> {
     return {
       agentId: this.agentId,
-      name: this.configService.config.worker?.name ?? 'worker',
+      name: this.workerName,
       uptime: Date.now() - this.startTime,
       cameras: Array.from(this.handlers.values()).flatMap((h) => h.getActiveWorkIds()),
       capabilities: this.capabilities,
@@ -864,18 +866,43 @@ export class WorkerAgent implements WorkerAgentRPC {
       }
     }
 
-    // Stop strays first — the single-owner invariant matters more than a gap.
-    for (const [key, applied] of this.applied) {
-      if (desiredByKey.has(key)) {
-        continue;
-      }
+    const mayLook = this.configService.config.mdns !== false && !this.masterSearch && Date.now() >= this.nextMasterSearchAt;
+    if (mayLook && silentForMs >= MASTER_SEARCH_AFTER_MS && MASTER_LOST.has(this.state)) {
+      this.masterSearch = this.searchMovedMaster().finally(() => (this.masterSearch = undefined));
+    }
 
-      try {
-        await this.handlers.get(applied.capability)?.stop(applied.id);
-        this.applied.delete(key);
-      } catch (error: any) {
-        this.logger.error(`Failed to stop workload ${key}:`, error.message);
-      }
+    if (!LEASED.has(this.state) || this.fencing) {
+      return;
+    }
+
+    const remaining = leaseRemaining(this.lease);
+    if (remaining !== undefined && remaining <= 0) {
+      this.fence();
+    }
+  }
+
+  private async searchMovedMaster(): Promise<void> {
+    const connection = this.workersService.getWorkerConnection();
+    try {
+      const found = connection && (await findMovedMaster(connection));
+      if (!found || this.isClosed || !MASTER_LOST.has(this.state)) return;
+
+      this.workersService.saveWorkerConnection({ ...connection, ...found, configuredMaster: connection.configuredMaster ?? connection.master });
+      this.logger.log(`Found the master at ${found.master}, it moved away from ${connection.master}. Restarting to connect there`);
+      this.requestShutdown('restart');
+    } catch (error) {
+      this.logger.debug(`Looking for a moved master failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      this.nextMasterSearchAt = Date.now() + this.masterSearchDelay;
+      this.masterSearchDelay = Math.min(this.masterSearchDelay * 2, MASTER_SEARCH_MS[1]);
+    }
+  }
+
+  private async fence(): Promise<void> {
+    const count = this.workloadCount;
+    if (count > 0) {
+      const silentForMs = Date.now() - (this.lastAnswerAt ?? this.startTime);
+      this.logger.warn(`No answer from the master for ${Math.round(silentForMs / 1000)} s, stopping ${count} workloads`);
     }
 
     // the grace counts from the lease end, so the children's kill lands before the watchdog
@@ -1170,7 +1197,7 @@ export class WorkerAgent implements WorkerAgentRPC {
   private buildHeartbeat(): WorkerHeartbeat {
     return {
       agentId: this.agentId,
-      name: this.configService.config.worker?.name ?? 'worker',
+      name: this.workerName,
       cameras: Array.from(this.handlers.values()).flatMap((h) => h.getActiveWorkIds()),
       uptime: Date.now() - this.startTime,
       capabilities: this.capabilities,

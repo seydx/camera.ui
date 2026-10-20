@@ -12,6 +12,8 @@ import { DownloadManager } from '../manager/downloadManager.js';
 import { NotificationManager } from '../manager/notificationManager.js';
 import { TerminalManager } from '../manager/terminalManager.js';
 import { TrainingCandidateManager } from '../manager/trainingCandidateManager.js';
+import { workerName } from '../services/config/defaults.js';
+import { isMovedAway, readMoveRecord } from '../services/config/move.js';
 import { NATS } from './server.js';
 import { generateCredentials, safeAsync } from './utils.js';
 
@@ -55,13 +57,7 @@ export class ProxyServer {
     this.masterLink = options?.masterLink ?? true;
     this.logger = inject('logger');
 
-    if (this.workerMode) {
-      const configService = container.resolve<ConfigService>('configService');
-      const workerName = configService.config.worker?.name ?? 'worker';
-      this.server = new NATS(this.auth, { serverName: `camera.ui-worker-${workerName}` });
-    } else {
-      this.server = new NATS(this.auth);
-    }
+    this.server = new NATS(this.auth);
 
     if (!this.workerMode) {
       this.api = container.resolve<CameraUiAPI>('api');
@@ -98,6 +94,9 @@ export class ProxyServer {
     }
 
     if (this.workerMode) {
+      // nats keeps one leaf per server_name, duplicate names push each other off
+      this.server.setServerName(`camera.ui-worker-${new WorkersService().getOrCreateAgentId(workerName(configService.config.worker))}`);
+
       const connection = new WorkersService().getWorkerConnection();
       if (!connection || !this.masterLink) {
         this.server.setLeafNodeRemotes([]);

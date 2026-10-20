@@ -1,4 +1,4 @@
-import { reservePorts } from '@camera.ui/common/camera';
+import { pickPort } from '@camera.ui/common/camera';
 import { IS_DEV, sleep } from '@camera.ui/common/utils';
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
@@ -70,7 +70,6 @@ export class NATS {
   private _clusterPort!: number;
   private _wsPort!: number;
   private _leafAcceptorPort!: number;
-  private _leafAcceptorClusterPort!: number;
   private _endpoints: string[] = [];
   private leafNodeConfig?: LeafNodeConfig;
   private leafNodeRemotes?: LeafNodeRemoteConfig[];
@@ -102,11 +101,8 @@ export class NATS {
 
   private _status: RUNTIME_STATUS = RUNTIME_STATUS.UNKNOWN;
 
-  constructor(
-    private readonly auth: ProxyAuth,
-    options?: { serverName?: string },
-  ) {
-    container.registerInstance('natsServer', this);
+  constructor(private readonly auth: ProxyAuth) {
+    provide('natsServer', this);
 
     this.configService = container.resolve<ConfigService>('configService');
 
@@ -125,8 +121,7 @@ export class NATS {
     this.config = {
       host: '127.0.0.1',
       port: 0,
-      server_name: options?.serverName ?? 'camera.ui-server',
-      // tls: tlsConfig,
+      server_name: 'camera.ui-server',
       authorization: {
         timeout: 5,
         users: [
@@ -244,6 +239,10 @@ export class NATS {
     return this._wsPort;
   }
 
+  public get leafAcceptorError(): string | undefined {
+    return this._leafAcceptorError;
+  }
+
   get localAuth(): AuthConfig {
     return this.auth.server;
   }
@@ -276,9 +275,9 @@ export class NATS {
   }
 
   private async configServer(): Promise<void> {
-    this._serverPort ||= (await reservePorts({ type: 'tcp' }))[0];
-    this._clusterPort ||= (await reservePorts({ type: 'tcp' }))[0];
-    this._wsPort ||= (await reservePorts({ type: 'tcp' }))[0];
+    this._serverPort ||= await loopbackPort();
+    this._clusterPort ||= await loopbackPort();
+    this._wsPort ||= await loopbackPort();
 
     this._endpoints = [`nats://127.0.0.1:${this._serverPort}`];
 
@@ -297,7 +296,7 @@ export class NATS {
     };
 
     if (this.clusterListenerEnabled) {
-      this._leafAcceptorPort ||= (await reservePorts({ type: 'tcp' }))[0];
+      this._leafAcceptorPort ||= await loopbackPort();
       config.cluster = {
         name: 'camera.ui-cluster',
         host: '127.0.0.1',
@@ -313,7 +312,7 @@ export class NATS {
     }
 
     if (IS_DEV) {
-      config.http = (await reservePorts({ type: 'tcp' }))[0];
+      config.http = await loopbackPort();
     }
 
     // Worker mode: connect outwards to the master, pinned to its CA.
@@ -342,16 +341,13 @@ export class NATS {
     const serverConfig = await this.writeConfigFile(config, 'server');
     await this.startServer(serverConfig);
 
-    // Bring up the leaf-acceptor once the main server (its cluster peer) is up.
-    if (this.leafNodeConfig?.enabled && this.leafNodeConfig.users.length > 0) {
-      await this.startLeafAcceptor();
+    if (this.leafNodeConfig?.enabled && !this.leafAcceptorProcess) {
+      this.launchLeafAcceptor('Leaf-acceptor did not start, workers cannot connect until it does');
     }
   }
 
-  private async buildLeafAcceptorConfig(): Promise<NatsConfig> {
+  private buildLeafAcceptorConfig(): NatsConfig {
     const leaf = this.leafNodeConfig!;
-
-    this._leafAcceptorClusterPort ||= (await reservePorts({ type: 'tcp' }))[0];
 
     const config: NatsConfig = {
       host: '127.0.0.1',
@@ -374,7 +370,8 @@ export class NATS {
       cluster: {
         name: 'camera.ui-cluster',
         host: '127.0.0.1',
-        port: this._leafAcceptorClusterPort,
+        // bound after ready, a taken fixed port would kill it unseen; nobody dials it
+        port: -1,
         routes: [`nats://${this.auth.cluster.user}:${this.auth.cluster.password}@127.0.0.1:${this._clusterPort}`],
         authorization: { timeout: 5, ...this.auth.cluster },
       },
@@ -401,7 +398,7 @@ export class NATS {
     }
 
     for (let i = 0; i < this.clusterAmount; i++) {
-      const _clusterPort = (await reservePorts({ type: 'tcp' }))[0];
+      const _clusterPort = await loopbackPort();
       this._endpoints.push(`nats://127.0.0.1:${_clusterPort}`);
 
       const config = {
@@ -410,7 +407,7 @@ export class NATS {
         port: _clusterPort,
         cluster: {
           ...this.config.cluster,
-          port: (await reservePorts({ type: 'tcp' }))[0],
+          port: await loopbackPort(),
           routes: [`nats://${this.config.cluster.authorization.user}:${this.config.cluster.authorization.password}@127.0.0.1:${this._clusterPort}`],
         },
       };
@@ -463,6 +460,7 @@ export class NATS {
     this.cancelLeafAcceptorRestart();
 
     if (!shouldRun) {
+      this._leafAcceptorError = undefined;
       if (this.leafAcceptorProcess) {
         this.logger.log('Stopping leaf-acceptor (workers disabled)');
         this.restartingLeafAcceptor = true;
@@ -480,8 +478,14 @@ export class NATS {
       this.leafAcceptorProcess = undefined;
     }
 
-    await this.startLeafAcceptor();
-    this.restartingLeafAcceptor = false;
+    try {
+      await this.startLeafAcceptor();
+    } catch (error) {
+      this.scheduleLeafAcceptorRestart();
+      throw error;
+    } finally {
+      this.restartingLeafAcceptor = false;
+    }
   }
 
   public async restart(): Promise<void> {
@@ -520,7 +524,7 @@ export class NATS {
   }
 
   private async startLeafAcceptor(): Promise<void> {
-    const config = await this.buildLeafAcceptorConfig();
+    const config = this.buildLeafAcceptorConfig();
     const configFile = await this.writeConfigFile(config, 'leaf-acceptor');
     const args = ['-config', configFile];
 
@@ -531,7 +535,14 @@ export class NATS {
       this.leafAcceptorProcess = proc;
 
       let settled = false;
+      let ready = false;
       let pid: number | undefined;
+      let failure: string | undefined;
+      const fail = (error: Error): void => {
+        this._leafAcceptorError = failure ?? error.message;
+        settled = true;
+        reject(error);
+      };
 
       proc.once('spawn', () => {
         pid = proc.pid;
@@ -542,9 +553,12 @@ export class NATS {
 
       proc.once('error', (error: Error) => {
         this.logger.error('The Nats leaf-acceptor process failed to start!', error);
+        // a process that never spawned sends no exit
+        if (pid === undefined && this.leafAcceptorProcess === proc) {
+          this.leafAcceptorProcess = undefined;
+        }
         if (!settled) {
-          settled = true;
-          reject(error);
+          fail(error);
         }
       });
 
@@ -552,6 +566,9 @@ export class NATS {
         this.configService.removeProcessByPID(pid);
         if (this.leafAcceptorProcess === proc) {
           this.leafAcceptorProcess = undefined;
+        }
+        if (!settled) {
+          fail(new Error('Nats leaf-acceptor exited before it was ready'));
         }
         if (!this.restartingLeafAcceptor && !isShuttingDown() && !this.manuallyKilled) {
           this._leafAcceptorError ??= failure ?? 'Nats leaf-acceptor exited unexpectedly';
@@ -562,15 +579,24 @@ export class NATS {
       const rl = createInterface({ input: proc.stdout, terminal: false });
       const rlErr = createInterface({ input: proc.stderr, terminal: false });
       const onLine = (line: string) => {
-        this.logLine(`leaf-acceptor: ${this.stripLine(line)}`);
+        const stripped = this.stripLine(line);
+        this.logLine(`leaf-acceptor: ${stripped}`);
+        // a running acceptor logs [ERR] per bad client, only [FTL] ends it
+        const failed = /^\[(FTL|ERR)\] (.*)$/.exec(stripped);
+        if (failed && (failed[1] === 'FTL' || !ready)) {
+          failure = failed[2];
+          // the exit can arrive before the line that explains it
+          if (this._leafAcceptorError !== undefined) this._leafAcceptorError = failure;
+        }
         if (settled) return;
         if (line.includes(SERVER_READY_MESSAGE)) {
           settled = true;
+          ready = true;
+          this._leafAcceptorError = undefined;
           this.logger.log(`Leaf-acceptor ready (PID: ${proc.pid})`);
           resolve();
         } else if (line.includes(SERVER_ERROR_MESSAGE)) {
-          settled = true;
-          reject(new Error('Error starting Nats leaf-acceptor!'));
+          fail(new Error('Error starting Nats leaf-acceptor!'));
         }
       };
       rl.on('line', onLine);
@@ -872,4 +898,8 @@ function workerLeafUser(worker: LeafNodeUser, workers: LeafNodeUser[]): NatsUser
       },
     },
   };
+}
+
+function loopbackPort(): Promise<number> {
+  return pickPort({ type: 'tcp', ip: '127.0.0.1' });
 }
