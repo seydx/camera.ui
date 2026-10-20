@@ -111,6 +111,9 @@ export interface DBSettings {
   knownWorkers?: DBKnownWorker[];
   workerCredentials?: DBWorkerCredential[];
   workerPairings?: DBWorkerPairing[];
+  workerLastShutdown?: DBWorkerLastShutdown;
+  workerReleases?: Record<string, DBWorkerRelease>;
+  workerUpdates?: Record<string, WorkerUpdate>;
   backupScheduler?: DBBackupSchedulerSettings;
   notificationsSuppressed?: boolean;
   notificationsMutedCameras?: string[];
@@ -136,6 +139,22 @@ export interface DBWorkerCredential {
 export interface DBWorkerPairing {
   code: string;
   expiresAt: number;
+  replaces?: string;
+}
+
+export interface DBWorkerLastShutdown {
+  runId: string;
+  at: number;
+  upt: number;
+  hostBootId?: string;
+  reason: string;
+  holds: Record<string, { until: number; untilUpt: number }>;
+}
+
+export interface DBWorkerRelease {
+  from: string;
+  at: number;
+  runId: string;
 }
 
 export interface DBServer {
@@ -707,6 +726,10 @@ export interface DBDownloadEntry {
 export interface DBWorkerState {
   agentId: string;
   connection?: DBWorkerConnection;
+  bootIds?: string[];
+  unpaired?: { reason: string; at: number };
+  usedCodes?: string[];
+  refused?: { hash: string; reason: string };
 }
 
 export interface DBWorkerConnection {

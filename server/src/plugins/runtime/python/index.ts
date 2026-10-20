@@ -35,7 +35,7 @@ export class PythonPluginRuntime extends BasePluginRuntime {
     this.py = new PythonInstaller(this.configService.HOME_PATH, this.logger, this.plugin.installPath, this.plugin.contract.pythonVersion);
   }
 
-  public async start(): Promise<void> {
+  public async start(signal?: AbortSignal, instanceId?: string): Promise<void> {
     if (this.isRunning()) {
       return;
     }

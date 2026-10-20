@@ -53,6 +53,7 @@ class DeviceManagerProxy(DeviceManager):
         self.__event_lock = asyncio.Lock()
 
         self.__devices: dict[str, CameraDeviceProxy] = {}
+        self.__configured: set[str] = set()
         self.__tasks = TaskSet(name=f"DeviceManager:{plugin['id']}")
         self.__namespaces: tuple[DeviceManagerNamespaces, PluginNamespaces, DiscoveryManagerNamespaces] = (
             NamespaceManager.device_manager_namespaces(),
@@ -98,7 +99,20 @@ class DeviceManagerProxy(DeviceManager):
         await self.__discovery_manager_proxy.pushDiscoveredCameras(self.__plugin["id"], cameras)
 
     async def configureCameras(self, camera_devices: list[CameraDeviceProxy]) -> None:
+        self.__configured.update(camera_device.id for camera_device in camera_devices)
         await asyncio.gather(*[self.__get_camera_device(camera_device) for camera_device in camera_devices])
+
+    async def reattach(self, cameras: list[Camera]) -> None:
+        for device in list(self.__devices.values()):
+            await device.reattach()
+
+        wanted = {camera["_id"]: camera for camera in cameras}
+        async with self.__event_lock:
+            for camera_id in [camera_id for camera_id in self.__configured if camera_id not in wanted]:
+                await self.__on_event_message({"type": "cameraReleased", "data": {"cameraId": camera_id}})
+            for camera_id, camera in wanted.items():
+                if camera_id not in self.__configured:
+                    await self.__on_event_message({"type": "cameraAdded", "data": {"camera": camera}})
 
     def on_rpc_reconnected(self) -> None:
         if not self.__initialized:
@@ -135,6 +149,7 @@ class DeviceManagerProxy(DeviceManager):
 
         if event_type == "cameraAdded":
             camera: Camera = data.get("camera")
+            self.__configured.add(camera["_id"])
             if camera["_id"] in self.__devices:
                 return
 
@@ -146,6 +161,7 @@ class DeviceManagerProxy(DeviceManager):
 
         elif event_type == "cameraReleased":
             camera_id: str = data.get("cameraId")
+            self.__configured.discard(camera_id)
 
             # Call plugin lifecycle callback
             await self.__plugin_instance.onCameraReleased(camera_id)

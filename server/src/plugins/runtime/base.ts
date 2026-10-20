@@ -35,11 +35,11 @@ export interface RuntimePlugin {
 }
 
 export declare interface BasePluginRuntime {
-  on(event: 'exit', listener: () => void): this;
-  once(event: 'exit', listener: () => void): this;
-  off(event: 'exit', listener: () => void): this;
-  emit(event: 'exit'): boolean;
-  removeListener(event: 'exit', listener: () => void): this;
+  on(event: 'exit', listener: (exit: ChildExit) => void): this;
+  once(event: 'exit', listener: (exit: ChildExit) => void): this;
+  off(event: 'exit', listener: (exit: ChildExit) => void): this;
+  emit(event: 'exit', exit: ChildExit): boolean;
+  removeListener(event: 'exit', listener: (exit: ChildExit) => void): this;
 }
 
 export abstract class BasePluginRuntime extends EventEmitter {
@@ -87,7 +87,7 @@ export abstract class BasePluginRuntime extends EventEmitter {
     }
   }
 
-  public abstract start(): Promise<void>;
+  public abstract start(signal?: AbortSignal, instanceId?: string): Promise<void>;
 
   public stop(): Promise<void> {
     return new Promise<void>((resolve) => {
@@ -172,6 +172,7 @@ export abstract class BasePluginRuntime extends EventEmitter {
   protected onExit(code: number | null, signal: NodeJS.Signals | null): void {
     const expected = this.stopRequested || this.isShuttingDown;
     this.stopRequested = false;
+    const exit: ChildExit = { code, signal, requested: expected, uptimeMs: this.child ? Date.now() - this.child.startedAt : 0 };
 
     const details = exitInfo(code, signal, { pid: this.processInfo?.pid ?? this.worker?.pid, startTime: this.processInfo?.startTime });
 
@@ -192,8 +193,8 @@ export abstract class BasePluginRuntime extends EventEmitter {
 
     this.configService.removeProcessByPID(this.processInfo?.pid);
     this.worker = undefined;
-    this.processInfo = undefined;
-    this.emit('exit');
+    this.child = undefined;
+    this.emit('exit', exit);
   }
 
   protected onData(data: Buffer): void {

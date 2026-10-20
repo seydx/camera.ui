@@ -80,6 +80,10 @@ export class AudioDetectionLoop {
     }
   }
 
+  public retryNow(): void {
+    this.source?.retryNow();
+  }
+
   public async waitForStop(): Promise<void> {
     if (this.stopPromise) await this.stopPromise;
   }

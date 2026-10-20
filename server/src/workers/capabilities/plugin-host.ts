@@ -10,77 +10,132 @@ import { isShuttingDown } from '../../shutdown-state.js';
 import { checkProtocolCompat } from '../../utils/engines.js';
 import { extractPackage, installDependencies } from '../../utils/npm/index.js';
 import { describePlatformRequirement, isPlatformCompatible } from '../../utils/platform.js';
+import { KeyedLock, Slots } from '../lifecycle/limits.js';
+import { ManagedWorkload, ProvisionError } from '../lifecycle/managed-workload.js';
 import { WorkerCapability } from '../types.js';
+import { stopEach } from './handler.js';
 
 import type { LogEntry, Logger } from '@camera.ui/common/logger';
 import type { IPackageJson } from '../../api/types/index.js';
 import type { BasePluginRuntime, RuntimePlugin } from '../../plugins/runtime/base.js';
 import type { ConfigService } from '../../services/config/index.js';
-import type { RemotePluginConfig, RemotePluginState, RemotePluginStatus, WorkerProcessRef } from '../types.js';
-import type { CapabilityHandler } from './handler.js';
+import type { ChildExit } from '../../utils/supervised-child.js';
+import type { StopReason, WorkloadDriver, WorkloadHooks, WorkloadProcess } from '../lifecycle/managed-workload.js';
+import type { WorkloadMode, WorkloadPhase } from '../lifecycle/workload.js';
+import type { PluginBuild, PluginInstallReport, RemotePluginConfig, RemotePluginState, RemotePluginStatus, WorkerProcessRef, WorkloadLive } from '../types.js';
+import type { CapabilityHandler, HostedStatus } from './handler.js';
 
-const PROVISION_RETRY_MS = 30_000;
-const CRASH_RESTART_MS = 5_000;
+const START_SLOTS = 2;
 
-interface ManagedPlugin {
-  spec: RemotePluginConfig;
-  runtime?: BasePluginRuntime;
-  stopped: boolean;
-  state: RemotePluginState;
-  retryTimer?: NodeJS.Timeout;
+interface PluginSettings {
+  config: RemotePluginConfig;
+  live?: WorkloadLive;
+  version?: string;
+  linked?: boolean;
 }
+
+interface HostedPlugin {
+  settings: PluginSettings;
+  workload: ManagedWorkload;
+}
+
+interface InstallState {
+  version?: string;
+  artifact?: InstallArtifact;
+  finished: boolean;
+}
+
+type StagedBuild = PluginBuild & { pluginName: string };
 
 export class PluginHostHandler implements CapabilityHandler<WorkerCapability.PluginHost> {
   public readonly capability = WorkerCapability.PluginHost;
 
-  private plugins = new Map<string, ManagedPlugin>();
+  private plugins = new Map<string, HostedPlugin>();
+  private stopping = new Map<HostedPlugin, { id: string; stopped: Promise<void> }>();
+  private installs = new Map<string, PluginInstallReport>();
+  private prepares = new Map<string, AbortController>();
+  private folders = new KeyedLock();
+  private slots = new Slots(START_SLOTS);
   private isClosed = false;
 
   constructor(
+    private readonly agentId: string,
     private readonly configService: ConfigService,
     private readonly logger: Logger,
     private readonly forwardLog: (entry: LogEntry) => void,
+    private readonly mode: () => WorkloadMode,
+    private readonly hooks: WorkloadHooks = {},
   ) {}
 
-  public async start(id: string, spec: RemotePluginConfig): Promise<void> {
-    const existing = this.plugins.get(id);
-    if (existing) {
-      await this.stop(id);
-    }
-
-    this.logger.log(`Hosting plugin: ${spec.displayName} (${spec.pluginName}@${spec.version})`);
-
-    const managed: ManagedPlugin = { spec, stopped: false, state: 'installing' };
-    this.plugins.set(id, managed);
-
-    this.provisionAndStart(managed);
-  }
-
-  public async stop(id: string): Promise<void> {
-    const managed = this.plugins.get(id);
-    if (!managed) {
+  public async start(id: string, spec: RemotePluginConfig, live?: WorkloadLive): Promise<void> {
+    await this.stop(id);
+    if (this.isClosed) {
       return;
     }
 
-    this.logger.log(`Stopping hosted plugin: ${managed.spec.displayName} (${id})`);
+    const settings: PluginSettings = { config: spec, live };
+    this.logger.log(`Hosting plugin: ${displayName(settings)} (${spec.pluginName}@${spec.version})`);
 
-    managed.stopped = true;
-    this.plugins.delete(id);
-
-    if (managed.retryTimer) {
-      clearTimeout(managed.retryTimer);
-      managed.retryTimer = undefined;
-    }
-
-    if (managed.runtime) {
-      await managed.runtime.stop();
-      managed.runtime.cleanup();
-      managed.runtime = undefined;
+    const workload = new ManagedWorkload(this.driver(settings), this.logger, this.mode, this.hooks);
+    this.plugins.set(id, { settings, workload });
+    workload.start();
+    // restarted while staging the next version, stage it again
+    if (live?.prepare && live.prepare.version !== spec.version) {
+      this.prepare({ ...live.prepare, pluginName: spec.pluginName });
     }
   }
 
-  public async stopAll(): Promise<void> {
+  public async stop(id: string, reason?: StopReason, budgetMs?: number): Promise<HostedStatus | undefined> {
+    const hosted = this.plugins.get(id);
+    if (!hosted) {
+      return undefined;
+    }
+
+    this.logger.log(`Stopping hosted plugin: ${displayName(hosted.settings)} (${id})`);
+    this.plugins.delete(id);
+    const stopped = hosted.workload.stop(reason, budgetMs);
+    this.stopping.set(hosted, { id, stopped });
+    try {
+      await stopped;
+    } finally {
+      this.stopping.delete(hosted);
+    }
+    this.hooks.onChange?.();
+    return hosted.workload.status;
+  }
+
+  public async stopAll(reason?: StopReason, budgetMs?: number): Promise<Map<string, HostedStatus>> {
+    return stopEach(this.plugins.keys(), (id) => this.stop(id, reason, budgetMs));
+  }
+
+  public async close(): Promise<void> {
     this.isClosed = true;
+    for (const abort of this.prepares.values()) abort.abort();
+    await this.stopAll();
+  }
+
+  public stillDesired(id: string): void {
+    this.plugins.get(id)?.workload.stillDesired();
+  }
+
+  public setLive(id: string, live: WorkloadLive | undefined): void {
+    const hosted = this.plugins.get(id);
+    if (hosted) {
+      hosted.settings.live = live;
+      if (live?.prepare) {
+        this.prepare({ ...live.prepare, pluginName: hosted.settings.config.pluginName });
+      }
+    }
+  }
+
+  public status(id: string): HostedStatus | undefined {
+    const hosted = this.plugins.get(id);
+    if (!hosted) {
+      return undefined;
+    }
+    const { pluginName } = hosted.settings.config;
+    return { ...hosted.workload.status, version: hosted.settings.version, linked: hosted.settings.linked, install: this.installs.get(pluginName) };
+  }
 
     const stopPromises = Array.from(this.plugins.keys()).map((id) => this.stop(id));
     await Promise.allSettled(stopPromises);
@@ -92,8 +147,8 @@ export class PluginHostHandler implements CapabilityHandler<WorkerCapability.Plu
 
   public getActiveProcesses(): WorkerProcessRef[] {
     const refs: WorkerProcessRef[] = [];
-    for (const [id, managed] of this.plugins) {
-      const pid = managed.runtime?.getPID();
+    for (const [id, hosted] of [...this.plugins, ...Array.from(this.stopping, ([stopping, { id: stoppingId }]) => [stoppingId, stopping] as const)]) {
+      const pid = hosted.workload.pid;
       if (pid && pid > 0) {
         refs.push({ capability: this.capability, id, pid });
       }
@@ -102,13 +157,60 @@ export class PluginHostHandler implements CapabilityHandler<WorkerCapability.Plu
   }
 
   public getPluginStatuses(): RemotePluginStatus[] {
-    return Array.from(this.plugins, ([id, managed]) => ({ id, state: managed.state }));
+    return Array.from(this.plugins, ([id, hosted]) => ({ id, state: reportedState(hosted.workload.phase) }));
   }
 
-  private async provisionAndStart(managed: ManagedPlugin): Promise<void> {
-    const { spec } = managed;
+  private driver(settings: PluginSettings): WorkloadDriver {
+    const spec = settings.config;
+    let plugin: RuntimePlugin | undefined;
 
-    managed.state = 'installing';
+    return {
+      get label() {
+        return `Plugin ${displayName(settings)}`;
+      },
+      provisions: true,
+      provision: (signal) =>
+        this.folders.run(spec.pluginName, signal, async () => {
+          const installPath = await this.ensureInstalled(settings, signal);
+          signal.throwIfAborted();
+          plugin = await this.buildRuntimePlugin(spec, installPath);
+          await this.prepareRuntime(settings, plugin, signal);
+        }),
+      spawn: (signal, instanceId) =>
+        this.slots.run(signal, () =>
+          this.folders.run(spec.pluginName, signal, async (): Promise<WorkloadProcess> => {
+            if (!plugin) {
+              throw new Error('plugin is not provisioned');
+            }
+
+            const runtime = RuntimeFactory.createRuntime({ ...plugin, displayName: displayName(settings) });
+            runtime.logForwarder = this.forwardLog;
+            const exited = new Promise<ChildExit>((resolve) =>
+              runtime.once('exit', (exit: ChildExit) => {
+                runtime.cleanup();
+                resolve(exit);
+              }),
+            );
+
+            try {
+              await runtime.start(signal, instanceId);
+            } catch (error) {
+              runtime.cleanup();
+              throw error;
+            }
+
+            this.logger.log(`Hosted plugin started: ${displayName(settings)} (${spec.pluginName}@${spec.version})`);
+            return {
+              get pid() {
+                return runtime.getPID() || undefined;
+              },
+              exited,
+              stop: (budgetMs) => runtime.stop(budgetMs),
+            };
+          }),
+        ),
+    };
+  }
 
     try {
       const installPath = await this.ensureInstalled(spec);
@@ -182,15 +284,15 @@ export class PluginHostHandler implements CapabilityHandler<WorkerCapability.Plu
     const pjson = (await readJson(join(installPath, 'package.json'))) as IPackageJson;
 
     if (!isPlatformCompatible(pjson.os, pjson.cpu)) {
-      throw new Error(`plugin requires ${describePlatformRequirement(pjson.os, pjson.cpu)}, this worker is ${process.platform}/${process.arch}`);
+      throw new ProvisionError(`plugin requires ${describePlatformRequirement(pjson.os, pjson.cpu)}, this worker is ${process.platform}/${process.arch}`, 'platform');
     }
 
     const protocolCompat = checkProtocolCompat(pjson.cameraui?.protocolLevel);
     if (protocolCompat === 'pluginTooOld') {
-      throw new Error(`plugin ${spec.pluginName} was built for an older camera.ui plugin API, update the plugin`);
+      throw new ProvisionError(`plugin ${spec.pluginName} was built for an older camera.ui plugin API, update the plugin`, 'gated');
     }
     if (protocolCompat === 'serverTooOld') {
-      throw new Error(`plugin ${spec.pluginName} was built for a newer camera.ui plugin API, update this worker`);
+      throw new ProvisionError(`plugin ${spec.pluginName} was built for a newer camera.ui plugin API, update this worker`, 'gated');
     }
 
     let main = resolvePluginMain(pjson);
@@ -210,7 +312,7 @@ export class PluginHostHandler implements CapabilityHandler<WorkerCapability.Plu
     return {
       id: spec.pluginId,
       pluginName: spec.pluginName,
-      displayName: spec.displayName,
+      displayName: spec.displayName ?? spec.pluginName,
       main,
       mainPath,
       installPath,

@@ -11,20 +11,38 @@ from _camera_ui_tools.camera_ui_sdk import (
 from _camera_ui_tools.camera_ui_sdk.internal import PropertyChangedEvent
 
 
+class ProcessSession(TypedDict):
+    runId: str
+    level: int
+    instanceId: NotRequired[str | None]
+
+
 class ProcessLoadMessage(TypedDict):
     cameras: list[Camera]
     plugin: PluginInfo
     storage: "PluginStorage"
+    session: NotRequired[ProcessSession | None]
+
+
+class ResumeData(TypedDict):
+    runId: str
+    instanceId: NotRequired[str | None]
 
 
 class ProcessMessage(TypedDict):
     type: str
-    data: ProcessLoadMessage | None
+    data: ProcessLoadMessage | ResumeData | None
 
 
 class ProcessResponse(TypedDict):
     type: str
     error: NotRequired[str | None]
+    instanceId: NotRequired[str | None]
+    handshake: NotRequired[int]
+    resume: NotRequired[bool]
+    runId: NotRequired[str | None]
+    resumed: NotRequired[bool]
+    code: NotRequired[Literal["resume-mismatch"]]
 
 
 class PLUGIN_STATUS(Enum):
@@ -41,6 +59,7 @@ class PLUGIN_STATUS(Enum):
 class PLUGIN_COMMAND(Enum):
     START = "start"
     STOP = "stop"
+    RESUME = "resume"
 
 
 class PluginStorage(TypedDict):

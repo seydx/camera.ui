@@ -5,9 +5,11 @@ import { container } from 'tsyringe';
 import { Database } from '../database/index.js';
 
 import type { KnownWorker } from '../../workers/types.js';
-import type { DBSettings, DBWorkerConnection, DBWorkerCredential, DBWorkerPairing } from '../database/types.js';
+import type { DBSettings, DBWorkerConnection, DBWorkerCredential, DBWorkerLastShutdown, DBWorkerPairing, DBWorkerRelease, DBWorkerState } from '../database/types.js';
 
 const PAIRING_TTL_MS = 15 * 60 * 1000;
+const BOOT_HISTORY = 3;
+const USED_CODES_KEPT = 50;
 
 export class WorkersService {
   private dbs: Database;
@@ -31,11 +33,48 @@ export class WorkersService {
   }
 
   public saveWorkerConnection(connection: DBWorkerConnection): void {
+    const state = this.workerState();
+    const legacy = state.connection?.pairingCode;
+    const usedCodes = legacy ? withHash(state.usedCodes, codeHash(legacy)) : state.usedCodes;
+    this.dbs.workerStateDB.putSync('state', { ...state, connection, usedCodes, unpaired: undefined });
+  }
+
+  public rotateBootIds(bootId: string): string[] {
+    const state = this.workerState();
+    const previous = (state.bootIds ?? []).slice(0, BOOT_HISTORY);
+    this.dbs.workerStateDB.putSync('state', { ...state, bootIds: [bootId, ...previous].slice(0, BOOT_HISTORY + 1) });
+    return previous;
+  }
+
+  public markUnpaired(reason: string): void {
     const state = this.dbs.workerStateDB.get('state');
     if (!state) {
-      throw new Error('Worker state not initialized');
+      return;
     }
-    this.dbs.workerStateDB.putSync('state', { ...state, connection });
+    this.dbs.workerStateDB.putSync('state', { ...state, unpaired: { reason, at: Date.now() } });
+  }
+
+  public getUnpaired(): { reason: string; at: number } | undefined {
+    return this.dbs.workerStateDB.get('state')?.unpaired;
+  }
+
+  public isCodeUsed(code: string): boolean {
+    const state = this.dbs.workerStateDB.get('state');
+    return state?.connection?.pairingCode === code || (state?.usedCodes ?? []).includes(codeHash(code));
+  }
+
+  public markCodeUsed(code: string, refusal?: string): void {
+    const state = this.workerState();
+    const hash = codeHash(code);
+    if (!state.usedCodes?.includes(hash) || refusal) {
+      const refused = refusal ? { hash, reason: refusal } : state.refused;
+      this.dbs.workerStateDB.putSync('state', { ...state, usedCodes: withHash(state.usedCodes, hash), refused });
+    }
+  }
+
+  public refusalOf(code: string): string | undefined {
+    const refused = this.dbs.workerStateDB.get('state')?.refused;
+    return refused?.hash === codeHash(code) ? refused.reason : undefined;
   }
 
   public listKnownWorkers(): KnownWorker[] {
@@ -61,6 +100,50 @@ export class WorkersService {
       settings.knownWorkers = known;
 
       return settings;
+    });
+  }
+
+  public getLastShutdown(): DBWorkerLastShutdown | undefined {
+    return this.dbs.settingsDB.get('settings')?.workerLastShutdown;
+  }
+
+  public async saveLastShutdown(lastShutdown: DBWorkerLastShutdown): Promise<void> {
+    await this.commitSettings((settings) => ({ ...settings, workerLastShutdown: lastShutdown }));
+  }
+
+  public getReleases(): Record<string, DBWorkerRelease> {
+    return this.dbs.settingsDB.get('settings')?.workerReleases ?? {};
+  }
+
+  public async saveRelease(key: string, release: DBWorkerRelease | undefined): Promise<void> {
+    await this.commitSettings((settings) => {
+      const releases = { ...settings.workerReleases };
+      if (release) {
+        releases[key] = release;
+      } else if (key in releases) {
+        delete releases[key];
+      } else {
+        return undefined;
+      }
+      return { ...settings, workerReleases: releases };
+    });
+  }
+
+  public getUpdates(): Record<string, WorkerUpdate> {
+    return this.dbs.settingsDB.get('settings')?.workerUpdates ?? {};
+  }
+
+  public async saveUpdate(agentId: string, update: WorkerUpdate | undefined): Promise<void> {
+    await this.commitSettings((settings) => {
+      const updates = { ...settings.workerUpdates };
+      if (update) {
+        updates[agentId] = update;
+      } else if (agentId in updates) {
+        delete updates[agentId];
+      } else {
+        return undefined;
+      }
+      return { ...settings, workerUpdates: updates };
     });
   }
 
@@ -112,10 +195,11 @@ export class WorkersService {
     });
   }
 
-  public async createPairingCode(): Promise<DBWorkerPairing> {
+  public async createPairingCode(replaces?: string): Promise<DBWorkerPairing> {
     const pairing: DBWorkerPairing = {
       code: randomBytes(8).toString('base64url'),
       expiresAt: Date.now() + PAIRING_TTL_MS,
+      ...(replaces ? { replaces } : {}),
     };
 
     await this.commitSettings((settings) => {
@@ -127,9 +211,9 @@ export class WorkersService {
     return pairing;
   }
 
-  public isPairingCodeValid(code: string): boolean {
+  public findPairing(code: string): DBWorkerPairing | undefined {
     const settings = this.readSettings();
-    return this.prunePairings(settings).some((pairing) => pairing.code === code);
+    return this.prunePairings(settings).find((pairing) => pairing.code === code);
   }
 
   public async consumePairingCode(code: string): Promise<void> {
@@ -179,6 +263,14 @@ export class WorkersService {
     return settings !== undefined;
   }
 
+  private workerState(): DBWorkerState {
+    const state = this.dbs.workerStateDB.get('state');
+    if (!state) {
+      throw new Error('Worker state not initialized');
+    }
+    return state;
+  }
+
   private readSettings(): DBSettings {
     return this.dbs.settingsDB.get('settings') ?? { version: Database.VERSION };
   }
@@ -190,4 +282,12 @@ export class WorkersService {
   private prunePairings(settings: DBSettings): DBWorkerPairing[] {
     return (settings.workerPairings ?? []).filter((pairing) => pairing.expiresAt > Date.now());
   }
+}
+
+function codeHash(code: string): string {
+  return createHash('sha256').update(code).digest('hex');
+}
+
+function withHash(hashes: string[] | undefined, hash: string): string[] {
+  return [...(hashes ?? []).filter((known) => known !== hash), hash].slice(-USED_CODES_KEPT);
 }

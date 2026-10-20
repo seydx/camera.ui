@@ -6,7 +6,7 @@ import type { Namespace, Server, Socket } from 'socket.io';
 import type { CameraUiAPI } from '../../../api.js';
 import type { Go2RtcState } from '../../../go2rtc/state.js';
 import type { Go2RTCOfferCodec, Go2RTCOffers, StreamStatus } from '../../../go2rtc/types.js';
-import type { CameraUi } from '../../../main.js';
+import type { CameraUi } from '../../../master.js';
 import type { SocketNsp } from '../types.js';
 
 interface StreamCodecs {

@@ -5,6 +5,7 @@ import {
   agentParamsSchema,
   assignCameraSchema,
   assignPluginSchema,
+  createPairingSchema,
   pairWorkerSchema,
   patchWorkersConfigSchema,
   patchWorkerSchema,
@@ -53,14 +54,15 @@ export const WorkersRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
     },
   });
 
-  app.route({
+  app.withTypeProvider<ZodTypeProvider>().route({
     url: '/pairings',
     method: 'POST',
     preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
     handler: workersController.createPairing.bind(workersController),
     schema: {
       tags: ['Workers'],
-      summary: 'Create a one-time pairing code for a new worker',
+      summary: 'Create a one-time pairing code for a new worker, or one that replaces a worker while it is online',
+      body: createPairingSchema,
     },
   });
 

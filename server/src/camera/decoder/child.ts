@@ -8,6 +8,7 @@ import { AV_LOG_WARNING } from 'node-av/constants';
 import { Log } from 'node-av/lib';
 import { fileURLToPath } from 'node:url';
 
+import { watchReconnect } from '../../plugins/runtime/node/proxy/reconnect.js';
 import { NamespaceManager } from '../../rpc/namespaces.js';
 import { REPORT_DIR, WITH_REPORTS } from '../../utils/crash.js';
 import { DetectionCoordinator } from './detection-coordinator.js';
@@ -33,6 +34,24 @@ const ignorableLogMessages = [
   'Failed to send close message', // Windows tls
 ];
 
+const CLIENT_OPTIONS = { zeroCopyBinaries: true };
+
+type InitializeKey = Pick<
+  DetectionCoordinatorConfig,
+  | 'cameraId'
+  | 'streamUrl'
+  | 'snapshotUrl'
+  | 'audioStreamUrl'
+  | 'controllerSnapshotSourceId'
+  | 'availableSources'
+  | 'streamRole'
+  | 'zones'
+  | 'detectionSettings'
+  | 'ptzAutotrack'
+  | 'frameWorkerSettings'
+  | 'streamHot'
+>;
+
 export class FrameWorkerChild {
   public readonly proxy: RPCClient;
   public readonly namespaces: FrameWorkerNamespaces & CoreManagerNamespaces;
@@ -41,9 +60,14 @@ export class FrameWorkerChild {
   private channel?: PrivateChannel;
   private closeDetectionHandler?: () => Promise<void>;
   private closeChildHandler?: () => Promise<void>;
+  private stopReconnectWatch?: () => void;
   private signalHandler: SignalHandler;
 
   private detectionCoordinator?: DetectionCoordinator;
+  private applied?: InitializeKey;
+  private initializing: Promise<unknown> = Promise.resolve();
+  private sessionSeen = false;
+  private closing = false;
 
   constructor() {
     this.proxy = createRPCClient({
@@ -104,33 +128,42 @@ export class FrameWorkerChild {
   }
 
   @RPCMethod
-  public async initialize(config: DetectionCoordinatorConfig): Promise<void> {
-    this.detectionCoordinator = new DetectionCoordinator(config, this.proxy, this.logger);
+  public async initialize(config: DetectionCoordinatorConfig): Promise<InitializeResult> {
+    const own = process.env[INSTANCE_ID_ENV];
+    if (config.session?.instanceId && own && config.session.instanceId !== own) {
+      throw new Error(`initialize is meant for instance ${config.session.instanceId}, this is ${own}`);
+    }
+    if (config.session) {
+      this.sessionSeen = true;
+    }
 
-    const detectionNamespaces = NamespaceManager.frameWorkerDetectionNamespaces(process.env.CAMERA_ID!);
-    this.closeDetectionHandler = await this.proxy.registerHandler(detectionNamespaces.detectionRpc, this.detectionCoordinator, {
-      isolatedConnection: true,
-    });
+    const result = this.initializing.then(() => this.applyConfig(config));
+    this.initializing = result.catch(() => {});
+    return result;
   }
 
   @RPCMethod
   public updateZoneConfig(zones: CameraZones): void {
     this.detectionCoordinator?.updateZoneConfig(zones);
+    this.keep('zones', zones);
   }
 
   @RPCMethod
   public updateDetectionSettings(settings: CameraDetectionSettings): void {
     this.detectionCoordinator?.updateDetectionSettings(settings);
+    this.keep('detectionSettings', settings);
   }
 
   @RPCMethod
   public updatePtzAutotrackSettings(settings: PtzAutotrackSettings): void {
     this.detectionCoordinator?.updatePtzAutotrackSettings(settings);
+    this.keep('ptzAutotrack', settings);
   }
 
   @RPCMethod
   public updateFrameWorkerSettings(settings: CameraFrameWorkerSettings): void {
     this.detectionCoordinator?.updateFrameWorkerSettings(settings);
+    this.keep('frameWorkerSettings', settings);
   }
 
   @RPCMethod
@@ -170,13 +203,96 @@ export class FrameWorkerChild {
   }
 
   private async onStart(): Promise<void> {
-    this.channel = await this.proxy.privateChannel('frameworker-communication', 'camera.ui');
+    await this.openChannel();
 
     this.closeChildHandler = await this.proxy.registerHandler(this.namespaces.frameWorkerChildRpc, this, {
       isolatedConnection: true,
     });
 
-    this.sendMessage({ message: 'started', data: {} });
+    // writes sent while the link was down may be lost, the next go out in full
+    this.stopReconnectWatch = watchReconnect(
+      this.proxy,
+      async () => {
+        this.detectionCoordinator?.forgetSensorWrites();
+        this.detectionCoordinator?.reconnectSources();
+      },
+      (error) => this.logger.debug('Reconnect watch ended:', error),
+      { debounce: true },
+    );
+
+    this.sendStarted(false);
+  }
+
+  private async applyConfig(config: DetectionCoordinatorConfig): Promise<InitializeResult> {
+    const instanceId = process.env[INSTANCE_ID_ENV];
+    // the coordinator normalizes parts of its config in place
+    const key = structuredClone(initializeKey(config));
+    const running = this.detectionCoordinator;
+
+    if (running && this.applied && canonical(this.applied) === canonical(key)) {
+      running.forgetSensorWrites();
+      running.updateNvrRpc(config.nvrRpc);
+      running.updateInterfaceSettings(config.interfaceSettings);
+      running.reconnectSources();
+      this.logger.debug('Kept the running detection, the config did not change');
+      return { instanceId, reused: true };
+    }
+
+    this.applied = undefined;
+    this.detectionCoordinator = undefined;
+    await this.closeDetectionHandler?.();
+    this.closeDetectionHandler = undefined;
+    await running?.dispose();
+
+    const coordinator = new DetectionCoordinator(config, this.proxy, this.logger);
+    this.detectionCoordinator = coordinator;
+    const detectionNamespaces = NamespaceManager.frameWorkerDetectionNamespaces(process.env.CAMERA_ID!);
+    this.closeDetectionHandler = await this.proxy.registerHandler(detectionNamespaces.detectionRpc, coordinator, {
+      isolatedConnection: true,
+    });
+    this.applied = key;
+    return { instanceId, reused: false };
+  }
+
+  private keep<K extends keyof InitializeKey>(part: K, value: InitializeKey[K]): void {
+    if (this.applied) {
+      this.applied[part] = structuredClone(value);
+    }
+  }
+
+  private async openChannel(): Promise<void> {
+    const channel = await this.proxy.privateChannel('frameworker-communication', 'camera.ui');
+    channel.on('message', (message: MainToWorkerMessage) => this.onChannelMessage(message));
+    channel.on('close', () => this.onChannelClose(channel));
+    this.channel = channel;
+  }
+
+  private onChannelClose(channel: PrivateChannel): void {
+    if (this.closing || channel !== this.channel || !this.sessionSeen) {
+      return;
+    }
+    this.openChannel().catch((error) => this.logger.warn('Could not open the channel to camera.ui again:', error));
+  }
+
+  private onChannelMessage(message: MainToWorkerMessage): void {
+    if (message?.message !== 'resume') {
+      return;
+    }
+    const own = process.env[INSTANCE_ID_ENV];
+    if (message.data?.instanceId && own && message.data.instanceId !== own) {
+      this.logger.debug(`Ignored resume for instance ${message.data.instanceId}`);
+      return;
+    }
+    this.sessionSeen = true;
+    this.detectionCoordinator?.reconnectSources();
+    this.sendStarted(this.applied !== undefined);
+  }
+
+  private sendStarted(resume: boolean): void {
+    const instanceId = process.env[INSTANCE_ID_ENV];
+    this.sendMessage({ message: 'started', data: { instanceId, handshake: HANDSHAKE_LEVEL, resume }, instanceId }).catch((error) =>
+      this.logger.debug('Could not send started:', error),
+    );
   }
 
   private async sendMessage(message: WorkerToMainMessage): Promise<void> {
@@ -184,12 +300,37 @@ export class FrameWorkerChild {
   }
 
   private async close(): Promise<void> {
+    this.closing = true;
+    this.stopReconnectWatch?.();
     await this.detectionCoordinator?.dispose();
     await this.channel?.close();
     await this.closeDetectionHandler?.();
     await this.closeChildHandler?.();
     await this.proxy.disconnect();
   }
+}
+
+function initializeKey(config: DetectionCoordinatorConfig): InitializeKey {
+  return {
+    cameraId: config.cameraId,
+    streamUrl: config.streamUrl,
+    snapshotUrl: config.snapshotUrl,
+    audioStreamUrl: config.audioStreamUrl,
+    controllerSnapshotSourceId: config.controllerSnapshotSourceId,
+    availableSources: config.availableSources,
+    streamRole: config.streamRole,
+    zones: config.zones,
+    detectionSettings: config.detectionSettings,
+    ptzAutotrack: config.ptzAutotrack,
+    frameWorkerSettings: config.frameWorkerSettings,
+    streamHot: config.streamHot,
+  };
+}
+
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_, field) =>
+    field && typeof field === 'object' && !Array.isArray(field) ? Object.fromEntries(Object.entries(field).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : field,
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

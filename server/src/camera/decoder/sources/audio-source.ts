@@ -66,6 +66,10 @@ export class AudioSource {
     );
   }
 
+  public retryNow(): void {
+    if (this.shouldRun) this.reconnect.retryNow();
+  }
+
   public async stop(): Promise<void> {
     if (!this.shouldRun && !this.producerPromise) return;
     this.shouldRun = false;

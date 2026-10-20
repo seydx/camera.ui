@@ -21,6 +21,12 @@ export const updateWorkerSchema = zod
   })
   .optional();
 
+export const createPairingSchema = zod
+  .object({
+    replaces: zod.string().regex(SUBJECT_TOKEN, 'Agent ID may only contain letters, digits, _ and -').optional(),
+  })
+  .optional();
+
 export const pairWorkerSchema = zod.object({
   code: zod.string().min(1, 'Pairing code is required'),
   agentId: zod.string().regex(SUBJECT_TOKEN, 'Agent ID may only contain letters, digits, _ and -'),

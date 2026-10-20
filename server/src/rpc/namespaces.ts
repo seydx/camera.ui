@@ -229,6 +229,10 @@ export class NamespaceManager {
     return `worker.${agentId}.sync`;
   }
 
+  static workerLinkSubject(agentId: string): string {
+    return `worker.${agentId}.link`;
+  }
+
   static workerDisconnect(agentId: string): string {
     return `workers.${agentId}.disconnect`;
   }

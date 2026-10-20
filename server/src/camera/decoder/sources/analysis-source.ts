@@ -17,6 +17,7 @@ export interface AnalysisSource {
   start(): Promise<void>;
   detach(): Promise<void>;
   stop(): Promise<void>;
+  retryNow(): void;
   nextFrame(lastId: number): Promise<FrameSnap | undefined>;
   getFrame(maxAgeMs: number): Promise<FrameHandle | null>;
   takeDecodeStats(): { ms: number; frames: number };

@@ -87,6 +87,7 @@ export interface SensorWriteMessage {
   sensorId: string;
   properties: Record<string, unknown>;
   timestamp: number;
+  instanceId?: string;
 }
 
 export interface SensorEventHandlerInterface {

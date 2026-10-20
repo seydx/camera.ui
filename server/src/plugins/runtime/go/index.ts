@@ -7,10 +7,11 @@ import { dirname, join } from 'node:path';
 import { BasePluginRuntime } from '../base.js';
 
 export class GoPluginRuntime extends BasePluginRuntime {
-  public async start(): Promise<void> {
+  public async start(signal?: AbortSignal, instanceId?: string): Promise<void> {
     if (this.isRunning()) {
       return;
     }
+    signal?.throwIfAborted();
 
     return new Promise<void>((resolve, reject) => {
       this.logger.log(`Starting plugin: ${this.plugin.displayName} (${this.plugin.pluginName}.${this.plugin.info.installedVersion})...`);

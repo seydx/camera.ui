@@ -11,7 +11,7 @@ import sys
 from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import setproctitle
 
@@ -46,6 +46,7 @@ from plugins.runtime.python.typings import (
     ProcessLoadMessage,
     ProcessMessage,
     ProcessResponse,
+    ResumeData,
 )
 
 process_name = sys.argv[2] if len(sys.argv) > 2 else sys.argv[1] if len(sys.argv) > 1 else "Plugin"
@@ -54,6 +55,11 @@ setproctitle.setproctitle(f"camera.ui - {process_name}")
 SHUTDOWN_LISTENER_TIMEOUT = 1.5
 RPC_TEARDOWN_TIMEOUT = 1.0
 CONNECT_DEADLINE = 15.0
+HANDSHAKE_LEVEL = 2
+REATTACH_DEADLINE = 240.0
+REATTACH_RETRY_DELAYS = (1.0, 2.0, 5.0, 10.0)
+
+Phase = Literal["ready-sent", "starting", "started", "reattach-wait", "reattaching", "start-error"]
 
 
 class PluginChild:
@@ -108,6 +114,14 @@ class PluginChild:
         self.plugin_db: PluginConfigDb | None = None
 
         self.stopped = False
+        self.instance_id = os.environ.get(INSTANCE_ID_ENV) or None
+        self._phase: Phase = "ready-sent"
+        self._attached_run: str | None = None
+        self._pending_resume: str | None = None
+        self._level2_master = False
+        self._start_error: str | None = None
+        self._stop_task: asyncio.Task[None] | None = None
+        self._resync = ResyncScheduler(self._resync_managers)
 
         self.signal_handler = SignalHandler(
             {
@@ -170,11 +184,29 @@ class PluginChild:
         self.api.device_manager.on_rpc_reconnected()
 
     async def on_start(self) -> None:
-        self.channel = await self.proxy.private_channel("plugin-communication", "camera.ui")
-        self.channel.on("message", self.on_message)
-        await self.send_message({"type": PLUGIN_STATUS.READY.value})
+        await self._open_channel()
+        await self._send_ready(resume=False)
 
-    async def start_plugin(self, data: ProcessLoadMessage) -> None:
+    async def _open_channel(self) -> None:
+        channel = await self.proxy.private_channel("plugin-communication", "camera.ui")
+
+        async def on_close() -> None:
+            await self._on_channel_close(channel)
+
+        channel.on("message", self.on_message)
+        channel.on("close", on_close)
+        self.channel = channel
+
+    async def _on_channel_close(self, channel: PrivateChannel) -> None:
+        if self.stopped or channel is not self.channel or not self._level2_master:
+            return
+        try:
+            await self._open_channel()
+        except Exception as error:
+            self.logger.warn(f"Could not open the channel to camera.ui again: {error}")
+
+    async def start_plugin(self, data: ProcessLoadMessage, run_id: str | None) -> None:
+        self._phase = "starting"
         try:
             # Host-local writable dir — on a remote worker the master's path from
             # the START message would point at the wrong machine.
@@ -219,13 +251,137 @@ class PluginChild:
             await self.api.sensor_manager.init()
             await self.api.sensor_manager.configure_adopted_sensors()
 
-            await self.send_message({"type": PLUGIN_STATUS.STARTED.value})
+            self._phase = "started"
+            self._attached_run = run_id
+            await self._send_started()
 
             await asyncio.sleep(0.1)
 
             self.api.emit(API_EVENT.FINISH_LAUNCHING)
         except Exception as e:
-            await self.send_message({"type": PLUGIN_STATUS.ERROR.value, "error": str(e)})
+            self._phase = "start-error"
+            self._start_error = str(e)
+            await self._send_error(str(e))
+            return
+
+        await self._answer_pending_resume()
+
+    async def _reattach(self, data: ProcessLoadMessage, run_id: str) -> None:
+        self._phase = "reattaching"
+        try:
+            await self._run_reattach_steps(data["cameras"])
+        except Exception as error:
+            self._phase = "start-error"
+            self._start_error = f"could not attach to the new camera.ui run: {error}"
+            self.logger.error(f"Could not attach to the new camera.ui run: {error}")
+            await self._send_error(self._start_error, code="resume-mismatch")
+            return
+
+        self._phase = "started"
+        self._attached_run = run_id
+        self.logger.debug(f"Attached to camera.ui run {run_id}")
+        await self._send_started(resumed=True)
+        await self._answer_pending_resume()
+
+    async def _run_reattach_steps(self, cameras: list[Camera]) -> None:
+        api = self.api
+        if api is None:
+            raise RuntimeError("the plugin never started")
+
+        async def reattach_devices() -> None:
+            await api.device_manager.reattach(cameras)
+
+        async def flush_config() -> None:
+            if self.plugin_db is not None:
+                await self.plugin_db.flush()
+
+        steps = [api.sensor_manager.reattach, reattach_devices, flush_config]
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + REATTACH_DEADLINE
+        attempt = 0
+        while True:
+            failed: list[Any] = []
+            last_error: Exception | None = None
+            for step in steps:
+                try:
+                    await step()
+                except Exception as error:
+                    failed.append(step)
+                    last_error = error
+            if last_error is None:
+                return
+
+            delay = REATTACH_RETRY_DELAYS[min(attempt, len(REATTACH_RETRY_DELAYS) - 1)]
+            if loop.time() + delay > deadline:
+                raise last_error
+            self.logger.debug(f"Attaching to camera.ui failed, retrying in {delay:.0f}s: {last_error}")
+            attempt += 1
+            await asyncio.sleep(delay)
+            steps = failed
+
+    async def _on_start_command(self, data: ProcessLoadMessage) -> None:
+        session = data.get("session")
+        run_id = session.get("runId") if session else None
+        if session:
+            self._level2_master = True
+
+        if self._phase == "ready-sent":
+            await self.start_plugin(data, run_id)
+        elif self._phase in ("started", "reattach-wait") and run_id and run_id != self._attached_run:
+            await self._reattach(data, run_id)
+        else:
+            self.logger.debug(f"Ignored START while {self._phase}")
+
+    async def _on_resume(self, run_id: str | None) -> None:
+        self._level2_master = True
+        match self._phase:
+            case "ready-sent":
+                await self._send_ready(resume=False)
+            case "starting" | "reattaching":
+                self._pending_resume = run_id
+            case "started" if run_id == self._attached_run:
+                await self._send_started(resumed=True)
+            case "started" | "reattach-wait":
+                self._phase = "reattach-wait"
+                await self._send_ready(resume=True)
+            case "start-error":
+                await self._send_error(self._start_error or "the plugin failed to start")
+
+    async def _answer_pending_resume(self) -> None:
+        run_id = self._pending_resume
+        self._pending_resume = None
+        if run_id is not None:
+            await self._on_resume(run_id)
+
+    async def _send_ready(self, resume: bool) -> None:
+        await self.send_message(
+            {
+                "type": PLUGIN_STATUS.READY.value,
+                "instanceId": self.instance_id,
+                "handshake": HANDSHAKE_LEVEL,
+                "resume": resume,
+            }
+        )
+
+    async def _send_started(self, resumed: bool = False) -> None:
+        message: ProcessResponse = {
+            "type": PLUGIN_STATUS.STARTED.value,
+            "instanceId": self.instance_id,
+            "runId": self._attached_run,
+        }
+        if resumed:
+            message["resumed"] = True
+        await self.send_message(message)
+
+    async def _send_error(self, error: str, code: Literal["resume-mismatch"] | None = None) -> None:
+        message: ProcessResponse = {
+            "type": PLUGIN_STATUS.ERROR.value,
+            "error": error,
+            "instanceId": self.instance_id,
+        }
+        if code:
+            message["code"] = code
+        await self.send_message(message)
 
     async def stop_plugin(self) -> None:
         if self.stopped:
@@ -282,7 +438,10 @@ class PluginChild:
         if not self.channel:
             return
 
-        await self.channel.send(message)
+        try:
+            await self.channel.send(message)
+        except Exception as error:
+            self.logger.debug(f"Could not send {message['type']} to camera.ui: {error}")
 
     async def on_message(self, message: ProcessMessage) -> None:
         if self.stopped:
@@ -290,11 +449,25 @@ class PluginChild:
 
         match message["type"]:
             case PLUGIN_COMMAND.START.value:
-                if not message["data"]:
-                    await self.send_message({"type": PLUGIN_STATUS.ERROR.value, "error": "No data provided"})
+                data = cast("ProcessLoadMessage | None", message["data"])
+                if not data:
+                    await self._send_error("No data provided")
                     return
 
-                await self.start_plugin(message["data"])
+                # every instance listens on the channel, a START names its target
+                session = data.get("session")
+                target = session.get("instanceId") if session else None
+                if target and self.instance_id and target != self.instance_id:
+                    self.logger.debug(f"Ignored START for instance {target}")
+                    return
+
+                await self._on_start_command(data)
+            case PLUGIN_COMMAND.RESUME.value:
+                resume = cast("ResumeData | None", message["data"])
+                target = resume.get("instanceId") if resume else None
+                if target and self.instance_id and target != self.instance_id:
+                    return
+                await self._on_resume(resume.get("runId") if resume else None)
             case PLUGIN_COMMAND.STOP.value:
                 await self.stop_plugin()
             case _:

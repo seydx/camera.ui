@@ -26,6 +26,7 @@ export class DeviceManagerProxy implements DeviceManager {
   #namespaces: DeviceManagerNamespaces & PluginNamespaces & DiscoveryManagerNamespaces;
 
   #devices = new Map<string, CameraDeviceProxy>();
+  #configured = new Set<string>();
   #eventChain: Promise<void> = Promise.resolve();
 
   constructor(proxy: RPCClient, storageController: StorageController, sensorManager: SensorManagerProxy, pluginInfo: PluginInfo, logger: Logger) {
@@ -84,6 +85,31 @@ export class DeviceManagerProxy implements DeviceManager {
 
   public async configureCameras(cameraDevices: CameraDeviceProxy[]): Promise<void> {
     await Promise.all(cameraDevices.map((cameraDevice) => this.#getCameraDevice(cameraDevice)));
+    for (const cameraDevice of cameraDevices) {
+      this.#configured.add(cameraDevice.id);
+    }
+  }
+
+  public async reattach(cameras: Camera[]): Promise<void> {
+    for (const device of [...this.#devices.values()]) {
+      await device._reattach();
+    }
+
+    const wanted = new Map(cameras.map((camera) => [camera._id, camera]));
+    const run = this.#eventChain.then(async () => {
+      for (const cameraId of [...this.#configured]) {
+        if (!wanted.has(cameraId)) {
+          await this.#onEventMessage({ type: 'cameraReleased', data: { cameraId } });
+        }
+      }
+      for (const [cameraId, camera] of wanted) {
+        if (!this.#configured.has(cameraId)) {
+          await this.#onEventMessage({ type: 'cameraAdded', data: { camera } });
+        }
+      }
+    });
+    this.#eventChain = run.catch(() => {});
+    await run;
   }
 
   /** Internal method to close the device manager and clean up resources */
@@ -97,6 +123,7 @@ export class DeviceManagerProxy implements DeviceManager {
       await device.cleanup();
     }
     this.#devices.clear();
+    this.#configured.clear();
   }
 
   get #deviceManagerProxy(): Promisify<DeviceManagerInterface> {
@@ -126,6 +153,7 @@ export class DeviceManagerProxy implements DeviceManager {
     switch (event.type) {
       case 'cameraAdded': {
         const { camera } = event.data as { camera: Camera };
+        this.#configured.add(camera._id);
         if (this.#devices.has(camera._id)) {
           break;
         }
@@ -135,6 +163,7 @@ export class DeviceManagerProxy implements DeviceManager {
       }
       case 'cameraReleased': {
         const { cameraId } = event.data as { cameraId: string };
+        this.#configured.delete(cameraId);
         await this.#pluginInstance.onCameraReleased(cameraId);
         const cameraDevice = this.#devices.get(cameraId);
         await cameraDevice?.cleanup();

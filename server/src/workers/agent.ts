@@ -1,37 +1,111 @@
-import { Logger } from '@camera.ui/common/logger';
 import { fetchViableNetworkAddresses } from '@camera.ui/common/network';
 import { isEqual, SignalHandler } from '@camera.ui/common/utils';
 import { createRPCClient, ERROR_CODES, isNoRespondersError, isRPCError } from '@camera.ui/rpc';
+import { PROTOCOL_LEVEL } from '@camera.ui/sdk';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { processes } from 'systeminformation';
 import { container } from 'tsyringe';
 
 import { WorkersService } from '../api/services/workers.service.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { ConfigService } from '../services/config/index.js';
-import { REPORT_DIR, WITH_REPORTS } from '../utils/crash.js';
-import { announceUpdateChannel, canRequestServerUpdate, requestAppUpdateCheck, requestServerUpdate } from '../utils/ipc.js';
+import { assertServerUpdateSpace } from '../utils/disk-space.js';
+import { MIN_SUPPORTED_PROTOCOL_LEVEL } from '../utils/engines.js';
+import { setInstancePrefix } from '../utils/instance-id.js';
+import { announceUpdateChannel, appUpdateState, canRequestServerUpdate, requestAppUpdateCheck, requestServerUpdate, sendIPCMessage } from '../utils/ipc.js';
+import { KILL_MARGIN_MS } from '../utils/supervised-child.js';
 import { collectSystemInfo } from '../utils/system-info.js';
 import { FrameDecodingHandler } from './capabilities/frame-decoding.js';
 import { PluginHostHandler } from './capabilities/plugin-host.js';
-import { WorkerCapability, workloadKey } from './types.js';
+import { clockTime, shortId } from './lifecycle/format.js';
+import { LeaseWatchdog } from './lifecycle/lease-watchdog.js';
+import { elapsed, leaseRemaining, stamp } from './lifecycle/lease.js';
+import { Reconciler } from './lifecycle/reconciler.js';
+import { STATUS_FILE_NAME, StatusFile } from './lifecycle/status-file.js';
+import {
+  HEARTBEAT_TIMEOUT_MS,
+  LEASE_MAX_MS,
+  LEASE_MIN_MS,
+  LEASE_MS,
+  LEASE_STOP_GRACE_MS,
+  LEASE_TICK_MS,
+  LEGACY_LEASE_MS,
+  MASTER_SEARCH_AFTER_MS,
+  MASTER_SEARCH_MS,
+  NOTICE_CAP_MS,
+  REJECT_DIAL_MS,
+  REJECT_DIAL_SLOW_AFTER,
+  REJECT_SPACING_MS,
+  REJECT_TO_STATE,
+  RELEASED_HEARTBEAT_MS,
+  REPORT_DEBOUNCE_MS,
+  SILENT_WARN_MS,
+  SPAWN_REPORT_WAIT_MS,
+  SUSPEND_MAX_MS,
+  SYNC_INTERVAL_MS,
+  UNPAIRED_POLL_MS,
+  WORKER_EXPECT_BACK_MS,
+} from './lifecycle/timing.js';
+import { versionStanding } from './lifecycle/update.js';
+import { findMovedMaster, PairingWait } from './pairing.js';
+import { StreamTunnelDialer } from './stream-tunnel.js';
+import { WORKER_PROTOCOL, WorkerCapability, workloadKey } from './types.js';
 
-import type { LogEntry, LoggerOptions } from '@camera.ui/common/logger';
+import type { LogEntry, Logger } from '@camera.ui/common/logger';
+import type { ShutdownReason, SupervisorSuspendMessage, UpdateState } from '@camera.ui/common/node';
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
+import type { LeafRejection } from '../rpc/leafConnection.js';
 import type { NATS } from '../rpc/server.js';
 import type { SystemInfo } from '../utils/system-info.js';
-import type { CapabilityHandler } from './capabilities/handler.js';
+import type { CapabilityHandler, HostedStatus } from './capabilities/handler.js';
+import type { LeaseView } from './lifecycle/lease.js';
+import type { StopReason } from './lifecycle/managed-workload.js';
+import type { DesiredState } from './lifecycle/reconciler.js';
+import type { WorkloadMode } from './lifecycle/workload.js';
+import type { PairingState } from './pairing.js';
 import type {
+  DisconnectReason,
+  HostPort,
+  MasterSyncInfo,
+  PluginPurge,
+  RemotePluginConfig,
   WorkerAgentRPC,
+  WorkerDisconnect,
   WorkerHealthInfo,
   WorkerHeartbeat,
+  WorkerLease,
   WorkerManagerRPC,
+  WorkerNudge,
   WorkerProcessRef,
   WorkerProcessSample,
   WorkerSyncResponse,
-  WorkloadSpec,
+  WorkerUpdateState,
+  WorkloadReport,
 } from './types.js';
 
-const SYNC_INTERVAL_MS = 5_000;
+const METRICS_INTERVAL_MS = 15_000;
+const HEALTHY_WITHOUT_MASTER_MS = 60_000;
+const LINK_HINT_RETRY_MS = 250;
+const LINK_HINT_WINDOW_MS = 3_000;
+const LEASE_CHILD_MIN_MS = 500;
+const LEASE_KILL_LEAD_MS = 500;
+const UPDATE_RESULT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+const DISCONNECT_REASON: Record<ShutdownReason, Extract<DisconnectReason, 'stop' | 'restart' | 'update'>> = {
+  stop: 'stop',
+  restart: 'restart',
+  update: 'update',
+  reset: 'stop',
+  unknown: 'restart',
+};
+
+export type AgentState = 'pairing' | 'linking' | 'legacy' | 'synced' | 'silent' | 'fenced' | 'released' | 'conflict' | 'rejected' | 'suspended' | 'unpaired' | 'closing';
+
+const LEASED: ReadonlySet<AgentState> = new Set(['synced', 'legacy', 'silent']);
+const MASTER_LOST: ReadonlySet<AgentState> = new Set(['linking', 'silent', 'fenced']);
+const MUTE: ReadonlySet<AgentState> = new Set(['pairing', 'suspended', 'unpaired', 'closing']);
 
 export class WorkerAgent implements WorkerAgentRPC {
   public readonly agentId: string;
@@ -40,27 +114,75 @@ export class WorkerAgent implements WorkerAgentRPC {
   private readonly logger: Logger;
   private readonly configService: ConfigService;
   private readonly natsServer: NATS;
+  private readonly workersService = new WorkersService();
   private readonly startTime = Date.now();
 
-  private proxy!: RPCClient;
+  private proxy?: RPCClient;
   private managerProxy!: Promisify<WorkerManagerRPC>;
   private sharedManagerProxy!: Promisify<WorkerManagerRPC>;
   private handlers = new Map<WorkerCapability, CapabilityHandler>();
+  private reconciler: Reconciler;
+  private statusFile: StatusFile;
+  private watchdog: LeaseWatchdog;
+  private tunnels: StreamTunnelDialer;
+  private pairingWait: PairingWait;
 
   private pluginHostHandler?: PluginHostHandler;
 
-  private applied = new Map<string, WorkloadSpec>();
+  private boot!: string;
+  private prevBootIds: string[] = [];
+  private state: AgentState = 'linking';
+  private stateReason?: string;
+  private notifiedWorkloads = 0;
+  private mode: WorkloadMode = 'legacy';
+  private lease: LeaseView = { leaseMs: LEASE_MS };
+  private answerRunId?: string;
+  private appliedRun?: { runId: string; seq: number };
+  private noticeRunId?: string;
+  private reportSeq = 0;
+  private tombstones = new Map<string, WorkloadReport>();
+  private spawnWaiters = new Map<string, () => void>();
+
+  private lastAnswerAt?: number;
+  private silentWarned = false;
+  private masterSearch?: Promise<void>;
+  private nextMasterSearchAt = 0;
+  private masterSearchDelay = MASTER_SEARCH_MS[0];
+  private healthy = false;
   private syncInterval?: NodeJS.Timeout;
-  private syncInFlight = false;
+  private leaseInterval?: NodeJS.Timeout;
+  private metricsInterval?: NodeJS.Timeout;
+  private healthyTimer?: NodeJS.Timeout;
+  private reportTimer?: NodeJS.Timeout;
+  private spawnReport?: NodeJS.Immediate;
+  private suspendTimer?: NodeJS.Timeout;
+  private inFlight = 0;
+  private lastSentAt = 0;
+  private cycleSeq = 0;
+  private answeredSeq = 0;
   private syncQueued = false;
   private isClosed = false;
-  private masterAnswers = true;
   private sharedMaster = false;
+  private fencing?: Promise<void>;
+  private releasing?: Promise<void>;
+  private rejections = 0;
+  private lastRejectionAt = 0;
+  private dials = 0;
+  private linkPaused = false;
+  private linkResumeTimer?: NodeJS.Timeout;
+  private linkHintTimer?: NodeJS.Timeout;
+  private codeWatchTimer?: NodeJS.Timeout;
   private appliedUpdateChannel?: 'latest' | 'beta';
 
   private closeHandler?: () => Promise<void>;
   private unsubscribeSync?: () => void;
-  private signalHandler: SignalHandler;
+  private onSupervisorMessage = (message: SupervisorSuspendMessage): void => {
+    if (message?.type === 'SUSPEND') {
+      this.suspend();
+    } else if (message?.type === 'RESUME') {
+      this.resume('woke up');
+    }
+  };
 
   private cpuLoad = '0.00';
   private memLoad = '0.00';
@@ -69,13 +191,21 @@ export class WorkerAgent implements WorkerAgentRPC {
 
   private updating = false;
   private updateError?: string;
+  private updatePhase?: WorkerUpdateState['phase'];
+  private updateTarget?: string;
+  private lastUpdateResult?: WorkerUpdateState['lastResult'];
+  private appCheckedFor?: string;
 
-  constructor() {
-    this.configService = container.resolve<ConfigService>('configService');
-    this.natsServer = container.resolve<NATS>('natsServer');
+  constructor(
+    private requestShutdown: (reason: ShutdownReason) => void,
+    pairing: PairingState = { state: 'paired' },
+  ) {
+    this.configService = inject('configService');
+    this.natsServer = inject('natsServer');
 
-    const workerName = this.configService.config.worker?.name ?? 'worker';
-    this.agentId = new WorkersService().getOrCreateAgentId(workerName);
+    this.workerName = workerName(this.configService.config.worker);
+    this.agentId = this.workersService.getOrCreateAgentId(this.workerName);
+    this.rotateBoot();
 
     const allCapabilities = Object.values(WorkerCapability);
     const validCapabilities = new Set(allCapabilities as string[]);
@@ -83,14 +213,31 @@ export class WorkerAgent implements WorkerAgentRPC {
     this.capabilities =
       configuredCapabilities.length === 0 ? allCapabilities : (configuredCapabilities.filter((cap) => validCapabilities.has(cap)) as WorkerCapability[]);
 
-    const loggerOptions: LoggerOptions = {
-      prefix: 'WorkerAgent',
-      suffix: this.configService.config.worker?.name ?? 'worker',
-      debugEnabled: this.configService.config.logger?.level === 'debug' || this.configService.config.logger?.level === 'trace',
-      traceEnabled: this.configService.config.logger?.level === 'trace',
-    };
+    this.logger = inject('logger').createSystemLogger('WorkerAgent', 'workers', this.workerName);
+    this.logger.onLog((entry) => {
+      if (entry.level !== 'raw') this.forwardLog(entry);
+    });
 
-    this.logger = new Logger(loggerOptions);
+    this.reconciler = new Reconciler(this.handlers, this.logger, (desired) => this.onApplied(desired));
+    this.tunnels = new StreamTunnelDialer(
+      () => this.master,
+      () => this.workersService.getWorkerConnection()?.apiPort ?? this.configService.config.worker?.apiPort ?? MASTER_API_PORT,
+    );
+    this.watchdog = new LeaseWatchdog((pids) => this.logger.error(`Killed ${pids.length} workloads that still ran after the lease ended`));
+    this.statusFile = new StatusFile(join(this.configService.STORAGE_PATH, STATUS_FILE_NAME), () => ({
+      state: this.state,
+      reason: this.stateReason,
+      master: this.master,
+      lastAnswerAt: this.lastAnswerAt,
+      workloads: this.workloadCount,
+    }));
+    this.pairingWait = new PairingWait(this.configService, this.logger, (result) => this.onPairing(result));
+
+    if (pairing.state !== 'paired') {
+      this.state = pairing.state;
+      this.stateReason = pairing.reason;
+    }
+  }
 
     this.signalHandler = new SignalHandler({
       displayName: '[WorkerAgent]',
@@ -103,7 +250,9 @@ export class WorkerAgent implements WorkerAgentRPC {
   }
 
   public async start(): Promise<void> {
-    this.logger.log(`Starting WorkerAgent (id: ${this.agentId})`);
+    this.logger.log(`Starting WorkerAgent (id: ${this.agentId}, boot: ${shortId(this.boot)})`);
+    this.statusFile.start();
+    this.readUpdateResult();
 
     if (this.capabilities.length === 0) {
       const available = Object.values(WorkerCapability).join(', ');
@@ -118,7 +267,10 @@ export class WorkerAgent implements WorkerAgentRPC {
 
     this.logger.log(`Capabilities: [${this.capabilities.join(', ')}]`);
 
-    const secret = new WorkersService().getWorkerConnection()?.secret;
+    this.natsServer.leaf.onRejected = (reason, kind) => this.onLinkRejected(reason, kind);
+    this.natsServer.leaf.onCreated = () => this.followLinkHint();
+
+    const secret = this.workersService.getWorkerConnection()?.secret;
 
     // Local NATS (leaf node)
     this.proxy = createRPCClient({
@@ -134,13 +286,16 @@ export class WorkerAgent implements WorkerAgentRPC {
 
     await this.proxy.connect();
 
+    const mode = (): WorkloadMode => this.mode;
+    const forward = (entry: LogEntry): void => this.forwardLog(entry);
+    const hooks = { onChange: () => this.onWorkloadChange(), beforeSpawn: (instanceId: string) => this.waitForSpawnReport(instanceId) };
     for (const cap of this.capabilities) {
       switch (cap) {
         case WorkerCapability.FrameDecoding:
-          this.handlers.set(cap, new FrameDecodingHandler(this.natsServer, this.configService, this.logger, (entry) => this.forwardLog(entry)));
+          this.handlers.set(cap, new FrameDecodingHandler(this.agentId, this.natsServer, this.configService, this.logger, forward, mode, hooks));
           break;
         case WorkerCapability.PluginHost:
-          this.pluginHostHandler = new PluginHostHandler(this.configService, this.logger, (entry) => this.forwardLog(entry));
+          this.pluginHostHandler = new PluginHostHandler(this.agentId, this.configService, this.logger, forward, mode, hooks);
           this.handlers.set(cap, this.pluginHostHandler);
           break;
         default:
@@ -148,8 +303,9 @@ export class WorkerAgent implements WorkerAgentRPC {
       }
     }
 
-    this.managerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.workerManagerRpc(this.agentId));
-    this.sharedManagerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.sharedWorkerManagerRpc());
+    const callOptions = { timeout: HEARTBEAT_TIMEOUT_MS, noResponderRetry: { maxRetries: 0 } };
+    this.managerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.workerManagerRpc(this.agentId), callOptions);
+    this.sharedManagerProxy = this.proxy.createProxy<WorkerManagerRPC>(NamespaceManager.sharedWorkerManagerRpc(), callOptions);
 
     const rpcSubject = NamespaceManager.workerAgentRpc(this.agentId);
     this.closeHandler = await this.proxy.registerHandler(
@@ -158,9 +314,17 @@ export class WorkerAgent implements WorkerAgentRPC {
       { isolatedConnection: true, withoutDecorators: true },
     );
 
-    this.unsubscribeSync = await this.proxy.subscribe(NamespaceManager.workerSync(this.agentId), () => {
-      this.syncCycle();
-    });
+    this.unsubscribeSync = await this.proxy.subscribe(NamespaceManager.workerSync(this.agentId), (nudge?: WorkerNudge) => this.onNudge(nudge));
+    process.on('message', this.onSupervisorMessage);
+
+    this.healthyTimer = setTimeout(() => this.markHealthy(), HEALTHY_WITHOUT_MASTER_MS);
+
+    if (this.state === 'pairing' || this.state === 'unpaired') {
+      this.logger.warn(this.stateReason ?? `Not paired with ${this.master}`);
+      this.notifyState();
+      this.pairingWait.start(this.state);
+      return;
+    }
 
     // the graphics lookup can take seconds, the heartbeat carries it once it is there
     collectSystemInfo(ConfigService.RUNNING_VERSION)
@@ -169,8 +333,12 @@ export class WorkerAgent implements WorkerAgentRPC {
       })
       .catch(() => {});
 
+    this.sampleMetrics();
+    this.metricsInterval = setInterval(() => this.sampleMetrics(), METRICS_INTERVAL_MS);
+
     this.syncCycle();
-    this.syncInterval = setInterval(() => this.syncCycle(), SYNC_INTERVAL_MS);
+    this.syncInterval = setInterval(() => this.syncTick(), SYNC_INTERVAL_MS);
+    this.leaseInterval = setInterval(() => this.leaseTick(), LEASE_TICK_MS);
 
     this.logger.log('WorkerAgent started and ready for commands');
   }
@@ -186,15 +354,43 @@ export class WorkerAgent implements WorkerAgentRPC {
       // ignore — proxy might already be disconnected
     }
 
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-      this.syncInterval = undefined;
+    this.isClosed = true;
+    const previous = this.state;
+    this.setState('closing');
+
+    clearInterval(this.syncInterval);
+    clearInterval(this.leaseInterval);
+    clearInterval(this.metricsInterval);
+    clearTimeout(this.healthyTimer);
+    clearTimeout(this.reportTimer);
+    clearTimeout(this.suspendTimer);
+    clearTimeout(this.linkResumeTimer);
+    clearInterval(this.linkHintTimer);
+    clearInterval(this.codeWatchTimer);
+    clearImmediate(this.spawnReport);
+    this.pairingWait.stop();
+    this.releaseSpawnWaiters();
+    this.unsubscribeSync?.();
+    process.off('message', this.onSupervisorMessage);
+
+    // announced first, the master holds the workloads and keeps the stores for the last saves
+    const linked = LEASED.has(previous) || previous === 'fenced';
+    const announce = linked && this.mode === 'synced';
+    const disconnectReason = DISCONNECT_REASON[reason];
+    if (announce) {
+      await this.publishDisconnect({ reason: disconnectReason, phase: 'stopping', expectBackMs: WORKER_EXPECT_BACK_MS[disconnectReason] });
     }
 
-    this.unsubscribeSync?.();
+    await this.reconciler.close();
+    await Promise.allSettled(Array.from(this.handlers.values(), (handler) => handler.close()));
+    await this.watchdog.close();
+    this.tunnels.close();
 
-    for (const handler of this.handlers.values()) {
-      await handler.stopAll();
+    // after the children are gone, an older master moves workloads on any disconnect
+    if (announce) {
+      await this.publishDisconnect({ reason: disconnectReason, phase: 'stopped' });
+    } else if (linked) {
+      await this.publishDisconnect({});
     }
 
     await this.closeHandler?.();
@@ -211,6 +407,9 @@ export class WorkerAgent implements WorkerAgentRPC {
       cameras: Array.from(this.handlers.values()).flatMap((h) => h.getActiveWorkIds()),
       capabilities: this.capabilities,
       version: ConfigService.RUNNING_VERSION,
+      protocol: WORKER_PROTOCOL,
+      bootId: this.boot,
+      runId: this.answerRunId,
     };
   }
 
@@ -240,12 +439,199 @@ export class WorkerAgent implements WorkerAgentRPC {
     this.runUpdate(version);
   }
 
+  public openTunnel(target: HostPort, token: string): Promise<void> {
+    return this.tunnels.dial(target, token);
+  }
+
+  private get workloadCount(): number {
+    return Array.from(this.handlers.values()).reduce((count, handler) => count + handler.getActiveWorkIds().length, 0);
+  }
+
+  private get master(): string {
+    return this.workersService.getWorkerConnection()?.master ?? this.configService.config.worker?.master ?? 'master';
+  }
+
+  private rotateBoot(): void {
+    this.boot = randomUUID();
+    this.prevBootIds = this.workersService.rotateBootIds(this.boot);
+    setInstancePrefix(this.boot.slice(0, 8));
+  }
+
+  private setState(state: AgentState, reason?: string): void {
+    if (this.state === state && this.stateReason === reason) {
+      return;
+    }
+
+    this.state = state;
+    this.stateReason = reason;
+    this.notifyState();
+  }
+
+  private notifyState(): void {
+    this.notifiedWorkloads = this.workloadCount;
+    this.statusFile.write();
+    sendIPCMessage({ type: 'WORKER_STATUS', state: this.state, master: this.master, reason: this.stateReason, workloads: this.notifiedWorkloads });
+  }
+
+  private markHealthy(): void {
+    clearTimeout(this.healthyTimer);
+    if (this.healthy || this.isClosed) {
+      return;
+    }
+
+    this.healthy = true;
+    sendIPCMessage({ type: 'HEALTHY', version: ConfigService.RUNNING_VERSION });
+  }
+
+  private announceMasterLink(runId?: string): void {
+    this.proxy?.publish(NamespaceManager.workerLinkSubject(this.agentId), { connected: true, at: Date.now(), runId }).catch(() => {});
+  }
+
   private applyUpdateChannel(channel?: 'latest' | 'beta'): void {
     if (!channel || channel === this.appliedUpdateChannel) return;
 
     this.appliedUpdateChannel = channel;
     announceUpdateChannel(channel === 'beta');
     requestAppUpdateCheck();
+  }
+
+  private applyUpdateTarget(target?: string): void {
+    if (!IS_ELECTRON || !target || target === this.appCheckedFor || versionStanding(ConfigService.RUNNING_VERSION, target) !== 'behind') return;
+
+    this.appCheckedFor = target;
+    requestAppUpdateCheck();
+  }
+
+  private applyPurge(purges: PluginPurge[] = [], workloads: WorkerSyncResponse['workloads']): void {
+    const listed = new Set(purges.map((purge) => purge.pluginName));
+    for (const name of this.purged) {
+      if (!listed.has(name)) this.purged.delete(name);
+    }
+
+    const wanted = new Set(
+      workloads.filter((workload) => workload.capability === WorkerCapability.PluginHost).map((workload) => (workload.spec as RemotePluginConfig).pluginName),
+    );
+    for (const purge of purges) {
+      if (wanted.has(purge.pluginName) || this.purged.has(purge.pluginName) || !this.pluginHostHandler) continue;
+      this.purged.add(purge.pluginName);
+      this.pluginHostHandler.purge(purge.pluginName, purge.storage).catch((error) => {
+        this.purged.delete(purge.pluginName);
+        this.logger.warn(`Could not remove plugin ${purge.pluginName}: ${error instanceof Error ? error.message : error}`);
+      });
+    }
+  }
+
+  private async readUpdateResult(): Promise<void> {
+    try {
+      const state = JSON.parse(await readFile(join(this.configService.HOME_PATH, 'server', UPDATE_STATE_FILE), 'utf8')) as UpdateState;
+      if (state.at > Date.now() - UPDATE_RESULT_MAX_AGE_MS) {
+        this.lastUpdateResult = { target: state.target, result: state.result, reason: state.reason };
+      }
+    } catch {
+      // no file: older launcher, desktop app or no update yet
+    }
+  }
+
+  private onNudge(nudge?: WorkerNudge): void {
+    if (nudge?.notice === 'shutdown') {
+      this.logger.debug(`Master run ${shortId(nudge.runId)} is shutting down`);
+    }
+    this.syncCycle();
+  }
+
+  private onLinkRejected(reason: string, kind: LeafRejection): void {
+    if (this.isClosed || this.linkPaused || MUTE.has(this.state)) return;
+
+    const now = Date.now();
+    if (now - this.lastRejectionAt < REJECT_SPACING_MS) {
+      return;
+    }
+    this.lastRejectionAt = now;
+    this.rejections++;
+
+    const cause = kind === 'auth' ? 'credentials' : 'certificate';
+    if (this.rejections === 1) {
+      this.logger.warn(
+        kind === 'auth'
+          ? `Master rejected this worker: ${reason}. Pair it again if it was removed there`
+          : `Master certificate failed verification: ${reason}. Pair this worker again if the master's certificate changed`,
+      );
+    }
+
+    if (this.rejections < REJECT_TO_STATE) {
+      this.pauseLink(REJECT_SPACING_MS);
+      return;
+    }
+
+    if (this.state !== 'rejected') {
+      this.dials = 0;
+      this.logger.warn(`Rejected by the master at ${this.master} (${cause}), trying again every ${REJECT_DIAL_MS[0] / 1000} s`);
+      this.setState('rejected', cause);
+      this.watchForNewCode();
+      this.dropAll('requested');
+    }
+    this.dials++;
+    if (this.dials === REJECT_DIAL_SLOW_AFTER) {
+      this.logger.warn(`Still rejected by the master at ${this.master}, trying again every ${REJECT_DIAL_MS[1] / 1000} s`);
+    }
+    this.pauseLink(REJECT_DIAL_MS[this.dials >= REJECT_DIAL_SLOW_AFTER ? 1 : 0]);
+  }
+
+  private watchForNewCode(): void {
+    clearInterval(this.codeWatchTimer);
+    this.codeWatchTimer = setInterval(() => {
+      if (this.isClosed || this.state !== 'rejected') {
+        clearInterval(this.codeWatchTimer);
+        return;
+      }
+      const code = this.configService.readWorkerConfig()?.pairingCode?.trim();
+      if (code && !this.workersService.isCodeUsed(code)) {
+        clearInterval(this.codeWatchTimer);
+        this.logger.log('Found a new pairing code, restarting to pair with it');
+        this.requestShutdown('restart');
+      }
+    }, UNPAIRED_POLL_MS);
+  }
+
+  private pauseLink(pauseMs: number): void {
+    this.linkPaused = true;
+    this.natsServer
+      .pauseLeafRemotes(true)
+      .then((paused) => {
+        if (!paused || this.isClosed) {
+          this.linkPaused = false;
+          return;
+        }
+
+        this.logger.debug(`Next link attempt to the master in ${pauseMs / 1000} s`);
+        clearTimeout(this.linkResumeTimer);
+        this.linkResumeTimer = setTimeout(() => {
+          this.linkPaused = false;
+          if (this.state !== 'unpaired') {
+            this.natsServer.pauseLeafRemotes(false).catch(() => {});
+          }
+        }, pauseMs);
+      })
+      .catch(() => {
+        this.linkPaused = false;
+      });
+  }
+
+  private followLinkHint(): void {
+    const hintAt = Date.now();
+    clearInterval(this.linkHintTimer);
+    const attempt = (): void => {
+      // a heartbeat from before the link came back waits for a lost answer, do not queue behind it
+      this.syncCycle(Date.now() - this.lastSentAt >= LINK_HINT_RETRY_MS);
+    };
+    attempt();
+    this.linkHintTimer = setInterval(() => {
+      if (this.isClosed || (this.lastAnswerAt ?? 0) >= hintAt || Date.now() - hintAt > LINK_HINT_WINDOW_MS) {
+        clearInterval(this.linkHintTimer);
+        return;
+      }
+      attempt();
+    }, LINK_HINT_RETRY_MS);
   }
 
   private async runUpdate(version = 'latest'): Promise<void> {
@@ -256,7 +642,7 @@ export class WorkerAgent implements WorkerAgentRPC {
       announceUpdateChannel(version.includes('-beta'));
       const output = await requestServerUpdate(version);
       for await (const line of output) {
-        this.report('raw', line);
+        this.logger.raw(line);
       }
 
       this.report('log', `Updated to ${version} — restarting`);
@@ -268,76 +654,209 @@ export class WorkerAgent implements WorkerAgentRPC {
     }
   }
 
-  private report(level: 'log' | 'error' | 'raw', message: string): void {
-    this.logger[level](message);
-
-    this.forwardLog({
-      timestamp: Date.now(),
-      level,
-      prefix: 'WorkerAgent',
-      suffix: this.configService.config.worker?.name ?? 'worker',
-      message,
-      targetType: 'system',
-      source: 'child',
-    });
+  private heartbeatEvery(): number {
+    switch (this.state) {
+      case 'released':
+        return RELEASED_HEARTBEAT_MS;
+      case 'conflict':
+        return REJECT_DIAL_MS[this.dials >= REJECT_DIAL_SLOW_AFTER ? 1 : 0];
+      default:
+        return SYNC_INTERVAL_MS;
+    }
   }
 
-  private async syncCycle(): Promise<void> {
-    if (this.isClosed) {
+  private syncTick(): void {
+    if (Date.now() - this.lastSentAt >= this.heartbeatEvery() - SYNC_INTERVAL_MS / 2) {
+      if (this.state === 'conflict') {
+        this.dials++;
+      }
+      this.syncCycle();
+    }
+  }
+
+  private async syncCycle(alongside = false): Promise<void> {
+    if (this.isClosed || MUTE.has(this.state)) {
       return;
     }
 
-    if (this.syncInFlight) {
+    if (this.inFlight > 0 && !alongside) {
       this.syncQueued = true;
       return;
     }
 
-    this.syncInFlight = true;
+    const seq = ++this.cycleSeq;
+    this.inFlight++;
+    const sent = stamp();
+    this.lastSentAt = sent.wall;
+    const heartbeat = this.buildHeartbeat();
 
     try {
-      await this.sampleMetrics();
-
       let response: WorkerSyncResponse;
       try {
-        response = await this.sendHeartbeat(this.buildHeartbeat());
+        response = await this.sendHeartbeat(heartbeat);
       } catch {
-        // Master unreachable — keep running the current workloads and try
-        // again on the next cycle. Convergence resumes when it is back.
-        if (this.masterAnswers) {
-          this.masterAnswers = false;
-          this.logger.warn('Master stopped answering the heartbeat, keeping the current workloads');
+        if (seq > this.answeredSeq) {
+          this.onSilence();
         }
         return;
       }
 
-      if (!this.masterAnswers) {
-        this.masterAnswers = true;
-        this.logger.log('Master answers again');
+      // an older heartbeat's answer carries an older desired state
+      if (this.isClosed || MUTE.has(this.state) || seq < this.answeredSeq) {
+        return;
       }
 
-      this.applyUpdateChannel(response?.updateChannel);
-      await this.reconcile(response?.workloads ?? []);
-    } finally {
-      this.syncInFlight = false;
+      this.answeredSeq = seq;
+      if (response?.master) {
+        this.onSyncedAnswer(response, response.master, sent);
+      } else {
+        this.onLegacyAnswer(response, sent);
+      }
 
-      if (this.syncQueued) {
+      for (const report of heartbeat.workloads ?? []) {
+        if (this.tombstones.get(report.key) === report) {
+          this.tombstones.delete(report.key);
+        }
+        if (report.instanceId) {
+          this.spawnWaiters.get(report.instanceId)?.();
+        }
+      }
+    } finally {
+      this.inFlight--;
+
+      if (this.syncQueued && this.inFlight === 0) {
         this.syncQueued = false;
         this.syncCycle();
       }
     }
   }
 
-  private async reconcile(desired: WorkloadSpec[]): Promise<void> {
+  private onLegacyAnswer(response: WorkerSyncResponse, sent: ReturnType<typeof stamp>): void {
+    if (!Array.isArray(response?.workloads)) {
+      this.logger.error('The master answered without a workload list, ignoring the answer');
+      return;
+    }
+
+    const previous = this.state;
+    if (this.mode === 'synced') {
+      this.logger.warn('The master runs an older release now, restarting every workload once');
+      this.reconciler.invalidate();
+    }
+
+    this.mode = 'legacy';
+    this.answerRunId = undefined;
+    this.appliedRun = undefined;
+    // a hold belongs to the run that set it, an older master moves workloads after 15 s
+    this.lease = { leaseMs: LEGACY_LEASE_MS, answeredSend: sent };
+
+    this.confirmLink(previous, 'legacy', false);
+    this.applyUpdateChannel(response.updateChannel);
+    this.applyUpdateTarget(response.updateTarget);
+    this.reconciler.submit({ workloads: response.workloads });
+    this.armWatchdog();
+  }
+
+  private onSyncedAnswer(response: WorkerSyncResponse, master: MasterSyncInfo, sent: ReturnType<typeof stamp>): void {
+    if (master.release) {
+      this.release(master);
+      return;
+    }
+
+    const previous = this.state;
+    const newRun = this.answerRunId !== master.runId;
+    this.mode = 'synced';
+    this.answerRunId = master.runId;
+
+    const hold = this.lease.hold?.runId === master.runId ? this.lease.hold : undefined;
+    this.lease = { leaseMs: Math.min(LEASE_MAX_MS, Math.max(LEASE_MIN_MS, master.leaseMs)), answeredSend: sent, hold };
+    if (master.stopping) {
+      this.holdFor(master.runId, sent, master.stopping.untilMs);
+    }
+
+    const holds = master.holds ?? [];
+    if (newRun && holds.length > 0 && previous !== 'linking') {
+      this.logger.log(`Master run ${shortId(master.runId)} answers, holding ${holds.length} workloads until it has placed them`);
+    }
+
+    this.confirmLink(previous, 'synced', newRun);
+    this.applyUpdateChannel(response.updateChannel);
+    this.applyUpdateTarget(response.updateTarget);
+    this.applyPurge(response.purge, response.workloads ?? []);
+    this.reconciler.submit({ workloads: response.workloads ?? [], holds, seq: master.seq, runId: master.runId });
+    this.armWatchdog();
+  }
+
+  private holdFor(runId: string, sent: ReturnType<typeof stamp>, untilMs: number): void {
+    const candidate = { runId, sent, untilMs: Math.min(untilMs, NOTICE_CAP_MS) };
+    const current = this.lease.hold;
+    if (!current || candidate.untilMs - elapsed(candidate.sent) > current.untilMs - elapsed(current.sent)) {
+      this.lease.hold = candidate;
+    }
+
+    if (this.noticeRunId !== runId) {
+      this.noticeRunId = runId;
+      const until = Date.now() + (leaseRemaining(this.lease) ?? 0);
+      this.logger.log(`Master is restarting (run ${shortId(runId)}), keeping ${this.workloadCount} workloads until ${clockTime(until)}`);
+    }
+  }
+
+  private confirmLink(previous: AgentState, next: 'synced' | 'legacy', newRun: boolean): void {
+    const silentForMs = Date.now() - (this.lastAnswerAt ?? this.startTime);
+
+    this.lastAnswerAt = Date.now();
+    this.rejections = 0;
+    this.dials = 0;
+    this.silentWarned = false;
+    this.nextMasterSearchAt = 0;
+    this.masterSearchDelay = MASTER_SEARCH_MS[0];
+    this.natsServer.linkConfirmed();
+    this.setState(next);
+    this.markHealthy();
+
+    switch (previous) {
+      case 'linking':
+        this.logger.log(`Link to master ${this.master} is up${next === 'synced' ? ` (run ${shortId(this.answerRunId)})` : ', it runs an older release'}`);
+        break;
+      case 'silent':
+        this.logger.log(`Master answers again after ${Math.round(silentForMs / 1000)} s, ${this.workloadCount} workloads kept`);
+        // a new run places the workloads again, nothing to resync
+        if (next === 'legacy' || !newRun) {
+          this.announceMasterLink(this.answerRunId);
+        }
+        break;
+      case 'fenced':
+        this.logger.log(`Master answers again after ${Math.round(silentForMs / 1000)} s, starting the workloads it lists`);
+        break;
+      case 'released':
+      case 'conflict':
+      case 'rejected':
+        this.logger.log(`Master ${this.master} accepts this worker again`);
+        break;
+    }
+  }
+
+  private onSilence(): void {
+    if (this.state === 'synced' || this.state === 'legacy') {
+      this.setState('silent');
+    }
+  }
+
+  private leaseTick(): void {
     if (this.isClosed) {
       return;
     }
 
-    const desiredByKey = new Map<string, WorkloadSpec>();
-    for (const workload of desired) {
-      if (!this.handlers.has(workload.capability)) {
-        continue;
+    const silentForMs = Date.now() - (this.lastAnswerAt ?? this.startTime);
+    if (!this.silentWarned && silentForMs >= SILENT_WARN_MS && (this.state === 'linking' || this.state === 'silent')) {
+      this.silentWarned = true;
+      const remaining = leaseRemaining(this.lease);
+      if (this.state === 'linking') {
+        this.logger.warn(`No answer from master ${this.master} yet: ${this.natsServer.leaf.lastError ?? 'no link'}`);
+      } else if (this.workloadCount > 0 && remaining !== undefined) {
+        this.logger.warn(`No answer from the master for ${Math.round(silentForMs / 1000)} s, workloads stop at ${clockTime(Date.now() + remaining)} if this continues`);
+      } else {
+        this.logger.warn(`No answer from the master for ${Math.round(silentForMs / 1000)} s`);
       }
-      desiredByKey.set(workloadKey(workload.capability, workload.id), workload);
     }
 
     // Stop strays first — the single-owner invariant matters more than a gap.
@@ -354,20 +873,224 @@ export class WorkerAgent implements WorkerAgentRPC {
       }
     }
 
-    for (const [key, workload] of desiredByKey) {
-      const current = this.applied.get(key);
-      if (current?.revision === workload.revision && isEqual(current?.spec, workload.spec)) {
-        continue;
-      }
-
-      try {
-        await this.handlers.get(workload.capability)?.start(workload.id, workload.spec);
-        this.applied.set(key, workload);
-      } catch (error: any) {
-        // Not recorded as applied — retried on the next cycle.
-        this.logger.error(`Failed to start workload ${key}:`, error.message);
-      }
+    // the grace counts from the lease end, so the children's kill lands before the watchdog
+    const late = Math.max(0, -(leaseRemaining(this.lease) ?? 0));
+    this.fencing = this.dropAll('lease', Math.max(LEASE_CHILD_MIN_MS, LEASE_STOP_GRACE_MS - late - KILL_MARGIN_MS - LEASE_KILL_LEAD_MS));
+    try {
+      await this.fencing;
+    } finally {
+      this.fencing = undefined;
     }
+
+    // an answer during the stop renewed the lease
+    const remaining = leaseRemaining(this.lease);
+    if (LEASED.has(this.state) && remaining !== undefined && remaining <= 0) {
+      this.setState('fenced');
+      this.syncCycle(true);
+    }
+  }
+
+  private async dropAll(reason: StopReason, budgetMs?: number): Promise<void> {
+    this.releaseSpawnWaiters();
+    await this.reconciler.reset(async () => {
+      const stopped = await Promise.all(Array.from(this.handlers, async ([capability, handler]) => [capability, await handler.stopAll(reason, budgetMs)] as const));
+      if (reason !== 'lease') {
+        return;
+      }
+      for (const [capability, statuses] of stopped) {
+        for (const [id, status] of statuses) {
+          const key = workloadKey(capability, id);
+          this.tombstones.set(key, this.report(key, status));
+        }
+      }
+    });
+    this.watchdog.disarm();
+  }
+
+  private release(master: MasterSyncInfo): void {
+    const reason = master.release!.reason;
+    const target: AgentState = reason === 'removed' ? 'unpaired' : reason === 'conflict' ? 'conflict' : 'released';
+    this.answerRunId = master.runId;
+    this.lease = { leaseMs: this.lease.leaseMs };
+
+    if (this.releasing) {
+      return;
+    }
+    if (this.state === target) {
+      const changed = this.appliedRun?.runId !== master.runId || this.appliedRun.seq !== master.seq;
+      this.appliedRun = { runId: master.runId, seq: master.seq };
+      // the master waits for this seq before it moves the released work
+      if (changed) {
+        this.reportSoon();
+      } else if (target === 'conflict' && !this.linkPaused) {
+        // both copies share one identity and push each other's link out, keep it down between heartbeats
+        this.pauseLink(this.heartbeatEvery() - SYNC_INTERVAL_MS);
+      }
+      return;
+    }
+
+    const count = this.workloadCount;
+    switch (reason) {
+      case 'removed':
+        this.logger.warn(`Removed by the master at ${this.master}, stopping ${count} workloads. Pair again with a new code.`);
+        break;
+      case 'conflict':
+        this.logger.error('Another machine uses the identity of this worker, the master stopped both. Remove one of them on the master and pair it again.');
+        break;
+      case 'incompatible':
+        this.logger.error(`The master does not support this worker's protocol, stopping ${count} workloads. Update the master.`);
+        break;
+      default:
+        this.logger.warn(`The master has workers disabled, stopping ${count} workloads`);
+    }
+
+    if (target !== 'unpaired') {
+      this.dials = 0;
+      this.setState(target, reason);
+    }
+
+    this.releasing = this.dropAll('requested')
+      .then(async () => {
+        this.appliedRun = { runId: master.runId, seq: master.seq };
+        if (target !== 'unpaired') {
+          this.syncCycle(true);
+          return;
+        }
+        // the empty report confirms the release
+        await this.syncCycle(true);
+        this.workersService.markUnpaired(reason);
+        this.setState('unpaired', `Removed by the master at ${this.master}. Pair again with a new code.`);
+        clearInterval(this.syncInterval);
+        clearInterval(this.leaseInterval);
+        await this.natsServer.pauseLeafRemotes(true).catch(() => false);
+        this.pairingWait.start('unpaired');
+      })
+      .finally(() => {
+        this.releasing = undefined;
+      });
+  }
+
+  private onPairing(result: PairingState): void {
+    if (this.isClosed) {
+      return;
+    }
+    if (result.state === 'paired') {
+      this.pairingWait.stop();
+      this.logger.log(`Paired with ${this.master}, restarting to connect`);
+      this.requestShutdown('restart');
+      return;
+    }
+    if (result.reason !== this.stateReason) {
+      this.logger.warn(result.reason);
+    }
+    this.setState(result.state, result.reason);
+  }
+
+  private async suspend(): Promise<void> {
+    if (this.isClosed || this.state === 'suspended' || this.state === 'unpaired' || this.state === 'pairing') {
+      return;
+    }
+
+    const announce = this.mode === 'synced' && LEASED.has(this.state);
+    this.logger.log(`The system goes to sleep, stopping ${this.workloadCount} workloads`);
+    this.setState('suspended');
+    clearTimeout(this.reportTimer);
+
+    await this.dropAll('lease', LEASE_STOP_GRACE_MS);
+    this.tombstones.clear();
+    if (announce) {
+      await this.publishDisconnect({ reason: 'suspend', phase: 'stopped' });
+    }
+
+    // macOS can stay awake after a suspend event, the timer only runs while awake
+    clearTimeout(this.suspendTimer);
+    this.suspendTimer = setTimeout(() => this.resume('did not sleep'), SUSPEND_MAX_MS);
+  }
+
+  private resume(why: string): void {
+    if (this.isClosed || this.state !== 'suspended') {
+      return;
+    }
+
+    clearTimeout(this.suspendTimer);
+    this.rotateBoot();
+    this.lease = { leaseMs: this.lease.leaseMs };
+    this.answerRunId = undefined;
+    this.appliedRun = undefined;
+    this.setState('linking');
+    this.logger.log(`The system ${why}, asking the master for work as boot ${shortId(this.boot)}`);
+    this.syncCycle(true);
+  }
+
+  private onApplied(desired: DesiredState): void {
+    if (desired.runId !== undefined && desired.seq !== undefined) {
+      this.appliedRun = { runId: desired.runId, seq: desired.seq };
+    }
+    this.reportSoon();
+  }
+
+  private onWorkloadChange(): void {
+    this.reportSoon();
+    // the desktop app keeps the system awake while there is work
+    if (this.workloadCount !== this.notifiedWorkloads) {
+      this.notifyState();
+    }
+  }
+
+  private reportSoon(): void {
+    if (this.reportTimer || MUTE.has(this.state)) {
+      return;
+    }
+    this.reportTimer = setTimeout(() => {
+      this.reportTimer = undefined;
+      this.armWatchdog();
+      this.syncCycle();
+    }, REPORT_DEBOUNCE_MS);
+  }
+
+  private waitForSpawnReport(instanceId: string): Promise<void> {
+    if (this.mode !== 'synced' || this.state !== 'synced') {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      const done = (): void => {
+        clearTimeout(timer);
+        this.spawnWaiters.delete(instanceId);
+        resolve();
+      };
+      const timer = setTimeout(done, SPAWN_REPORT_WAIT_MS);
+      this.spawnWaiters.set(instanceId, done);
+
+      // one heartbeat per spawn pass, sent beside a running one
+      this.spawnReport ??= setImmediate(() => {
+        this.spawnReport = undefined;
+        this.syncCycle(true);
+      });
+    });
+  }
+
+  private releaseSpawnWaiters(): void {
+    for (const done of [...this.spawnWaiters.values()]) {
+      done();
+    }
+  }
+
+  private armWatchdog(): void {
+    const remaining = leaseRemaining(this.lease);
+    const groups = this.processRefs().map((ref) => ({ pid: ref.pid, pgid: process.platform === 'win32' ? undefined : ref.pid }));
+    if (remaining === undefined || groups.length === 0 || !LEASED.has(this.state)) {
+      this.watchdog.disarm();
+      return;
+    }
+    this.watchdog.arm(Date.now() + remaining, groups);
+  }
+
+  private async publishDisconnect(payload: Omit<WorkerDisconnect, 'agentId'>): Promise<void> {
+    const subject = this.sharedMaster ? NamespaceManager.sharedWorkerDisconnect() : NamespaceManager.workerDisconnect(this.agentId);
+    // an older master only reads the agent id
+    const body: WorkerDisconnect = payload.reason ? { agentId: this.agentId, bootId: this.boot, ...payload } : { agentId: this.agentId };
+    await this.proxy?.publish(subject, body).catch(() => {});
   }
 
   private async sendHeartbeat(heartbeat: WorkerHeartbeat): Promise<WorkerSyncResponse> {
@@ -384,6 +1107,59 @@ export class WorkerAgent implements WorkerAgentRPC {
       }
       throw error;
     }
+  }
+
+  private leaseInfo(): WorkerLease | undefined {
+    switch (this.state) {
+      case 'synced':
+      case 'legacy':
+        return { state: 'held', expiresInMs: leaseRemaining(this.lease) };
+      case 'silent':
+        return { state: 'silent', expiresInMs: leaseRemaining(this.lease) };
+      case 'fenced':
+      case 'released':
+      case 'conflict':
+      case 'rejected':
+        return { state: this.state };
+      default:
+        return undefined;
+    }
+  }
+
+  private report(key: string, status: HostedStatus): WorkloadReport {
+    const bound = this.reconciler.binding(key);
+    return {
+      key,
+      gen: this.reconciler.gen(key),
+      revision: this.reconciler.revision(key) ?? 0,
+      phase: status.phase,
+      since: status.since,
+      instanceId: status.instanceId,
+      pid: status.pid,
+      handshake: bound && bound.instanceId === status.instanceId ? bound.handshake : undefined,
+      restarts: status.restarts,
+      nextRestartAt: status.nextRestartAt,
+      version: status.version,
+      linked: status.linked,
+      install: status.install,
+      lastExit: status.lastExit,
+      failure: status.failure,
+    };
+  }
+
+  private buildReports(): WorkloadReport[] {
+    const reports: WorkloadReport[] = [];
+    for (const [capability, handler] of this.handlers) {
+      for (const id of handler.getActiveWorkIds()) {
+        const status = handler.status(id);
+        if (status) {
+          const key = workloadKey(capability, id);
+          this.tombstones.delete(key);
+          reports.push(this.report(key, status));
+        }
+      }
+    }
+    return [...reports, ...this.tombstones.values()];
   }
 
   private buildHeartbeat(): WorkerHeartbeat {
@@ -407,16 +1183,28 @@ export class WorkerAgent implements WorkerAgentRPC {
         updating: this.updating,
         error: this.updateError,
       },
+      appVersion: process.env.CAMERA_UI_APP_VERSION,
+      bootId: this.boot,
+      prevBootIds: this.prevBootIds,
+      protocol: WORKER_PROTOCOL,
+      runId: this.appliedRun?.runId,
+      appliedSeq: this.appliedRun?.seq,
+      reportSeq: ++this.reportSeq,
+      workloads: this.buildReports(),
+      lease: this.leaseInfo(),
+      pluginProtocol: { level: PROTOCOL_LEVEL, min: MIN_SUPPORTED_PROTOCOL_LEVEL },
     };
+  }
+
+  private processRefs(): WorkerProcessRef[] {
+    return Array.from(this.handlers.values()).flatMap((handler) => handler.getActiveProcesses());
   }
 
   private async sampleMetrics(): Promise<void> {
     try {
       const owned = new Map<number, WorkerProcessRef>();
-      for (const handler of this.handlers.values()) {
-        for (const ref of handler.getActiveProcesses()) {
-          owned.set(ref.pid, ref);
-        }
+      for (const ref of this.processRefs()) {
+        owned.set(ref.pid, ref);
       }
 
       const all = await processes();
@@ -449,7 +1237,7 @@ export class WorkerAgent implements WorkerAgentRPC {
 
   private forwardLog(entry: LogEntry): void {
     try {
-      this.proxy.publish(this.sharedMaster ? NamespaceManager.sharedWorkerLogs() : NamespaceManager.workerLogs(this.agentId), entry);
+      this.proxy?.publish(this.sharedMaster ? NamespaceManager.sharedWorkerLogs() : NamespaceManager.workerLogs(this.agentId), entry).catch(() => {});
     } catch {
       // master will miss this line — local trace still has it
     }

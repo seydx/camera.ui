@@ -11,7 +11,7 @@ import type { LogEntry } from '@camera.ui/common/logger';
 import type { ReadStream } from 'node:fs';
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { CameraUiAPI } from '../../../api.js';
-import type { CameraUi } from '../../../main.js';
+import type { CameraUi } from '../../../master.js';
 import type { PluginManager } from '../../../plugins/index.js';
 import type { ConfigService } from '../../../services/config/index.js';
 import type { LogManager } from '../../../services/logger/logManager.js';

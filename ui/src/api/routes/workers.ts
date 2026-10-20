@@ -19,8 +19,8 @@ export async function patchWorkersConfig(patch: PatchWorkersConfigInput): Promis
   return response.data;
 }
 
-export async function createWorkerPairing(): Promise<WorkerPairingResponse> {
-  const response: AxiosResponse<WorkerPairingResponse> = await api.post('/workers/pairings');
+export async function createWorkerPairing(replaces?: string): Promise<WorkerPairingResponse> {
+  const response: AxiosResponse<WorkerPairingResponse> = await api.post('/workers/pairings', replaces ? { replaces } : {});
   return response.data;
 }
 

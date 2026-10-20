@@ -46,10 +46,13 @@ export interface LeafNodeConfig {
 export interface LeafNodeRemoteConfig {
   url: string;
   caFile: string;
+  disabled?: boolean;
 }
 
 export class NATS {
   public readonly leaf = new LeafConnection();
+  public readonly tunnelAuth = generateCredentials();
+  public onFatal?: (reason: string) => void;
 
   private readonly clusterAmount = 0;
 
@@ -63,6 +66,7 @@ export class NATS {
   private leafNodeRemotes?: LeafNodeRemoteConfig[];
 
   private serverProcess?: ChildProcess;
+  private serverConfig?: NatsConfig;
   private clusterProcesses: ChildProcess[] = [];
 
   private leafAcceptorProcess?: ChildProcess;
@@ -76,6 +80,8 @@ export class NATS {
   private config: NatsConfig;
 
   private manuallyKilled = false;
+  private serverCrashes: number[] = [];
+  private serverRestartTimer?: NodeJS.Timeout;
 
   private stdoutLine?: Interface;
   private stderrLine?: Interface;
@@ -299,6 +305,8 @@ export class NATS {
     // Worker mode: connect outwards to the master, pinned to its CA.
     if (this.leafNodeRemotes?.length) {
       (config as any).leafnodes = {
+        // rejected workers retry this fast until the agent pauses the remote, not on Windows
+        reconnect: '500ms',
         remotes: this.leafNodeRemotes.map((remote) => ({
           url: remote.url,
           tls: {
@@ -306,8 +314,14 @@ export class NATS {
           },
         })),
       };
+      // every 8th failed dial, logLine collapses the repeats
+      (config as any).reconnect_error_reports = 8;
+      // a dead leaf shows in 10 to 15 s, before the lease ends
+      config.ping_interval = '5s';
+      config.ping_max = 2;
     }
 
+    this.serverConfig = config;
     const serverConfig = await this.writeConfigFile(config, 'server');
     await this.startServer(serverConfig);
 
@@ -337,6 +351,9 @@ export class NATS {
       max_payload: this.config.max_payload,
       max_control_line: this.config.max_control_line,
       write_deadline: this.config.write_deadline,
+      // a half-open leaf goes after about 30 s instead of 4 min
+      ping_interval: '10s',
+      ping_max: 3,
       cluster: {
         name: 'camera.ui-cluster',
         host: '127.0.0.1',
@@ -386,6 +403,7 @@ export class NATS {
 
   public async stop(): Promise<void> {
     this.manuallyKilled = true;
+    clearTimeout(this.serverRestartTimer);
 
     this.logger.log('Stopping Nats server and cluster...');
 
@@ -408,12 +426,25 @@ export class NATS {
     this.stderrLine?.close();
   }
 
+  public async pauseLeafRemotes(paused: boolean): Promise<boolean> {
+    const leafnodes = (this.serverConfig as any)?.leafnodes;
+    if (process.platform === 'win32' || !leafnodes?.remotes || !this.serverProcess) {
+      return false;
+    }
+
+    leafnodes.remotes = leafnodes.remotes.map((remote: object) => ({ ...remote, disabled: paused }));
+    await this.writeConfigFile(this.serverConfig, 'server');
+    return this.serverProcess.kill('SIGHUP');
+  }
+
   public async reconcileLeafAcceptor(): Promise<void> {
-    const shouldRun = !!this.leafNodeConfig?.enabled && this.leafNodeConfig.users.length > 0;
+    // also without users, so a removed worker gets a rejection, not a refused connection
+    const shouldRun = !!this.leafNodeConfig?.enabled;
+    this.cancelLeafAcceptorRestart();
 
     if (!shouldRun) {
       if (this.leafAcceptorProcess) {
-        this.logger.log('Stopping leaf-acceptor (no paired workers)');
+        this.logger.log('Stopping leaf-acceptor (workers disabled)');
         this.restartingLeafAcceptor = true;
         await this.kill(this.leafAcceptorProcess);
         this.leafAcceptorProcess = undefined;
@@ -619,6 +650,10 @@ export class NATS {
     for (const key in config) {
       if (Object.prototype.hasOwnProperty.call(config, key)) {
         const value = config[key];
+        // nats reads a bare undefined as a string and refuses the file
+        if (value === undefined) {
+          continue;
+        }
         if (Array.isArray(value)) {
           lines.push(`${pad}${key} [`);
           lines.push(this.stringifyConfig(value, pad + '  '));
@@ -666,10 +701,37 @@ export class NATS {
   }
 
   private handleClose(): void {
-    if (!isShuttingDown() && !this.manuallyKilled) {
-      this.logger.error('Nats server crashed!');
-      process.kill(process.pid, 'SIGINT');
+    if (isShuttingDown() || this.manuallyKilled) {
+      return;
     }
+
+    if (!this.leafNodeRemotes?.length) {
+      this.logger.error('Nats server crashed, stopping camera.ui');
+      this.onFatal?.('nats server crashed');
+      return;
+    }
+
+    const now = Date.now();
+    this.serverCrashes = [...this.serverCrashes.filter((at) => now - at < WORKER_NATS_CRASH_WINDOW_MS), now];
+    if (this.serverCrashes.length >= WORKER_NATS_CRASH_LIMIT) {
+      this.logger.error(`Nats server crashed ${this.serverCrashes.length} times in ${WORKER_NATS_CRASH_WINDOW_MS / 1000} s, stopping the worker`);
+      this.onFatal?.('nats server keeps crashing');
+      return;
+    }
+
+    const delay = WORKER_NATS_RESTART_MS[Math.min(this.serverCrashes.length - 1, WORKER_NATS_RESTART_MS.length - 1)];
+    this.logger.warn(`Nats server exited unexpectedly, restarting in ${delay} ms`);
+    clearTimeout(this.serverRestartTimer);
+    this.serverRestartTimer = setTimeout(() => {
+      if (isShuttingDown() || this.manuallyKilled) {
+        return;
+      }
+      this.leaf.reset();
+      this.setStatus(RUNTIME_STATUS.STARTING);
+      this.configServer()
+        .then(() => this.setStatus(RUNTIME_STATUS.STARTED))
+        .catch((error) => this.logger.error(`Nats server did not come back: ${error.message}`));
+    }, delay);
   }
 
   private handleCloseCluster(configFile: string): void {

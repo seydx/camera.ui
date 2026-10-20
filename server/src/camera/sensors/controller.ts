@@ -33,6 +33,8 @@ export class SensorController {
   public async init(): Promise<void> {
     const writeNs = NamespaceManager.sensorCameraViewNamespaces(this.cameraController.id);
     const writeUnsub = await this.proxy.subscribe<SensorWriteMessage>(writeNs.sensorWriteSubject, (msg) => {
+      // a decoder that lost its binding can still write briefly, one without an id is from an old host
+      if (!msg.instanceId || msg.instanceId !== this.frameWorker.boundInstance) return;
       this.registry.getSensor(msg.sensorId)?.applyWriteBatch(msg.properties);
     });
     this.disposables.push(writeUnsub);

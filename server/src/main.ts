@@ -11,273 +11,20 @@ import { container } from 'tsyringe';
 
 import { CameraUiAPI } from './api.js';
 import { Database } from './api/database/index.js';
-import { Server } from './api/index.js';
-import { BackupSchedulerService } from './api/services/backupScheduler.service.js';
-import { CertificateGeneration } from './api/utils/cert.js';
-import { AssistantManager } from './assistant/manager.js';
-import { AutomationEngine } from './automations/engine.js';
-import { setupNodeAvLog } from './camera/streaming/node-av-log.js';
-import { Go2RtcApi } from './go2rtc/api/index.js';
-import { Go2Rtc } from './go2rtc/index.js';
-import { Go2RtcState } from './go2rtc/state.js';
-import { InternalEventBus } from './internal-bus.js';
-import { MqttManager } from './mqtt/manager.js';
-import { PluginManager } from './plugins/index.js';
-import { CloudApi } from './remote/api/index.js';
-import { RemoteAccessManager } from './remote/index.js';
-import { TunnelClient } from './remote/tunnel/client.js';
+import { tryInject } from './container.js';
 import { ProxyServer } from './rpc/index.js';
-import { SensorRegistry } from './sensors/registry.js';
 import { ConfigService } from './services/config/index.js';
 import { LoggerService } from './services/logger/index.js';
 import { markShuttingDown, resetShuttingDown } from './shutdown-state.js';
-import { paint } from './utils/colors.js';
-import { REPORT_DIR, WITH_REPORTS } from './utils/crash.js';
 import { acquireInstanceLock } from './utils/instance-lock.js';
 import { FatalBootError, initAppUpdateListener, reportStartError, requestServerUpdate, sendIPCMessage } from './utils/ipc.js';
 import { killProcesses } from './utils/process.js';
 import { WorkerAgent } from './workers/agent.js';
-import { WorkerManager } from './workers/manager.js';
 import { ensureWorkerPaired } from './workers/pairing.js';
 
-const MASTER_LINK_TIMEOUT_MS = 15_000;
+import type { CameraUi } from './master.js';
 
-class CameraUi {
-  public readonly logger: LoggerService;
-
-  private api: CameraUiAPI;
-  private database: Database;
-  private configService: ConfigService;
-  private remoteAccessManager: RemoteAccessManager;
-  private pluginManager: PluginManager;
-  private go2rtc: Go2Rtc;
-  private go2rtcApi: Go2RtcApi;
-  private go2rtcState: Go2RtcState;
-  private tunnelClient: TunnelClient;
-  private server: Server;
-  private cloudApi: CloudApi;
-  private proxy: ProxyServer;
-  private automationEngine: AutomationEngine;
-  private workerManager: WorkerManager;
-  private backupScheduler: BackupSchedulerService;
-  private mqttManager: MqttManager;
-  private assistantManager: AssistantManager;
-  private sensorRegistry?: SensorRegistry;
-  private signalHandler: SignalHandler;
-
-  private homePath: string | undefined;
-
-  public status: 'loading' | 'ready' = 'loading';
-
-  public get port(): number {
-    return this.configService.config.port;
-  }
-
-  constructor() {
-    container.registerInstance('cameraui', this);
-
-    this.logger = new LoggerService();
-
-    this.signalHandler = new SignalHandler({
-      displayName: '[Signal]',
-      timeoutDuration: 5000,
-      logger: this.logger,
-      reportErrors: WITH_REPORTS,
-      reportDirectory: REPORT_DIR,
-      closeFunction: this.close.bind(this),
-    });
-
-    this.homePath = process.argv[2];
-
-    this.configService = new ConfigService(this.homePath, { applyPendingRestore: true });
-    reapTrackedProcessesOnExit(this.configService);
-
-    const logLevel = this.configService.config.logger?.level === 'debug' ? 'debug' : this.configService.config.logger?.level === 'trace' ? 'trace' : 'log';
-    this.logger.initLogManager(this.configService.LOGS_PATH, this.configService.LOG_FILE, logLevel);
-
-    setupNodeAvLog(this.logger);
-
-    new InternalEventBus();
-    this.api = new CameraUiAPI();
-    this.database = new Database();
-    this.go2rtc = new Go2Rtc();
-    this.go2rtcApi = new Go2RtcApi();
-    this.go2rtcState = new Go2RtcState();
-    this.pluginManager = new PluginManager();
-    this.proxy = new ProxyServer();
-    this.cloudApi = new CloudApi();
-    this.remoteAccessManager = new RemoteAccessManager();
-    this.tunnelClient = new TunnelClient();
-    this.server = new Server();
-    this.automationEngine = new AutomationEngine();
-    this.workerManager = new WorkerManager();
-    this.backupScheduler = new BackupSchedulerService();
-    this.mqttManager = new MqttManager();
-    this.assistantManager = new AssistantManager();
-  }
-
-  public async start(): Promise<void> {
-    resetShuttingDown();
-
-    CertificateGeneration.generateCert();
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Initializing database...',
-    });
-
-    await this.database.initialize();
-
-    this.configService.reissueSslCertificate();
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Initializing camera engine...',
-    });
-
-    await this.go2rtc.start();
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Initializing proxy...',
-    });
-
-    await this.proxy.initialize();
-    await this.workerManager.start();
-
-    // hydrate sensor entities before MQTT, plugins and cameras come up
-    this.sensorRegistry = new SensorRegistry(this.proxy.proxy, this.logger);
-    await this.sensorRegistry.init();
-
-    this.logger.log('---');
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Starting server...',
-    });
-
-    await this.server.register();
-    await this.server.listen();
-    this.remoteAccessManager.start().catch(() => {});
-    await this.tunnelClient.start();
-    await this.mqttManager.start();
-
-    this.logger.log('---');
-
-    this.setStatus('loading');
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Initializing plugins...',
-    });
-
-    await this.pluginManager.initializePlugins();
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Configuring cameras...',
-    });
-
-    await this.api.configureCameras();
-
-    this.initializePlugins();
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Starting automation engine...',
-    });
-
-    await this.automationEngine?.start();
-    this.backupScheduler.start();
-    await this.assistantManager.start();
-
-    // Emit system:started AFTER engine is ready so flows can catch it
-    const bus = container.resolve<InternalEventBus>('internalBus');
-    bus.emitEvent('system:started', {});
-  }
-
-  public async close(): Promise<void> {
-    markShuttingDown();
-
-    sendIPCMessage({ type: 'STOPPING' });
-
-    try {
-      const bus = container.resolve<InternalEventBus>('internalBus');
-      bus.emitEvent('system:shutdown', {});
-    } catch {
-      // ignore
-    }
-
-    this.automationEngine?.stop();
-    this.backupScheduler?.stop();
-    await this.assistantManager?.stop().catch(() => {});
-    await this.mqttManager?.stop().catch(() => {});
-    await this.workerManager?.stop().catch(() => {});
-
-    if (this.server.isRunning) {
-      await this.server.close().catch(() => {});
-    } else {
-      await Promise.allSettled([this.server.close(), this.go2rtc.stop(), this.tunnelClient.stop()]);
-    }
-
-    await Promise.allSettled(Array.from(this.pluginManager.plugins).map(([, plugin]) => plugin.worker.teardown(true)));
-
-    await this.sensorRegistry?.destroy().catch(() => {});
-    this.sensorRegistry = undefined;
-
-    await sleep(500);
-
-    const processes = this.configService.processes;
-    await killProcesses(
-      processes.map((process) => process.pid),
-      { silent: true },
-    );
-
-    await Promise.allSettled([this.proxy.close()]);
-
-    await this.database?.close().catch(() => {});
-
-    this.logger.log('camera.ui has been stopped');
-  }
-
-  public async restart(): Promise<void> {
-    this.logger.log('Restarting camera.ui...');
-
-    if (IS_ELECTRON) {
-      process.kill(process.pid, 'SIGTERM');
-      return;
-    }
-
-    await this.close();
-    await this.start();
-  }
-
-  public async requestUpdate(version?: string): Promise<AsyncGenerator<string, void, unknown>> {
-    return requestServerUpdate(version);
-  }
-
-  private async initializePlugins(): Promise<void> {
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'Starting plugins...',
-    });
-
-    await this.pluginManager.initializeInstalledPlugins();
-    this.setStatus('ready');
-
-    sendIPCMessage({
-      type: 'START_OUTPUT',
-      message: 'All plugins initialized',
-    });
-
-    this.logger.log(paint('green', 'All plugins initialized'));
-  }
-
-  private setStatus(status: 'loading' | 'ready'): void {
-    this.status = status;
-    this.server.app?.io.of('/camera.ui').emit('status', status);
-  }
-}
+const BOOT_ID = randomBytes(4).toString('hex');
 
 class CameraUiWorker {
   public readonly logger: LoggerService;
@@ -328,18 +75,19 @@ class CameraUiWorker {
     // credentials this obtains/stores.
     await ensureWorkerPaired(this.configService, this.logger);
 
+    // no go2rtc and no HTTP server in worker mode
+    this.proxy = new ProxyServer({ workerMode: true, masterLink: pairing.state === 'paired' });
     await this.proxy.initialize();
+    this.proxy.server.onFatal = () => this.owner.crash();
 
-    this.agent = new WorkerAgent();
+    this.agent = new WorkerAgent((reason) => this.owner.shutdown(reason), pairing);
     await this.agent.start();
-
-    await this.reportMasterLink();
   }
 
   public async close(): Promise<void> {
     markShuttingDown();
 
-    await this.agent?.close();
+    await this.agent?.close(this.owner.reason);
     await this.proxy?.close();
     await this.database?.close();
 
@@ -422,6 +170,7 @@ async function launch(): Promise<void> {
 
   let cameraui: CameraUi | undefined;
   try {
+    const { CameraUi } = await import('./master.js');
     cameraui = new CameraUi();
     await cameraui.start();
     sendIPCMessage({ type: 'STARTED', port: cameraui.port });
@@ -439,5 +188,3 @@ launch().catch((error) => {
   console.error('Failed to start camera.ui:', error);
   process.exit(1);
 });
-
-export type { CameraUi };

@@ -27,7 +27,7 @@ from plugins.runtime.python.proxy.sensor import (
 if TYPE_CHECKING:
     from _camera_ui_tools.camera_ui_common import LoggerService
     from _camera_ui_tools.camera_ui_rpc import CloseHandler, RPCClient
-    from _camera_ui_tools.camera_ui_sdk.internal import SensorSourcePatch
+    from _camera_ui_tools.camera_ui_sdk.internal import SensorJSON, SensorSourcePatch
     from plugins.runtime.python.storage_controller import StorageController
     from plugins.runtime.python.typings import (
         PluginInfo,
@@ -242,17 +242,11 @@ class SensorManagerProxy:
         sensor._setPluginId(plugin_id)  # pyright: ignore[reportPrivateUsage]
         sensor._setId(record_id)  # pyright: ignore[reportPrivateUsage]
 
-        sensor_json = sensor.toJSON()
-        sensor_json["requiresFrames"] = getattr(sensor, "_requires_frames", False) is True
-
         storage = self._storage_controller.createSensorStorage(plugin_id, sensor.id, sensor.storage_schema)
         await storage.register_storage()
         sensor._setStorage(storage)  # pyright: ignore[reportPrivateUsage]
 
-        model_spec = getattr(sensor, "modelSpec", None)
-        if model_spec:
-            sensor_json["modelSpec"] = model_spec
-
+        sensor_json = self._registration_json(sensor)
         registration = await self._registry_proxy.registerSensor(sensor_json, plugin_id)
         sensor._setAssignedCameras(registration["assignedCameraIds"])  # pyright: ignore[reportPrivateUsage]
 
@@ -288,6 +282,24 @@ class SensorManagerProxy:
         self._cleanups[sensor.id] = cleanup
 
         sensor._setActive(True)  # pyright: ignore[reportPrivateUsage]
+
+    async def reattach(self) -> None:
+        # re-registering carries the current values, camera sensors included
+        self._unsent.clear()
+        for sensor in list(self._owned.values()):
+            registration = await self._registry_proxy.registerSensor(
+                self._registration_json(sensor), self._plugin["id"]
+            )
+            sensor._setAssignedCameras(registration["assignedCameraIds"])  # pyright: ignore[reportPrivateUsage]
+        await self._resync_all_consumed()
+
+    def _registration_json(self, sensor: Sensor[Any, Any, Any]) -> SensorJSON:
+        sensor_json = sensor.toJSON()
+        sensor_json["requiresFrames"] = sensor._requires_frames is True  # pyright: ignore[reportPrivateUsage]
+        model_spec = getattr(sensor, "modelSpec", None)
+        if model_spec:
+            sensor_json["modelSpec"] = model_spec
+        return sensor_json
 
     async def _ensure_global_subscription(self) -> None:
         if self._global_unsubscribe is not None:

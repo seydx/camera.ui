@@ -251,7 +251,15 @@ export class ConfigService {
     this._ssl = this.readSSL();
   }
 
-  public refreshHostCertificate(): void {
+  public readWorkerConfig(): IConfig['worker'] {
+    try {
+      return this.readConfig().worker;
+    } catch {
+      return this._config.worker;
+    }
+  }
+
+  public refreshHostCertificate(newRoot = false): void {
     removeSync(this.HOST_CERT_FILE);
     removeSync(this.HOST_KEY_FILE);
     this._ssl = this.readSSL();

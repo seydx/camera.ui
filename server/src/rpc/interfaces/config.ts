@@ -85,4 +85,6 @@ export interface NatsConfig {
   disable_sublist_cache?: boolean;
   no_fast_producer_stall?: boolean;
   write_deadline?: string;
+  ping_interval?: string;
+  ping_max?: number;
 }

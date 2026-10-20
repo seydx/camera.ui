@@ -43,7 +43,18 @@ export const DETECT_TIMEOUT_MS = 30_000;
 
 export interface WorkerToMainMessage {
   message: 'started';
-  data: Record<string, any>;
+  data: { instanceId?: string; handshake?: number; resume?: boolean };
+  instanceId?: string;
+}
+
+export interface MainToWorkerMessage {
+  message: 'resume';
+  data: { runId: string; instanceId?: string };
+}
+
+export interface InitializeResult {
+  instanceId?: string;
+  reused: boolean;
 }
 
 export interface ObjectBenchmarkResult {

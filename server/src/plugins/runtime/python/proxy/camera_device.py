@@ -71,7 +71,7 @@ from plugins.runtime.python.typings import (
 )
 
 if TYPE_CHECKING:
-    from _camera_ui_tools.camera_ui_sdk.internal import SensorSourcePatch
+    from _camera_ui_tools.camera_ui_sdk.internal import SensorJSON, SensorSourcePatch
     from plugins.runtime.python.proxy.sensor_manager import SensorManagerProxy
     from plugins.runtime.python.storage_controller import StorageController
 
@@ -163,6 +163,7 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
 
         self._owned_sensors: dict[str, tuple[Sensor[Any, Any, Any], SensorType]] = {}
         self._sensor_cleanup_functions: dict[str, CloseHandler] = {}
+        self._connect_wanted = False
 
         self._impl_cleanup_function: CloseHandler | None = None
 
@@ -349,13 +350,26 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         if not self.pluginInfo or self.pluginInfo["id"] != self._plugin["id"]:
             return
 
+        self._connect_wanted = True
         await self._camera_controller_proxy.connect()
 
     async def disconnect(self) -> None:
         if not self.pluginInfo or self.pluginInfo["id"] != self._plugin["id"]:
             return
 
+        self._connect_wanted = False
         await self._camera_controller_proxy.disconnect()
+
+    async def reattach(self) -> None:
+        plugin_id = self._plugin["id"]
+        for sensor, _ in list(self._owned_sensors.values()):
+            registration = await self._sensor_registry_proxy.registerSensor(
+                self._registration_json(sensor), plugin_id, {"assignCameraId": self.id}
+            )
+            sensor._setAssignedCameras(registration["assignedCameraIds"])  # pyright: ignore[reportPrivateUsage]
+        if self._connect_wanted:
+            await self._camera_controller_proxy.connect()
+        await self._refresh_states()
 
     def onPropertyChange(
         self, property: CameraPublicProperties | list[CameraPublicProperties]
@@ -404,28 +418,17 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         plugin_id = self._plugin["id"]
         sensor._setPluginId(plugin_id)  # pyright: ignore[reportPrivateUsage]
 
-        sensor_json = sensor.toJSON()
-        sensor_json["requiresFrames"] = getattr(sensor, "_requires_frames", False) is True
-        # derived nativeId keeps per-camera instances of same-named sensors distinct
-        if not sensor_json.get("nativeId"):
-            sensor_json["nativeId"] = f"{self.id}:{sensor.type}:{sensor.name}"
-
-        # resolve the durable id first and wire storage with it, so registration
-        # data (modelSpec) can read sensor storage
+        # resolve the id and wire storage first, modelSpec in the registration reads sensor storage
         sensor_id = await self._sensor_registry_proxy.resolveSensor(
-            sensor_json, plugin_id, {"assignCameraId": self.id}
+            self._registration_json(sensor, with_model_spec=False), plugin_id, {"assignCameraId": self.id}
         )
         sensor._setId(sensor_id)  # pyright: ignore[reportPrivateUsage]
-        sensor_json["id"] = sensor_id
 
         storage = self._storage_controller.createSensorStorage(plugin_id, sensor.id, sensor.storage_schema)
         await storage.register_storage()
         sensor._setStorage(storage)  # pyright: ignore[reportPrivateUsage]
 
-        model_spec = getattr(sensor, "modelSpec", None)
-        if model_spec:
-            sensor_json["modelSpec"] = model_spec
-
+        sensor_json = self._registration_json(sensor)
         registration = await self._sensor_registry_proxy.registerSensor(
             sensor_json, plugin_id, {"assignCameraId": self.id}
         )
@@ -604,6 +607,19 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         self._detection_wire = None
         if close:
             self._tasks.add(close())
+
+    def _registration_json(
+        self, sensor: Sensor[Any, Any, Any], *, with_model_spec: bool = True
+    ) -> SensorJSON:
+        sensor_json = sensor.toJSON()
+        sensor_json["requiresFrames"] = sensor._requires_frames is True  # pyright: ignore[reportPrivateUsage]
+        # derived nativeId keeps per-camera instances of same-named sensors distinct
+        if not sensor_json.get("nativeId"):
+            sensor_json["nativeId"] = f"{self.id}:{sensor.type}:{sensor.name}"
+        model_spec = getattr(sensor, "modelSpec", None) if with_model_spec else None
+        if model_spec:
+            sensor_json["modelSpec"] = model_spec
+        return sensor_json
 
     async def _refresh_states(self) -> None:
         response = await self._camera_controller_proxy.refreshStates()

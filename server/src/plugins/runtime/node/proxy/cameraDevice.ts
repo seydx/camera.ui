@@ -30,7 +30,7 @@ import type {
   SensorType,
   SnapshotUrlOptions,
 } from '@camera.ui/sdk';
-import type { DetectionEventMessage } from '@camera.ui/sdk/internal';
+import type { DetectionEventMessage, SensorJSON } from '@camera.ui/sdk/internal';
 import type { DetectionCoordinatorInterface } from '../../../../rpc/interfaces/detection.js';
 import type { CameraDeviceInterface, CameraDeviceListenerMessagePayload, RefreshedStates } from '../../../../rpc/interfaces/device.js';
 import type { SensorRegistryInterface } from '../../../../rpc/interfaces/sensor.js';
@@ -53,6 +53,7 @@ export class CameraDeviceProxy extends CameraDevice {
   #detectionWire?: Promise<(() => void) | undefined>;
   #detectionSubscriberCount = 0;
   #ownedSensors = new Map<string, { sensor: Sensor<any>; type: SensorType }>();
+  #connectWanted = false;
   #sensorCleanupFunctions = new Map<string, () => Promise<void>>();
   #implCleanupFunction?: () => Promise<void>;
 
@@ -169,6 +170,7 @@ export class CameraDeviceProxy extends CameraDevice {
       return;
     }
 
+    this.#connectWanted = true;
     return this.#cameraControllerProxy.connect();
   }
 
@@ -177,6 +179,7 @@ export class CameraDeviceProxy extends CameraDevice {
       return;
     }
 
+    this.#connectWanted = false;
     return this.#cameraControllerProxy.disconnect();
   }
 
@@ -238,25 +241,21 @@ export class CameraDeviceProxy extends CameraDevice {
   public async _refreshStates(): Promise<void> {
     const response: RefreshedStates = await this.#cameraControllerProxy.refreshStates();
 
-    // a resync must not wake subscribers for state they already hold
-    if (!isEqual(this.cameraSubject.getValue(), response.camera)) {
-      super.updateCamera(response.camera);
+  public async _reattach(): Promise<void> {
+    for (const { sensor } of [...this.#ownedSensors.values()]) {
+      const registration = await this.#sensorRegistryProxy.registerSensor(this.#registrationJson(sensor, true), this.#plugin.id, { assignCameraId: this.id });
+      sensor._setAssignedCameras(registration.assignedCameraIds);
     }
-    if (this.cameraState.getValue() !== response.cameraState) {
-      super.updateCameraState(response.cameraState);
+    if (this.#connectWanted) {
+      await this.#cameraControllerProxy.connect();
     }
-    if (this.frameWorkerState.getValue() !== response.frameWorkerState) {
-      super.updateFrameWorkerState(response.frameWorkerState);
-    }
+    await this._refreshStates();
   }
 
   async #addSensor<T extends object>(sensor: Sensor<T>): Promise<void> {
     sensor._setPluginId(this.#plugin.id);
 
-    const sensorJSON = sensor.toJSON();
-    sensorJSON.requiresFrames = sensor._requiresFrames === true;
-    // derived nativeId keeps per-camera instances of same-named sensors distinct
-    sensorJSON.nativeId ??= `${this.id}:${sensor.type}:${sensor.name}`;
+    const sensorJSON = this.#registrationJson(sensor, false);
 
     // resolve the durable id first and wire storage with it, so registration
     // data (modelSpec) can read sensor storage
@@ -343,6 +342,18 @@ export class CameraDeviceProxy extends CameraDevice {
     });
 
     sensor._setActive(true);
+  }
+
+  #registrationJson(sensor: Sensor<any>, withModelSpec: boolean): SensorJSON {
+    const sensorJSON = sensor.toJSON();
+    sensorJSON.requiresFrames = sensor._requiresFrames === true;
+    // derived nativeId keeps per-camera instances of same-named sensors distinct
+    sensorJSON.nativeId ??= `${this.id}:${sensor.type}:${sensor.name}`;
+    const modelSpec: ModelSpec | undefined = withModelSpec ? (sensor as { modelSpec?: ModelSpec }).modelSpec : undefined;
+    if (modelSpec) {
+      sensorJSON.modelSpec = modelSpec;
+    }
+    return sensorJSON;
   }
 
   #ensureDetectionWire(): void {

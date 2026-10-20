@@ -1,96 +1,106 @@
 import { Logger } from '@camera.ui/common/logger';
-import { sleep } from '@camera.ui/common/utils';
 import { fork } from 'node:child_process';
 
 import { nodeDecoderPath } from '../../utils/path.js';
-import { exitInfo } from '../../utils/process-exit.js';
+import { DECODER_STOP_BUDGET_MS, SupervisedChild, supervisedSpawn } from '../../utils/supervised-child.js';
+import { Slots } from '../lifecycle/limits.js';
+import { ManagedWorkload } from '../lifecycle/managed-workload.js';
 import { WorkerCapability } from '../types.js';
+import { stopEach } from './handler.js';
 
 import type { LogEntry } from '@camera.ui/common/logger';
-import type { ChildProcess } from 'node:child_process';
 import type { NATS } from '../../rpc/server.js';
 import type { ConfigService } from '../../services/config/index.js';
-import type { RemoteCameraConfig, WorkerProcessRef } from '../types.js';
-import type { CapabilityHandler } from './handler.js';
+import type { StopReason, WorkloadDriver, WorkloadHooks } from '../lifecycle/managed-workload.js';
+import type { WorkloadMode } from '../lifecycle/workload.js';
+import type { RemoteCameraConfig, WorkerProcessRef, WorkloadLive } from '../types.js';
+import type { CapabilityHandler, HostedStatus } from './handler.js';
 
-interface ManagedCamera {
-  cameraId: string;
-  frameWorkerProcess?: ChildProcess;
+const START_SLOTS = 4;
+
+interface CameraSettings {
   config: RemoteCameraConfig;
-  logBuffer: string;
+  live?: WorkloadLive;
+}
+
+interface HostedCamera {
+  settings: CameraSettings;
+  workload: ManagedWorkload;
 }
 
 export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.FrameDecoding> {
   public readonly capability = WorkerCapability.FrameDecoding;
 
-  private cameras = new Map<string, ManagedCamera>();
-  private restartTimers = new Map<string, NodeJS.Timeout>();
+  private cameras = new Map<string, HostedCamera>();
+  private stopping = new Map<HostedCamera, string>();
+  private slots = new Slots(START_SLOTS);
+  private logManager = inject('logManager');
   private isClosed = false;
 
   constructor(
+    private readonly agentId: string,
     private readonly natsServer: NATS,
     private readonly configService: ConfigService,
     private readonly logger: Logger,
-    private readonly forwardLog?: (entry: LogEntry) => void,
+    private readonly forwardLog: (entry: LogEntry) => void,
+    private readonly mode: () => WorkloadMode,
+    private readonly hooks: WorkloadHooks = {},
   ) {}
 
-  public async start(id: string, spec: RemoteCameraConfig): Promise<void> {
-    this.logger.log(`Starting camera: ${spec.cameraName} (${id})`);
-
-    if (this.cameras.has(id)) {
-      await this.stop(id);
-      await sleep(1000);
-    }
-
-    const managed: ManagedCamera = {
-      cameraId: id,
-      config: spec,
-      logBuffer: '',
-    };
-
-    this.cameras.set(id, managed);
-
-    try {
-      managed.frameWorkerProcess = this.forkFrameWorker(spec);
-    } catch (error: any) {
-      this.logger.error(`Failed to fork FrameWorker for ${spec.cameraName}:`, error);
-      await this.stop(id);
-      throw error;
-    }
-  }
-
-  public async stop(id: string): Promise<void> {
-    const managed = this.cameras.get(id);
-    if (!managed) {
+  public async start(id: string, spec: RemoteCameraConfig, live?: WorkloadLive): Promise<void> {
+    await this.stop(id);
+    if (this.isClosed) {
       return;
     }
 
-    this.logger.log(`Stopping camera: ${managed.config.cameraName} (${id})`);
+    const settings: CameraSettings = { config: spec, live };
+    this.logger.log(`Starting camera: ${cameraName(settings)} (${id})`);
 
-    this.cameras.delete(id);
+    const workload = new ManagedWorkload(this.driver(settings), this.logger, this.mode, this.hooks);
+    this.cameras.set(id, { settings, workload });
+    workload.start();
+  }
 
-    const restartTimer = this.restartTimers.get(id);
-    if (restartTimer) {
-      clearTimeout(restartTimer);
-      this.restartTimers.delete(id);
+  public async stop(id: string, reason?: StopReason, budgetMs?: number): Promise<HostedStatus | undefined> {
+    const hosted = this.cameras.get(id);
+    if (!hosted) {
+      return undefined;
     }
 
-    if (managed.frameWorkerProcess) {
-      await this.killProcess(managed.frameWorkerProcess);
-      managed.frameWorkerProcess = undefined;
+    this.logger.log(`Stopping camera: ${cameraName(hosted.settings)} (${id})`);
+    this.cameras.delete(id);
+    this.stopping.set(hosted, id);
+    try {
+      await hosted.workload.stop(reason, budgetMs);
+    } finally {
+      this.stopping.delete(hosted);
+    }
+    this.hooks.onChange?.();
+    return hosted.workload.status;
+  }
+
+  public async stopAll(reason?: StopReason, budgetMs?: number): Promise<Map<string, HostedStatus>> {
+    return stopEach(this.cameras.keys(), (id) => this.stop(id, reason, budgetMs));
+  }
+
+  public async close(): Promise<void> {
+    this.isClosed = true;
+    await this.stopAll();
+  }
+
+  public stillDesired(id: string): void {
+    this.cameras.get(id)?.workload.stillDesired();
+  }
+
+  public setLive(id: string, live: WorkloadLive | undefined): void {
+    const hosted = this.cameras.get(id);
+    if (hosted) {
+      hosted.settings.live = live;
     }
   }
 
-  public async stopAll(): Promise<void> {
-    this.isClosed = true;
-
-    for (const timer of this.restartTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.restartTimers.clear();
-
-    const stopPromises = Array.from(this.cameras.keys()).map((id) => this.stop(id));
-    await Promise.allSettled(stopPromises);
+  public status(id: string): HostedStatus | undefined {
+    return this.cameras.get(id)?.workload.status;
   }
 
   public getActiveWorkIds(): string[] {
@@ -99,8 +109,8 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
 
   public getActiveProcesses(): WorkerProcessRef[] {
     const refs: WorkerProcessRef[] = [];
-    for (const [id, managed] of this.cameras) {
-      const pid = managed.frameWorkerProcess?.pid;
+    for (const [id, hosted] of [...this.cameras, ...Array.from(this.stopping, ([stopping, stoppingId]) => [stoppingId, stopping] as const)]) {
+      const pid = hosted.workload.pid;
       if (pid) {
         refs.push({ capability: this.capability, id, pid });
       }
@@ -108,23 +118,27 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
     return refs;
   }
 
-  private forkFrameWorker(config: RemoteCameraConfig): ChildProcess {
-    const proxyAuth = this.natsServer.localAuth;
-    const processName = `camera.ui - Frame Worker [${config.cameraName}] (remote)`;
-
-    const env: Record<string, string> = {
-      CAMERA_ID: config.cameraId,
-      CAMERA_NAME: config.cameraName,
-      PROXY_USER: proxyAuth.user,
-      PROXY_PASSWORD: proxyAuth.password,
-      PROXY_ENDPOINTS: this.natsServer.endpoints.join(','),
-      PROXY_CERT: this.configService.ssl.cert.toString('utf-8'),
-      PROXY_KEY: this.configService.ssl.key.toString('utf-8'),
-      PROXY_CA: this.configService.ssl.ca.toString('utf-8'),
-      LOGGER_LEVEL: config.loggerLevel,
+  private driver(settings: CameraSettings): WorkloadDriver {
+    return {
+      get label() {
+        return `Camera ${cameraName(settings)}`;
+      },
+      provisions: false,
+      provision: async () => {},
+      spawn: (signal, instanceId) =>
+        this.slots.run(signal, async () => {
+          signal.throwIfAborted();
+          const child = this.forkFrameWorker(settings, instanceId);
+          await new Promise<void>((resolve, reject) => {
+            child.child.once('spawn', resolve);
+            child.child.once('error', reject);
+          });
+          this.logger.log(`FrameWorker for ${cameraName(settings)} started with PID: ${child.pid}`);
+          return child;
+        }),
     };
 
-    this.logger.debug(`Forking FrameWorker for ${config.cameraName}`);
+    this.logger.debug(`Forking FrameWorker for ${name}`);
 
     const child = fork(nodeDecoderPath, [processName], {
       env: { ...process.env, ...env },
@@ -145,110 +159,23 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
     });
 
     child.on('error', (error) => {
-      this.logger.error(`FrameWorker for ${config.cameraName} reported an error!`, error);
+      this.logger.error(`FrameWorker for ${name} reported an error!`, error);
     });
-
-    child.once('exit', (code, signal) => {
-      const details = exitInfo(code, signal, { pid: child.pid });
-      const intentional = this.isClosed || !this.cameras.has(config.cameraId);
-
-      if (intentional) {
-        this.logger.log(`FrameWorker for ${config.cameraName} exited (${details})`);
-      } else {
-        this.logger.error(`FrameWorker for ${config.cameraName} exited unexpectedly (${details})`);
-      }
-
-      this.configService.removeProcessByPID(child.pid);
-
-      const managed = this.cameras.get(config.cameraId);
-      if (managed) {
-        managed.frameWorkerProcess = undefined;
-      }
-
-      this.attemptRestart(config);
-    });
-
-    child.stdout?.on('data', (data: Buffer) => {
-      this.handleChildOutput(data, config, child.pid);
-    });
-    child.stderr?.on('data', (data: Buffer) => {
-      this.handleChildOutput(data, config, child.pid);
-    });
-
-    return child;
-  }
-
-  private async killProcess(child: ChildProcess): Promise<void> {
-    return new Promise((resolve) => {
-      if (!child.connected && child.exitCode !== null) {
-        resolve();
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        child.kill('SIGKILL');
-        resolve();
-      }, 3000);
-
-      child.once('exit', () => {
-        clearTimeout(timeout);
-        resolve();
+    for (const stream of [child.stdout, child.stderr]) {
+      let buffer = '';
+      stream?.on('data', (data: Buffer) => {
+        buffer += data.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          this.processLogLine(line, settings.config.cameraId, child.pid);
+        }
       });
-
-      child.kill('SIGTERM');
-    });
-  }
-
-  private attemptRestart(config: RemoteCameraConfig): void {
-    if (this.isClosed) {
-      return;
-    }
-
-    const managed = this.cameras.get(config.cameraId);
-    if (!managed) {
-      return;
-    }
-
-    const existingTimer = this.restartTimers.get(config.cameraId);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    this.logger.log(`Scheduling FrameWorker restart for ${config.cameraName} in 5s`);
-
-    const timer = setTimeout(async () => {
-      this.restartTimers.delete(config.cameraId);
-
-      if (this.isClosed) {
-        return;
-      }
-
-      const current = this.cameras.get(config.cameraId);
-      if (!current) {
-        return;
-      }
-
-      if (current.frameWorkerProcess) {
-        return;
-      }
-
-      try {
-        this.logger.log(`Restarting FrameWorker for ${config.cameraName}`);
-        current.frameWorkerProcess = this.forkFrameWorker(config);
-      } catch (error: any) {
-        this.logger.error(`Failed to restart FrameWorker for ${config.cameraName}:`, error);
-        // Remove camera so heartbeat reflects reality
-        this.cameras.delete(config.cameraId);
-      }
-    }, 5000);
-
-    this.restartTimers.set(config.cameraId, timer);
-  }
-
-  private handleChildOutput(data: Buffer, config: RemoteCameraConfig, pid?: number): void {
-    const managed = this.cameras.get(config.cameraId);
-    if (!managed) {
-      return;
+      // the last line before a crash usually has no newline
+      stream?.once('end', () => {
+        this.processLogLine(buffer, settings.config.cameraId, child.pid);
+        buffer = '';
+      });
     }
 
     managed.logBuffer += data.toString();
@@ -261,25 +188,28 @@ export class FrameDecodingHandler implements CapabilityHandler<WorkerCapability.
     }
   }
 
-  private processLogLine(line: string, config: RemoteCameraConfig, pid?: number): void {
+  private processLogLine(line: string, cameraId: string, pid?: number): void {
     const trimmed = line.trim();
     if (!trimmed || trimmed.includes('returning true from eof_received')) {
       return;
     }
-
-    this.logger.trace(`[${config.cameraName}] ${trimmed}`);
 
     const entry: LogEntry = Logger.parseChildLog(trimmed) ?? {
       timestamp: Date.now(),
       level: 'raw',
       prefix: '',
       message: trimmed,
-      targetId: config.cameraId,
+      targetId: cameraId,
       targetType: 'camera',
       source: 'child',
       processId: pid,
     };
 
-    this.forwardLog?.(entry);
+    this.logManager.handleChildLog(entry);
+    this.forwardLog(entry);
   }
+}
+
+function cameraName(settings: CameraSettings): string {
+  return settings.live?.cameraName ?? settings.config.cameraName ?? settings.config.cameraId;
 }

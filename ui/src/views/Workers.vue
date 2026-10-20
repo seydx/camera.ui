@@ -169,6 +169,23 @@
             <div class="flex flex-col gap-6">
               <span class="text-sm">{{ $t('views.workers.pair_worker_description') }}</span>
 
+              <div v-if="workers.length" class="flex flex-col field-gap">
+                <label for="pairing-replaces" class="cui-label">{{ $t('views.workers.replaces') }}</label>
+                <Select
+                  v-model="replacesDraft"
+                  input-id="pairing-replaces"
+                  :options="replaceOptions"
+                  option-label="label"
+                  option-value="value"
+                  :placeholder="$t('views.workers.replaces_none')"
+                  class="w-full"
+                  show-clear
+                />
+                <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
+                  {{ $t('views.workers.replaces_hint') }}
+                </Message>
+              </div>
+
               <template v-if="pairing">
                 <div class="flex flex-col field-gap">
                   <label class="cui-label">{{ $t('views.workers.pairing_code') }}</label>
@@ -289,6 +306,7 @@ const workersUpdating = ref<string[]>([]);
 const assigningCameraIds = ref(new Set<string>());
 const assigningPluginNames = ref(new Set<string>());
 const pairing = ref<WorkerPairingResponse | null>(null);
+const replacesDraft = ref<string | null>(null);
 const addressDraft = ref('');
 const portDraft = ref(7422);
 
@@ -308,6 +326,8 @@ const pairingMinutesLeft = computed(() => {
   if (!pairing.value) return 0;
   return Math.max(0, Math.round((pairing.value.expiresAt - Date.now()) / 60_000));
 });
+
+const replaceOptions = computed(() => workers.value.map((worker) => ({ label: worker.name, value: worker.agentId })));
 
 const pairingSnippet = computed(() => {
   if (!pairing.value) return '';
@@ -665,7 +685,7 @@ async function handleAssignment(camera: DBCamera, agentId: string | null) {
 
 async function handleCreatePairing() {
   try {
-    pairing.value = await createPairing();
+    pairing.value = await createPairing(replacesDraft.value ?? undefined);
   } catch {
     // surfaced via the spinner clearing
   }

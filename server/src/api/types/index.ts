@@ -1141,6 +1141,10 @@ export interface WorkerUnassignRequest {
   Body: { cameraId: string };
 }
 
+export interface WorkerPairingCreateRequest {
+  Body?: { replaces?: string };
+}
+
 export interface WorkerPairRequest {
   Body: { code: string; agentId: string; name: string };
 }

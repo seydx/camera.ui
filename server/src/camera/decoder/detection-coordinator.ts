@@ -57,6 +57,7 @@ import type {
   ZoneLabel,
 } from '@camera.ui/sdk';
 import type { Frame } from 'node-av/lib';
+import type { ProcessSession } from '../../plugins/types.js';
 import type { CoordinatorSensorInfo, DetectionPluginInterface, DetectionResults, TrainingSuggestion } from '../../rpc/interfaces/detection.js';
 import type { CameraDeviceInterface } from '../../rpc/interfaces/device.js';
 import type { SensorWriteMessage } from '../../rpc/interfaces/sensor.js';
@@ -94,6 +95,7 @@ export interface DetectionCoordinatorConfig {
   interfaceSettings: CameraUiSettings;
   nvrRpc?: string;
   streamHot?: boolean;
+  session?: ProcessSession;
 }
 
 interface PluginFrame {
@@ -401,6 +403,16 @@ export class DetectionCoordinator {
     this.frameSource.takeDecodeStats();
     this.thumbnailer.takeHqDecodeStats();
     this.perf.reset();
+  }
+
+  public forgetSensorWrites(): void {
+    this.emptyWrittenAt.clear();
+  }
+
+  public reconnectSources(): void {
+    this.frameSource.retryNow();
+    this.audioLoop.retryNow();
+    this.thumbnailer.retryNow();
   }
 
   private collectDecodeStats(): void {

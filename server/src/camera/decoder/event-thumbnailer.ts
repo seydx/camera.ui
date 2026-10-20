@@ -71,6 +71,10 @@ export class EventThumbnailer {
     }
   }
 
+  public retryNow(): void {
+    this.hqSource?.retryNow();
+  }
+
   public async stop(): Promise<void> {
     await this.hqSource?.stop();
   }

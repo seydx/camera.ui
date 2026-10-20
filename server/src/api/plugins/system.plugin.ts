@@ -3,7 +3,7 @@ import { container } from 'tsyringe';
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { Go2Rtc } from '../../go2rtc/index.js';
-import type { CameraUi } from '../../main.js';
+import type { CameraUi } from '../../master.js';
 
 declare module 'fastify' {
   interface FastifyInstance {

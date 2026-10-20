@@ -46,12 +46,14 @@ export class ProxyServer {
   private initialized = false;
   private leafAuthQueue: Promise<void> = Promise.resolve();
   private readonly workerMode: boolean;
+  private readonly masterLink: boolean;
 
-  constructor(options?: { workerMode?: boolean }) {
-    container.registerInstance('proxy', this);
+  constructor(options?: { workerMode?: boolean; masterLink?: boolean }) {
+    provide('proxy', this);
 
     this.workerMode = options?.workerMode ?? false;
-    this.logger = container.resolve<LoggerService>('logger');
+    this.masterLink = options?.masterLink ?? true;
+    this.logger = inject('logger');
 
     if (this.workerMode) {
       const configService = container.resolve<ConfigService>('configService');
@@ -97,8 +99,9 @@ export class ProxyServer {
 
     if (this.workerMode) {
       const connection = new WorkersService().getWorkerConnection();
-      if (!connection) {
-        throw new Error('Worker is not paired with a master — configure worker.pairingCode and restart');
+      if (!connection || !this.masterLink) {
+        this.server.setLeafNodeRemotes([]);
+        return;
       }
 
       const caFile = join(configService.STORAGE_PATH, 'worker-master-ca.crt');
@@ -110,6 +113,7 @@ export class ProxyServer {
         {
           url: `tls://${encodedUser}:${encodedSecret}@${connection.master}:${connection.leafPort}`,
           caFile,
+          disabled: !!new WorkersService().getUnpaired(),
         },
       ]);
     }

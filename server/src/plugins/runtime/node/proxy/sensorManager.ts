@@ -9,6 +9,7 @@ import { SensorProxy } from './sensor.js';
 import type { Logger } from '@camera.ui/common';
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
 import type { AdoptedSensor, BasePlugin, ModelSpec, PluginInfo, Sensor, SensorDiscoveryProvider, SensorHistoryEntry, SensorManager, SensorType } from '@camera.ui/sdk';
+import type { SensorJSON } from '@camera.ui/sdk/internal';
 import type { DetectionCoordinatorInterface } from '../../../../rpc/interfaces/detection.js';
 import type {
   SensorAddedEvent,
@@ -193,18 +194,11 @@ export class SensorManagerProxy implements SensorManager {
     sensor._setPluginId(this.#plugin.id);
     sensor._setId(recordId);
 
-    const sensorJSON = sensor.toJSON();
-    sensorJSON.requiresFrames = sensor._requiresFrames === true;
-
     const storage = this.#storageController.createSensorStorage(this.#plugin.id, sensor.id, sensor.storageSchema ?? []);
     await storage.registerStorage();
     sensor._setStorage(storage);
 
-    const modelSpec: ModelSpec | undefined = (sensor as { modelSpec?: ModelSpec }).modelSpec;
-    if (modelSpec) {
-      sensorJSON.modelSpec = modelSpec;
-    }
-
+    const sensorJSON = this.#registrationJson(sensor);
     const registration = await this.#registryProxy.registerSensor(sensorJSON, this.#plugin.id);
     sensor._setAssignedCameras(registration.assignedCameraIds);
 
@@ -261,6 +255,16 @@ export class SensorManagerProxy implements SensorManager {
     });
 
     sensor._setActive(true);
+  }
+
+  #registrationJson(sensor: Sensor<any, any, any>): SensorJSON {
+    const sensorJSON = sensor.toJSON();
+    sensorJSON.requiresFrames = sensor._requiresFrames === true;
+    const modelSpec: ModelSpec | undefined = (sensor as { modelSpec?: ModelSpec }).modelSpec;
+    if (modelSpec) {
+      sensorJSON.modelSpec = modelSpec;
+    }
+    return sensorJSON;
   }
 
   async #ensureGlobalSubscription(): Promise<void> {

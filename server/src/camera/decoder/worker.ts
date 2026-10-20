@@ -10,6 +10,9 @@ import { NamespaceManager } from '../../rpc/namespaces.js';
 import { isShuttingDown } from '../../shutdown-state.js';
 import { nodeDecoderPath } from '../../utils/path.js';
 import { exitInfo } from '../../utils/process-exit.js';
+import { DECODER_STOP_BUDGET_MS, SupervisedChild, supervisedSpawn } from '../../utils/supervised-child.js';
+import { LocalStartAbandoned, RemotePlacement } from '../../workers/lifecycle/remote-placement.js';
+import { WORKER_PROTOCOL, WorkerCapability } from '../../workers/types.js';
 
 import type { LogEntry } from '@camera.ui/common/logger';
 import type { PrivateChannel, Promisify } from '@camera.ui/rpc';
@@ -32,11 +35,11 @@ import type { FrameWorkerChildInterface } from '../../rpc/interfaces/frameworker
 import type { FrameWorkerNamespaces } from '../../rpc/namespaces.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LogManager } from '../../services/logger/logManager.js';
+import type { PlacementInfo } from '../../workers/lifecycle/remote-placement.js';
 import type { WorkerManager } from '../../workers/manager.js';
 import type { CameraController } from '../controller.js';
 import type { CoordinatorSourceUrl, FrameWorkerPerfSnapshot, ObjectBenchmarkResult, WorkerToMainMessage } from './types.js';
 
-const REMOTE_START_TIMEOUT_MS = 30_000;
 const READY_TIMEOUT_MS = 30_000;
 
 export class FrameWorker extends Subscribed {
@@ -48,13 +51,20 @@ export class FrameWorker extends Subscribed {
 
   private isClosed = false;
   private isRestarting = false;
-  private isRemote = false;
+  private stopping = false;
   private process?: ChildProcess;
+  private supervised?: SupervisedChild;
+  private localBound?: string;
+  private announcedInstance?: string;
   private retryTimeout?: NodeJS.Timeout;
-  private remoteStartTimeout?: NodeJS.Timeout;
   private readyTimeout?: NodeJS.Timeout;
   private settleStart?: (error?: Error) => void;
   private channel?: PrivateChannel;
+  private channelOpening?: Promise<void>;
+  private ended = false;
+  private deferredChanges = new Map<string, CameraChange>();
+  private nvrRpcStale = false;
+  private placement: RemotePlacement;
   private namespaces: FrameWorkerNamespaces;
   private _status: PLUGIN_STATUS = PLUGIN_STATUS.UNKNOWN;
 
@@ -71,7 +81,16 @@ export class FrameWorker extends Subscribed {
   }
 
   public get isRemoteWorker(): boolean {
-    return this.isRemote;
+    const host = this.placement.host;
+    return host !== undefined && host !== 'master';
+  }
+
+  public get placementInfo(): PlacementInfo {
+    return this.placement.info;
+  }
+
+  public get boundInstance(): string | undefined {
+    return this.placement.phase === 'local' ? this.localBound : this.placement.handshakeInstance;
   }
 
   constructor(private readonly camera: CameraController) {
@@ -91,6 +110,26 @@ export class FrameWorker extends Subscribed {
     });
 
     this.namespaces = NamespaceManager.frameWorkerNamespaces(camera.id);
+
+    this.placement = new RemotePlacement(
+      WorkerCapability.FrameDecoding,
+      camera.id,
+      `camera ${camera.name}`,
+      {
+        runLocal: (reason) => this.runLocal(reason),
+        stopLocal: (reason) => {
+          // a start waiting for the local child would hold the queue until its ready timeout
+          this.settleStart?.(new LocalStartAbandoned(reason));
+          return this.enqueue(() => this.stopLocal(reason));
+        },
+        handshake: (instanceId) => this.initializeChild(instanceId),
+        resume: (instanceId) => this.sendResume(instanceId),
+        lost: (reason) => this.logger.debug(`Frame Worker lost its instance: ${reason}`),
+        changed: (info) => this.onPlacementChanged(info),
+      },
+      this.logger,
+      () => this.workerManager,
+    );
 
     this.setupEventListeners();
   }
@@ -120,6 +159,12 @@ export class FrameWorker extends Subscribed {
     this.retryTimeout = undefined;
     return this.enqueue(async () => {
       await this.doClose();
+      this.ended = true;
+      this.placement.close();
+      if (!isShuttingDown()) {
+        await this.channel?.close();
+      }
+      this.channel = undefined;
       this.unsubscribe();
     });
   }
@@ -133,8 +178,16 @@ export class FrameWorker extends Subscribed {
     return run;
   }
 
+  private get busy(): boolean {
+    const phase = this.placement.phase;
+    if (phase === 'local') {
+      return !!this.process;
+    }
+    return phase !== 'idle' && phase !== 'releasing' && phase !== 'failed';
+  }
+
   private async doStart(): Promise<void> {
-    if (this.status === PLUGIN_STATUS.STARTING || this.status === PLUGIN_STATUS.STARTED) {
+    if (this.busy) {
       return;
     }
 
@@ -150,6 +203,7 @@ export class FrameWorker extends Subscribed {
 
     this.isClosed = false;
     this.isRestarting = false;
+    this.stopping = false;
     clearTimeout(this.retryTimeout);
     this.retryTimeout = undefined;
 
@@ -159,34 +213,48 @@ export class FrameWorker extends Subscribed {
     }
 
     try {
-      await this.startWorkerProcess();
+      this.setStatus(PLUGIN_STATUS.STARTING);
+      await this.ensureChannel();
+      if (this.placement.place('start') === 'local') {
+        await this.startLocal();
+      }
     } catch (error) {
+      if (error instanceof LocalStartAbandoned) {
+        return;
+      }
       this.setStatus(PLUGIN_STATUS.ERROR);
       this.logger.error('Failed to start worker:', error);
     }
   }
 
   private async doStop(): Promise<void> {
+    // on shutdown the remote instance and its channel stay, the next run takes them over
+    if (isShuttingDown() && this.placement.remote) {
+      this.placement.detach();
+      return;
+    }
+
     if (this.status === PLUGIN_STATUS.STOPPED || this.status === PLUGIN_STATUS.STOPPING) {
       return;
     }
 
     this.logger.log('Stopping Frame Worker');
-    this.setStatus(PLUGIN_STATUS.STOPPING);
+    this.stopping = true;
+    clearTimeout(this.readyTimeout);
+    this.readyTimeout = undefined;
 
-    if (this.isRemote) {
-      clearTimeout(this.remoteStartTimeout);
-      this.remoteStartTimeout = undefined;
-      this.workerManager.clearFrameDecoding(this.camera.id);
-      this.isRemote = false;
-      await this.channel?.close();
-      this.channel = undefined;
-      this.setStatus(PLUGIN_STATUS.STOPPED);
-      return;
+    switch (this.placement.stop()) {
+      case 'local':
+        this.setStatus(PLUGIN_STATUS.STOPPING);
+        await this.terminateProcess();
+        this.clearProcessState();
+        break;
+      case 'stopped':
+        this.setStatus(PLUGIN_STATUS.STOPPED);
+        break;
+      case 'releasing':
+        break;
     }
-
-    await this.terminateProcess();
-    await this.clearProcessState();
   }
 
   private async doClose(): Promise<void> {
@@ -196,18 +264,22 @@ export class FrameWorker extends Subscribed {
     this.isRestarting = false;
     clearTimeout(this.retryTimeout);
     this.retryTimeout = undefined;
-    clearTimeout(this.remoteStartTimeout);
-    this.remoteStartTimeout = undefined;
     clearTimeout(this.readyTimeout);
     this.readyTimeout = undefined;
 
     await this.doStop();
-    await this.channel?.close();
     this.logBuffer = '';
   }
 
   private async doRestart(): Promise<void> {
     if (this.isClosed) {
+      return;
+    }
+
+    // a new instance on the same worker, the status follows the placement
+    const host = this.placement.host;
+    if (host && host !== 'master' && this.placement.phase !== 'failed') {
+      this.placement.restart('restart requested');
       return;
     }
 
@@ -217,6 +289,93 @@ export class FrameWorker extends Subscribed {
     await this.doStop();
     await sleep(2000);
     await this.doStart();
+  }
+
+  private runLocal(reason: string): void {
+    this.logger.log(`Decoding on this server: ${reason}`);
+    this.enqueue(async () => {
+      if (this.placement.phase !== 'local' || this.process || this.isClosed || !this.camera.connected) {
+        return;
+      }
+      this.stopping = false;
+      this.setStatus(PLUGIN_STATUS.STARTING);
+      await this.startLocal();
+    }).catch((error) => {
+      if (error instanceof LocalStartAbandoned) {
+        return;
+      }
+      this.setStatus(PLUGIN_STATUS.ERROR);
+      this.logger.error('Failed to start worker:', error);
+    });
+  }
+
+  private async stopLocal(reason: string): Promise<void> {
+    clearTimeout(this.readyTimeout);
+    this.readyTimeout = undefined;
+    if (!this.process) {
+      return;
+    }
+
+    this.logger.log(`Stopping Frame Worker (${reason})`);
+    this.stopping = true;
+    await this.terminateProcess();
+    this.clearProcessState();
+  }
+
+  private async ensureChannel(): Promise<void> {
+    if (this.ended || (this.channel && !this.channel.isClosed)) {
+      return;
+    }
+    this.channelOpening ??= (async () => {
+      const channel = await this.proxyServer.proxy.privateChannel('frameworker-communication', this.namespaces.frameWorkerChild);
+      channel.on('message', (message: WorkerToMainMessage) => this.handleWorkerMessage(message));
+      channel.on('close', () => this.onChannelClose(channel));
+      this.channel = channel;
+    })().finally(() => {
+      this.channelOpening = undefined;
+    });
+    await this.channelOpening;
+  }
+
+  private onChannelClose(channel: PrivateChannel): void {
+    if (this.channel !== channel || this.ended || isShuttingDown()) {
+      return;
+    }
+    this.channel = undefined;
+    this.ensureChannel().catch((error) => this.logger.warn('Could not reopen the Frame Worker channel:', error));
+  }
+
+  private onPlacementChanged(info: PlacementInfo): void {
+    switch (info.phase) {
+      case 'local':
+        break;
+      case 'pending':
+      case 'provisioning':
+      case 'spawned':
+      case 'adopting':
+      case 'handshaking':
+      case 'restarting':
+      case 'held':
+      case 'waiting-for-worker':
+        this.setStatus(PLUGIN_STATUS.STARTING, info);
+        break;
+      case 'bound':
+        if (info.instanceId !== this.announcedInstance) {
+          this.announcedInstance = info.instanceId;
+          this.logger.log(`Frame Worker ready on worker ${info.worker}`);
+        }
+        this.setStatus(PLUGIN_STATUS.STARTED, info);
+        break;
+      case 'releasing':
+        this.setStatus(PLUGIN_STATUS.STOPPING, info);
+        break;
+      case 'failed':
+        this.setStatus(PLUGIN_STATUS.ERROR, info);
+        break;
+      case 'idle':
+        this.setStatus(PLUGIN_STATUS.STOPPED, info);
+        break;
+    }
   }
 
   public getPID(): number {
@@ -376,23 +535,7 @@ export class FrameWorker extends Subscribed {
       };
 
       try {
-        this.setStatus(PLUGIN_STATUS.STARTING);
-
-        this.channel = await this.proxyServer.proxy.privateChannel('frameworker-communication', this.namespaces.frameWorkerChild);
-        this.channel.on('message', this.handleWorkerMessage.bind(this));
-
-        // registers the camera in the master's desired state; undefined =
-        // delegation not possible, fork locally
-        const agentId = this.workerManager.desireFrameDecoding(this.camera.id);
-
-        if (agentId) {
-          this.isRemote = true;
-          this.logger.log(`Delegating to remote worker ${agentId}`);
-          this.armRemoteFallback();
-          return; // resolves once the remote child reports 'started'
-        }
-
-        this.isRemote = false;
+        this.localBound = undefined;
         this.armReadyTimeout();
         this.forkLocal();
       } catch (error) {
@@ -433,29 +576,7 @@ export class FrameWorker extends Subscribed {
       execArgv: IS_DEV && !IS_ELECTRON ? ['--import=tsx'] : undefined,
     });
 
-    this.setupProcessListeners(processName);
-  }
-
-  private armRemoteFallback(): void {
-    clearTimeout(this.remoteStartTimeout);
-
-    this.remoteStartTimeout = setTimeout(() => {
-      if (this.isClosed || !this.isRemote || this.status !== PLUGIN_STATUS.STARTING) {
-        return;
-      }
-
-      this.logger.warn(`Remote worker did not start the camera within ${REMOTE_START_TIMEOUT_MS / 1000}s — falling back to local`);
-      this.workerManager.clearFrameDecoding(this.camera.id);
-      this.isRemote = false;
-
-      try {
-        this.armReadyTimeout();
-        this.forkLocal();
-      } catch (error) {
-        this.setStatus(PLUGIN_STATUS.ERROR);
-        this.logger.error('Failed to start local fallback worker:', error);
-      }
-    }, REMOTE_START_TIMEOUT_MS);
+    this.setupProcessListeners();
   }
 
   private async terminateProcess(): Promise<void> {
@@ -509,10 +630,9 @@ export class FrameWorker extends Subscribed {
       this.logger.error('Frame Worker reported an error!', error);
     });
 
-    this.process.once('exit', (code, signal) => {
-      const intentional = this.isClosed || isShuttingDown() || this.status === PLUGIN_STATUS.STOPPING || this.status === PLUGIN_STATUS.STOPPED;
-
-      const details = exitInfo(code, signal, { pid: this.process?.pid });
+    child.once('exit', (code, signal) => {
+      const intentional = this.stopping || this.isClosed || isShuttingDown();
+      const details = exitInfo(code, signal, { pid: child.pid });
 
       if (intentional) {
         this.logger.log(`Frame Worker exited (${details})`);
@@ -523,59 +643,115 @@ export class FrameWorker extends Subscribed {
       this.setStatus(PLUGIN_STATUS.STOPPED);
       this.configService.removeProcessByPID(this.process?.pid);
       this.settleStart?.(new Error(`Frame Worker exited before it was ready (${details})`));
-      this.handleProcessExit();
+      if (this.process === child) {
+        this.clearProcessState();
+      }
+
+      // moved to a worker meanwhile, the placement owns the status
+      if (this.placement.phase !== 'local') {
+        return;
+      }
+      this.setStatus(PLUGIN_STATUS.STOPPED);
+      this.attemptRestart();
     });
 
-    this.process.stdout?.on('data', (data) => this.handleLogData(data));
-    this.process.stderr?.on('data', (data) => this.handleLogData(data));
+    child.stdout?.on('data', (data) => this.handleLogData(data));
+    child.stderr?.on('data', (data) => this.handleLogData(data));
   }
 
-  private async handleWorkerMessage(message: WorkerToMainMessage): Promise<void> {
-    if (message.message === 'started') {
-      clearTimeout(this.remoteStartTimeout);
-      this.remoteStartTimeout = undefined;
-      this.armReadyTimeout();
-
-      let source = this.getVideoSource();
-      let audioSource = this.getAudioSource();
-      let snapshotSource = this.getSnapshotSource();
-      let availableSources = this.getAvailableSources();
-
-      if (this.isRemote) {
-        source = this.rewriteForRemote(source);
-        audioSource = this.rewriteForRemote(audioSource);
-        snapshotSource = this.rewriteForRemote(snapshotSource);
-        availableSources = availableSources.map((s) => ({ ...s, url: this.rewriteForRemote(s.url) }));
-      }
-
-      try {
-        await this.frameWorkerChildProxy.initialize({
-          cameraId: this.camera.id,
-          streamUrl: source,
-          snapshotUrl: snapshotSource,
-          audioStreamUrl: audioSource,
-          controllerSnapshotSourceId: this.getControllerSnapshotSourceId(),
-          availableSources,
-          streamRole: this.analysisSource.role as StreamingRole,
-          zones: this.camera.zones,
-          detectionSettings: this.camera.detectionSettings,
-          ptzAutotrack: this.camera.ptzAutotrack,
-          frameWorkerSettings: this.resolveFrameWorkerSettings(this.camera.frameWorkerSettings),
-          interfaceSettings: this.camera.interfaceSettings,
-          nvrRpc: nvrRpcNamespace(),
-          streamHot: this.analysisSource.hotMode === true,
-        });
-
-        this.setStatus(PLUGIN_STATUS.STARTED);
-        this.logger.debug('Frame Worker ready');
-      } catch (error) {
-        // without this a child that says 'started' but cannot finish initialize pins the status on STARTING forever
-        this.logger.error('Frame Worker initialization failed:', error);
-        this.setStatus(PLUGIN_STATUS.ERROR);
-        this.process?.kill('SIGKILL');
-      }
-      this.settleStart?.();
+  private sendResume(instanceId: string): void {
+    if (!this.channel || this.channel.isClosed) {
+      return;
     }
+    this.channel
+      .send<MainToWorkerMessage>({ message: 'resume', data: { runId: this.workerManager.runId, instanceId } })
+      .catch((error) => this.logger.debug('Could not send resume to the Frame Worker:', error));
+  }
+
+  private handleWorkerMessage(message: WorkerToMainMessage): void {
+    if (message.message !== 'started') {
+      return;
+    }
+
+    if (this.placement.ready(message.instanceId, message.data?.handshake)) {
+      return;
+    }
+
+    // only the child this server forked, older decoders send no id
+    const own = this.supervised?.instanceId;
+    if (!this.process || this.localBound || (message.instanceId && message.instanceId !== own)) {
+      this.logger.debug(`Ignored 'started' of instance ${message.instanceId ?? '(none)'}`);
+      return;
+    }
+    this.localBound = own;
+    this.initializeChild(own);
+  }
+
+  private async initializeChild(instanceId: string | undefined): Promise<void> {
+    const remote = this.placement.phase !== 'local';
+    if (!remote) {
+      this.armReadyTimeout();
+    }
+
+    let source = this.getVideoSource();
+    let audioSource = this.getAudioSource();
+    let snapshotSource = this.getSnapshotSource();
+    let availableSources = this.getAvailableSources();
+
+    if (remote) {
+      source = this.rewriteForRemote(source);
+      audioSource = this.rewriteForRemote(audioSource);
+      snapshotSource = this.rewriteForRemote(snapshotSource);
+      availableSources = availableSources.map((s) => ({ ...s, url: this.rewriteForRemote(s.url) }));
+    }
+
+    // initialize sends the current values, only later changes need the catch-up
+    this.deferredChanges.clear();
+    this.nvrRpcStale = false;
+
+    try {
+      await this.frameWorkerChildProxy.initialize({
+        cameraId: this.camera.id,
+        streamUrl: source,
+        snapshotUrl: snapshotSource,
+        audioStreamUrl: audioSource,
+        controllerSnapshotSourceId: this.getControllerSnapshotSourceId(),
+        availableSources,
+        streamRole: this.analysisSource.role as StreamingRole,
+        zones: this.camera.zones,
+        detectionSettings: this.camera.detectionSettings,
+        ptzAutotrack: this.camera.ptzAutotrack,
+        frameWorkerSettings: this.resolveFrameWorkerSettings(this.camera.frameWorkerSettings),
+        interfaceSettings: this.camera.interfaceSettings,
+        nvrRpc: nvrRpcNamespace(),
+        streamHot: this.analysisSource.hotMode === true,
+        session: instanceId ? { runId: this.workerManager.runId, level: WORKER_PROTOCOL, instanceId } : undefined,
+      });
+
+      if (remote) {
+        this.placement.started(instanceId);
+        return;
+      }
+      // moved to a worker while the local child initialized, the queued stop ends it
+      if (this.placement.phase !== 'local') {
+        return;
+      }
+      this.setStatus(PLUGIN_STATUS.STARTED);
+      this.logger.debug('Frame Worker ready');
+    } catch (error) {
+      if (remote) {
+        this.placement.handshakeFailed(error instanceof Error ? error.message : String(error), instanceId);
+        return;
+      }
+      if (this.placement.phase !== 'local') {
+        return;
+      }
+      // a child that started but cannot initialize would pin the status on STARTING
+      this.logger.error('Frame Worker initialization failed:', error);
+      this.setStatus(PLUGIN_STATUS.ERROR);
+      this.supervised?.kill();
+    }
+    this.settleStart?.();
   }
 
   private get frameWorkerChildProxy(): Promisify<FrameWorkerChildInterface> {
@@ -596,16 +772,11 @@ export class FrameWorker extends Subscribed {
   }
 
   private effectiveDecoder(settings: CameraFrameWorkerSettings): FrameWorkerDecoderSettings | undefined {
-    return this.isRemote ? (settings.workerDecoder ?? settings.decoder) : settings.decoder;
-  }
-
-  private async handleProcessExit(): Promise<void> {
-    await this.clearProcessState();
-    this.attemptRestart();
+    return this.isRemoteWorker ? (settings.workerDecoder ?? settings.decoder) : settings.decoder;
   }
 
   private attemptRestart(): void {
-    if (this.isRestarting || this.isClosed || isShuttingDown() || this.status === PLUGIN_STATUS.STOPPING || this.status === PLUGIN_STATUS.STARTING) {
+    if (this.stopping || this.isRestarting || this.isClosed || isShuttingDown() || this.placement.phase !== 'local' || this.status === PLUGIN_STATUS.STARTING) {
       return;
     }
 
@@ -613,7 +784,7 @@ export class FrameWorker extends Subscribed {
     clearTimeout(this.retryTimeout);
 
     this.retryTimeout = setTimeout(async () => {
-      if (this.isRestarting || this.isClosed || isShuttingDown() || this.status === PLUGIN_STATUS.STOPPING || this.status === PLUGIN_STATUS.STARTING) {
+      if (this.stopping || this.isRestarting || this.isClosed || isShuttingDown() || this.placement.phase !== 'local' || this.status === PLUGIN_STATUS.STARTING) {
         return;
       }
 
@@ -626,17 +797,17 @@ export class FrameWorker extends Subscribed {
     }, 5000);
   }
 
-  private async clearProcessState(): Promise<void> {
+  private clearProcessState(): void {
     this.process?.removeAllListeners();
     this.process?.stdout?.removeAllListeners();
     this.process?.stderr?.removeAllListeners();
     this.process = undefined;
-
-    await this.channel?.close();
+    this.supervised = undefined;
+    this.localBound = undefined;
   }
 
-  private setStatus(newStatus: PLUGIN_STATUS): void {
-    if (this.status === newStatus) {
+  private setStatus(newStatus: PLUGIN_STATUS, placement?: PlacementInfo): void {
+    if (this.status === newStatus && !placement) {
       return;
     }
 
@@ -646,6 +817,7 @@ export class FrameWorker extends Subscribed {
       [this.camera.name]: {
         name: this.camera.name,
         status: newStatus,
+        placement: placement ?? this.placement.info,
       },
     };
 

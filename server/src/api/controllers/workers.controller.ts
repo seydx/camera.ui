@@ -14,6 +14,7 @@ import type {
   WorkerAssignPluginRequest,
   WorkerAssignRequest,
   WorkerConfigPatchRequest,
+  WorkerPairingCreateRequest,
   WorkerPairRequest,
   WorkerRemoveRequest,
   WorkerPatchRequest,
@@ -109,7 +110,7 @@ export class WorkersController {
     }
   }
 
-  public async createPairing(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+  public async createPairing(req: FastifyRequest<AuthLoginRequest & WorkerPairingCreateRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const configService = container.resolve<ConfigService>('configService');
       const workersConfig = configService.config.workers;
@@ -118,7 +119,12 @@ export class WorkersController {
         return reply.code(400).send({ statusCode: 400, message: 'Workers are not enabled on this instance' });
       }
 
-      const pairing = await this.workersService.createPairingCode();
+      const replaces = req.body?.replaces;
+      if (replaces && !this.workerManager.isWorkerKnown(replaces)) {
+        return reply.code(404).send({ statusCode: 404, message: `Worker ${replaces} not found` });
+      }
+
+      const pairing = await this.workersService.createPairingCode(replaces);
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const address = workersConfig.address || null;
 
@@ -145,9 +151,19 @@ export class WorkersController {
 
       const { code, agentId, name } = req.body;
 
-      if (!this.workersService.isPairingCodeValid(code)) {
+      const pairing = this.workersService.findPairing(code);
+      if (!pairing) {
         this.logger.warn(`Worker pairing rejected for ${name} (${agentId}): invalid or expired code`);
         return reply.code(401).send({ statusCode: 401, message: 'Invalid or expired pairing code' });
+      }
+
+      if (pairing.replaces !== agentId && this.workerManager.isWorkerOnline(agentId)) {
+        const known = this.workerManager.nameOf(agentId);
+        this.logger.warn(`Worker pairing rejected for ${name} (${agentId}): worker ${known} is online with this identity`);
+        return reply.code(409).send({
+          statusCode: 409,
+          message: `Worker ${known} is online with this identity. Remove it on the master first, or pair with a code that replaces it.`,
+        });
       }
 
       const credential = await this.workersService.issueCredentials(agentId, name);
@@ -195,8 +211,8 @@ export class WorkersController {
   public async unassignCamera(req: FastifyRequest<AuthLoginRequest & WorkerUnassignRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const { cameraId } = req.body;
-      await this.workerManager.unassignCamera(cameraId);
-      return reply.code(204).send();
+      const result = await this.workerManager.unassignCamera(cameraId);
+      return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
     }
@@ -215,8 +231,8 @@ export class WorkersController {
   public async unassignPlugin(req: FastifyRequest<AuthLoginRequest & WorkerUnassignPluginRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const { pluginName } = req.body;
-      await this.workerManager.unassignPlugin(pluginName);
-      return reply.code(204).send();
+      const result = await this.workerManager.unassignPlugin(pluginName);
+      return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
     }
