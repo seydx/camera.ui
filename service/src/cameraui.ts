@@ -16,6 +16,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaceDefault, networkInterfaces } from 'systeminformation';
 
+import { backupCommand, CameraUiApi, createPrompt, remindBackupKey, restoreCommand } from './backup-cli.js';
 import { followFile } from './follow-file.js';
 import { DarwinInstaller } from './installer/darwin.js';
 import { FreeBSDInstaller } from './installer/freebsd.js';
@@ -27,6 +28,7 @@ import { RestartBudget } from './restart-budget.js';
 import { Spinner } from './spinner.js';
 
 import type { PathLike } from 'node:fs';
+import type { Credentials, RestoreCommandOptions } from './backup-cli.js';
 import type { BasePlatform } from './installer/base.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,7 +53,9 @@ export class CameraUiCLI {
   public selfPath = __filename;
   public processPath = (process.env.PATH ?? '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') + ':/opt/homebridge/bin';
 
-  public action!: 'install' | 'uninstall' | 'reinstall' | 'before-start' | 'start' | 'stop' | 'restart' | 'run' | 'logs' | 'status' | 'update-server';
+  public action!:
+    'install' | 'uninstall' | 'reinstall' | 'before-start' | 'start' | 'stop' | 'restart' | 'run' | 'logs' | 'status' | 'update-server' | 'backup' | 'restore';
+
   public homePath!: string;
   public storagePath!: string;
   public serviceName = 'cameraui';
@@ -63,6 +67,10 @@ export class CameraUiCLI {
   public uid?: number;
   public gid?: number;
   public updateVersion?: string;
+  public backupOutput?: string;
+  public restoreFile?: string;
+  public restoreOptions: RestoreCommandOptions = {};
+  public credentials: Credentials = {};
 
   private installer!: BasePlatform;
   private logging: CLILogger;
@@ -391,7 +399,42 @@ export class CameraUiCLI {
       .description('Update the camera.ui server to the latest version or a specific version')
       .action((version) => {
         this.action = 'update-server';
-        this.updateVersion = version; // Store version in a class property
+        this.updateVersion = version;
+      });
+
+    program
+      .command('backup')
+      .description('Create an encrypted backup of the running camera.ui server')
+      .option('-o, --output <path>', 'File or folder for the backup, default is the current folder')
+      .option('--token <token>', 'API token of an admin, the CAMERA_UI_API_TOKEN variable works too')
+      .option('--username <name>', 'Admin to sign in with, the password comes from CAMERA_UI_PASSWORD or a prompt')
+      .option('--code <code>', 'Two-factor code of the admin')
+      .action((_options, command) => {
+        const options = command.opts();
+        this.action = 'backup';
+        this.backupOutput = options.output;
+        this.credentials = { token: options.token ?? process.env.CAMERA_UI_API_TOKEN, username: options.username, code: options.code };
+      });
+
+    program
+      .command('restore <file>')
+      .description('Restore a backup on the running camera.ui server, needs an admin sign-in')
+      .option('--move', 'This server takes over from the server of the backup')
+      .option('--copy', 'Both servers keep running, this one gets its own identity')
+      .option('--key-file <file>', 'Backup key of the server the backup comes from')
+      .option('-y, --yes', 'Restore without asking')
+      .option('--username <name>', 'Admin to sign in with, the password comes from CAMERA_UI_PASSWORD or a prompt')
+      .option('--code <code>', 'Two-factor code of the admin')
+      .action((file, _options, command) => {
+        const options = command.opts();
+        if (options.move && options.copy) {
+          this.logger('Use either --move or --copy.', 'fail');
+          process.exit(1);
+        }
+        this.action = 'restore';
+        this.restoreFile = file;
+        this.restoreOptions = { mode: options.move ? 'move' : options.copy ? 'copy' : undefined, keyFile: options.keyFile, yes: options.yes };
+        this.credentials = { username: options.username, code: options.code };
       });
 
     // Parse arguments
@@ -494,6 +537,11 @@ export class CameraUiCLI {
       }
       case 'status': {
         this.statusCheck();
+        break;
+      }
+      case 'backup':
+      case 'restore': {
+        this.backupAction();
         break;
       }
       default: {
