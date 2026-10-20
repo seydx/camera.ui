@@ -66,10 +66,20 @@ export class IngressSession {
   ) {}
 
   public async getAccessToken(): Promise<string | undefined> {
-    if (this.accessToken && Date.now() < this.expiresAt - REFRESH_MARGIN_MS) {
+    if (this.isCachedTokenLive()) {
       return this.accessToken;
     }
-    return this.mint();
+    this.minting ??= this.mint().finally(() => {
+      this.minting = undefined;
+    });
+    return this.minting;
+  }
+
+  private isCachedTokenLive(): boolean {
+    if (!this.accessToken || !this.tokenId || Date.now() >= this.expiresAt - REFRESH_MARGIN_MS) {
+      return false;
+    }
+    return this.authService.findById(this.tokenId)?.access_token === this.accessToken;
   }
 
   private async mint(): Promise<string | undefined> {

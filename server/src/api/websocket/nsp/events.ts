@@ -33,6 +33,12 @@ interface DetectionEventMessage {
   attributes?: DetectionAttributePayload[];
 }
 
+interface ActiveDetection {
+  message: DetectionEventMessage;
+  labels: Set<string>;
+  attributes: Map<string, DetectionAttributePayload>;
+}
+
 interface SensorMessage {
   type: 'added' | 'removed' | 'changed' | 'meta';
   sensorId: string;
@@ -68,6 +74,7 @@ export class EventsNamespace {
 
   private api: CameraUiAPI;
   private cameraSubscriptions = new Map<string, () => void>();
+  private activeDetections = new Map<string, ActiveDetection>();
 
   constructor(io: Server) {
     this.api = container.resolve<CameraUiAPI>('api');
@@ -102,6 +109,12 @@ export class EventsNamespace {
       const { cameraId } = payload as CameraEventPayload;
       this.cameraSubscriptions.get(cameraId)?.();
       this.cameraSubscriptions.delete(cameraId);
+      this.activeDetections.delete(cameraId);
+    });
+
+    // a worker that goes away mid-event never sends the end
+    this.onBus(bus, 'camera:frameworker:stopped', (payload) => {
+      this.activeDetections.delete((payload as CameraEventPayload).cameraId);
     });
 
     this.onBus(bus, 'sensor:property:changed', (payload) => {
@@ -201,18 +214,22 @@ export class EventsNamespace {
 
   private handleSubscribe(socket: Socket, payload: { cameraIds?: string[] | 'all' }, callback?: Function): void {
     const cameraIds = payload?.cameraIds ?? 'all';
+    let subscribed: string[] | 'all' = 'all';
 
     if (cameraIds === 'all') {
       socket.join('all');
-      callback?.({ subscribed: 'all' });
-      return;
+    } else {
+      subscribed = cameraIds.filter((id) => this.api.getCamera(id));
+      for (const id of subscribed) {
+        socket.join(`camera:${id}`);
+      }
     }
 
-    const known = cameraIds.filter((id) => this.api.getCamera(id));
-    for (const id of known) {
-      socket.join(`camera:${id}`);
+    const active = [...this.activeDetections].filter(([id]) => subscribed === 'all' || subscribed.includes(id));
+    callback?.({ subscribed, active: active.map(([id]) => id) });
+    for (const [, held] of active) {
+      socket.emit('detection', this.replayMessage(held));
     }
-    callback?.({ subscribed: known });
   }
 
   private subscribeCamera(controller: CameraController): void {
@@ -240,9 +257,35 @@ export class EventsNamespace {
       if (labels.length) message.labels = labels;
       if (attributes.length) message.attributes = attributes;
 
+      if (type === 'end') this.activeDetections.delete(controller.id);
+      else this.holdDetection(controller.id, message);
+
+      if (this.nsp.sockets.size === 0) return;
       this.nsp.to('all').to(`camera:${controller.id}`).emit('detection', message);
     });
 
     this.cameraSubscriptions.set(controller.id, () => subscription.dispose());
+  }
+
+  private holdDetection(cameraId: string, message: DetectionEventMessage): void {
+    let held = this.activeDetections.get(cameraId);
+    if (held?.message.event.id !== message.event.id) {
+      held = { message, labels: new Set(), attributes: new Map() };
+      this.activeDetections.set(cameraId, held);
+    }
+
+    held.message = message;
+    for (const label of message.labels ?? []) held.labels.add(label);
+    for (const attribute of message.attributes ?? []) {
+      const key = `${attribute.type}\u0000${attribute.label}`;
+      if (!held.attributes.has(key)) held.attributes.set(key, attribute);
+    }
+  }
+
+  private replayMessage({ message, labels, attributes }: ActiveDetection): DetectionEventMessage {
+    const replay: DetectionEventMessage = { type: message.type, event: message.event };
+    if (labels.size) replay.labels = [...labels];
+    if (attributes.size) replay.attributes = [...attributes.values()];
+    return replay;
   }
 }

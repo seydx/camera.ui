@@ -8,6 +8,8 @@ import { createAuthApi } from '../auth/api.js';
 import { createDiscoverDirect } from '../auth/discover.js';
 import { createProbe } from '../auth/probe.js';
 import { createRefresh } from '../auth/refresh.js';
+import { createEmbedProbe } from '../embedSession.js';
+import { instanceOverride } from '../instance.js';
 
 import type { Logger } from '@camera.ui/logger';
 import type { AuthApi, ConnectionOptions } from '../types.js';
@@ -29,6 +31,7 @@ export function buildDirectMode(endpointUrl: string, logger?: Logger): DirectMod
   const api = createAuthApi();
   const network = createNetworkAdapters();
   const refresh = createRefresh(api);
+  const probe = createProbe(api, refresh);
 
   const options: ConnectionOptions = {
     adapters: {
@@ -40,7 +43,7 @@ export function buildDirectMode(endpointUrl: string, logger?: Logger): DirectMod
     },
     callbacks: {
       discover: createDiscoverDirect(endpointUrl),
-      probe: createProbe(api, refresh),
+      probe: embedHost() || isProxySignIn() ? createEmbedProbe(probe) : probe,
       refresh: refresh.refresh,
       bindRefresh: refresh.bindCoordination,
       onConnectionReset: refresh.clear,
@@ -48,6 +51,7 @@ export function buildDirectMode(endpointUrl: string, logger?: Logger): DirectMod
     },
     transportOptions: isProxySignIn() ? { http: { authorize: async () => {} } } : undefined,
     logger,
+    storageNamespace: isEmbedded() ? `embed:${runtimeBase()}` : undefined,
   };
 
   return { options, api };

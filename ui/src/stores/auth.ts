@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
   const usersQuery = new UsersQuery();
   const connection = useConnection();
 
-  const user = useLocalStorage<PersistedUser | null>('user', null, {
+  const user = useLocalStorage<PersistedUser | null>(isEmbedded() ? `user:${runtimeBase()}` : 'user', null, {
     serializer: {
       read: (v) => (v ? (JSON.parse(v) as PersistedUser) : null),
       write: (v) => JSON.stringify(v),
