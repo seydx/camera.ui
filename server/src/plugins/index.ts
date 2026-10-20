@@ -396,8 +396,6 @@ export class PluginManager {
       }
     }
 
-    await this.handleDisabledPlugins();
-
     sendIPCMessage({
       type: 'START_OUTPUT',
       message: 'Restoring plugins...',
@@ -599,9 +597,5 @@ export class PluginManager {
 
   private async removeOrphanedPlugins(): Promise<void> {
     await this.pluginsService.removeOrphanPluginsDb();
-  }
-
-  private async handleDisabledPlugins(): Promise<void> {
-    await this.pluginsService.handleDisabledPlugins();
   }
 }

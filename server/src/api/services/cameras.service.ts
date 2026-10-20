@@ -672,14 +672,9 @@ export class CamerasService {
   }
 
   public async removeByPluginId(pluginId: string): Promise<void> {
-    let target: DBCamera | undefined;
-    for (const { value } of this.dbs.camerasDB.getRange()) {
-      if (value.pluginInfo?.id === pluginId) {
-        target = value;
-        break;
-      }
+    for (const camera of this.listByPluginId(pluginId)) {
+      await this.removeOne(camera);
     }
-    if (target) await this.removeOne(target);
   }
 
   public async removeByPluginIdAndName(cameraname: string, pluginId: string): Promise<void> {

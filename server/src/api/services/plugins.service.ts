@@ -200,16 +200,6 @@ export class PluginsService {
     await Promise.all(orphanedNames.map((name) => this.removePluginDbByName(name)));
   }
 
-  public async handleDisabledPlugins(): Promise<void> {
-    const camerasService = new CamerasService();
-    const plugins = this.listPlugins();
-    const disabledPlugins: string[] = plugins.filter((plugin) => plugin.disabled).map((plugin) => plugin.pluginName);
-
-    for (const pluginName of disabledPlugins) {
-      await camerasService.removeByPluginName(pluginName);
-    }
-  }
-
   public async manage(
     pluginName: string,
     action: 'install' | 'update' | 'uninstall',

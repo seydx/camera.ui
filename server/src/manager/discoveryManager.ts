@@ -385,8 +385,10 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     const sourceId = `plugin-${pluginId}`;
 
     const internalCameras: DiscoveredCameraInternal[] = cameras.map((c) => this.toInternalPluginCamera(pluginId, c));
+    const pushedIds = new Set(internalCameras.map((c) => c.id));
 
-    this.updateSourceCache(sourceId, internalCameras);
+    const kept = (this.sourceCache.get(sourceId)?.cameras ?? []).filter((c) => !pushedIds.has(c.id));
+    this.updateSourceCache(sourceId, [...kept, ...internalCameras]);
 
     if (this.subscriberCount > 0) {
       const devices = internalCameras.map((c) => this.toDeviceListItem(c));
@@ -395,12 +397,6 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
   }
 
   public notifyCameraDeleted(cameraId: string, pluginId?: string): void {
-    // Drop plugin's source cache so the next scan rediscovers the camera fresh.
-    if (pluginId) {
-      const sourceId = `plugin-${pluginId}`;
-      this.sourceCache.delete(sourceId);
-    }
-
     if (this.subscriberCount > 0) {
       this.publishDiscoveryEvent('cameras:deleted', { cameraId, pluginId });
     }
