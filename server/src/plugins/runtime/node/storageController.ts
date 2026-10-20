@@ -105,8 +105,11 @@ export class StorageController {
 
   /** Internal method to close all storages */
   public async close(): Promise<void> {
-    for (const storage of this.#storages.values()) {
-      await storage.close();
+    const storages = Array.from(this.#storages.values());
+    // saves share one config document and run in order, the handler drains overlap
+    for (const storage of storages) {
+      await storage.save().catch((error) => this.#api.logger.error('store: close save failed:', error));
     }
+    await Promise.all(storages.map((storage) => storage.unregisterStorage().catch((error) => this.#api.logger.error('store: close unregister failed:', error))));
   }
 }

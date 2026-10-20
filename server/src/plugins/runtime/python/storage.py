@@ -308,14 +308,6 @@ class DeviceStorage(DeviceStorageInterface):
         if self.__close_proxy:
             await self.__close_proxy()
 
-    # Internal method to close the storage
-    async def close(self) -> None:
-        try:
-            await self.save()
-            await self.unregister_storage()
-        except Exception as error:
-            cast(Any, self.__api).logger.error(f"store: close save failed: {error}")
-
     async def __resolve_on_get_functions(
         self,
         schemas: JsonSchema | list[JsonSchema],

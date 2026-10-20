@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, TypedDict
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from _camera_ui_tools.camera_ui_common import LoggerService
-from _camera_ui_tools.camera_ui_rpc import CloseHandler, RPCClient
+from _camera_ui_tools.camera_ui_rpc import CloseHandler, ProxyWithClose, RPCClient
 from _camera_ui_tools.camera_ui_sdk import (
     BasePlugin,
     CoreManager,
@@ -27,10 +28,20 @@ from plugins.runtime.python.namespaces import (
 from plugins.runtime.python.rpc.typings import CoreManagerInterface
 from plugins.runtime.python.typings import PluginInfo
 
+if TYPE_CHECKING:
+    from _camera_ui_tools.camera_ui_sdk import PluginCallOptions
 
-class RPCConnection(TypedDict):
-    proxy: BasePlugin
-    close: CloseHandler
+
+def _proxy_call_options(options: PluginCallOptions | None) -> dict[str, Any]:
+    if not options:
+        return {}
+    call_options: dict[str, Any] = {}
+    timeout_ms = options.get("timeoutMs")
+    if timeout_ms and timeout_ms > 0:
+        call_options["timeout"] = timeout_ms
+    if options.get("noRetry"):
+        call_options["no_responder_retry"] = {"max_retries": 0}
+    return call_options
 
 
 class CoreManagerProxy(CoreManager):
@@ -52,7 +63,8 @@ class CoreManagerProxy(CoreManager):
             NamespaceManager.plugin_namespaces(self.__plugin["id"]),
         )
 
-        self.__rpc_connections: dict[str, RPCConnection] = {}
+        self.__rpc_connections: dict[str, ProxyWithClose[BasePlugin]] = {}
+        self.__call_proxies: dict[str, BasePlugin] = {}
         self.__event_subject: Subject[CoreManagerEvent] = Subject()
 
     @property
@@ -76,24 +88,37 @@ class CoreManagerProxy(CoreManager):
             self.__on_event_message,
         )
 
-    async def connectToPlugin(self, pluginName: str) -> BasePlugin | None:
+    async def connectToPlugin(
+        self, pluginName: str, options: PluginCallOptions | None = None
+    ) -> BasePlugin | None:
         try:
             plugin = await self.__core_manager_proxy.getPlugin(pluginName)
 
             if not plugin:
                 return None
 
-            namespaces = NamespaceManager.plugin_namespaces(plugin["id"])
+            namespace = NamespaceManager.plugin_namespaces(plugin["id"]).plugin_child_rpc
+            rpc_connection = self.__rpc_connections.get(namespace)
+            if rpc_connection is None:
+                # the isolated overload rejects an abstract type_class such as BasePlugin
+                create_proxy: Callable[..., ProxyWithClose[BasePlugin]] = self.__proxy.create_proxy
+                rpc_connection = create_proxy(namespace, BasePlugin, isolated_connection=True)
+                self.__rpc_connections[namespace] = rpc_connection
 
-            rpc_connection: RPCConnection
+            call_options = _proxy_call_options(options)
+            if not call_options:
+                return rpc_connection.proxy
 
-            if namespaces.plugin_child_rpc in self.__rpc_connections:
-                rpc_connection = self.__rpc_connections[namespaces.plugin_child_rpc]
-            else:
-                rpc_connection = await self.__proxy.create_proxy(namespaces.plugin_child_rpc)
-                self.__rpc_connections[namespaces.plugin_child_rpc] = rpc_connection
-            return rpc_connection["proxy"]
-        except Exception:
+            key = f"{namespace}|{call_options.get('timeout', '')}|{'no_responder_retry' in call_options}"
+            call_proxy = self.__call_proxies.get(key)
+            if call_proxy is None:
+                # option sets share the plain proxy's isolated client
+                client: RPCClient = getattr(rpc_connection.proxy, "_isolated_client", self.__proxy)
+                call_proxy = client.create_proxy(namespace, BasePlugin, **call_options)
+                self.__call_proxies[key] = call_proxy
+            return call_proxy
+        except Exception as e:
+            self.__logger.error(f'Could not connect to plugin "{pluginName}": {e}')
             return None
 
     async def getFFmpegPath(self) -> str:
@@ -143,6 +168,9 @@ class CoreManagerProxy(CoreManager):
         self.__event_subject.next({"type": event_type, "data": data})
 
     async def __disconnect_rpc(self) -> None:
+        rpc_connections = list(self.__rpc_connections.values())
+        self.__rpc_connections.clear()
+        self.__call_proxies.clear()
         await asyncio.gather(
-            *[rpc_connection["close"]() for rpc_connection in self.__rpc_connections.values()]
+            *[rpc_connection.close() for rpc_connection in rpc_connections], return_exceptions=True
         )

@@ -31,7 +31,7 @@ export class PluginAPI extends EventEmitter implements PluginAPIInterface {
     super();
 
     this._storageController = new StorageController(this, this.proxy, this.plugin, this.pluginDb);
-    this.coreManager = new CoreManagerProxy(this.proxy, this.plugin);
+    this.coreManager = new CoreManagerProxy(this.proxy, this.plugin, this.logger);
     this.sensorManager = new SensorManagerProxy(this.proxy, this._storageController, this.plugin, this.logger);
     this.deviceManager = new DeviceManagerProxy(this.proxy, this._storageController, this.sensorManager, this.plugin, this.logger);
     this.downloadManager = new DownloadManagerProxy(this.proxy);

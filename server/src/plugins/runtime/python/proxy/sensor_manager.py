@@ -222,9 +222,7 @@ class SensorManagerProxy:
         self._external.clear()
         self._report_writes.clear()
 
-        for cleanup in list(self._cleanups.values()):
-            with contextlib.suppress(Exception):
-                await cleanup()
+        await asyncio.gather(*[cleanup() for cleanup in self._cleanups.values()], return_exceptions=True)
         self._cleanups.clear()
 
         for sensor in self._owned.values():

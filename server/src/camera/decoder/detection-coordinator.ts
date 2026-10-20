@@ -19,6 +19,7 @@ import { FrameScaler } from './frame-scaler.js';
 import { hardwareDecodingAvailable } from './hardware.js';
 import { directionBetween, directionOf, MOMENT_FORMATS, MOMENT_QUALITY, momentWindow, unionBox } from './moment-crop.js';
 import { MotionLocalizer } from './motion-localizer.js';
+import { withNoResponderBackoff } from './no-responder-backoff.js';
 import { PerfTracker } from './perf-tracker.js';
 import { normalizePlateText } from './plate-vote.js';
 import { isVideoInputSpec, modelIdentity, PluginRegistry } from './plugin-registry.js';
@@ -1219,9 +1220,16 @@ export class DetectionCoordinator {
     const wasAudioNeeded = this.plugins.shouldAudioBeActive();
 
     const namespaces = NamespaceManager.sensorProviderNamespaces(sensor.pluginId, sensor.sensorId);
-    const sensorProxy = this.proxy.createProxy<DetectionPluginInterface>(namespaces.sensorRpc, {
-      onTiming: (_method, timing) => this.perf.trackTiming(sensor.sensorType, timing.handlerMs, timing.transportMs),
-    });
+    const sensorProxy = withNoResponderBackoff(
+      withFrameBytes(
+        this.proxy.createProxy<DetectionPluginInterface>(namespaces.sensorRpc, {
+          // the next tick retries, the lib retry would stall the camera loop up to 3.5 s
+          noResponderRetry: { maxRetries: 0 },
+          onTiming: (_method, timing) => this.perf.trackTiming(sensor.sensorType, timing.handlerMs, timing.transportMs),
+        }),
+        (bytes) => this.perf.trackFrameBytes(sensor.pluginId, bytes),
+      ),
+    );
 
     const registered = this.plugins.register({
       pluginId: sensor.pluginId,

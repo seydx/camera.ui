@@ -2,9 +2,21 @@ import { Subject } from '@camera.ui/sdk';
 
 import { NamespaceManager } from '../../../../rpc/namespaces.js';
 
+import type { Logger } from '@camera.ui/common';
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
-import type { BasePlugin, CoreManager, CoreManagerEvent, Observable, PluginInfo, PluginInterface, PluginInterfaces } from '@camera.ui/sdk';
-import type { AssistantAccess, AssistantAskRequest, AssistantAskResult } from '../../../../assistant/types.js';
+import type {
+  AssistantAccess,
+  AssistantAskResult,
+  BasePlugin,
+  CoreManager,
+  CoreManagerEvent,
+  Observable,
+  PluginCallOptions,
+  PluginInfo,
+  PluginInterface,
+  PluginInterfaces,
+} from '@camera.ui/sdk';
+import type { AssistantAskRequest } from '../../../../assistant/types.js';
 import type { CoreManagerInterface, CoreManagerListenerMessagePayload } from '../../../../rpc/interfaces/core.js';
 import type { CoreManagerNamespaces, PluginNamespaces } from '../../../../rpc/namespaces.js';
 
@@ -13,6 +25,7 @@ export class CoreManagerProxy implements CoreManager {
 
   #proxy: RPCClient;
   #plugin: PluginInfo;
+  #logger: Logger;
 
   #initialized = false;
 
@@ -20,12 +33,14 @@ export class CoreManagerProxy implements CoreManager {
   #namespaces: CoreManagerNamespaces & PluginNamespaces;
 
   #rpcConnections = new Map<string, { proxy: Promisify<BasePlugin & PluginInterfaces>; close: () => Promise<void> }>();
+  #callProxies = new Map<string, Promisify<BasePlugin & PluginInterfaces>>();
 
   #eventSubject = new Subject<CoreManagerEvent>();
 
-  constructor(proxy: RPCClient, plugin: PluginInfo) {
+  constructor(proxy: RPCClient, plugin: PluginInfo, logger: Logger) {
     this.#proxy = proxy;
     this.#plugin = plugin;
+    this.#logger = logger;
     this.#namespaces = {
       ...NamespaceManager.coreManagerNamespaces(),
       ...NamespaceManager.pluginNamespaces(this.#plugin.id),
@@ -47,7 +62,7 @@ export class CoreManagerProxy implements CoreManager {
     this.#closeSubscription = await this.#proxy.subscribe<CoreManagerListenerMessagePayload>(this.#namespaces.coreManagerSubject, this.#onEventMessage.bind(this));
   }
 
-  public async connectToPlugin(pluginName: string): Promise<(BasePlugin & PluginInterfaces) | undefined> {
+  public async connectToPlugin(pluginName: string, options?: PluginCallOptions): Promise<(BasePlugin & PluginInterfaces) | undefined> {
     try {
       const plugin = await this.#coreManagerProxy.getPlugin(pluginName);
 
@@ -65,9 +80,30 @@ export class CoreManagerProxy implements CoreManager {
         this.#rpcConnections.set(namespaces.pluginChildRpc, rpcConnection);
       }
 
-      // Cast to interface type - RPC proxy exposes methods correctly at runtime
-      return rpcConnection.proxy;
-    } catch {
+      const timeout = options?.timeoutMs && options.timeoutMs > 0 ? options.timeoutMs : undefined;
+      const noRetry = options?.noRetry === true;
+
+      if (timeout === undefined && !noRetry) {
+        return rpcConnection.proxy;
+      }
+
+      const key = `${namespaces.pluginChildRpc}|${timeout ?? ''}|${noRetry}`;
+      let callProxy = this.#callProxies.get(key);
+
+      if (!callProxy) {
+        // the get trap answers every property with a remote method, read the client off the target
+        const client = (Object.getOwnPropertyDescriptor(rpcConnection.proxy, '_isolatedClient')?.value as RPCClient | undefined) ?? this.#proxy;
+        callProxy = client.createProxy<BasePlugin & PluginInterfaces>(namespaces.pluginChildRpc, {
+          isolatedConnection: false,
+          timeout,
+          noResponderRetry: noRetry ? { maxRetries: 0 } : undefined,
+        });
+        this.#callProxies.set(key, callProxy);
+      }
+
+      return callProxy;
+    } catch (error) {
+      this.#logger.error(`Could not connect to plugin "${pluginName}":`, error);
       return undefined;
     }
   }
@@ -124,6 +160,9 @@ export class CoreManagerProxy implements CoreManager {
   }
 
   async #disconnectRpc(): Promise<void> {
-    await Promise.allSettled(Array.from(this.#rpcConnections.values()).map((rpcConnection) => rpcConnection.close()));
+    const rpcConnections = Array.from(this.#rpcConnections.values());
+    this.#rpcConnections.clear();
+    this.#callProxies.clear();
+    await Promise.allSettled(rpcConnections.map((rpcConnection) => rpcConnection.close()));
   }
 }

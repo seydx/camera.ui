@@ -126,8 +126,7 @@ class DeviceManagerProxy(DeviceManager):
         if self.__close_request:
             await self.__close_request()
 
-        for device in self.__devices.values():
-            await device.cleanup()
+        await asyncio.gather(*[device.cleanup() for device in self.__devices.values()])
         self.__devices.clear()
 
     async def __refresh_all_devices(self) -> None:

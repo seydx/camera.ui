@@ -1,3 +1,5 @@
+import { isNoRespondersError } from '@camera.ui/rpc';
+
 import { isAudioModelSpec } from './plugin-registry.js';
 import { AudioSource } from './sources/audio-source.js';
 
@@ -140,7 +142,7 @@ export class AudioDetectionLoop {
 
         this.hooks.onResult(audioPlugin.sensorId, result);
       } catch (error) {
-        this.logger.error('Audio detection error:', error);
+        if (!isNoRespondersError(error)) this.logger.error('Audio detection error:', error);
       } finally {
         try {
           rawFrame[Symbol.dispose]?.();

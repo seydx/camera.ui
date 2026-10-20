@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Literal, overload
 
 from plugins.runtime.python.storage import DeviceStorage
@@ -149,6 +150,17 @@ class StorageController:
 
     # Internal method to close all storages
     async def close(self) -> None:
-        for storage in list(self.__storages.values()):
-            await storage.close()
+        storages = list(self.__storages.values())
+        # saves share one config document and run in order, the handler drains overlap
+        for storage in storages:
+            try:
+                await storage.save()
+            except Exception as error:
+                self.__api.logger.error(f"store: close save failed: {error}")
+        results = await asyncio.gather(
+            *[storage.unregister_storage() for storage in storages], return_exceptions=True
+        )
+        for result in results:
+            if isinstance(result, Exception):
+                self.__api.logger.error(f"store: close unregister failed: {result}")
         self.__storages.clear()

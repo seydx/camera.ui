@@ -252,16 +252,6 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
     await this.#closeProxy?.();
   }
 
-  /** Internal method to close the storage */
-  public async close(): Promise<void> {
-    try {
-      await this.save();
-      await this.unregisterStorage();
-    } catch (error) {
-      this.#api.logger.error('store: close save failed:', error);
-    }
-  }
-
   async #resolveOnGetFunctions(schemas: JsonSchema | JsonSchema[]): Promise<void> {
     if (!Array.isArray(schemas)) {
       schemas = [schemas];

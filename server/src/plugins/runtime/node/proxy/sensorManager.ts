@@ -179,9 +179,8 @@ export class SensorManagerProxy implements SensorManager {
 
     this.#external.clear();
 
-    for (const cleanup of this.#cleanups.values()) {
-      await cleanup();
-    }
+    // cleanups wait for their running calls, in sequence they overrun the stop deadline
+    await Promise.all(Array.from(this.#cleanups.values(), (cleanup) => cleanup()));
     this.#cleanups.clear();
 
     for (const sensor of this.#owned.values()) {

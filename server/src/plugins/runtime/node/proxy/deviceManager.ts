@@ -120,9 +120,7 @@ export class DeviceManagerProxy implements DeviceManager {
     this.#stopReconnectWatch = undefined;
     this.#closeRequests?.();
 
-    for (const device of this.#devices.values()) {
-      await device.cleanup();
-    }
+    await Promise.all(Array.from(this.#devices.values(), (device) => device.cleanup()));
     this.#devices.clear();
     this.#configured.clear();
   }

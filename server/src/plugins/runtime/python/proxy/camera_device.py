@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
@@ -566,14 +567,12 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             await self._detection_wire()
             self._detection_wire = None
 
+        cleanups = list(self._sensor_cleanup_functions.values())
         if self._impl_cleanup_function:
-            with contextlib.suppress(Exception):
-                await self._impl_cleanup_function()
-            self._impl_cleanup_function = None
-
-        for cleanup in list(self._sensor_cleanup_functions.values()):
-            with contextlib.suppress(Exception):
-                await cleanup()
+            cleanups.insert(0, self._impl_cleanup_function)
+        # cleanups wait for their running calls, in sequence they overrun the stop deadline
+        await asyncio.gather(*[cleanup() for cleanup in cleanups], return_exceptions=True)
+        self._impl_cleanup_function = None
         self._sensor_cleanup_functions.clear()
 
         for owned_sensor, _ in list(self._owned_sensors.values()):

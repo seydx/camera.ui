@@ -197,12 +197,8 @@ export class CameraDeviceProxy extends CameraDevice {
 
     this.#detectionEventSubject.complete();
 
-    await this.#implCleanupFunction?.();
+    await Promise.all([this.#implCleanupFunction?.(), ...Array.from(this.#sensorCleanupFunctions.values(), (cleanup) => cleanup())]);
     this.#implCleanupFunction = undefined;
-
-    for (const cleanup of this.#sensorCleanupFunctions.values()) {
-      await cleanup();
-    }
     this.#sensorCleanupFunctions.clear();
 
     for (const { sensor } of this.#ownedSensors.values()) {
