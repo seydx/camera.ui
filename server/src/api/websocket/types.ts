@@ -2,6 +2,7 @@ import type { LoadedModel } from '@camera.ui/sdk';
 import type { Namespace } from 'socket.io';
 import type { PLUGIN_STATUS } from '../../plugins/types.js';
 import type { RuntimeInfo } from '../../services/config/types.js';
+import type { PlacementInfo } from '../../workers/lifecycle/remote-placement.js';
 
 export type SocketNsp =
   '/camera.ui' | '/events' | '/metrics' | '/logs' | '/status' | '/notifications' | '/plugins' | '/server' | '/cameras' | '/sensors' | '/workers' | '/training';
@@ -103,6 +104,7 @@ export interface AllProcesses extends ServerProcessInfo {
 export interface PluginRuntimeInfo {
   name: string;
   status: PLUGIN_STATUS;
+  placement?: PlacementInfo;
 }
 
 export interface ServerRuntime {

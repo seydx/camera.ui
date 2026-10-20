@@ -1,11 +1,12 @@
 import { PLUGIN_STATUS } from '@shared/types';
 
 import type { SocketChannel, SocketUnsubscribe } from '@/connection/index.js';
-import type { PluginRuntimeInfo, PluginsProgress } from '@shared/types';
+import type { PlacementInfo, PluginRuntimeInfo, PluginsProgress } from '@shared/types';
 
 export interface PluginsSocketState {
   status: PLUGIN_STATUS;
   statusColor: string;
+  placement?: PlacementInfo;
 }
 
 const DISPOSAL_GRACE_MS = 5_000;
@@ -23,9 +24,11 @@ let channel: SocketChannel | null = null;
 function updateStatusColor(state: PluginsSocketState, status: PLUGIN_STATUS): void {
   switch (status) {
     case PLUGIN_STATUS.ERROR:
+    case PLUGIN_STATUS.INCOMPATIBLE:
       state.statusColor = '#9d5752';
       break;
     case PLUGIN_STATUS.STARTING:
+    case PLUGIN_STATUS.STOPPING:
       state.statusColor = 'orange';
       break;
     case PLUGIN_STATUS.READY:
@@ -53,6 +56,7 @@ function applyStatus(pluginName: string, data: PluginRuntimeInfo): void {
   const state = pluginStates.get(pluginName);
   if (!state) return;
   state.status = data.status;
+  state.placement = data.placement;
   updateStatusColor(state, data.status);
 }
 
@@ -160,6 +164,7 @@ export function usePluginsSocket(pluginName: string) {
     isConnected: computed(() => channel?.connected.value ?? false),
     status: computed(() => state.status),
     statusColor: computed(() => state.statusColor),
+    placement: computed(() => state.placement),
     manageEntry: computed(() => manageQueue.value.find((entry) => entry.pluginName === pluginName)),
 
     connect,

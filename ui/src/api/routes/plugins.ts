@@ -193,9 +193,9 @@ export async function stopPluginFn({ pluginName }: { pluginName: string }): Prom
   return response.data;
 }
 
-export async function restartPluginFn({ pluginName }: { pluginName: string }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.put(`/plugins/${pluginName}/restart`);
-  return response.data;
+export async function restartPluginFn({ pluginName }: { pluginName: string }): Promise<boolean> {
+  const response = await api.put(`/plugins/${pluginName}/restart`);
+  return response.status === 202;
 }
 
 export async function uninstallPluginFn({ pluginName, removeStorage }: { pluginName: string; removeStorage?: boolean }): Promise<AckResponse> {
@@ -501,10 +501,14 @@ export class PluginsQuery {
   public restartPluginQuery() {
     return useMutation({
       mutationFn: restartPluginFn,
-      onSuccess: async (_data, variables) => {
+      onSuccess: async (onWorker, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['plugins', variables.pluginName] });
         await this._queryClient.refetchQueries({ queryKey: ['pluginsList'] });
-        this.toast.add({ severity: 'success', detail: this.t('components.toast.plugin_restarted'), life: 3000 });
+        this.toast.add({
+          severity: 'success',
+          detail: this.t(onWorker ? 'components.toast.plugin_restarting_on_worker' : 'components.toast.plugin_restarted'),
+          life: 3000,
+        });
       },
     });
   }

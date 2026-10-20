@@ -137,6 +137,7 @@ declare global {
   const resetFloorplanSocket: typeof import('../composables/sockets/useFloorplanSocket').resetFloorplanSocket
   const resetMetricsSocket: typeof import('../composables/sockets/useMetricsSocket').resetMetricsSocket
   const resetNotificationsSocket: typeof import('../composables/sockets/useNotificationsSocket').resetNotificationsSocket
+  const resetPlacementSocket: typeof import('../composables/sockets/usePlacementSocket').resetPlacementSocket
   const resetPluginsSocket: typeof import('../composables/sockets/usePluginsSocket').resetPluginsSocket
   const resetServerSocket: typeof import('../composables/sockets/useServerSocket').resetServerSocket
   const resetStreamStatus: typeof import('../composables/sockets/useStreamStatus').resetStreamStatus
@@ -342,6 +343,8 @@ declare global {
   const usePerformanceObserver: typeof import('@vueuse/core').usePerformanceObserver
   const usePermission: typeof import('@vueuse/core').usePermission
   const usePermissions: typeof import('../composables/usePermissions').usePermissions
+  const usePlacementLabel: typeof import('../composables/usePlacementLabel').usePlacementLabel
+  const usePlacementSocket: typeof import('../composables/sockets/usePlacementSocket').usePlacementSocket
   const usePlugin: typeof import('@camera.ui/browser').usePlugin
   const usePluginUpdates: typeof import('../composables/usePluginUpdates').usePluginUpdates
   const usePluginsSocket: typeof import('../composables/sockets/usePluginsSocket').usePluginsSocket
@@ -523,6 +526,9 @@ declare global {
   export type { AppPermissionState, AppPermissionName } from '../composables/usePermissions'
   import('../composables/usePermissions')
   // @ts-ignore
+  export type { PlacementLabelOptions } from '../composables/usePlacementLabel'
+  import('../composables/usePlacementLabel')
+  // @ts-ignore
   export type { PluginUpdateRun } from '../composables/usePluginUpdates'
   import('../composables/usePluginUpdates')
   // @ts-ignore
@@ -549,6 +555,9 @@ declare global {
   // @ts-ignore
   export type { NotificationsSocketState } from '../composables/sockets/useNotificationsSocket'
   import('../composables/sockets/useNotificationsSocket')
+  // @ts-ignore
+  export type { PlacementSocketState } from '../composables/sockets/usePlacementSocket'
+  import('../composables/sockets/usePlacementSocket')
   // @ts-ignore
   export type { PluginsSocketState } from '../composables/sockets/usePluginsSocket'
   import('../composables/sockets/usePluginsSocket')
@@ -715,6 +724,7 @@ declare module 'vue' {
     readonly resetFloorplanSocket: UnwrapRef<typeof import('../composables/sockets/useFloorplanSocket')['resetFloorplanSocket']>
     readonly resetMetricsSocket: UnwrapRef<typeof import('../composables/sockets/useMetricsSocket')['resetMetricsSocket']>
     readonly resetNotificationsSocket: UnwrapRef<typeof import('../composables/sockets/useNotificationsSocket')['resetNotificationsSocket']>
+    readonly resetPlacementSocket: UnwrapRef<typeof import('../composables/sockets/usePlacementSocket')['resetPlacementSocket']>
     readonly resetPluginsSocket: UnwrapRef<typeof import('../composables/sockets/usePluginsSocket')['resetPluginsSocket']>
     readonly resetServerSocket: UnwrapRef<typeof import('../composables/sockets/useServerSocket')['resetServerSocket']>
     readonly resetStreamStatus: UnwrapRef<typeof import('../composables/sockets/useStreamStatus')['resetStreamStatus']>
@@ -919,6 +929,8 @@ declare module 'vue' {
     readonly usePerformanceObserver: UnwrapRef<typeof import('@vueuse/core')['usePerformanceObserver']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
     readonly usePermissions: UnwrapRef<typeof import('../composables/usePermissions')['usePermissions']>
+    readonly usePlacementLabel: UnwrapRef<typeof import('../composables/usePlacementLabel')['usePlacementLabel']>
+    readonly usePlacementSocket: UnwrapRef<typeof import('../composables/sockets/usePlacementSocket')['usePlacementSocket']>
     readonly usePlugin: UnwrapRef<typeof import('@camera.ui/browser')['usePlugin']>
     readonly usePluginUpdates: UnwrapRef<typeof import('../composables/usePluginUpdates')['usePluginUpdates']>
     readonly usePluginsSocket: UnwrapRef<typeof import('../composables/sockets/usePluginsSocket')['usePluginsSocket']>

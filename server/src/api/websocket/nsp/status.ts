@@ -52,7 +52,7 @@ export class StatusNamespace {
     const pluginWorkers: WorkerRuntime = {};
 
     Array.from(this.pluginManager.plugins).map(([pluginName, plugin]) => {
-      pluginWorkers[pluginName] = { name: pluginName, status: plugin.worker.status };
+      pluginWorkers[pluginName] = { name: pluginName, status: plugin.worker.status, placement: plugin.worker.placementInfo };
     });
 
     socket.emit('plugin-process-status', pluginWorkers);
@@ -67,7 +67,7 @@ export class StatusNamespace {
     const cameraControllers = this.api.getCameras();
     cameraControllers.forEach((cameraController) => {
       const frameWorker = cameraController.frameWorker;
-      frameWorkers[frameWorker.name] = { name: frameWorker.name, status: frameWorker.status };
+      frameWorkers[frameWorker.name] = { name: frameWorker.name, status: frameWorker.status, placement: frameWorker.placementInfo };
     });
 
     socket.emit('frameworker-process-status', frameWorkers);

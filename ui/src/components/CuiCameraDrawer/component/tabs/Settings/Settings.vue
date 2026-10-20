@@ -1745,6 +1745,9 @@
           <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
             {{ $t('components.camera_options.frame_worker_hint') }}
           </Message>
+          <Message v-if="decoderPlacement" severity="secondary" variant="simple" size="small" class="cui-input-hint">
+            {{ $t('components.camera_options.frame_worker_location', { placement: decoderPlacement }) }}
+          </Message>
           <Field
             v-slot="{ errors }"
             :model-value="cameraForm.frameWorkerSettings.decoder?.hardware ?? 'auto'"
@@ -1937,6 +1940,8 @@ const dialog = useCuiDialog();
 const { t } = useI18n();
 const { camera, cameraDevice, loading: parentLoading } = toRefs(props);
 const { sensors: allSensors } = useSensors(cameraDevice);
+const placementSocket = usePlacementSocket();
+const { placementLabel } = usePlacementLabel();
 
 const { data: roomCatalog, isBusy: roomsLoading } = roomsQuery.getRoomsQuery();
 const { mutateAsync: createRoom } = roomsQuery.createRoomMutation();
@@ -1974,6 +1979,12 @@ const notifyAudioOptions = computed(() => [
 const notifySensorOptions = computed(() => NOTIFY_SENSOR_TYPES.map((type) => ({ label: t(sensorLabelKey(type)), value: type })));
 const snapshotModeOptions = computed(() => Object.entries(SNAPSHOT_MODE_KEYS).map(([value, keys]) => ({ label: t(keys.label), value })));
 const snapshotModeHint = computed(() => t(SNAPSHOT_MODE_KEYS[cameraForm.value.snapshotSettings.mode].hint));
+
+const decoderPlacement = computed(() => {
+  const placement = placementSocket.cameras.value[camera.value.name];
+  if (!placement || (placement.phase === 'local' && !cameraForm.value.workerAgentId)) return undefined;
+  return placementLabel(placement);
+});
 
 const decoderHardwareOptions: { label: string; value: FrameWorkerDecoderHardware }[] = [
   { label: 'Auto', value: 'auto' },
@@ -2264,6 +2275,10 @@ function confirmDeleteZoneEntry(entry: ZoneEntry) {
     },
   });
 }
+
+onBeforeMount(() => {
+  placementSocket.connect();
+});
 </script>
 
 <style scoped></style>

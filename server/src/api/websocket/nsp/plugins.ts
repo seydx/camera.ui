@@ -4,8 +4,7 @@ import { PluginsService } from '../../services/plugins.service.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { PluginManager } from '../../../plugins/index.js';
-import type { PLUGIN_STATUS } from '../../../plugins/types.js';
-import type { SocketNsp } from '../types.js';
+import type { PluginRuntimeInfo, SocketNsp } from '../types.js';
 
 export class PluginsNamespace {
   public nsp: Namespace;
@@ -25,14 +24,15 @@ export class PluginsNamespace {
     });
   }
 
-  public async pluginStatus(pluginName: string, callback?: Function): Promise<void | { pluginName: string; status: PLUGIN_STATUS }> {
+  public async pluginStatus(pluginName: string, callback?: Function): Promise<void | (PluginRuntimeInfo & { pluginName: string })> {
     const plugin = this.pluginManager.plugins.get(pluginName);
 
     if (plugin) {
-      const status = plugin.worker.status;
       const data = {
+        name: pluginName,
         pluginName,
-        status,
+        status: plugin.worker.status,
+        placement: plugin.worker.placementInfo,
       };
 
       callback?.(data);

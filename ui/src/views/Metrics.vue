@@ -275,7 +275,7 @@ import BenchmarkDialog from '@/components/CuiDialog/templates/DetectionBenchmark
 import { DEFAULT_PROCESS_LOAD, MAX_METRICS_DATA_POINTS } from '@/composables/sockets/useMetricsSocket.js';
 
 import type { TableHeader, TableHeaderChart } from '@/components/CuiChartTable/types.js';
-import type { PaginationQuery, ProcessInfo, StreamStatsRow } from '@shared/types';
+import type { PaginationQuery, PlacementInfo, ProcessInfo, StreamStatsRow } from '@shared/types';
 import type { ChartData, ChartOptions } from 'chart.js';
 import type { DataTablePassThroughOptions } from 'primevue';
 
@@ -308,6 +308,7 @@ const { copy } = useClipboard();
 const metricsSocket = useMetricsSocket();
 const { mdBreakpoint, smBreakpoint, xsBreakpoint } = useSharedCuiBreakpoint();
 const { beginServerRestart } = useServerRestart();
+const { statusWithPlacement } = usePlacementLabel();
 const { stats, isLoading: storageStatsLoading } = useStorageStats();
 
 const METRICS_TABS = ['overview', 'cameras', 'storage'];
@@ -378,10 +379,10 @@ const headers = computed<(type: 'system' | 'core' | 'frameworker' | 'plugins') =
           class: 'w-5 max-w-5',
         },
         color(item: ProcessInfo) {
-          return getStatusColor(getStatus(type, item.name));
+          return getPlacement(type, item.name)?.phase === 'waiting-for-worker' ? 'gray' : getStatusColor(getStatus(type, item.name));
         },
         tooltip(item: ProcessInfo) {
-          return getStatusText(getStatus(type, item.name));
+          return statusWithPlacement(getStatusText(getStatus(type, item.name)), getPlacement(type, item.name));
         },
       },
       {
@@ -919,6 +920,12 @@ function getStatus(type: 'system' | 'core' | 'frameworker' | 'plugins', name: st
   }
 
   return RUNTIME_STATUS.UNKNOWN;
+}
+
+function getPlacement(type: 'system' | 'core' | 'frameworker' | 'plugins', name: string): PlacementInfo | undefined {
+  if (type === 'frameworker') return frameWorkerStatus.value[name]?.placement;
+  if (type === 'plugins') return pluginsStatus.value[name]?.placement;
+  return undefined;
 }
 
 function getStatusColor(status: RUNTIME_STATUS | PLUGIN_STATUS): string {

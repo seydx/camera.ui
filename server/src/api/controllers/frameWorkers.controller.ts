@@ -10,6 +10,7 @@ import type { CameraUiAPI } from '../../api.js';
 import type { BenchmarkHost, ObjectBenchmarkResult, ObjectBenchmarkRun } from '../../camera/decoder/types.js';
 import type { PluginManager } from '../../plugins/index.js';
 import type { WorkerManager } from '../../workers/manager.js';
+import type { SystemInfo } from '../../utils/system-info.js';
 import type { AuthLoginRequest, FrameWorker, FrameWorkerParamsNameRequest, PaginationRequest } from '../types/index.js';
 
 export class FrameWorkersController {
@@ -94,6 +95,7 @@ export class FrameWorkersController {
     try {
       await Promise.all(controllers.map((controller) => controller.frameWorker.pauseForBenchmark(true)));
 
+      const systems = new Map<string, SystemInfo | undefined>();
       const results = await Promise.all(
         selection.map(async (controller): Promise<ObjectBenchmarkResult | null> => {
           const worker = controller.frameWorker;
@@ -101,6 +103,7 @@ export class FrameWorkersController {
           if (!result) return null;
 
           const remote = worker.isRemoteWorker ? this.workerManager.getRemoteProcess(WorkerCapability.FrameDecoding, controller.id) : undefined;
+          if (remote) systems.set(remote.worker, remote.system);
           return { ...result, camera: worker.name, plugin: this.pluginName(result.plugin), worker: remote?.worker };
         }),
       );
@@ -111,7 +114,7 @@ export class FrameWorkersController {
       const handlerMs = measured.reduce((sum, result) => sum + result.handlerMs * result.iterations, 0);
 
       return {
-        hosts: await this.benchmarkHosts(measured),
+        hosts: await this.benchmarkHosts(measured, systems),
         total: {
           cameras: measured.length,
           iterations: done,
@@ -128,7 +131,7 @@ export class FrameWorkersController {
     }
   }
 
-  private async benchmarkHosts(measured: ObjectBenchmarkResult[]): Promise<BenchmarkHost[]> {
+  private async benchmarkHosts(measured: ObjectBenchmarkResult[], systems: Map<string, SystemInfo | undefined>): Promise<BenchmarkHost[]> {
     const hosts: BenchmarkHost[] = [];
 
     if (measured.some((result) => !result.worker)) {
@@ -136,7 +139,7 @@ export class FrameWorkersController {
     }
 
     for (const name of new Set(measured.map((result) => result.worker).filter((worker): worker is string => Boolean(worker)))) {
-      hosts.push({ worker: name, system: this.workerManager.getWorkerByName(name)?.system });
+      hosts.push({ worker: name, system: systems.get(name) });
     }
 
     return hosts;

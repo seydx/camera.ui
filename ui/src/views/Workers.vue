@@ -91,6 +91,17 @@
                 <span class="text-muted text-sm">{{ $t('views.workers.no_cameras') }}</span>
               </template>
 
+              <Column header="" header-class="p-2 w-5 max-w-5" class="p-2 w-5 max-w-5">
+                <template #body="{ data }">
+                  <div class="flex items-center justify-center">
+                    <Badge
+                      v-tooltip="{ value: placementTooltip(placementSocket.cameras.value[data.name]) }"
+                      :style="{ background: placementColor(placementSocket.cameras.value[data.name]) }"
+                    />
+                  </div>
+                </template>
+              </Column>
+
               <Column field="name" :header="$t('views.workers.camera')" header-class="p-2 min-w-40" class="p-2 min-w-40">
                 <template #body="{ data }">
                   <span class="font-bold text-color text-sm">{{ data.name }}</span>
@@ -100,20 +111,23 @@
               <Column :header="$t('views.workers.workers')" header-class="p-2 w-full" class="p-2 w-full">
                 <template #body="{ data }">
                   <Select
-                    :model-value="getValidAgentId(data.workerAgentId)"
-                    :options="getWorkerOptions()"
+                    :model-value="cameraDraft(data).agentId"
+                    :options="getWorkerOptions(data.workerAgentId)"
                     option-label="label"
                     option-value="value"
                     :placeholder="$t('views.workers.local')"
                     class="w-full"
                     show-clear
                     :loading="isAssigning(data._id)"
-                    :disabled="isAssigning(data._id)"
-                    @update:model-value="(val: string | null) => handleAssignment(data, val)"
+                    :disabled="savingCameras"
+                    @update:model-value="(val: string | null) => setCameraWorker(data, val)"
                   />
                 </template>
               </Column>
             </CuiDataTable>
+            <div class="flex flex-row justify-end mt-6">
+              <Button class="cui-button-medium" :label="$t('views.workers.save')" :loading="savingCameras" :disabled="!camerasDirty" @click="handleSaveCameras" />
+            </div>
           </template>
         </Card>
       </div>
@@ -131,6 +145,17 @@
                 <span class="text-muted text-sm">{{ $t('views.workers.no_plugins') }}</span>
               </template>
 
+              <Column header="" header-class="p-2 w-5 max-w-5" class="p-2 w-5 max-w-5">
+                <template #body="{ data }">
+                  <div class="flex items-center justify-center">
+                    <Badge
+                      v-tooltip="{ value: placementTooltip(placementSocket.plugins.value[data.pluginName], pluginInstallVersion(data.pluginName)) }"
+                      :style="{ background: placementColor(placementSocket.plugins.value[data.pluginName]) }"
+                    />
+                  </div>
+                </template>
+              </Column>
+
               <Column field="displayName" :header="$t('views.workers.plugin')" header-class="p-2 min-w-40" class="p-2 min-w-40">
                 <template #body="{ data }">
                   <div class="flex flex-col">
@@ -143,7 +168,7 @@
               <Column :header="$t('views.workers.workers')" header-class="p-2 w-full" class="p-2 w-full">
                 <template #body="{ data }">
                   <Select
-                    :model-value="getValidAgentId(data.workerAgentId)"
+                    :model-value="pluginDraft(data).agentId"
                     :options="getPluginWorkerOptions(data)"
                     option-label="label"
                     option-value="value"
@@ -152,12 +177,15 @@
                     class="w-full"
                     show-clear
                     :loading="isAssigningPlugin(data.pluginName)"
-                    :disabled="isAssigningPlugin(data.pluginName)"
-                    @update:model-value="(val: string | null) => handlePluginAssignment(data, val)"
+                    :disabled="savingPlugins"
+                    @update:model-value="(val: string | null) => setPluginWorker(data, val)"
                   />
                 </template>
               </Column>
             </CuiDataTable>
+            <div class="flex flex-row justify-end mt-6">
+              <Button class="cui-button-medium" :label="$t('views.workers.save')" :loading="savingPlugins" :disabled="!pluginsDirty" @click="handleSavePlugins" />
+            </div>
           </template>
         </Card>
       </div>
@@ -250,15 +278,20 @@ import { ApiQuery } from '@/api/routes/api.js';
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { PluginsQuery } from '@/api/routes/plugins.js';
 import { WorkersQuery } from '@/api/routes/workers.js';
-import { copyToClipboard as copy } from '@/common/utils.js';
+import { copyToClipboard as copy, formatCardTime, formatTimestamp } from '@/common/utils.js';
 import EditWorkerDialog from '@/components/CuiDialog/templates/EditWorker/EditWorker.vue';
 
 import type { TableHeader } from '@/components/CuiChartTable/types.js';
 import type { EditWorkerProps, EditWorkerResult } from '@/components/CuiDialog/templates/EditWorker/types.js';
-import type { PassThrough } from '@primevue/core';
-import type { CameraUiPlugin, DBCamera, WorkerInfo, WorkerPairingResponse } from '@shared/types';
+import type { PassThrough } from '@openvue/core';
+import type { CameraUiPlugin, DBCamera, PlacementInfo, WorkerInfo, WorkerPairingResponse } from '@shared/types';
 import type { ChartData } from 'chart.js';
-import type { DataTablePassThroughOptions } from 'primevue';
+import type { DataTablePassThroughOptions } from 'openvue';
+
+interface Assignment {
+  agentId: string | null;
+  workerOnly: boolean;
+}
 
 const { t } = useI18n();
 const { smBreakpoint } = useSharedCuiBreakpoint();
@@ -267,6 +300,9 @@ const updatesStore = useUpdatesStore();
 const toast = useCuiToast();
 const workersSocket = useWorkersSocket();
 const { workers, workerHistory, isConnected } = workersSocket;
+const placementSocket = usePlacementSocket();
+const { placementLabel, placementDetail } = usePlacementLabel();
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 30_000) });
 
 const apiQuery = new ApiQuery();
 const camerasQuery = new CamerasQuery();
@@ -305,6 +341,10 @@ const workersRemoving = ref<string[]>([]);
 const workersUpdating = ref<string[]>([]);
 const assigningCameraIds = ref(new Set<string>());
 const assigningPluginNames = ref(new Set<string>());
+const cameraDrafts = ref(new Map<string, Assignment>());
+const pluginDrafts = ref(new Map<string, Assignment>());
+const savingCameras = ref(false);
+const savingPlugins = ref(false);
 const pairing = ref<WorkerPairingResponse | null>(null);
 const replacesDraft = ref<string | null>(null);
 const addressDraft = ref('');
@@ -352,15 +392,10 @@ const workerHeaders = computed<TableHeader[]>(() => [
       headerClass: 'w-5 max-w-5',
       class: 'w-5 max-w-5',
     },
-    color(item: WorkerInfo) {
-      if (!item.online) return 'red';
-      return item.versionMismatch ? 'orange' : 'green';
-    },
+    color: (item: WorkerInfo) => stateColor(item),
     tooltip(item: WorkerInfo) {
-      if (!item.online) return t('views.workers.offline');
-      if (item.update?.error) return t('views.workers.update_failed', { error: item.update.error });
-      if (item.update?.updating) return t('views.workers.updating');
-      return item.versionMismatch ? t('views.workers.version_mismatch', { version: item.version || '?' }) : t('views.workers.online');
+      if (item.state === 'online' && !item.update?.updating && isBehind(item)) return t('views.workers.version_mismatch', { version: item.version || '?' });
+      return stateLabel(item);
     },
   },
   {
@@ -377,9 +412,30 @@ const workerHeaders = computed<TableHeader[]>(() => [
   },
   {
     type: 'category',
+    field: (item: WorkerInfo) => stateLabel(item),
+    name: t('views.workers.status'),
+    tooltip: (item: WorkerInfo) => stateDetail(item),
+    columnProps: {
+      headerClass: 'min-w-48',
+      class: 'min-w-48',
+    },
+  },
+  {
+    type: 'category',
+    field: (item: WorkerInfo) => workloadSummary(item),
+    name: t('views.workers.workloads'),
+    tooltip: (item: WorkerInfo) => workloadDetail(item),
+    asChip: true,
+    columnProps: {
+      headerClass: 'min-w-30',
+      class: 'min-w-30',
+    },
+  },
+  {
+    type: 'category',
     field: (item: WorkerInfo) => {
       if (!item.version) return '—';
-      if (item.versionMismatch && masterVersion.value) return `v${item.version} → v${masterVersion.value}`;
+      if (isBehind(item) && masterVersion.value) return `v${item.version} → v${masterVersion.value}`;
       return `v${item.version}`;
     },
     name: t('views.workers.version'),
@@ -463,7 +519,7 @@ const workerHeaders = computed<TableHeader[]>(() => [
         icon: UpdateIcon,
         buttonProps: { severity: 'secondary' },
         loading: (item: WorkerInfo) => item.update?.updating || workersUpdating.value.includes(item.agentId),
-        disabled: (item: WorkerInfo) => !item.online || !item.versionMismatch || !item.update?.updatable,
+        disabled: (item: WorkerInfo) => !reachable(item) || !isBehind(item) || !item.update?.updatable,
         tooltip: (item: WorkerInfo) => updateTooltip(item),
         action: (item: WorkerInfo) => handleUpdateWorker(item.agentId),
       },
@@ -556,6 +612,172 @@ function handleEditWorker(worker: WorkerInfo) {
   });
 }
 
+function isBehind(item: WorkerInfo): boolean {
+  return item.versionStanding === 'behind' || (item.versionStanding === 'unknown' && item.versionMismatch === true);
+}
+
+function reachable(item: WorkerInfo): boolean {
+  return item.state === 'online' || item.state === 'outdated';
+}
+
+function stateColor(worker: WorkerInfo): string {
+  switch (worker.state) {
+    case 'online':
+      return isBehind(worker) ? 'orange' : 'green';
+    case 'unreachable':
+    case 'restarting':
+      return 'yellow';
+    case 'offline':
+    case 'outdated':
+    case 'conflict':
+      return 'red';
+    default:
+      return 'gray';
+  }
+}
+
+function stateShort(worker: WorkerInfo): string {
+  switch (worker.state) {
+    case 'online':
+      return t('views.workers.online');
+    case 'expected':
+      return t('views.workers.state_expected');
+    case 'unreachable':
+      return t('views.workers.state_unreachable_short');
+    case 'restarting':
+      return t('views.workers.state_restarting');
+    case 'outdated':
+      return t('views.workers.state_outdated_short');
+    case 'releasing':
+      return t('views.workers.state_releasing');
+    case 'released':
+      return t('views.workers.state_released');
+    case 'conflict':
+      return t('views.workers.state_conflict_short');
+    default:
+      return t('views.workers.offline');
+  }
+}
+
+function stateLabel(worker: WorkerInfo): string {
+  const since = worker.stateSince ? formatCardTime(worker.stateSince) : undefined;
+  switch (worker.state) {
+    case 'online':
+      return updateLabel(worker) ?? t('views.workers.online');
+    case 'unreachable':
+      if (worker.stateReason?.startsWith('answers do not arrive')) return t('views.workers.state_no_answers');
+      return since ? t('views.workers.state_unreachable', { time: since }) : stateShort(worker);
+    case 'offline':
+      return since ? t('views.workers.state_offline', { time: since }) : stateShort(worker);
+    case 'outdated':
+      return t('views.workers.state_outdated', { version: worker.version ?? '?' });
+    case 'conflict':
+      return t('views.workers.state_conflict', { name: worker.name });
+    default:
+      return stateShort(worker);
+  }
+}
+
+function stateDetail(worker: WorkerInfo): string | undefined {
+  const parts: string[] = [];
+  if (worker.stateReason && worker.state !== 'online') parts.push(worker.stateReason.charAt(0).toUpperCase() + worker.stateReason.slice(1));
+  if (worker.stateUntil && worker.stateUntil > now.value.getTime()) {
+    parts.push(t('views.workers.state_moves_at', { time: formatTimestamp(worker.stateUntil).formattedTime }));
+  }
+  const last = worker.update?.lastResult;
+  if (last && last.result !== 'applied') {
+    const key = last.result === 'rolled-back' ? 'views.workers.update_rolled_back' : 'views.workers.update_swap_failed';
+    parts.push(t(key, { version: last.target, reason: last.reason ?? '?' }));
+  }
+  if (worker.update?.error) parts.push(t('views.workers.update_failed', { error: worker.update.error }));
+  return parts.length ? parts.join('. ') : undefined;
+}
+
+function updateLabel(worker: WorkerInfo): string | undefined {
+  if (!worker.update?.updating) return undefined;
+  switch (worker.update.phase) {
+    case 'installing':
+      return t('views.workers.update_installing');
+    case 'staged':
+      return t('views.workers.update_staged');
+    case 'restarting':
+      return t('views.workers.update_restarting');
+    default:
+      return t('views.workers.updating');
+  }
+}
+
+function workloadName(key: string): string {
+  const id = key.slice(key.indexOf(':') + 1);
+  if (key.startsWith('frameDecoding:')) return cameras.value.find((camera) => camera._id === id)?.name ?? id;
+  return plugins.value.find((plugin) => plugin.pluginName === id)?.displayName ?? id;
+}
+
+function workloadSummary(worker: WorkerInfo): string {
+  const workloads = worker.workloads ?? [];
+  const running = workloads.filter((workload) => workload.phase === 'running').length;
+  return running === workloads.length ? `${running}` : `${running}/${workloads.length}`;
+}
+
+function workloadDetail(worker: WorkerInfo): string | undefined {
+  const lines = (worker.workloads ?? []).map((workload) => {
+    const failure = workload.failure ? ` (${workload.failure.message})` : '';
+    return `${workloadName(workload.key)}: ${t(`views.workers.workload_${workload.phase}`)}${failure}`;
+  });
+  return lines.length ? lines.join(', ') : undefined;
+}
+
+function offers(worker: WorkerInfo, capability: 'frameDecoding' | 'pluginHost'): boolean {
+  return worker.capabilities.length === 0 || (worker.capabilities as string[]).includes(capability);
+}
+
+function optionLabel(worker: WorkerInfo, ...notes: string[]): string {
+  const all = [worker.state === 'online' ? undefined : stateShort(worker), ...notes].filter((note): note is string => Boolean(note));
+  return all.length ? `${worker.name} (${all.join(', ')})` : worker.name;
+}
+
+function placementTooltip(placement: PlacementInfo | undefined, version?: string): string {
+  const until = placement?.phase === 'held' ? workers.value.find((worker) => worker.agentId === placement.host)?.stateUntil : undefined;
+  const label = placementLabel(placement, { until, version }) ?? t('views.workers.not_running');
+  const detail = placementDetail(placement);
+  return detail ? `${label}: ${detail}` : label;
+}
+
+function placementColor(placement: PlacementInfo | undefined): string {
+  switch (placement?.phase) {
+    case 'local':
+    case 'bound':
+      return 'green';
+    case 'held':
+      return 'yellow';
+    case 'failed':
+      return 'red';
+    case 'waiting-for-worker':
+    case undefined:
+      return 'gray';
+    default:
+      return 'orange';
+  }
+}
+
+function pluginFallbackTooltip(plugin: CameraUiPlugin): string {
+  if (!pluginDraft(plugin).agentId) return t('views.workers.fallback_no_worker');
+  return plugin.compatible ? t('views.workers.fallback_hint') : t('views.workers.fallback_unavailable');
+}
+
+function pluginInstallVersion(pluginName: string): string | undefined {
+  const key = `pluginHost:${pluginName}`;
+  for (const worker of workers.value) {
+    const version = worker.workloads?.find((workload) => workload.key === key)?.install?.version;
+    if (version) return version;
+  }
+  return undefined;
+}
+
+function movingText(name: string, agentId: string | null): string {
+  return agentId ? t('views.workers.moving', { name, host: hostName(agentId) }) : t('views.workers.moving_local', { name });
+}
+
 function updateTooltip(item: WorkerInfo): string {
   if (item.update?.updating) return t('views.workers.updating');
   if (!masterVersion.value) return t('views.workers.update_worker_short');
@@ -581,18 +803,22 @@ async function handleRestartWorker(workerName: string, agentId: string) {
   }
 }
 
-function getWorkerOptions() {
-  const options: { label: string; value: string }[] = [];
-  for (const worker of workers.value) {
-    const label = worker.online ? worker.name : `${worker.name} (${t('views.workers.offline').toLowerCase()})`;
-    options.push({ label, value: worker.agentId });
-  }
-  return options;
+function getWorkerOptions(assigned?: string) {
+  return workers.value
+    .filter((worker) => offers(worker, 'frameDecoding') || worker.agentId === assigned)
+    .map((worker) => ({ label: optionLabel(worker), value: worker.agentId }));
 }
 
 function getValidAgentId(agentId?: string) {
   if (!agentId) return null;
   return workerIds.value.has(agentId) ? agentId : null;
+}
+
+function hostName(agentId?: string): string {
+  if (!agentId) return t('views.workers.local');
+  const worker = workers.value.find((entry) => entry.agentId === agentId);
+  if (!worker) return agentId;
+  return worker.state === 'online' ? worker.name : `${worker.name}, ${stateShort(worker)}`;
 }
 
 function matchesNpmList(list: string[] | undefined, value: string): boolean {
@@ -616,39 +842,122 @@ function platformRequirement(plugin: CameraUiPlugin): string {
 }
 
 function getPluginWorkerOptions(plugin: CameraUiPlugin) {
-  const options: { label: string; value: string; disabled: boolean }[] = [];
-  for (const worker of workers.value) {
-    const compatible = isPluginCompatibleWithWorker(plugin, worker);
-    const offline = worker.online ? '' : ` (${t('views.workers.offline').toLowerCase()})`;
-    const incompatible = compatible ? '' : ` — ${t('views.workers.incompatible')}`;
-    options.push({
-      label: `${worker.name}${offline}${incompatible}`,
-      value: worker.agentId,
-      disabled: !compatible,
+  return workers.value
+    .filter((worker) => offers(worker, 'pluginHost') || worker.agentId === plugin.workerAgentId)
+    .map((worker) => {
+      const compatible = isPluginCompatibleWithWorker(plugin, worker);
+      return {
+        label: optionLabel(worker, compatible ? '' : t('views.workers.incompatible')),
+        value: worker.agentId,
+        disabled: !compatible,
+      };
     });
-  }
-  return options;
 }
 
 function isAssigningPlugin(pluginName: string): boolean {
   return assigningPluginNames.value.has(pluginName);
 }
 
-async function handlePluginAssignment(plugin: CameraUiPlugin, agentId: string | null) {
-  if (agentId === getValidAgentId(plugin.workerAgentId)) return;
+function savedAssignment(record: DBCamera | CameraUiPlugin): Assignment {
+  const agentId = getValidAgentId(record.workerAgentId);
+  return { agentId, workerOnly: Boolean(agentId && record.workerOnly) };
+}
 
+function sameAssignment(a: Assignment, b: Assignment): boolean {
+  return a.agentId === b.agentId && a.workerOnly === b.workerOnly;
+}
+
+function setDraft(drafts: Map<string, Assignment>, key: string, next: Assignment, saved: Assignment) {
+  if (sameAssignment(next, saved)) drafts.delete(key);
+  else drafts.set(key, next);
+}
+
+function cameraDraft(camera: DBCamera): Assignment {
+  return cameraDrafts.value.get(camera._id) ?? savedAssignment(camera);
+}
+
+function setCameraWorker(camera: DBCamera, agentId: string | null) {
+  setDraft(cameraDrafts.value, camera._id, { agentId, workerOnly: Boolean(agentId) && cameraDraft(camera).workerOnly }, savedAssignment(camera));
+}
+
+function setCameraFallback(camera: DBCamera, fallback: boolean) {
+  setDraft(cameraDrafts.value, camera._id, { ...cameraDraft(camera), workerOnly: !fallback }, savedAssignment(camera));
+}
+
+function pluginDraft(plugin: CameraUiPlugin): Assignment {
+  return pluginDrafts.value.get(plugin.pluginName) ?? savedAssignment(plugin);
+}
+
+function setPluginWorker(plugin: CameraUiPlugin, agentId: string | null) {
+  setDraft(pluginDrafts.value, plugin.pluginName, { agentId, workerOnly: Boolean(agentId) && pluginDraft(plugin).workerOnly }, savedAssignment(plugin));
+}
+
+function setPluginFallback(plugin: CameraUiPlugin, fallback: boolean) {
+  setDraft(pluginDrafts.value, plugin.pluginName, { ...pluginDraft(plugin), workerOnly: !fallback }, savedAssignment(plugin));
+}
+
+function handleSavePlugins() {
+  const moves = plugins.value
+    .filter((plugin) => pluginDraft(plugin).agentId !== savedAssignment(plugin).agentId)
+    .map((plugin) => ({
+      plugin: plugin.displayName,
+      from: hostName(savedAssignment(plugin).agentId ?? undefined),
+      to: hostName(pluginDraft(plugin).agentId ?? undefined),
+    }));
+  if (!moves.length) {
+    savePlugins();
+    return;
+  }
+
+  dialog.openTextDialog({
+    data: {
+      title: moves.length > 1 ? t('views.workers.move_plugins') : t('views.workers.move_plugin'),
+      confirmText: t('views.workers.move'),
+      contentText:
+        moves.length > 1
+          ? t('views.workers.move_plugins_confirm', { plugins: moves.map((move) => t('views.workers.move_plugin_item', move)).join(', ') })
+          : t('views.workers.move_plugin_confirm', moves[0]!),
+    },
+    dialogSize: {
+      desktop: {
+        width: 'auto',
+        maxWidth: '560px',
+        maxHeight: '90vh',
+      },
+    },
+    onConfirm: () => savePlugins(),
+  });
+}
+
+async function savePlugins() {
+  savingPlugins.value = true;
+  try {
+    for (const plugin of plugins.value) {
+      const draft = pluginDrafts.value.get(plugin.pluginName);
+      if (!draft) continue;
+      const saved = savedAssignment(plugin);
+      if (!sameAssignment(draft, saved)) {
+        const moving = await assignPluginTo(plugin, draft);
+        if (moving === undefined) continue;
+        if (moving && draft.agentId !== saved.agentId) toast.add({ severity: 'info', detail: movingText(plugin.displayName, draft.agentId), life: 4000 });
+      }
+      pluginDrafts.value.delete(plugin.pluginName);
+    }
+  } finally {
+    savingPlugins.value = false;
+  }
+}
+
+async function assignPluginTo(plugin: CameraUiPlugin, { agentId, workerOnly }: Assignment): Promise<boolean | undefined> {
   const pending = new Set(assigningPluginNames.value);
   pending.add(plugin.pluginName);
   assigningPluginNames.value = pending;
 
   try {
-    if (agentId) {
-      await assignPlugin({ pluginName: plugin.pluginName, agentId });
-    } else {
-      await unassignPlugin({ pluginName: plugin.pluginName });
-    }
+    return agentId ? await assignPlugin({ pluginName: plugin.pluginName, agentId, workerOnly }) : await unassignPlugin({ pluginName: plugin.pluginName });
   } catch {
     // handled in the mutation's onError
+    return undefined;
   } finally {
     const done = new Set(assigningPluginNames.value);
     done.delete(plugin.pluginName);
@@ -660,22 +969,36 @@ function isAssigning(cameraId: string): boolean {
   return assigningCameraIds.value.has(cameraId);
 }
 
-async function handleAssignment(camera: DBCamera, agentId: string | null) {
-  if (agentId === getValidAgentId(camera.workerAgentId)) return;
+async function handleSaveCameras() {
+  savingCameras.value = true;
+  try {
+    for (const camera of cameras.value) {
+      const draft = cameraDrafts.value.get(camera._id);
+      if (!draft) continue;
+      const saved = savedAssignment(camera);
+      if (!sameAssignment(draft, saved)) {
+        const moving = await assignCameraTo(camera, draft);
+        if (moving === undefined) continue;
+        if (moving && draft.agentId !== saved.agentId) toast.add({ severity: 'info', detail: movingText(camera.name, draft.agentId), life: 4000 });
+      }
+      cameraDrafts.value.delete(camera._id);
+    }
+  } finally {
+    savingCameras.value = false;
+  }
+}
 
+async function assignCameraTo(camera: DBCamera, { agentId, workerOnly }: Assignment): Promise<boolean | undefined> {
   const pending = new Set(assigningCameraIds.value);
   pending.add(camera._id);
   assigningCameraIds.value = pending;
 
   try {
-    // Optimistic cache patch + rollback + error toast live in the mutation.
-    if (agentId) {
-      await assignCamera({ cameraId: camera._id, agentId });
-    } else {
-      await unassignCamera({ cameraId: camera._id });
-    }
+    // the mutation does the optimistic patch, rollback and toast
+    return agentId ? await assignCamera({ cameraId: camera._id, agentId, workerOnly }) : await unassignCamera({ cameraId: camera._id });
   } catch {
     // handled in the mutation's onError
+    return undefined;
   } finally {
     const done = new Set(assigningCameraIds.value);
     done.delete(camera._id);
@@ -752,6 +1075,7 @@ function handleRemoveWorker(worker: WorkerInfo) {
 
 onBeforeMount(async () => {
   workersSocket.connect();
+  placementSocket.connect();
   updatesStore.connect();
 
   await nextTick();

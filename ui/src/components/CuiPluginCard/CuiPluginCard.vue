@@ -94,7 +94,7 @@
           <div class="ml-auto"></div>
 
           <Badge
-            v-tooltip.top="{ value: $t(`components.plugin_card.status_${pluginsSocket.status.value}`) }"
+            v-tooltip.top="{ value: statusTooltip }"
             class="min-w-3 w-3 h-3 mr-3"
             :style="{
               background: pluginsSocket.statusColor.value,
@@ -196,6 +196,7 @@ const props = defineProps<CuiPluginCardProps>();
 defineEmits<{ select: [] }>();
 
 const { t } = useI18n();
+const { statusWithPlacement } = usePlacementLabel();
 
 const { plugin } = toRefs(props);
 
@@ -231,6 +232,8 @@ const compatWarnings = computed<string[]>(() => {
 
   return warnings;
 });
+
+const statusTooltip = computed(() => statusWithPlacement(t(`components.plugin_card.status_${pluginsSocket.status.value}`), pluginsSocket.placement.value));
 </script>
 
 <style scoped>

@@ -569,6 +569,7 @@ export class PluginWorker {
 
   private setStatus(status: PLUGIN_STATUS, placement?: PlacementInfo): void {
     if (this._status === status) {
+      if (placement) this.emitStatus(status, placement);
       return;
     }
 
@@ -580,16 +581,7 @@ export class PluginWorker {
       this.plugin.runningVersion = undefined;
     }
 
-    const runtimeInfo: WorkerRuntime = {
-      [this.plugin.pluginName]: {
-        name: this.plugin.pluginName,
-        status: status,
-      },
-    };
-
-    this.socketService.io.of('/status').emit('plugin-process-status', runtimeInfo);
-    this.socketService.io.of('/plugins').emit(`plugin-status-${this.plugin.pluginName}`, runtimeInfo[this.plugin.pluginName]);
-
+    this.emitStatus(status, placement ?? this.placement.info);
     this.proxyServer.coreManager?.publishCoreManagerEvent('pluginStatusChanged', { pluginName: this.plugin.pluginName, running: this.isRunning() });
 
     const eventMap: Partial<Record<PLUGIN_STATUS, 'plugin:started' | 'plugin:stopped' | 'plugin:error'>> = {
@@ -603,9 +595,12 @@ export class PluginWorker {
     }
   }
 
-  private async reset(): Promise<void> {
-    await this.channel?.close();
-    await sleep(100);
+  private emitStatus(status: PLUGIN_STATUS, placement: PlacementInfo): void {
+    const runtimeInfo: WorkerRuntime = {
+      [this.plugin.pluginName]: { name: this.plugin.pluginName, status, placement },
+    };
+    this.socketService.io.of('/status').emit('plugin-process-status', runtimeInfo);
+    this.socketService.io.of('/plugins').emit(`plugin-status-${this.plugin.pluginName}`, runtimeInfo[this.plugin.pluginName]);
   }
 
   private onMessage(message: ProcessResponse): void {

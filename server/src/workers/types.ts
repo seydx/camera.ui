@@ -185,10 +185,22 @@ export interface WorkerUpdateState {
   error?: string;
 }
 
+export type VersionStanding = 'behind' | 'same' | 'ahead' | 'unknown';
+
+export type WorkerState = 'expected' | 'online' | 'unreachable' | 'restarting' | 'offline' | 'outdated' | 'releasing' | 'released' | 'conflict';
+
 export interface WorkerInfo {
   agentId: string;
   name: string;
   online: boolean;
+  state?: WorkerState;
+  stateSince?: number;
+  stateUntil?: number;
+  stateReason?: string;
+  bootId?: string;
+  protocol?: number;
+  workloads?: WorkloadReport[];
+  lease?: WorkerLease;
   lastHeartbeat: number;
   cameras: string[];
   capabilities: WorkerCapability[];

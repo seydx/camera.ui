@@ -525,9 +525,13 @@ export class WorkerManager {
   public async unassignPlugin(pluginName: string): Promise<void> {
     this.logger.log(`Unassigning plugin ${pluginName}`);
 
-    const pluginsService = new PluginsService();
-    await pluginsService.setWorkerAgentId(pluginName, undefined);
-    this.restartPluginWorker(pluginName);
+  public pluginApiIssue(agentId: string, protocolLevel: number | undefined): string | undefined {
+    const range = this.pluginProtocols.get(agentId);
+    if (typeof protocolLevel !== 'number' || !range || (protocolLevel >= range.min && protocolLevel <= range.level)) {
+      return undefined;
+    }
+    const fix = protocolLevel > range.level ? 'Update the worker first.' : 'Pick a newer plugin version.';
+    return `Worker ${this.nameOf(agentId)} runs plugin API ${range.min} to ${range.level}, this plugin version needs ${protocolLevel}. ${fix}`;
   }
 
   public getPluginAssignment(pluginName: string): string | undefined {
@@ -852,9 +856,75 @@ export class WorkerManager {
       throw new WorkerRequestError(400, `Worker ${worker.name} does not ${capability === WorkerCapability.FrameDecoding ? 'decode cameras' : 'host plugins'}`);
     }
 
+    if (capability === WorkerCapability.FrameDecoding) {
+      if (!this.configService.config.workers?.address) {
+        throw new WorkerRequestError(400, 'Set the master address in the worker settings first, workers reach the camera streams through it');
+      }
+      return;
+    }
+
+    const plugin = new PluginsService().getPluginByName(id);
+    if (plugin && worker.platform && !isPlatformCompatible(plugin.info.os, plugin.info.cpu, worker.platform.os, worker.platform.arch)) {
+      const requirement = describePlatformRequirement(plugin.info.os, plugin.info.cpu);
+      throw new WorkerRequestError(400, `Plugin ${id} requires ${requirement}, but worker ${worker.name} is ${worker.platform.os}/${worker.platform.arch}`);
+    }
+    const level = plugin?.info.protocolLevel;
+    const range = this.pluginProtocols.get(agentId);
+    if (plugin && typeof level === 'number' && range && (level < range.min || level > range.level)) {
+      throw new WorkerRequestError(400, `Plugin ${id} was built for plugin API ${level}, worker ${worker.name} supports ${range.min} to ${range.level}`);
+    }
+  }
+
+  private targetOf(capability: WorkerCapability, id: string): string | undefined {
+    const target = this.active ? this.assignmentOf(capability, id) : undefined;
+    return target && !this.refusal(capability, id, target) ? target : undefined;
+  }
+
+  private assignmentOf(capability: WorkerCapability, id: string): string | undefined {
+    return capability === WorkerCapability.FrameDecoding ? this.getAssignment(id) : this.getPluginAssignment(id);
+  }
+
+  private isWorkerOnly(capability: WorkerCapability, id: string): boolean {
+    const stored = capability === WorkerCapability.FrameDecoding ? this.camerasService.findById(id) : new PluginsService().getPluginDbByName(id);
+    return stored?.workerOnly === true;
+  }
+
+  private expectedHost(capability: WorkerCapability, id: string): string | undefined {
+    const target = this.active ? this.assignmentOf(capability, id) : undefined;
+    if (!target) return 'master';
+    const refusal = this.refusal(capability, id, target);
+    if (!refusal) return target;
+    return refusal.wait ? undefined : 'master';
+  }
+
+  private refusal(capability: WorkerCapability, id: string, agentId: string): Refusal | undefined {
+    const name = this.nameOf(agentId);
+    const presence = this.presence.get(agentId);
     const worker = this.workers.get(agentId);
-    if (worker?.platform && !isPlatformCompatible(plugin.info.os, plugin.info.cpu, worker.platform.os, worker.platform.arch)) {
-      this.logger.warn(`Plugin ${pluginName} is assigned to worker ${worker.name} but incompatible with its platform — not delegating`);
+    const pinned = this.isWorkerOnly(capability, id);
+    const wait = pinned || (capability === WorkerCapability.PluginHost && !this.masterCanRun(id));
+
+    if (!presence || !worker) {
+      return { reason: `worker ${name} is unknown`, wait: false };
+    }
+    if (this.failures.get(workloadKey(capability, id)) === agentId) {
+      return { reason: `failed on worker ${name}`, wait: pinned };
+    }
+    if (!isPlaceable(presence.state)) {
+      return { reason: `worker ${name} is ${this.describeState(presence.state)}`, wait };
+    }
+    if (worker.capabilities.length > 0 && !worker.capabilities.includes(capability)) {
+      return { reason: `worker ${name} does not offer ${capability}`, wait: pinned };
+    }
+
+    if (capability === WorkerCapability.FrameDecoding) {
+      if (!this.configService.config.workers?.address) {
+        if (!this.addressWarned) {
+          this.addressWarned = true;
+          this.logger.warn('workers.address is not configured, so workers cannot reach the streams of this server. Cameras run here instead.');
+        }
+        return { reason: 'workers.address is not configured', wait: pinned };
+      }
       return undefined;
     }
 
@@ -1843,32 +1913,23 @@ export class WorkerManager {
     this.syncInfo(agentId);
   }
 
-  private handleGracefulDisconnect(agentId: string, reportedAgentId: string | undefined): void {
-    if (reportedAgentId !== agentId) {
-      this.logger.warn(`Ignored a disconnect for ${reportedAgentId} from worker ${agentId}`);
+  private syncInfo(agentId: string): void {
+    const worker = this.workers.get(agentId);
+    const presence = this.presence.get(agentId);
+    if (!worker) {
       return;
     }
-
-    const worker = this.workers.get(agentId);
-    if (!worker?.online) return;
-
-    this.logger.log(`Worker ${worker.name} (${agentId}) disconnected gracefully`);
-    worker.online = false;
-    this.emitWorkerUpdate(worker);
-    this.onWorkerOffline(agentId);
-  }
-
-  private checkTimeouts(): void {
-    const now = Date.now();
-
-    for (const [agentId, worker] of this.workers) {
-      if (worker.online && now - worker.lastHeartbeat > WORKER_TIMEOUT_MS) {
-        this.logger.warn(`Worker ${worker.name} (${agentId}) timed out — checking failover`);
-        worker.online = false;
-        this.emitWorkerUpdate(worker);
-        this.onWorkerOffline(agentId);
-      }
+    if (presence) {
+      worker.state = presence.state;
+      worker.online = presence.state === 'online';
+      worker.stateSince = Math.round(Date.now() - (mono() - presence.since));
+      const until = presenceDeadline(presence);
+      worker.stateUntil = until === undefined ? undefined : Math.round(Date.now() + (until - mono()));
+      worker.stateReason = presence.reason;
+      worker.bootId = presence.bootId;
     }
+    worker.update = this.updates.state(agentId);
+    this.emitWorkerUpdate(worker);
   }
 
   private handleForwardedLog(agentId: string, entry: LogEntry): void {

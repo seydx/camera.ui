@@ -2,7 +2,6 @@ import { axiosInstance as api } from '..';
 
 import type { CamerasResponse, PatchWorkerInput, PatchWorkersConfigInput, WorkerInfo, WorkerPairingResponse, WorkersConfigResponse } from '@shared/types';
 import type { AxiosResponse } from 'axios';
-import type { AckResponse } from '..';
 
 export async function getWorkers(): Promise<WorkerInfo[]> {
   const response: AxiosResponse<WorkerInfo[]> = await api.get('/workers');
@@ -45,9 +44,9 @@ export async function assignCameraToWorker({ cameraId, agentId }: { cameraId: st
   return response.data;
 }
 
-export async function unassignCameraFromWorker({ cameraId }: { cameraId: string }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.post('/workers/unassign', { cameraId });
-  return response.data;
+export async function unassignCameraFromWorker({ cameraId }: { cameraId: string }): Promise<boolean> {
+  const response = await api.post('/workers/unassign', { cameraId });
+  return response.status === 202;
 }
 
 export async function assignPluginToWorker({ pluginName, agentId }: { pluginName: string; agentId: string }): Promise<AckResponse> {
@@ -55,9 +54,9 @@ export async function assignPluginToWorker({ pluginName, agentId }: { pluginName
   return response.data;
 }
 
-export async function unassignPluginFromWorker({ pluginName }: { pluginName: string }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.post('/workers/unassign-plugin', { pluginName });
-  return response.data;
+export async function unassignPluginFromWorker({ pluginName }: { pluginName: string }): Promise<boolean> {
+  const response = await api.post('/workers/unassign-plugin', { pluginName });
+  return response.status === 202;
 }
 
 export class WorkersQuery {
@@ -85,6 +84,9 @@ export class WorkersQuery {
   public createPairingQuery() {
     return useMutation({
       mutationFn: createWorkerPairing,
+      onError: (error) => {
+        this.toast.add({ severity: 'error', detail: error, life: 5000 });
+      },
     });
   }
 
@@ -106,7 +108,7 @@ export class WorkersQuery {
         context?.rollback();
         this.toast.add({ severity: 'error', detail: error, life: 3000 });
       },
-      onSettled: () => this._queryClient.invalidateQueries({ queryKey: ['camerasList'] }),
+      onSettled: () => this.invalidateAssignments('camerasList'),
     });
   }
 
@@ -118,13 +120,16 @@ export class WorkersQuery {
         context?.rollback();
         this.toast.add({ severity: 'error', detail: error, life: 3000 });
       },
-      onSettled: () => this._queryClient.invalidateQueries({ queryKey: ['camerasList'] }),
+      onSettled: () => this.invalidateAssignments('camerasList'),
     });
   }
 
   public restartWorkerQuery() {
     return useMutation({
       mutationFn: restartWorker,
+      onError: (error) => {
+        this.toast.add({ severity: 'error', detail: error, life: 5000 });
+      },
     });
   }
 

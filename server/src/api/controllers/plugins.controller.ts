@@ -573,9 +573,10 @@ export class PluginsController {
         });
       }
 
+      const remote = pluginProcess.isRemoteWorker;
       await pluginProcess.restart();
 
-      return reply.code(204).send();
+      return reply.code(remote ? 202 : 204).send();
     } catch (error: any) {
       return reply.code(500).send({
         statusCode: 500,

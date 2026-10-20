@@ -58,3 +58,5 @@ export * from '../../server/src/sensors/types.js';
 export * from '../../server/src/services/config/types.js';
 export type * from '../../server/src/types.js';
 export type * from '../../server/src/workers/types.js';
+export type { PlacementPhase } from '../../server/src/workers/lifecycle/placement.js';
+export type { PlacementInfo } from '../../server/src/workers/lifecycle/remote-placement.js';

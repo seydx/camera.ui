@@ -194,7 +194,8 @@ export class WorkersController {
       await this.workerManager.removeWorker(req.params.agentId);
       return reply.code(204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
@@ -204,7 +205,8 @@ export class WorkersController {
       await this.workerManager.assignCamera(cameraId, agentId);
       return reply.code(204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
@@ -214,7 +216,8 @@ export class WorkersController {
       const result = await this.workerManager.unassignCamera(cameraId);
       return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
@@ -224,7 +227,8 @@ export class WorkersController {
       await this.workerManager.assignPlugin(pluginName, agentId);
       return reply.code(204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
@@ -234,7 +238,8 @@ export class WorkersController {
       const result = await this.workerManager.unassignPlugin(pluginName);
       return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
@@ -249,7 +254,8 @@ export class WorkersController {
       }
       return reply.code(204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 
