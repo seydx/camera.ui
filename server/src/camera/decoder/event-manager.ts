@@ -221,6 +221,7 @@ export class DetectionEventManager {
   private openVectorJobs = 0;
   private lastSegmentClosedAt = 0;
   private parkedVectors: { capturedAt: number; attach: () => void }[] = [];
+  private preEventReads: TraceFaceRead[] = [];
   private faceMinConfidence = 0;
 
   private eventThumbnail: Buffer | null = null;
@@ -356,6 +357,20 @@ export class DetectionEventManager {
     }
   }
 
+  public traceTick(trace: TraceTick): void {
+    if (this.activeEvent) this.trace.add(trace);
+  }
+
+  public traceFaceReads(reads: TraceFaceRead[]): void {
+    if (this.activeEvent) {
+      this.trace.addReads(reads);
+      return;
+    }
+    // the opening frame's reads can settle before its tick starts the event
+    this.preEventReads.push(...reads);
+    this.preEventReads.splice(0, this.preEventReads.length - DetectionEventManager.PRE_EVENT_READS_MAX);
+  }
+
   public vectorJobStarted(): void {
     this.openVectorJobs++;
     if (this.perf) this.perf.vectorJobs++;
@@ -460,8 +475,10 @@ export class DetectionEventManager {
     this.onSegmentClosedCallback?.();
   }
 
-  private startEvent(triggers: EventTrigger[], data: ProcessedDetectionData, now: number): void {
-    this.trace.reset();
+  private startEvent(triggers: EventTrigger[], data: ProcessedDetectionData, now: number, hasDetections: boolean): void {
+    this.trace.reset(now);
+    this.trace.addReads(this.preEventReads);
+    this.preEventReads = [];
     this.activeEvent = {
       id: randomUUID(),
       cameraId: this.cameraId,
@@ -514,8 +531,8 @@ export class DetectionEventManager {
     this.eventThumbnail = null;
     this.needsEventThumbnail = false;
 
-    // ticks after the last segment closed (linger, motion without objects)
-    const trace = this.trace.take();
+    // ticks after the last segment closed, linger or motion without objects
+    const trace = this.trace.take(true);
     this.publish('end', trace ? { trace } : undefined);
 
     const duration = this.activeEvent.endTime - this.activeEvent.startTime;

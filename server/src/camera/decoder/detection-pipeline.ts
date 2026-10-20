@@ -3,7 +3,7 @@ import { CameraWorld, merge as rustMerge, nms as rustNms, nmsIndices as rustNmsI
 import { boxInsidePolygon, normalizePolygon } from '../utils/filter.js';
 import { detectionRecord } from './debug/detection-record.js';
 import { iou } from './detection-window.js';
-import { worldTrace } from './event-trace.js';
+import { TRACE_CONTEXT, worldTrace } from './event-trace.js';
 import { MIN_PLATE_LENGTH, normalizePlateText } from './plate-vote.js';
 import { OBJECT_MERGE_IOU_THRESHOLD } from './types.js';
 
@@ -215,6 +215,11 @@ export class DetectionPipeline {
   private trainingMasks: Point[][] = [];
   private stillSince = new Map<number, number>();
   private attested: TraceAttest[] = [];
+  private worldConfig: TraceWorldConfig = {};
+  private configChange?: TraceWorldConfig;
+  private attestState: TraceAttest[] = [];
+  private cameraMoved = false;
+  private lastIngestAt?: number;
   private settings: CameraDetectionSettings;
 
   constructor(zones: ZoneConfig, settings: CameraDetectionSettings) {
@@ -222,6 +227,7 @@ export class DetectionPipeline {
     this.world = new CameraWorld();
     const rustZones = toRustZones(zones);
     this.world.setZones(rustZones);
+    this.noteConfig({ zones: rustZones });
     this.whitelist = objectWhitelist(zones.object);
     this.trainingMasks = privacyPolygons(zones.privacy);
     this.applyConfidences(settings);
@@ -233,6 +239,7 @@ export class DetectionPipeline {
   public updateZones(zones: ZoneConfig): void {
     const rustZones = toRustZones(zones);
     this.world.setZones(rustZones);
+    this.noteConfig({ zones: rustZones });
     this.whitelist = objectWhitelist(zones.object);
     this.trainingMasks = privacyPolygons(zones.privacy);
     // debugging
@@ -244,7 +251,7 @@ export class DetectionPipeline {
     this.lines = lines;
     const rustLines = toRustLines(lines);
     this.world.setLines(rustLines, this.aspectRatio);
-    // debugging
+    this.noteConfig({ lines: rustLines, aspectRatio: this.aspectRatio });
     detectionRecord.config({ lines: rustLines, aspectRatio: this.aspectRatio });
   }
 
@@ -257,11 +264,13 @@ export class DetectionPipeline {
 
   public notifyCameraMove(): void {
     this.world.notifyCameraMove();
+    this.cameraMoved = true;
   }
 
   public attest(label: string, tMs = Date.now()): void {
     this.world.attest(label, tMs);
     this.attested.push({ label, at: tMs });
+    this.attestState = [...this.attestState.filter((a) => a.label !== label), { label, at: tMs }];
   }
 
   public process(rawDetections: Detection[], poseDelta?: { panDelta: number; tiltDelta: number }, tMs = Date.now()): PipelineResult {
@@ -405,11 +414,29 @@ export class DetectionPipeline {
     return items.filter((item) => !this.masked(item.box)).map((item) => ({ label, box: item.box, confidence: item.confidence }));
   }
 
-  private traceOf(trace: TraceTick): TraceTick {
-    if (this.attested.length === 0) return trace;
-    trace.attest = this.attested;
-    this.attested = [];
+  private traceOf(trace: TraceTick, tMs: number): TraceTick {
+    if (this.attested.length > 0) {
+      trace.attest = this.attested;
+      this.attested = [];
+    }
+    if (this.configChange) {
+      trace.configChange = this.configChange;
+      this.configChange = undefined;
+    }
+    if (this.cameraMoved) {
+      trace.cameraMoved = true;
+      this.cameraMoved = false;
+    }
+    const context: TraceContext = { config: this.worldConfig, attestations: this.attestState };
+    if (this.lastIngestAt !== undefined) context.sinceIngestMs = tMs - this.lastIngestAt;
+    trace[TRACE_CONTEXT] = context;
+    this.lastIngestAt = tMs;
     return trace;
+  }
+
+  private noteConfig(change: TraceWorldConfig): void {
+    this.worldConfig = { ...this.worldConfig, ...change };
+    this.configChange = { ...this.configChange, ...change };
   }
 
   private plateShortfall(plate: LicensePlateDetection): PlateShortfall | undefined {
@@ -422,9 +449,12 @@ export class DetectionPipeline {
   private applyConfidences(settings: CameraDetectionSettings): void {
     this.settings = settings;
     const values = Object.values(settings.object.confidences);
-    this.world.setMinConfidence(values.length > 0 ? Math.min(...values) : 0.5);
+    const minConfidence = values.length > 0 ? Math.min(...values) : 0.5;
+    this.world.setMinConfidence(minConfidence);
     // faces and plates pass the same zone filter, each at its own threshold
-    this.world.setMinConfidences({ ...settings.object.confidences, face: this.threshold('face'), license_plate: this.threshold('license_plate') });
+    const minConfidences = { ...settings.object.confidences, face: this.threshold('face'), license_plate: this.threshold('license_plate') };
+    this.world.setMinConfidences(minConfidences);
+    this.noteConfig({ minConfidence, minConfidences });
   }
 
   private allowedByWhitelist<T extends { label: string }>(detections: T[]): T[] {

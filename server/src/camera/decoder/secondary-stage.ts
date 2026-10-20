@@ -143,21 +143,30 @@ export class SecondaryStage {
     private readonly logger: Logger,
   ) {}
 
-  public async detect(sourceFrame: Frame, scaler: FrameScaler, objectDetections: Detection[], results: DetectionResults, stillPersons: Detection[] = []): Promise<void> {
+  public async detect(
+    sourceFrame: Frame,
+    scaler: FrameScaler,
+    objectDetections: Detection[],
+    results: DetectionResults,
+    { stillPersons = [], stamp }: { stillPersons?: Detection[]; stamp?: TraceReadFrame } = {},
+  ): Promise<void> {
     await this.queueClip(sourceFrame, scaler, objectDetections);
     await this.queuePersons(sourceFrame, scaler, objectDetections);
     const regionMap = await this.prepareSecondaryRegions(sourceFrame, scaler, objectDetections);
     await this.runAllSecondaries(regionMap, results, stillPersons);
-    await this.recognizeFaces(sourceFrame, scaler, results);
+    await this.recognizeFaces(sourceFrame, scaler, results, stamp);
+    // doubts raised by reads that landed between ticks ride along with this one
+    const doubt = this.faceNames.takeDoubts();
+    if (doubt.length > 0) results.faceTrace = { ...results.faceTrace, doubt };
   }
 
-  public async detectFullFrame(rawFrame: Frame, results: DetectionResults): Promise<Buffer | null> {
+  public async detectFullFrame(rawFrame: Frame, results: DetectionResults, { stamp }: { stamp?: TraceReadFrame } = {}): Promise<Buffer | null> {
     await this.queueFullFrameClip(rawFrame);
     const regionMap = await this.prepareFullFrameRegions(rawFrame);
 
     if (regionMap.size > 0) {
       await this.runAllSecondaries(regionMap, results);
-      await this.recognizeFaces(rawFrame, this.frameScaler, results);
+      await this.recognizeFaces(rawFrame, this.frameScaler, results, stamp);
     }
 
     try {
@@ -257,13 +266,13 @@ export class SecondaryStage {
     }
   }
 
-  private async recognizeFaces(sourceFrame: Frame, scaler: FrameScaler, results: DetectionResults): Promise<void> {
+  private async recognizeFaces(sourceFrame: Frame, scaler: FrameScaler, results: DetectionResults, stamp: TraceReadFrame | undefined): Promise<void> {
     if (!results.face?.detections.length) return;
     await this.queueFaces(sourceFrame, scaler, results.face.detections);
     this.faceNames.carry(results.face.detections);
   }
 
-  private async queueFaces(sourceFrame: Frame, scaler: FrameScaler, faces: ServerFaceDetection[]): Promise<void> {
+  private async queueFaces(sourceFrame: Frame, scaler: FrameScaler, faces: ServerFaceDetection[], stamp: TraceReadFrame | undefined): Promise<void> {
     const plugin = this.plugins.get(SensorType.FaceEmbedder);
     const spec = plugin?.modelSpec as ModelSpec | undefined;
     const input = spec && isVideoInputSpec(spec.input) ? spec.input : undefined;
@@ -332,8 +341,9 @@ export class SecondaryStage {
       if (votes) face.identity = named;
       reads.push(faceRead(face, jobs.find((job) => job.face === face)?.capturedAt ?? Date.now(), votes ? this.faceNames.tally(face) : undefined));
     }
-    if (faces.length === 0 || !this.coordinator.running) return;
+    detectionRecord.faceReads(reads);
     this.coordinator.traceFaceReads(reads);
+    if (faces.length === 0 || !this.coordinator.running) return;
 
     const embeddingModel = (plugin.modelSpec as ModelSpec | undefined)?.embeddingModel ?? '';
     for (const job of jobs) {

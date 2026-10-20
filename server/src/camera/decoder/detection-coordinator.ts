@@ -14,7 +14,9 @@ import { clusterBoxes, DetectionWindow, mergeWindowDetections, MOTION_PAD, planW
 import { DwellManager } from './dwell-manager.js';
 import { DetectionEventManager, MOMENT_RANK_ATTRIBUTE, MOMENT_RANK_OBJECT, SECONDARY_FRESH_MS } from './event-manager.js';
 import { EventThumbnailer } from './event-thumbnailer.js';
-import { externalTrace, motionTrace, traceAttributes } from './event-trace.js';
+import { externalTrace, motionTrace, traceAttributes, traceSource, traceStamp, windowTrace } from './event-trace.js';
+import { faceNote } from './face-tracks.js';
+import { withFrameBytes } from './frame-bytes.js';
 import { FrameScaler } from './frame-scaler.js';
 import { hardwareDecodingAvailable } from './hardware.js';
 import { directionBetween, directionOf, MOMENT_FORMATS, MOMENT_QUALITY, momentWindow, unionBox } from './moment-crop.js';
@@ -198,7 +200,6 @@ export class DetectionCoordinator {
   private trackAnchorBoxes: BoundingBox[] = [];
   private farewellBoxes: BoundingBox[] = [];
   private lastTrackedById = new Map<number, BoundingBox>();
-  private faceReads: TraceFaceRead[] = [];
   private detectionWindow = new DetectionWindow();
   private mainStreamActive = false;
   private idleSince = 0;
@@ -534,7 +535,7 @@ export class DetectionCoordinator {
   }
 
   public traceFaceReads(reads: TraceFaceRead[]): void {
-    this.faceReads.push(...reads);
+    this.eventManager.traceFaceReads(reads);
   }
 
   public acceptFaceVectors(faces: TrackedFaceDetection[], embeddingModel: string, capturedAt: number): void {
@@ -714,7 +715,7 @@ export class DetectionCoordinator {
               if (anchorDetections.length > 0) {
                 await this.captureExternalMoment(anchorDetections, analysis, results.timestamp);
               }
-              const sceneJpeg = await this.secondaries.detectFullFrame(analysis.frame, results);
+              const sceneJpeg = await this.secondaries.detectFullFrame(analysis.frame, results, { stamp: traceStamp(results.timestamp, analysis.rtp, analysis.role) });
               try {
                 results.thumbnails = await this.secondaries.generateThumbnails(analysis.frame, analysis.scaler, results);
               } catch (error) {
@@ -754,7 +755,7 @@ export class DetectionCoordinator {
       const snapshot = this.buildSnapshot();
       // some cameras report where it moved, that is a tick worth keeping
       const boxes = ((filtered.detections as Detection[] | undefined) ?? []).filter((d) => d.box);
-      if (boxes.length > 0) snapshot.trace = motionTrace(snapshot.timestamp, boxes);
+      if (boxes.length > 0) snapshot.trace = motionTrace(snapshot.timestamp, boxes, true);
       this.eventManager.processResults(snapshot);
       this.thumbnailer.fetchEventThumbnailAsync();
       return;
@@ -1542,12 +1543,10 @@ export class DetectionCoordinator {
 
   private finishTrace(trace: TraceTick, analysis: AnalysisFrame, results: DetectionResults): TraceTick {
     trace.rtp = analysis.rtp;
-    trace.src = analysis.role?.replace('-resolution', '');
+    trace.src = traceSource(analysis.role);
     trace.attrs = traceAttributes(results);
-    if (this.faceReads.length > 0) {
-      trace.reads = this.faceReads;
-      this.faceReads = [];
-    }
+    if (results.faceTrace?.faceSearch?.length) trace.faceSearch = results.faceTrace.faceSearch;
+    if (results.faceTrace?.doubt?.length) trace.doubt = results.faceTrace.doubt;
     const witness = [...this.witnessSeen].filter(([, at]) => Math.abs(trace.tMs - at) <= WITNESS_WINDOW_MS).map(([label]) => label);
     if (witness.length > 0) trace.witness = witness;
     // debugging
@@ -1740,7 +1739,7 @@ export class DetectionCoordinator {
       if (objectPlugin && objectDetections.length > 0 && this.dwell.isActive(objectPlugin.sensorId)) {
         this.dwell.refresh(objectPlugin.sensorId, OBJECT_DWELL_SECONDS);
       }
-      if (trace) this.finishTrace(trace, analysis, results);
+      if (trace) this.eventManager.traceTick({ ...this.finishTrace(trace, analysis, results), suppressed: true });
       return;
     }
 
@@ -1838,7 +1837,10 @@ export class DetectionCoordinator {
     this.perf.framesWithObjects++;
 
     const secondaryStart = Date.now();
-    await this.secondaries.detect(analysis.frame, analysis.scaler, objectDetections, results, stillPersons);
+    await this.secondaries.detect(analysis.frame, analysis.scaler, objectDetections, results, {
+      stillPersons,
+      stamp: traceStamp(results.timestamp, analysis.rtp, analysis.role),
+    });
     this.perf.secondaryMs += Date.now() - secondaryStart;
 
     try {

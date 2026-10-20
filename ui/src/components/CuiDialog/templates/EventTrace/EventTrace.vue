@@ -905,7 +905,7 @@ function droppedFinding(attr: NonNullable<TraceTick['attrs']>[number]): string {
 
 function rawFinding(label: string, confidence: number, box: BoundingBox): string {
   const min = thresholds.value[label];
-  if (min !== undefined && confidence < min) return t('views.recordings.trace.hint_below_threshold', { label, min: pct(min) });
+  if (min !== undefined && confidence < Math.fround(min)) return t('views.recordings.trace.hint_below_threshold', { label, min: pct(min) });
   if (droppingPrivacyZones.value.some((zone) => boxIntersectsPolygon(box, zone.points))) return t('views.recordings.trace.hint_in_privacy', { label });
   if (objectZones.value.length > 0) {
     const inside = objectZones.value.filter((zone) => boxMatchesZone(box, zone.points, zone.type));
@@ -1030,7 +1030,7 @@ async function exportBundle(): Promise<void> {
       data: encoder.encode(JSON.stringify({ camera: { id: props.camera._id, name: props.camera.name }, event: props.event, ...clipRange }, null, 2)),
     });
 
-    const lines = [JSON.stringify({ setup, exportedAt: Date.now() }), ...ticks.map((tick) => JSON.stringify({ tick }))];
+    const lines = [JSON.stringify({ setup, exportedAt: Date.now(), ticks: ticks.length, total: total.value }), ...ticks.map((tick) => JSON.stringify({ tick }))];
     entries.push({ name: 'trace.jsonl', data: encoder.encode(`${lines.join('\n')}\n`) });
 
     if (clip) entries.push({ name: 'clip.mp4', data: clip });

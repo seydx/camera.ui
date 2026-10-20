@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 import type { BoundingBox } from '@camera.ui/sdk';
 import type { WriteStream } from 'node:fs';
+import type { PlanRecord } from '../detection-window.js';
+import type { TraceFaceRead } from '../event-trace.js';
 import type { CropWindow, MomentFormatName } from '../moment-crop.js';
 import type { AnalysisStream } from '../types.js';
 
@@ -48,6 +50,10 @@ function roundBoxes(boxes?: BoundingBox[]): number[][] | undefined {
   if (!boxes || boxes.length === 0) return undefined;
   const r = (v: number): number => Math.round(v * 1000) / 1000;
   return boxes.map((b) => [r(b.x), r(b.y), r(b.width), r(b.height)]);
+}
+
+function exactBoxes(boxes: BoundingBox[]): number[][] {
+  return boxes.map((b) => [b.x, b.y, b.width, b.height]);
 }
 
 function stamp(at: number): string {
@@ -123,6 +129,30 @@ class DetectionRecorder {
         frame: [this.frameWidth, this.frameHeight],
       },
     });
+  }
+
+  public plan(record: PlanRecord): void {
+    if (!this.active) return;
+    this.line({
+      plan: {
+        tMs: Date.now(),
+        mode: record.mode,
+        reason: record.reason,
+        debt: record.debt,
+        waited: record.waited,
+        pending: record.pending,
+        windows: roundBoxes(record.windows),
+        motion: exactBoxes(record.motion),
+        tracks: exactBoxes(record.tracks),
+        stream: this.source,
+        frame: [this.frameWidth, this.frameHeight],
+      },
+    });
+  }
+
+  public faceReads(reads: TraceFaceRead[]): void {
+    if (!this.active) return;
+    this.line({ faceReads: { tMs: Date.now(), reads } });
   }
 
   public moment(moment: RecordedMoment): void {
