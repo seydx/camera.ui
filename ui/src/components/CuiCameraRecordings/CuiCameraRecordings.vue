@@ -241,7 +241,7 @@
         </template>
       </CuiRecordingsGrid>
 
-      <div v-if="isLoading" class="flex justify-center py-4">
+      <div v-if="isLoading && !displayItems.length" class="flex justify-center py-4">
         <i-svg-spinners:ring-resize width="24px" height="24px" class="text-muted" />
       </div>
 

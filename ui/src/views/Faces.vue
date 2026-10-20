@@ -53,7 +53,7 @@
                 <CuiFaceCard
                   v-for="face in faceStore.knownFaces.value"
                   :key="face.name"
-                  class="shrink-0"
+                  class="shrink-0 h-auto!"
                   :style="{ width: `${KNOWN_CARD_WIDTH}px` }"
                   variant="known"
                   :thumbnail="thumbnailToUrl(face.thumbnail)"
