@@ -1,6 +1,6 @@
 import { API_EVENT } from '@camera.ui/sdk';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { container } from 'tsyringe';
@@ -8,7 +8,8 @@ import { container } from 'tsyringe';
 import { RemoteService } from '../../api/services/remote.service.js';
 import { isShuttingDown } from '../../shutdown-state.js';
 import { CloudflareManagedService } from './cloudflare-managed.js';
-import { cloudflaredBinaryPath, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
+import { cloudflaredBinaryPath, edgeProtocol, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
+import { RestartBackoff } from './restartBackoff.js';
 import { TunnelConnections } from './tunnelConnections.js';
 
 import type { Logger } from '@camera.ui/common';
@@ -18,6 +19,8 @@ import { stripVTControlCharacters } from 'node:util';
 import type { CameraUiAPI } from '../../api.js';
 import type { DBCloudflareMode } from '../../api/database/types.js';
 import type { ConfigService } from '../../services/config/index.js';
+
+const INVALID_TOKEN = /token is not valid/i;
 
 export class CloudflareService {
   public readonly managed: CloudflareManagedService;
@@ -31,6 +34,9 @@ export class CloudflareService {
   private cloudflarePath: string;
   private cloudflaredProcess?: ChildProcess;
   private currentArgs: string[] = [];
+  private launch: 'configured' | 'quick' = 'configured';
+  private backoff = new RestartBackoff();
+  private fatalError: string | null = null;
 
   private shuttingDown = false;
   private manuallyKilled = false;
@@ -65,12 +71,51 @@ export class CloudflareService {
   }
 
   public get isRunning(): boolean {
-    return !!this.cloudflaredProcess || this.managed.runningUrl !== null || this.managed.busy;
+    return !!this.cloudflaredProcess || this.reconnectTimer !== undefined || this.managed.runningUrl !== null || this.managed.busy;
+  }
+
+  public get lastError(): string | null {
+    return this.fatalError;
   }
 
   public async start(): Promise<void> {
+    this.launch = 'configured';
+    this.backoff.reset();
+    await this.run();
+  }
+
+  public async startQuick(): Promise<void> {
+    this.launch = 'quick';
+    this.backoff.reset();
+    await this.run();
+  }
+
+  public stop(): void {
+    this.manuallyKilled = true;
+    this.fatalError = null;
+    this.managed.stop();
+    this.reset();
+  }
+
+  public stopOwnTunnel(): void {
+    if (!this.cloudflaredProcess && !this.reconnectTimer) return;
+    this.manuallyKilled = true;
+    this.reset();
+    this.manuallyKilled = false;
+    this.launch = 'configured';
+  }
+
+  private async run(): Promise<void> {
+    this.fatalError = null;
     try {
       await this.ensureCloudflaredInstalled();
+
+      if (this.launch === 'quick') {
+        this.stop();
+        this.manuallyKilled = false;
+        this.startQuickTunnel();
+        return;
+      }
 
       const config = this.remoteService.info().cloudflare;
       const mode: DBCloudflareMode = config?.mode ?? 'quick';
@@ -105,33 +150,10 @@ export class CloudflareService {
     }
   }
 
-  public async startQuick(): Promise<void> {
-    try {
-      await this.ensureCloudflaredInstalled();
-      this.stop();
-      this.manuallyKilled = false;
-      this.startQuickTunnel();
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  public stop(): void {
-    this.manuallyKilled = true;
-    this.managed.stop();
-    this.reset();
-  }
-
-  public stopOwnTunnel(): void {
-    if (!this.cloudflaredProcess) return;
-    this.manuallyKilled = true;
-    this.reset();
-    this.manuallyKilled = false;
-  }
-
   private async ensureCloudflaredInstalled(): Promise<void> {
     if (!this.isCloudflaredInstalled()) {
-      throw new Error(`No cloudflared binary for ${process.platform}-${process.arch}`);
+      this.fatalError = `No cloudflared binary for ${process.platform}-${process.arch}`;
+      throw new Error(this.fatalError);
     }
 
     await removeDownloadedCloudflared(this.cloudflarePath);
@@ -157,23 +179,36 @@ export class CloudflareService {
   }
 
   private startQuickTunnel(): void {
-    const args = ['tunnel', '--url', `https://127.0.0.1:${this.configService.config.port}`, '--no-autoupdate', '--no-tls-verify'];
-    this.spawnCloudflared(args);
+    const url = `https://127.0.0.1:${this.configService.config.port}`;
+    const config = this.writeConfig('quick', [`url: ${url}`, 'no-tls-verify: true', 'no-autoupdate: true']);
+    this.spawnCloudflared(['tunnel', ...this.protocolArgs(), '--config', config, '--url', url, '--no-autoupdate', '--no-tls-verify']);
   }
 
   private startTokenTunnel(token: string, hostname: string): void {
     this.cloudflareUrl = `https://${hostname}`;
     this.onUrlDetected?.(this.cloudflareUrl);
-    const args = ['tunnel', '--no-autoupdate', 'run', '--token', token];
-    this.spawnCloudflared(args);
+    const config = this.writeConfig('token', ['no-autoupdate: true']);
+    this.spawnCloudflared(['tunnel', ...this.protocolArgs(), '--no-autoupdate', '--config', config, 'run'], { TUNNEL_TOKEN: token });
   }
 
-  private spawnCloudflared(args: string[]): void {
+  private protocolArgs(): string[] {
+    return ['--protocol', edgeProtocol(this.configService.CLOUDFLARED_PROTOCOL, this.logger)];
+  }
+
+  private writeConfig(name: string, lines: string[]): string {
+    // without --config cloudflared loads ~/.cloudflared/config.yml, whose ingress would replace ours
+    const path = join(this.cloudflarePath, `${name}.yml`);
+    writeFileSync(path, [...lines, ''].join('\n'), { mode: 0o600 });
+    return path;
+  }
+
+  private spawnCloudflared(args: string[], env: NodeJS.ProcessEnv = {}): void {
     this.currentArgs = args;
     const binPath = this.cloudflaredBinaryPath();
 
     this.cloudflaredProcess = spawn(binPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ...env },
       windowsHide: true,
     });
 
@@ -201,6 +236,9 @@ export class CloudflareService {
       }
 
       if (this.cloudflaredProcess !== proc || isShuttingDown()) return;
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT' || (error as NodeJS.ErrnoException).code === 'EACCES') {
+        this.fatalError = `cloudflared could not be started: ${error.message}`;
+      }
       this.handleError(error);
     });
 
@@ -229,19 +267,38 @@ export class CloudflareService {
   }
 
   private handleError(error: any): void {
-    if (!this.shuttingDown && !this.manuallyKilled) {
-      this.logger.error('Cloudflare:', error?.message ?? error);
-
-      this.reset();
-
-      this.reconnectTimer = setTimeout(() => {
-        if (this.shuttingDown || this.manuallyKilled) {
-          return;
-        }
-
-        this.start();
-      }, 5000);
+    if (this.shuttingDown) {
+      return;
     }
+
+    this.connections.exited();
+
+    if (this.fatalError) {
+      this.reset();
+      this.logger.error(`Cloudflare: ${this.fatalError} Not restarting until the remote settings change.`);
+      return;
+    }
+
+    if (this.manuallyKilled) {
+      return;
+    }
+
+    this.logger.error('Cloudflare:', error?.message ?? error);
+    this.reset();
+
+    const delay = this.backoff.nextDelay();
+    if (delay > 0) {
+      this.logger.log(`Restarting cloudflared in ${Math.round(delay / 1000)}s`);
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      if (this.shuttingDown || this.manuallyKilled) {
+        return;
+      }
+
+      this.run();
+    }, delay);
   }
 
   private processLogger(line: string): void {
@@ -264,6 +321,13 @@ export class CloudflareService {
 
   private analyzeLogLine(line: string): void {
     this.connections.observe(line);
+    if (this.connections.registered) {
+      this.backoff.registered();
+    }
+
+    if (INVALID_TOKEN.test(line)) {
+      this.fatalError = 'Cloudflare does not accept the tunnel token.';
+    }
 
     const match = /(https:\/\/[a-z0-9-]+\.trycloudflare\.com)/.exec(line);
     if (match && !this.cloudflareUrl) {

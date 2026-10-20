@@ -1037,6 +1037,7 @@ export default {
         cloudflare_variant_quick: 'Ein schneller, temporärer Tunnel ohne Cloudflare-Konto.',
         cloudflare_variant_token: 'Eigene Domain mit einem Tunnel-Token aus dem Cloudflare-Dashboard.',
         cloudflare_variant_managed: 'Eigene Domain via OAuth-Login. Tunnel und DNS-Eintrag werden automatisch eingerichtet.',
+        cloudflare_quick_capacity: 'Ab etwa vier gleichzeitigen Zuschauern von unterwegs läuft ein Named Tunnel stabiler.',
         cloudflare_hostname_info: 'Die Domain muss in Ihrem Cloudflare-Konto bereits als Zone eingerichtet sein.',
         cloudflare_token_info: 'Aus dem Cloudflare-Dashboard.',
         cloudflare_tunnel_id_info: 'Kennung des aktuell aktiven Tunnels.',

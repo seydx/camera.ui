@@ -17,6 +17,8 @@ type ActiveMode = 'cloudflare' | 'cloudflareQuick' | 'customDomain' | null;
 const FALLBACK_RECHECK_MS = 60_000;
 const TUNNEL_REGISTER_TIMEOUT_MS = 30_000;
 const TUNNEL_RETRY_MS = 600_000;
+const TUNNEL_RETRY_MAX_MS = 4 * 3_600_000;
+const ORIGIN_RECHECK_MS = 5_000;
 
 export class RemoteAccessService {
   private remoteService: RemoteService;
@@ -27,15 +29,19 @@ export class RemoteAccessService {
   private remoteConfig: DBRemote;
   private activeMode: ActiveMode = null;
   private override: DirectOverrideStatus = { active: false, fallback: false };
+  private fallbackReason: string | null = null;
   private reconcileChain: Promise<void> = Promise.resolve();
   private fallbackWatch: NodeJS.Timeout | null = null;
+  private tunnelRetries = 0;
+  private cloudEnabled: boolean;
+  private cloudSwitch: Promise<void> = Promise.resolve();
 
   constructor(
     private logger: Logger,
     private proxyService: ProxyService,
   ) {
     this.remoteService = new RemoteService();
-    this.urlReadiness = new UrlReadinessGate(this.logger);
+    this.urlReadiness = new UrlReadinessGate(this.logger, (url) => this.checkTunnelOrigin(url));
     this.cloudflareService = new CloudflareService(this.logger, (url) => this.urlReadiness.ensureReady(url));
     this.customDomainService = new CustomDomainService(this.logger);
     this.remoteConfig = this.remoteService.info();
@@ -92,6 +98,7 @@ export class RemoteAccessService {
     if (directConfigChanged && !this.cloudflareService.managed.busy) {
       this.teardownActive();
     }
+    this.tunnelRetries = 0;
     await this.reconcile();
   }
 
@@ -102,6 +109,7 @@ export class RemoteAccessService {
       directMode: this.remoteConfig.directMode,
       externalUrl: this.activeExternalUrl(),
       override: { ...this.override },
+      cloudflareError: this.cloudflareService.lastError ?? (this.override.fallback ? this.fallbackReason : null),
     };
   }
 
@@ -140,6 +148,7 @@ export class RemoteAccessService {
   private adoptManagedTunnel(): void {
     if (!this.cloudflareService.managed.runningUrl) return;
     this.stopFallbackWatch();
+    this.tunnelRetries = 0;
     this.cloudflareService.stopOwnTunnel();
     this.activeMode = 'cloudflare';
     this.override = { active: true, fallback: false };
@@ -189,11 +198,13 @@ export class RemoteAccessService {
     this.ensureMode(cfg.directMode);
     const target = this.configuredTargetUrl();
     if (await this.targetWorks(target)) {
+      this.tunnelRetries = 0;
       this.override = { active: true, fallback: false };
       return;
     }
 
     this.logger.warn(`Cloud-forced direct: configured '${cfg.directMode}' target ${target ?? '(none)'} not reachable — falling back to a Cloudflare Quick Tunnel.`);
+    this.fallbackReason = this.cloudflareService.lastError;
     this.teardownActive();
     await this.cloudflareService.startQuick();
     this.activeMode = 'cloudflareQuick';
@@ -205,7 +216,7 @@ export class RemoteAccessService {
     if (this.remoteConfig.directMode === 'cloudflare') {
       const cloudflare = this.cloudflareService;
       const connections = this.remoteConfig.cloudflare?.mode === 'managed' ? cloudflare.managed.connections : cloudflare.connections;
-      return connections.whenRegistered(TUNNEL_REGISTER_TIMEOUT_MS);
+      return connections.whenRegistered(TUNNEL_REGISTER_TIMEOUT_MS, true);
     }
     if (!target) return false;
     if (await this.waitReachable(target)) return true;
@@ -221,17 +232,39 @@ export class RemoteAccessService {
     }
   }
 
+  private async checkTunnelOrigin(url: string): Promise<void> {
+    if (this.activeMode !== 'cloudflare' && this.activeMode !== 'cloudflareQuick') return;
+
+    // the hostname resolves before cloudflared has an edge connection, the edge answers 530 until then
+    const cloudflare = this.cloudflareService;
+    const managed = this.activeMode === 'cloudflare' && this.remoteConfig.cloudflare?.mode === 'managed';
+    const connections = managed ? cloudflare.managed.connections : cloudflare.connections;
+    if (!(await connections.whenRegistered(TUNNEL_REGISTER_TIMEOUT_MS))) return;
+
+    let result = await this.probeUrl(url);
+    if (!result.ok) {
+      await sleep(ORIGIN_RECHECK_MS);
+      result = await this.probeUrl(url);
+    }
+    if (!result.ok && this.urlReadiness.isReady(url)) {
+      this.logger.warn(`Cloudflare tunnel ${url} does not reach this server: ${result.message}`);
+    }
+  }
+
   private startFallbackWatch(): void {
     if (this.fallbackWatch || !this.configuredTargetUrl()) return;
-    // retrying a named tunnel costs the quick tunnel its URL, so it is rare
-    const interval = this.remoteConfig.directMode === 'cloudflare' ? TUNNEL_RETRY_MS : FALLBACK_RECHECK_MS;
-    this.fallbackWatch = setInterval(() => this.recheckFallback(), interval);
+    // retrying a named tunnel costs the quick tunnel its URL, so it backs off
+    const delay = this.remoteConfig.directMode === 'cloudflare' ? Math.min(TUNNEL_RETRY_MAX_MS, TUNNEL_RETRY_MS * 2 ** this.tunnelRetries) : FALLBACK_RECHECK_MS;
+    this.fallbackWatch = setTimeout(() => {
+      this.fallbackWatch = null;
+      this.recheckFallback();
+    }, delay);
     this.fallbackWatch.unref();
   }
 
   private stopFallbackWatch(): void {
     if (!this.fallbackWatch) return;
-    clearInterval(this.fallbackWatch);
+    clearTimeout(this.fallbackWatch);
     this.fallbackWatch = null;
   }
 
@@ -243,13 +276,17 @@ export class RemoteAccessService {
     // so probing it would fail forever. Starting it again is the only test, and
     // reconcile falls back once more if it still does not register
     if (this.remoteConfig.directMode === 'cloudflare') {
+      this.tunnelRetries++;
       this.logger.log('Trying the configured Cloudflare tunnel again, the Quick Tunnel URL changes if it still fails.');
       this.teardownActive();
       await this.reconcile();
       return;
     }
 
-    if (!(await this.probeUrl(target)).ok) return;
+    if (!(await this.probeUrl(target)).ok) {
+      if (this.activeMode === 'cloudflareQuick') this.startFallbackWatch();
+      return;
+    }
 
     this.logger.log(`Configured direct target ${target} is reachable again, leaving the Cloudflare Quick Tunnel.`);
     this.stopFallbackWatch();
@@ -290,7 +327,7 @@ export class RemoteAccessService {
     if (!url) {
       return {
         ok: false,
-        message: 'Cloudflare tunnel is not running',
+        message: this.cloudflareService.lastError ?? 'Cloudflare tunnel is not running',
         testedAt: Date.now(),
       };
     }

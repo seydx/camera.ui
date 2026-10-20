@@ -1276,6 +1276,7 @@ export interface RemoteInfo {
   remoteSettings: DBRemote;
   externalUrl: string | null;
   cloudflareTokenSet: boolean;
+  cloudflareError: string | null;
   directOverride: { active: boolean; fallback: boolean };
 }
 

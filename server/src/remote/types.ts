@@ -11,6 +11,7 @@ export interface RemoteAccessStatus {
   directMode: DBRemoteDirectMode;
   externalUrl: string | null;
   override: DirectOverrideStatus;
+  cloudflareError: string | null;
 }
 
 export interface TunnelStatus {

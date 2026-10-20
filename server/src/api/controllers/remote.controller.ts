@@ -21,6 +21,18 @@ import type {
   RemoteUpdateServerNameRequest,
 } from '../types/index.js';
 
+function isTunnelToken(token: string): boolean {
+  if (token.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(token)) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+    return typeof parsed?.a === 'string' && typeof parsed?.t === 'string' && typeof parsed?.s === 'string';
+  } catch {
+    return false;
+  }
+}
+
 export class RemoteController {
   private remoteAccessManager: RemoteAccessManager;
   private logger: LoggerService;
@@ -50,6 +62,7 @@ export class RemoteController {
         },
         externalUrl: remoteAccessStatus.externalUrl,
         cloudflareTokenSet: !!info.cloudflare?.token,
+        cloudflareError: remoteAccessStatus.cloudflareError,
         directOverride: remoteAccessStatus.override,
       };
 
@@ -74,6 +87,13 @@ export class RemoteController {
           return reply.code(400).send({
             statusCode: 400,
             message: 'Token is required when cloudflare.mode is "token"',
+          });
+        }
+
+        if (typeof cloudflare.token === 'string' && !isTunnelToken(cloudflare.token)) {
+          return reply.code(400).send({
+            statusCode: 400,
+            message: 'Token is not a Cloudflare tunnel token',
           });
         }
       }

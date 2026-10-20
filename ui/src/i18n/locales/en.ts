@@ -1027,6 +1027,7 @@ export default {
         cloudflare_variant_quick: 'A quick ephemeral tunnel without a Cloudflare account.',
         cloudflare_variant_token: 'Your own domain via a tunnel token from the Cloudflare dashboard.',
         cloudflare_variant_managed: 'Your own domain via OAuth login. Tunnel and DNS are set up automatically.',
+        cloudflare_quick_capacity: 'From about four people watching remotely at once, a named tunnel holds up better.',
         cloudflare_hostname_info: 'The domain must already be set up as a zone in your Cloudflare account.',
         cloudflare_token_info: 'From the Cloudflare dashboard.',
         cloudflare_tunnel_id_info: 'Identifier of the currently active tunnel.',

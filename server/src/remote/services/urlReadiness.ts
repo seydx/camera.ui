@@ -18,7 +18,10 @@ export class UrlReadinessGate {
   private readyUrls = new Set<string>();
   private watchers = new Map<string, WatchHandle>();
 
-  constructor(private logger: Logger) {}
+  constructor(
+    private logger: Logger,
+    private onReady?: (url: string) => void,
+  ) {}
 
   public isReady(url: string): boolean {
     return this.readyUrls.has(normalizeUrl(url));
@@ -80,6 +83,7 @@ export class UrlReadinessGate {
         if (handle.cancelled) return;
         this.readyUrls.add(url);
         this.logger.log('Remote URL is publicly reachable:', url);
+        this.onReady?.(url);
         return;
       }
       if (handle.cancelled) return;

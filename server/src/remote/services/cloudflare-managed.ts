@@ -8,7 +8,8 @@ import { container } from 'tsyringe';
 
 import { RemoteService } from '../../api/services/remote.service.js';
 import { isShuttingDown } from '../../shutdown-state.js';
-import { cloudflaredBinaryPath, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
+import { cloudflaredBinaryPath, edgeProtocol, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
+import { RestartBackoff } from './restartBackoff.js';
 import { TunnelConnections } from './tunnelConnections.js';
 
 import type { Logger } from '@camera.ui/common';
@@ -41,6 +42,8 @@ export class CloudflareManagedService {
 
   private runProcess?: ChildProcess;
   private stepProcess?: ChildProcess;
+  private backoff = new RestartBackoff();
+  private restartTimer?: NodeJS.Timeout;
 
   public readonly connections = new TunnelConnections();
 
@@ -85,6 +88,7 @@ export class CloudflareManagedService {
       throw new Error(`Cloudflare connect already in progress (state=${this._state}).`);
     }
     this._lastError = null;
+    this.backoff.reset();
 
     await this.ensureCloudflaredInstalled();
 
@@ -123,6 +127,7 @@ export class CloudflareManagedService {
   }
 
   public async cancel(): Promise<void> {
+    this.clearRestart();
     this.stepProcess?.kill('SIGKILL');
     this.stepProcess = undefined;
     this.runProcess?.kill('SIGKILL');
@@ -150,6 +155,7 @@ export class CloudflareManagedService {
   }
 
   public stop(): void {
+    this.clearRestart();
     this.runProcess?.kill('SIGKILL');
     this.runProcess = undefined;
     this.stepProcess?.kill('SIGKILL');
@@ -252,39 +258,72 @@ export class CloudflareManagedService {
     ].join('\n');
     await writeFile(this.configPath(tunnelId), yaml, { mode: 0o600 });
 
-    const args = ['tunnel', '--no-autoupdate', '--config', this.configPath(tunnelId), 'run', tunnelId];
+    const protocol = edgeProtocol(this.configService.CLOUDFLARED_PROTOCOL, this.logger);
+    const args = ['tunnel', '--protocol', protocol, '--no-autoupdate', '--config', this.configPath(tunnelId), 'run', tunnelId];
     const env = { ...process.env, TUNNEL_ORIGIN_CERT: this.certPath() };
-    this.runProcess = spawn(this.cloudflaredBinaryPath(), args, { stdio: ['ignore', 'pipe', 'pipe'], env, windowsHide: true });
+    const proc = spawn(this.cloudflaredBinaryPath(), args, { stdio: ['ignore', 'pipe', 'pipe'], env, windowsHide: true });
+    this.runProcess = proc;
 
-    const pid = this.runProcess.pid;
+    const pid = proc.pid;
     if (pid) {
       this.configService.addProcess({ pid, startTime: Date.now(), command: this.cloudflaredBinaryPath(), args });
     }
 
-    this.runProcess.on('error', (error) => {
+    proc.on('error', (error) => {
       if (pid) this.configService.removeProcessByPID(pid);
-      if (this._state === 'running' && !isShuttingDown()) {
-        this.fail(`tunnel run failed: ${error.message}`);
+      if (this.runProcess !== proc || isShuttingDown()) return;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'EACCES') {
+        this.runProcess = undefined;
+        this.connections.exited();
+        this.fail(`cloudflared could not be started: ${error.message}`);
+        return;
       }
+      this.runExited(`tunnel run failed: ${error.message}`);
     });
 
-    this.runProcess.on('exit', (code) => {
+    proc.on('exit', (code) => {
       if (pid) this.configService.removeProcessByPID(pid);
-      if (this._state === 'running' && !isShuttingDown()) {
-        this.fail(`tunnel run exited unexpectedly (code=${code})`);
-      }
+      if (this.runProcess !== proc || isShuttingDown()) return;
+      this.runExited(`tunnel run exited unexpectedly (code=${code})`);
     });
 
-    const stdout = createInterface({ input: this.runProcess.stdout!, terminal: false });
-    const stderr = createInterface({ input: this.runProcess.stderr!, terminal: false });
+    const stdout = createInterface({ input: proc.stdout, terminal: false });
+    const stderr = createInterface({ input: proc.stderr, terminal: false });
     const onLine = (l: string): void => {
+      if (this.runProcess !== proc) return;
       this.connections.observe(l);
+      if (this.connections.registered) {
+        this.backoff.registered();
+        this._lastError = null;
+      }
       this.logger.trace(l);
     };
     stdout.on('line', onLine);
     stderr.on('line', onLine);
 
     this._state = 'running';
+  }
+
+  private runExited(message: string): void {
+    this.runProcess = undefined;
+    this.connections.exited();
+    this._lastError = message;
+
+    const delay = this.backoff.nextDelay();
+    this.logger.error(`Cloudflare (managed): ${message}, restarting in ${Math.round(delay / 1000)}s`);
+
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = undefined;
+      if (this._state !== 'running' || isShuttingDown()) return;
+      this.resumeIfReady().catch((err: any) => this.fail(`Tunnel run failed: ${err?.message ?? err}`));
+    }, delay);
+  }
+
+  private clearRestart(): void {
+    clearTimeout(this.restartTimer);
+    this.restartTimer = undefined;
+    this.backoff.reset();
   }
 
   private async runStep(args: string[], timeoutMs: number, onLine?: (line: string) => void): Promise<string> {

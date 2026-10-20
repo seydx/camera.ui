@@ -125,6 +125,7 @@ export class ConfigService {
 
   readonly UI_PORT = parseInt(process.env.CAMERA_UI_UI_PORT!);
   readonly INGRESS_TRUST_IP = process.env.CAMERA_UI_INGRESS_TRUST ?? undefined;
+  readonly CLOUDFLARED_PROTOCOL = process.env.CAMERA_UI_CLOUDFLARED_PROTOCOL?.trim().toLowerCase();
   readonly STREAM_URL_TOKEN = randomBytes(32).toString('base64url');
 
   private logger: LoggerService;

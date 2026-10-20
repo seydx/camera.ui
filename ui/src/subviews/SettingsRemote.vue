@@ -323,7 +323,14 @@
                       <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ currentCloudflareVariantDescription }}</Message>
                     </div>
 
+                    <Message v-if="remoteInfo?.cloudflareError" severity="error" variant="simple" size="small">
+                      {{ remoteInfo.cloudflareError }}
+                    </Message>
+
                     <template v-if="cloudflareVariantInput === 'quick'">
+                      <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{
+                        $t('components.form.hint.cloudflare_quick_capacity')
+                      }}</Message>
                       <div class="flex items-center gap-3">
                         <Button
                           type="button"
