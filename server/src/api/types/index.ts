@@ -1006,6 +1006,7 @@ export interface CameraUiPlugin {
   protocolLevel?: number;
   protocolCompat?: ProtocolCompat;
   workerAgentId?: string;
+  workerOnly?: boolean;
 }
 
 export interface FrameWorker {
@@ -1134,7 +1135,7 @@ export interface WorkerPatchRequest {
 }
 
 export interface WorkerAssignRequest {
-  Body: { cameraId: string; agentId: string };
+  Body: { cameraId: string; agentId: string; workerOnly?: boolean };
 }
 
 export interface WorkerUnassignRequest {
@@ -1150,7 +1151,7 @@ export interface WorkerPairRequest {
 }
 
 export interface WorkerAssignPluginRequest {
-  Body: { pluginName: string; agentId: string };
+  Body: { pluginName: string; agentId: string; workerOnly?: boolean };
 }
 
 export interface WorkerUnassignPluginRequest {

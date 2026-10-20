@@ -706,11 +706,12 @@ export class CamerasService {
     return result;
   }
 
-  public async setWorkerAgentId(cameraId: string, agentId: string | undefined): Promise<DBCamera | undefined> {
+  public async setWorkerAgentId(cameraId: string, agentId: string | undefined, workerOnly?: boolean): Promise<DBCamera | undefined> {
     return this.dbs.commit(this.dbs.camerasDB, cameraId, (current) => {
       if (!current) return undefined;
 
       current.workerAgentId = agentId;
+      current.workerOnly = agentId && (workerOnly ?? current.workerOnly) ? true : undefined;
 
       return current;
     });

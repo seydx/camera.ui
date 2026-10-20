@@ -124,6 +124,18 @@
                   />
                 </template>
               </Column>
+
+              <Column :header="$t('views.workers.fallback')" header-class="p-2" class="p-2">
+                <template #body="{ data }">
+                  <span v-tooltip.top="cameraDraft(data).agentId ? $t('views.workers.fallback_hint') : $t('views.workers.fallback_no_worker')" class="inline-flex">
+                    <ToggleSwitch
+                      :model-value="!cameraDraft(data).workerOnly"
+                      :disabled="!cameraDraft(data).agentId || savingCameras"
+                      @update:model-value="(fallback: boolean) => setCameraFallback(data, fallback)"
+                    />
+                  </span>
+                </template>
+              </Column>
             </CuiDataTable>
             <div class="flex flex-row justify-end mt-6">
               <Button class="cui-button-medium" :label="$t('views.workers.save')" :loading="savingCameras" :disabled="!camerasDirty" @click="handleSaveCameras" />
@@ -180,6 +192,18 @@
                     :disabled="savingPlugins"
                     @update:model-value="(val: string | null) => setPluginWorker(data, val)"
                   />
+                </template>
+              </Column>
+
+              <Column :header="$t('views.workers.fallback')" header-class="p-2" class="p-2">
+                <template #body="{ data }">
+                  <span v-tooltip.top="pluginFallbackTooltip(data)" class="inline-flex">
+                    <ToggleSwitch
+                      :model-value="data.compatible && !pluginDraft(data).workerOnly"
+                      :disabled="!pluginDraft(data).agentId || !data.compatible || savingPlugins"
+                      @update:model-value="(fallback: boolean) => setPluginFallback(data, fallback)"
+                    />
+                  </span>
                 </template>
               </Column>
             </CuiDataTable>

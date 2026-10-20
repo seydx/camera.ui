@@ -137,13 +137,15 @@ export class PluginsService {
     return pluginData;
   }
 
-  public async setWorkerAgentId(pluginName: string, agentId: string | undefined): Promise<void> {
+  public async setWorkerAgentId(pluginName: string, agentId: string | undefined, workerOnly?: boolean): Promise<void> {
     const plugin = this.getPluginDbByName(pluginName);
     if (!plugin) {
       throw new Error(`Plugin ${pluginName} not found`);
     }
 
-    await this.dbs.commit(this.dbs.pluginsDB, plugin._id, (current) => (current ? { ...current, workerAgentId: agentId } : undefined));
+    await this.dbs.commit(this.dbs.pluginsDB, plugin._id, (current) =>
+      current ? { ...current, workerAgentId: agentId, workerOnly: agentId && (workerOnly ?? current.workerOnly) ? true : undefined } : undefined,
+    );
   }
 
   public listByAgentId(agentId: string): DBPlugin[] {

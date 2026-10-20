@@ -201,9 +201,9 @@ export class WorkersController {
 
   public async assignCamera(req: FastifyRequest<AuthLoginRequest & WorkerAssignRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const { cameraId, agentId } = req.body;
-      await this.workerManager.assignCamera(cameraId, agentId);
-      return reply.code(204).send();
+      const { cameraId, agentId, workerOnly } = req.body;
+      const result = await this.workerManager.assignCamera(cameraId, agentId, workerOnly);
+      return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
       const statusCode = error.statusCode ?? 500;
       return reply.code(statusCode).send({ statusCode, message: error.message });
@@ -223,9 +223,9 @@ export class WorkersController {
 
   public async assignPlugin(req: FastifyRequest<AuthLoginRequest & WorkerAssignPluginRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const { pluginName, agentId } = req.body;
-      await this.workerManager.assignPlugin(pluginName, agentId);
-      return reply.code(204).send();
+      const { pluginName, agentId, workerOnly } = req.body;
+      const result = await this.workerManager.assignPlugin(pluginName, agentId, workerOnly);
+      return reply.code(result === 'moving' ? 202 : 204).send();
     } catch (error: any) {
       const statusCode = error.statusCode ?? 500;
       return reply.code(statusCode).send({ statusCode, message: error.message });

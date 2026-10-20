@@ -593,11 +593,14 @@ export class WorkerManager {
     await this.listen(agentId);
   }
 
-    const worker = this.workers.get(agentId);
-    if (worker) {
-      worker.serverAddresses = serverAddresses;
-      this.emitWorkerUpdate(worker);
+  public async assignCamera(cameraId: string, agentId: string, workerOnly?: boolean): Promise<'unchanged' | 'moving'> {
+    if (!this.camerasService.findById(cameraId)) {
+      throw new WorkerRequestError(404, `Camera ${cameraId} not found`);
     }
+    this.checkAssignment(WorkerCapability.FrameDecoding, cameraId, agentId);
+    this.logger.log(`Assigning camera ${cameraId} to worker ${this.nameOf(agentId)}${describeFallback(workerOnly)}`);
+    return this.reassign(WorkerCapability.FrameDecoding, cameraId, agentId, () => this.camerasService.setWorkerAgentId(cameraId, agentId, workerOnly));
+  }
 
   public async unassignCamera(cameraId: string): Promise<'unchanged' | 'moving'> {
     if (!this.camerasService.findById(cameraId)) {
@@ -607,9 +610,15 @@ export class WorkerManager {
     return this.reassign(WorkerCapability.FrameDecoding, cameraId, undefined, () => this.camerasService.setWorkerAgentId(cameraId, undefined));
   }
 
+  public async assignPlugin(pluginName: string, agentId: string, workerOnly?: boolean): Promise<'unchanged' | 'moving'> {
     const pluginsService = new PluginsService();
-    for (const plugin of pluginsService.listByAgentId(agentId)) {
-      if (!pluginsService.getPluginProcessByName(plugin.pluginName)?.isRemoteWorker) continue;
+    if (!pluginsService.getPluginByName(pluginName)) {
+      throw new WorkerRequestError(404, `Plugin ${pluginName} not found`);
+    }
+    this.checkAssignment(WorkerCapability.PluginHost, pluginName, agentId);
+    this.logger.log(`Assigning plugin ${pluginName} to worker ${this.nameOf(agentId)}${describeFallback(workerOnly)}`);
+    return this.reassign(WorkerCapability.PluginHost, pluginName, agentId, () => pluginsService.setWorkerAgentId(pluginName, agentId, workerOnly));
+  }
 
   public async unassignPlugin(pluginName: string): Promise<'unchanged' | 'moving'> {
     const pluginsService = new PluginsService();
@@ -713,6 +722,14 @@ export class WorkerManager {
         return { host: 'wait-release', agentId: opened.from, seq: opened.seq };
       }
     }
+    if (target && !refusal) {
+      return { host: 'worker', agentId: target };
+    }
+    if (target && refusal?.wait) {
+      return { host: 'wait-worker', agentId: target, reason: refusal.reason };
+    }
+    return { host: 'master', reason: refusal?.reason };
+  }
 
   public desire(capability: WorkerCapability, id: string, agentId: string, fresh: boolean): { gen: string; held?: string } | undefined {
     if (!this.active || this.shutdown) {

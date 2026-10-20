@@ -523,6 +523,7 @@ export class PluginsController {
       const plugins = installedPlugins.map((plugin) => ({
         ...plugin.info,
         workerAgentId: this.service.getPluginDbByName(plugin.pluginName)?.workerAgentId,
+        workerOnly: this.service.getPluginDbByName(plugin.pluginName)?.workerOnly,
       }));
 
       return orderBy(plugins, ['displayName'], ['asc']);

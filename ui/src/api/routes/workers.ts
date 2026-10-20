@@ -39,9 +39,9 @@ export async function patchWorker({ agentId, ...patch }: PatchWorkerInput & { ag
   await api.patch(`/workers/${agentId}`, patch);
 }
 
-export async function assignCameraToWorker({ cameraId, agentId }: { cameraId: string; agentId: string }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.post('/workers/assign', { cameraId, agentId });
-  return response.data;
+export async function assignCameraToWorker({ cameraId, agentId, workerOnly }: { cameraId: string; agentId: string; workerOnly?: boolean }): Promise<boolean> {
+  const response = await api.post('/workers/assign', { cameraId, agentId, workerOnly });
+  return response.status === 202;
 }
 
 export async function unassignCameraFromWorker({ cameraId }: { cameraId: string }): Promise<boolean> {
@@ -49,9 +49,9 @@ export async function unassignCameraFromWorker({ cameraId }: { cameraId: string 
   return response.status === 202;
 }
 
-export async function assignPluginToWorker({ pluginName, agentId }: { pluginName: string; agentId: string }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.post('/workers/assign-plugin', { pluginName, agentId });
-  return response.data;
+export async function assignPluginToWorker({ pluginName, agentId, workerOnly }: { pluginName: string; agentId: string; workerOnly?: boolean }): Promise<boolean> {
+  const response = await api.post('/workers/assign-plugin', { pluginName, agentId, workerOnly });
+  return response.status === 202;
 }
 
 export async function unassignPluginFromWorker({ pluginName }: { pluginName: string }): Promise<boolean> {
@@ -103,7 +103,7 @@ export class WorkersQuery {
   public assignCameraQuery() {
     return useMutation({
       mutationFn: assignCameraToWorker,
-      onMutate: ({ cameraId, agentId }) => this.patchCameraWorker(cameraId, agentId),
+      onMutate: ({ cameraId, agentId, workerOnly }) => this.patchCameraWorker(cameraId, agentId, workerOnly),
       onError: (error, _variables, context) => {
         context?.rollback();
         this.toast.add({ severity: 'error', detail: error, life: 3000 });
@@ -178,7 +178,9 @@ export class WorkersQuery {
       snapshots.push([key, data]);
       this._queryClient.setQueryData<CamerasResponse>(key, {
         ...data,
-        result: data.result.map((cam) => (cam._id === cameraId ? { ...cam, workerAgentId: agentId } : cam)),
+        result: data.result.map((cam) =>
+          cam._id === cameraId ? { ...cam, workerAgentId: agentId, workerOnly: agentId && (workerOnly ?? cam.workerOnly) ? true : undefined } : cam,
+        ),
       });
     }
     return {

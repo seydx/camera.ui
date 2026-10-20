@@ -5,6 +5,7 @@ import { SUBJECT_TOKEN } from '../../rpc/namespaces.js';
 export const assignCameraSchema = zod.object({
   cameraId: zod.string().min(1, 'Camera ID is required'),
   agentId: zod.string().min(1, 'Agent ID is required'),
+  workerOnly: zod.boolean().optional(),
 });
 
 export const unassignCameraSchema = zod.object({
@@ -36,6 +37,7 @@ export const pairWorkerSchema = zod.object({
 export const assignPluginSchema = zod.object({
   pluginName: zod.string().min(1, 'Plugin name is required'),
   agentId: zod.string().min(1, 'Agent ID is required'),
+  workerOnly: zod.boolean().optional(),
 });
 
 export const unassignPluginSchema = zod.object({

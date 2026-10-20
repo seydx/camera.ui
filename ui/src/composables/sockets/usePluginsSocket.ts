@@ -22,6 +22,11 @@ let scope: ReturnType<typeof effectScope> | null = null;
 let channel: SocketChannel | null = null;
 
 function updateStatusColor(state: PluginsSocketState, status: PLUGIN_STATUS): void {
+  if (state.placement?.phase === 'waiting-for-worker') {
+    state.statusColor = 'gray';
+    return;
+  }
+
   switch (status) {
     case PLUGIN_STATUS.ERROR:
     case PLUGIN_STATUS.INCOMPATIBLE:

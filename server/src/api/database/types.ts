@@ -8,6 +8,7 @@ import type { NavLayoutSettings } from '../types/index.js';
 export interface DBCamera extends BaseCamera {
   sources: CameraInputSettings[];
   workerAgentId?: string;
+  workerOnly?: boolean;
   roomId: string | null;
 }
 
@@ -15,6 +16,7 @@ export interface DBPlugin {
   readonly _id: string;
   pluginName: string;
   workerAgentId?: string;
+  workerOnly?: boolean;
 }
 
 export interface DBUserTwoFactor {
