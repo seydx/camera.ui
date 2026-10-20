@@ -394,8 +394,14 @@ export class PluginChild {
     // Remote-hosted: config lives on the master (re-homing safe) — persist
     // through its config store instead of a worker-local file.
     if (process.env.PLUGIN_CONFIG_STORE_RPC) {
-      const namespaces = NamespaceManager.pluginNamespaces(pluginId);
-      const remoteDb = new RemotePluginConfigDb(this.proxy.createProxy<PluginConfigStoreRPC>(namespaces.pluginConfigStoreRpc));
+      const namespace = NamespaceManager.pluginNamespaces(pluginId).pluginConfigStoreRpc;
+      const remoteDb = new RemotePluginConfigDb(
+        this.proxy.createProxy<PluginConfigStoreRPC>(namespace),
+        this.proxy.createProxy<PluginConfigStoreRPC>(namespace, { noResponderRetry: { maxRetries: 0 } }),
+        storagePath,
+        this.instanceId,
+        this.logger,
+      );
       await remoteDb.init();
       return remoteDb;
     }

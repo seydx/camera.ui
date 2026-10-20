@@ -181,19 +181,18 @@ class DeviceStorage(DeviceStorageInterface):
 
     @RPCMethod
     async def setInternalValue(self, key: str, value: Any) -> None:  # type: ignore[override]
-        validate_store_value(key, value)
-        old_value = ObjectPath.get(self.values, key)
-        if value is None:
-            unchanged = old_value is None
-            ObjectPath.delete(self.values, key)
-        else:
-            unchanged = old_value is not None and DeepDiff(old_value, value) == {}
-            stored = deepcopy(value) if isinstance(value, (dict, list)) else value  # type: ignore
-            ObjectPath.set(self.values, key, stored)
+        if self.__apply_internal_value(key, value):
+            await self.save()
 
-        if unchanged and not self.__dirty:
+    def setInternalValueSync(self, key: str, value: Any) -> None:
+        if not self.__apply_internal_value(key, value):
             return
-        await self.save()
+        try:
+            self.__plugin_db.put_sync("config", self.__storable_document())
+        except Exception:
+            self.__dirty = True
+            raise
+        self.__dirty = False
 
     @RPCMethod
     def hasValue(self, key: str) -> bool:
@@ -287,16 +286,8 @@ class DeviceStorage(DeviceStorageInterface):
         await self.__plugin_db.put("config", config)
 
     async def save(self) -> None:  # type: ignore[override]
-        config = self.__plugin_db.get("config") or {}
-
-        if len(self.schemas) > 0:
-            storable_config = self.__filter_storable_values(self.schemas)
-        else:
-            storable_config = self.values
-
-        write_location(config, self.__location, storable_config)
         try:
-            await self.__plugin_db.put("config", config)
+            await self.__plugin_db.put("config", self.__storable_document())
         except Exception:
             self.__dirty = True
             raise
@@ -383,6 +374,29 @@ class DeviceStorage(DeviceStorageInterface):
         task = asyncio.create_task(_run())
         self.__detached_tasks.add(task)
         task.add_done_callback(self.__detached_tasks.discard)
+
+    def __apply_internal_value(self, key: str, value: Any) -> bool:
+        validate_store_value(key, value)
+        old_value = ObjectPath.get(self.values, key)
+        if value is None:
+            unchanged = old_value is None
+            ObjectPath.delete(self.values, key)
+        else:
+            unchanged = old_value is not None and DeepDiff(old_value, value) == {}
+            stored = deepcopy(value) if isinstance(value, (dict, list)) else value  # type: ignore
+            ObjectPath.set(self.values, key, stored)
+        return not unchanged or self.__dirty
+
+    def __storable_document(self) -> dict[str, Any]:
+        config = self.__plugin_db.get("config") or {}
+
+        if len(self.schemas) > 0:
+            storable_config = self.__filter_storable_values(self.schemas)
+        else:
+            storable_config = self.values
+
+        write_location(config, self.__location, storable_config)
+        return config
 
     def __filter_storable_values(
         self,

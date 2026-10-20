@@ -106,19 +106,22 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
 
   @RPCMethod
   public async setInternalValue(key: string, value: unknown): Promise<void> {
-    validateStoreValue(key, value);
-    const oldValue = getValueByKey(this.values, key);
-    const unchanged = value === null || value === undefined ? oldValue === undefined : isEqual(oldValue, value);
-    if (value === null || value === undefined) {
-      deleteValueByKey(this.values, key);
-    } else {
-      setValueByKey(this.values, key, typeof value === 'object' ? structuredClone(value) : value);
+    if (this.#applyInternalValue(key, value)) {
+      await this.save();
     }
+  }
 
-    if (unchanged && !this.#dirty) {
+  public setInternalValueSync(key: string, value: unknown): void {
+    if (!this.#applyInternalValue(key, value)) {
       return;
     }
-    await this.save();
+    try {
+      this.#pluginDb.putSync('config', this.#storableDocument());
+      this.#dirty = false;
+    } catch (error) {
+      this.#dirty = true;
+      throw error;
+    }
   }
 
   @RPCMethod
@@ -227,11 +230,8 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
   }
 
   public async save(): Promise<void> {
-    const config = this.#pluginDb.get('config') ?? {};
-    const storableConfig = this.schemas.length ? this.#filterStorableValues(this.schemas) : this.values;
-    writeLocation(config, this.#location, storableConfig);
     try {
-      await this.#pluginDb.put('config', config);
+      await this.#pluginDb.put('config', this.#storableDocument());
       this.#dirty = false;
     } catch (error) {
       this.#dirty = true;
@@ -322,6 +322,25 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
     }
 
     return result;
+  }
+
+  #applyInternalValue(key: string, value: unknown): boolean {
+    validateStoreValue(key, value);
+    const oldValue = getValueByKey(this.values, key);
+    const unchanged = value === null || value === undefined ? oldValue === undefined : isEqual(oldValue, value);
+    if (value === null || value === undefined) {
+      deleteValueByKey(this.values, key);
+    } else {
+      setValueByKey(this.values, key, typeof value === 'object' ? structuredClone(value) : value);
+    }
+    return !unchanged || this.#dirty;
+  }
+
+  #storableDocument(): Record<string, any> {
+    const config = this.#pluginDb.get('config') ?? {};
+    const storableConfig = this.schemas.length ? this.#filterStorableValues(this.schemas) : this.values;
+    writeLocation(config, this.#location, storableConfig);
+    return config;
   }
 
   #containsStorableSchema(schema: JsonSchema): boolean {

@@ -326,10 +326,12 @@ export class PluginWorker {
   }
 
   private async ensureConfigStore(): Promise<void> {
+    clearTimeout(this.storeLinger);
+    this.storeLinger = undefined;
     if (this.configStore) {
       return;
     }
-    this.configStore = new PluginConfigStore(this.plugin.id, this.plugin.storagePath);
+    this.configStore = new PluginConfigStore(this.plugin.id, this.plugin.storagePath, (instanceId) => this.placement.owns(instanceId));
     await this.configStore.register(this.proxyServer.proxy);
   }
 

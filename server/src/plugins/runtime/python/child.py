@@ -22,6 +22,7 @@ from _camera_ui_tools.camera_ui_common import (
 )
 from _camera_ui_tools.camera_ui_rpc import (
     CloseHandler,
+    NoResponderRetryOptions,
     PrivateChannel,
     RPCClient,
     create_rpc_client,
@@ -477,9 +478,16 @@ class PluginChild:
         # Remote-hosted: config lives on the master (re-homing safe) — persist
         # through its config store instead of a worker-local file.
         if os.environ.get("PLUGIN_CONFIG_STORE_RPC"):
-            namespaces = NamespaceManager.plugin_namespaces(plugin_id)
-            store_rpc = self.proxy.create_proxy(namespaces.plugin_config_store_rpc, PluginConfigStoreRPC)
-            remote_db = RemotePluginConfigDb(store_rpc)
+            namespace = NamespaceManager.plugin_namespaces(plugin_id).plugin_config_store_rpc
+            remote_db = RemotePluginConfigDb(
+                self.proxy.create_proxy(namespace, PluginConfigStoreRPC),
+                self.proxy.create_proxy(
+                    namespace, PluginConfigStoreRPC, no_responder_retry=NoResponderRetryOptions(max_retries=0)
+                ),
+                storage_path,
+                self.instance_id,
+                self.logger,
+            )
             await remote_db.init()
             return remote_db
 

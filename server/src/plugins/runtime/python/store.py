@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 STORE_FILE_NAME = "store.cui"
+_JOURNAL_SUFFIX = ".journal"
 
 _MAGIC = b"CUI1"
 _MAX_SAFE_INTEGER = 2**53 - 1
@@ -389,9 +390,13 @@ class PluginStoreFile:
         self._volume_dir = volume_dir
         self._log = log
         self._path = str(Path(volume_dir) / STORE_FILE_NAME)
+        self._journal_path = f"{self._path}{_JOURNAL_SUFFIX}"
         self._writer = CoalescingWriter(self._write_snapshot, log)
         self._payload: dict[str, Any] = {}
         self._closed = True
+        self._seq = 0
+        self._journaled = False
+        self._detached: set[asyncio.Task[None]] = set()
 
     @property
     def path(self) -> str:
@@ -401,10 +406,14 @@ class PluginStoreFile:
         await asyncio.to_thread(os.makedirs, self._volume_dir, exist_ok=True)
         await asyncio.to_thread(self._remove_orphaned_tmp_files)
 
-        payload = await read_store_file(self._path, self._log)
+        journal = await asyncio.to_thread(self._read_journal)
+        payload = journal if journal is not None else await read_store_file(self._path, self._log)
         if payload is None:
             payload = {}
             await write_store_file(self._path, payload, self._log)
+        elif journal is not None:
+            await write_store_file(self._path, payload, self._log)
+            await asyncio.to_thread(os.unlink, self._journal_path)
 
         upgraded = upgrade_layout(payload)
         if upgraded is not payload:
@@ -418,16 +427,81 @@ class PluginStoreFile:
         return self._payload
 
     async def put(self, payload: dict[str, Any]) -> None:
-        if self._closed:
-            # A silently "successful" no-op here would lose the write during
-            # shutdown windows. Fail loudly instead.
-            raise RuntimeError(f"store: put on closed store {self._path}")
+        self._assert_open()
         self._payload = payload
-        await self._writer.write(payload)
+        self._seq += 1
+        seq = self._seq
+        if self._journaled:
+            # the store file write below still carries it
+            with suppress(Exception):
+                self._write_journal(payload)
+        await self._persist(payload, seq)
+
+    def put_sync(self, payload: dict[str, Any]) -> None:
+        self._assert_open()
+        self._payload = payload
+        self._seq += 1
+        seq = self._seq
+        try:
+            self._write_journal(payload)
+        finally:
+            self._persist_detached(payload, seq)
 
     async def close(self) -> None:
         self._closed = True
+        await asyncio.gather(*self._detached, return_exceptions=True)
         await self._writer.idle()
+
+    def _assert_open(self) -> None:
+        if self._closed:
+            # a silent no-op would lose writes during shutdown
+            raise RuntimeError(f"store: put on closed store {self._path}")
+
+    async def _persist(self, payload: dict[str, Any], seq: int) -> None:
+        await self._writer.write(payload)
+        if self._journaled and seq == self._seq:
+            self._remove_journal()
+
+    def _persist_detached(self, payload: dict[str, Any], seq: int) -> None:
+        task = asyncio.ensure_future(self._persist(payload, seq))
+        self._detached.add(task)
+        task.add_done_callback(self._settle_detached)
+
+    def _settle_detached(self, task: asyncio.Task[None]) -> None:
+        self._detached.discard(task)
+        # a failed store write keeps the journal for the next open
+        if not task.cancelled():
+            task.exception()
+
+    def _write_journal(self, payload: dict[str, Any]) -> None:
+        try:
+            _write_store_file_sync(self._journal_path, encode_envelope(payload))
+            self._journaled = True
+        except Exception:
+            # an older journal must not outlive a newer state
+            self._remove_journal()
+            raise
+
+    def _remove_journal(self) -> None:
+        try:
+            os.unlink(self._journal_path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            return
+        self._journaled = False
+
+    def _read_journal(self) -> dict[str, Any] | None:
+        buf = _read_bytes(self._journal_path)
+        if buf is None:
+            return None
+        try:
+            return decode_envelope(buf)
+        except StoreCorruptError:
+            # rename rules out a torn journal, a damaged one yields to the store file
+            with suppress(OSError):
+                os.unlink(self._journal_path)
+            return None
 
     async def _write_snapshot(self, snapshot: dict[str, Any]) -> None:
         await write_store_file(self._path, snapshot, self._log)

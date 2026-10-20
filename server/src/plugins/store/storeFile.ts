@@ -1,3 +1,4 @@
+import { closeSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { copyFile, mkdir, open, readFile, readdir, rename, unlink } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -26,6 +27,22 @@ async function renameWithRetry(tmpPath: string, path: string): Promise<void> {
   }
 }
 
+function renameSyncWithRetry(tmpPath: string, path: string): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(tmpPath, path);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const retryable = process.platform === 'win32' && (code === 'EPERM' || code === 'EACCES');
+      if (!retryable || attempt >= RENAME_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, RENAME_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
 export async function writeStoreFile(path: string, payload: Record<string, any>): Promise<void> {
   const buf = encodeEnvelope(payload);
   const tmpPath = `${path}.tmp-${process.pid}`;
@@ -49,6 +66,38 @@ export async function writeStoreFile(path: string, payload: Record<string, any>)
     await renameWithRetry(tmpPath, path);
   } catch (error) {
     await unlink(tmpPath).catch(() => {});
+    throw error;
+  }
+}
+
+export function writeStoreFileSync(path: string, payload: Record<string, any>): void {
+  const buf = encodeEnvelope(payload);
+  const tmpPath = `${path}.tmp-${process.pid}`;
+
+  try {
+    let fd: number;
+    try {
+      fd = openSync(tmpPath, 'w');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+      mkdirSync(dirname(path), { recursive: true });
+      fd = openSync(tmpPath, 'w');
+    }
+    try {
+      writeFileSync(fd, buf);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSyncWithRetry(tmpPath, path);
+  } catch (error) {
+    try {
+      unlinkSync(tmpPath);
+    } catch {
+      // not there
+    }
     throw error;
   }
 }

@@ -22,6 +22,10 @@ export function encodeEnvelope(payload: Record<string, any>): Buffer {
   return Buffer.concat([MAGIC, body, crc]);
 }
 
+export function envelopeRev(buf: Buffer): string {
+  return `${buf.readUInt32LE(buf.length - 4).toString(16)}.${buf.length}`;
+}
+
 export function decodeEnvelope(buf: Buffer): Record<string, any> {
   if (buf.length < MAGIC.length + 4 || !buf.subarray(0, MAGIC.length).equals(MAGIC)) {
     throw new StoreCorruptError('bad magic');
