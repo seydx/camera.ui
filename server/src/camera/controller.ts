@@ -53,6 +53,7 @@ const PRELOAD_KINDS: ProbeConfig = { video: true, audio: true, microphone: true 
 // covers a battery camera waking up: bridge handshake plus the wait for its parameter sets
 const COLD_PROBE_TIMEOUT_MS = 30_000;
 const SOURCE_CODEC_KEYS: (keyof SourceCodecInfo)[] = ['videoCodec', 'audioCodecs', 'backchannelAudioCodec'];
+const SNAPSHOT_CONCURRENCY = 16;
 
 export class CameraController extends CameraDevice implements CameraDeviceInterface {
   public readonly frameWorker: FrameWorker;
@@ -80,6 +81,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   private snapshotPrivacy: SnapshotPrivacy;
   private readonly snapshots = new SnapshotStore((sourceId, entry) => this.announceSnapshot(sourceId, entry));
   private readonly preloadsInFlight = new Set<string>();
+  private readonly snapshotsInFlight = new Map<string, Promise<ArrayBuffer | undefined>>();
 
   constructor(camera: Camera, logger: Logger) {
     super(camera, logger);
@@ -132,13 +134,8 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   }
 
   get cameraDeviceProxy(): Promisify<CameraDeviceInterface & Partial<CameraImplementation>> | undefined {
-    const pluginId = this.camera.pluginInfo?.id;
-    if (!pluginId) {
-      return undefined;
-    }
-
-    const namespace = NamespaceManager.pluginCameraNamespaces(pluginId, this.id);
-    return this.proxy.createProxy<CameraDeviceInterface & Partial<CameraImplementation>>(namespace.cameraImplRpc);
+    const namespace = this.pluginCameraImplRpc;
+    return namespace ? this.proxy.createProxy<CameraDeviceInterface & Partial<CameraImplementation>>(namespace) : undefined;
   }
 
   get sources(): CameraDeviceSource[] {
@@ -173,7 +170,10 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   }
 
   public async init(): Promise<void> {
-    this.closeProxy = await this.proxy.registerHandler(this.namespaces.cameraControllerRpc, this, { isolatedConnection: true });
+    this.closeProxy = await this.proxy.registerHandler(this.namespaces.cameraControllerRpc, this, {
+      isolatedConnection: true,
+      concurrency: { snapshot: SNAPSHOT_CONCURRENCY, snapshotWithMeta: SNAPSHOT_CONCURRENCY },
+    });
     await this.sensorController.init();
 
     const detectionEventSubject = NamespaceManager.detectionEventNamespaces(this.id).detectionEventSubject;
@@ -234,64 +234,17 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       throw new Error('Source not found');
     }
 
-    const storeSnapshot = async (s: CameraDeviceSource, data: ArrayBuffer): Promise<ArrayBuffer | undefined> => {
-      const masked = await this.snapshotPrivacy.apply(data);
-      if (masked && masked.byteLength > 0) {
-        this.snapshots.set(s._id, masked, Date.now(), s._id === this.preferredSnapshotSource?._id);
-      }
+    const key = `${sourceId}|${preferNative ? 1 : 0}`;
+    const running = forceNew ? undefined : this.snapshotsInFlight.get(key);
+    if (running) return running;
 
-      return masked;
-    };
-
-    const fetchSnapshotFromSource = async (s: CameraDeviceSource): Promise<ArrayBuffer | undefined> => {
-      try {
-        const sourceName = createSourceName(this.name, s.name);
-        const snapshot = await this.go2rtcApi.snapshotRoute.jpeg({ src: sourceName, ...(forceNew ? { gop: 0 as const } : {}) });
-        if (snapshot.byteLength === 0) {
-          return snapshot;
-        }
-
-        return await storeSnapshot(s, snapshot);
-      } catch (error) {
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-          this.logger.debug('Snapshot request timed out for', this.name);
-        } else {
-          this.logger.error('Error while fetching snapshot:', error.message);
-        }
-      }
-    };
-
-    const fetchSnapshotFromPlugin = async (s: CameraDeviceSource): Promise<ArrayBuffer | undefined> => {
-      try {
-        const pluginSnapshot = await this.cameraDeviceProxy?.snapshot?.(s._id, forceNew);
-        if (pluginSnapshot && pluginSnapshot.byteLength > 0) {
-          return await storeSnapshot(s, pluginSnapshot);
-        }
-      } catch {
-        // Ignore plugin errors; fall back to go2rtc.
-      }
-    };
-
-    const designatedSnapshotSource = source.role === 'snapshot' || source.useForSnapshot;
-
-    if (preferNative || !designatedSnapshotSource) {
-      const pluginSnapshot = await fetchSnapshotFromPlugin(source);
-      if (pluginSnapshot) {
-        return pluginSnapshot;
-      }
+    const fetching = this.fetchSnapshot(source, forceNew, preferNative);
+    this.snapshotsInFlight.set(key, fetching);
+    try {
+      return await fetching;
+    } finally {
+      if (this.snapshotsInFlight.get(key) === fetching) this.snapshotsInFlight.delete(key);
     }
-
-    const snapshot = await fetchSnapshotFromSource(source);
-    if (snapshot && snapshot.byteLength > 0) {
-      return snapshot;
-    }
-
-    if (designatedSnapshotSource) {
-      const fallback = [this.lowResolutionSource, this.midResolutionSource, this.highResolutionSource].find((s) => s && s._id !== source._id);
-      return fallback ? fetchSnapshotFromSource(fallback) : snapshot;
-    }
-
-    return snapshot;
   }
 
   @RPCMethod
@@ -434,6 +387,16 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     return this.proxy.createProxy<DeviceStorage>(namespaces.sensorStorageRpc);
   }
 
+  private get pluginSnapshotProxy(): Promisify<CameraDeviceInterface & Partial<CameraImplementation>> | undefined {
+    const namespace = this.pluginCameraImplRpc;
+    return namespace ? this.proxy.createProxy<CameraDeviceInterface & Partial<CameraImplementation>>(namespace, { noResponderRetry: { maxRetries: 0 } }) : undefined;
+  }
+
+  private get pluginCameraImplRpc(): string | undefined {
+    const pluginId = this.camera.pluginInfo?.id;
+    return pluginId ? NamespaceManager.pluginCameraNamespaces(pluginId, this.id).cameraImplRpc : undefined;
+  }
+
   private async onDisabled(): Promise<void> {
     this.logger.log('Camera disabled — stopping FrameWorker, preloads, and auto-refresh');
     this.stopAutoRefresh();
@@ -557,6 +520,67 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       clearInterval(this.autoRefreshInterval);
       this.autoRefreshInterval = undefined;
     }
+  }
+
+  private async fetchSnapshot(source: CameraDeviceSource, forceNew?: boolean, preferNative?: boolean): Promise<ArrayBuffer | undefined> {
+    const storeSnapshot = async (s: CameraDeviceSource, data: ArrayBuffer): Promise<ArrayBuffer | undefined> => {
+      const masked = await this.snapshotPrivacy.apply(data);
+      if (masked && masked.byteLength > 0) {
+        this.snapshots.set(s._id, masked, Date.now(), s._id === this.preferredSnapshotSource?._id);
+      }
+
+      return masked;
+    };
+
+    const fetchSnapshotFromSource = async (s: CameraDeviceSource): Promise<ArrayBuffer | undefined> => {
+      try {
+        const sourceName = createSourceName(this.name, s.name);
+        const snapshot = await this.go2rtcApi.snapshotRoute.jpeg({ src: sourceName, ...(forceNew ? { gop: 0 as const } : {}) });
+        if (snapshot.byteLength === 0) {
+          return snapshot;
+        }
+
+        return await storeSnapshot(s, snapshot);
+      } catch (error) {
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+          this.logger.debug('Snapshot request timed out for', this.name);
+        } else {
+          this.logger.error('Error while fetching snapshot:', error.message);
+        }
+      }
+    };
+
+    const fetchSnapshotFromPlugin = async (s: CameraDeviceSource): Promise<ArrayBuffer | undefined> => {
+      try {
+        const pluginSnapshot = await this.pluginSnapshotProxy?.snapshot?.(s._id, forceNew);
+        if (pluginSnapshot && pluginSnapshot.byteLength > 0) {
+          return await storeSnapshot(s, pluginSnapshot);
+        }
+      } catch {
+        // fall back to go2rtc
+      }
+    };
+
+    const designatedSnapshotSource = source.role === 'snapshot' || source.useForSnapshot;
+
+    if (preferNative || !designatedSnapshotSource) {
+      const pluginSnapshot = await fetchSnapshotFromPlugin(source);
+      if (pluginSnapshot) {
+        return pluginSnapshot;
+      }
+    }
+
+    const snapshot = await fetchSnapshotFromSource(source);
+    if (snapshot && snapshot.byteLength > 0) {
+      return snapshot;
+    }
+
+    if (designatedSnapshotSource) {
+      const fallback = [this.lowResolutionSource, this.midResolutionSource, this.highResolutionSource].find((s) => s && s._id !== source._id);
+      return fallback ? fetchSnapshotFromSource(fallback) : snapshot;
+    }
+
+    return snapshot;
   }
 
   private announceSnapshot(sourceId: string, entry: StoredSnapshot): void {

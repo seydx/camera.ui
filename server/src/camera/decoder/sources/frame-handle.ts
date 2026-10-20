@@ -1,5 +1,7 @@
 import { Decoder, Demuxer } from 'node-av/api';
 
+import { isDamagedFrame } from '../../../utils/image.js';
+
 import type { Frame } from 'node-av/lib';
 
 export class FrameHandle implements AsyncDisposable {
@@ -51,6 +53,10 @@ export class FrameHandle implements AsyncDisposable {
       const frames = decoder.frames(packets);
       for await (const frame of frames) {
         if (!frame) continue;
+        if (isDamagedFrame(frame)) {
+          frame[Symbol.dispose]?.();
+          continue;
+        }
         firstFrame = frame;
         break;
       }

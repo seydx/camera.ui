@@ -1,5 +1,6 @@
 import { Decoder } from 'node-av/api';
 
+import { isDamagedFrame } from '../../../utils/image.js';
 import { FrameScaler } from '../frame-scaler.js';
 import { FrameHandle } from './frame-handle.js';
 import { ReconnectLoop } from './reconnect-loop.js';
@@ -36,6 +37,7 @@ interface BufferedPacket {
 export class BufferedSource implements AnalysisSource {
   private static readonly MAX_BUFFER_PACKETS = 600;
   private static readonly DECODER_IDLE_MS = 60_000;
+  private static readonly CACHE_FALLBACK_MAX_AGE_MS = 2_000;
 
   private input?: Demuxer;
   private videoStream?: Stream;
@@ -231,6 +233,10 @@ export class BufferedSource implements AnalysisSource {
       await decoder.decode(null);
       let received;
       while ((received = await decoder.receive())) {
+        if (isDamagedFrame(received)) {
+          received[Symbol.dispose]?.();
+          continue;
+        }
         frame?.[Symbol.dispose]?.();
         frame = received;
       }
@@ -350,11 +356,10 @@ export class BufferedSource implements AnalysisSource {
     if (!this.decoder || this.inflightDecode) return;
     if (Date.now() - this.lastDecodeAt < BufferedSource.DECODER_IDLE_MS) return;
 
-    // the cached frame stays: it is one frame against the decoder's whole pool,
-    // and it keeps the first tick after waking on the main stream instead of
-    // falling back to the substream while the decoder is still warming up
-    this.logger.debug('Releasing idle decoder, packet buffer and last frame stay');
+    // the cached frame goes too, a hardware frame would hold the released decoder's surface pool
+    this.logger.debug('Releasing idle decoder and last frame, packet buffer stays');
     this.disposeDecoder();
+    this.clearCachedFrame();
     this.frameScaler?.clearCache();
   }
 
@@ -388,8 +393,7 @@ export class BufferedSource implements AnalysisSource {
     }
 
     if (pending.length === 0 || !this.videoStream) {
-      // nothing new since the last feed, the cached frame is the newest
-      return this.cachedFrame ?? null;
+      return this.freshCachedFrame();
     }
 
     let last: Frame | undefined;
@@ -406,6 +410,10 @@ export class BufferedSource implements AnalysisSource {
         await this.decoder.decode(p.packet);
         let frame;
         while ((frame = await this.decoder.receive())) {
+          if (isDamagedFrame(frame)) {
+            frame[Symbol.dispose]?.();
+            continue;
+          }
           last?.[Symbol.dispose]?.();
           last = frame;
           lastRtp = this.rtpIndex.lookup(frame);
@@ -416,7 +424,7 @@ export class BufferedSource implements AnalysisSource {
 
       if (!last) {
         // decoder delay swallowed the fed packets, the cache stays newest
-        return this.cachedFrame ?? null;
+        return this.freshCachedFrame();
       }
 
       last = await this.normalize(last);
@@ -435,12 +443,17 @@ export class BufferedSource implements AnalysisSource {
       // from the buffered keyframe
       this.logger.debug('Buffered source warm decoder reset:', error);
       this.disposeDecoder();
-      return this.cachedFrame ?? null;
+      return this.freshCachedFrame();
     } finally {
       this.decodeMs += Date.now() - decodeStart;
       last?.[Symbol.dispose]?.();
       for (const p of pending) p.packet.free();
     }
+  }
+
+  private freshCachedFrame(): Frame | null {
+    if (!this.cachedFrame || Date.now() - this.cachedFrameAt > BufferedSource.CACHE_FALLBACK_MAX_AGE_MS) return null;
+    return this.cachedFrame;
   }
 
   private normalize(frame: Frame): Promise<Frame> {
@@ -478,6 +491,13 @@ export class BufferedSource implements AnalysisSource {
     this.decodedThrough = -1;
   }
 
+  private clearCachedFrame(): void {
+    this.cachedFrame?.[Symbol.dispose]?.();
+    this.cachedFrame = undefined;
+    this.cachedFrameRtp = undefined;
+    this.cachedFrameAt = 0;
+  }
+
   private async teardown(): Promise<void> {
     this.connected = false;
     this.clearBuffer();
@@ -490,10 +510,7 @@ export class BufferedSource implements AnalysisSource {
       this.filter = undefined;
     }
 
-    this.cachedFrame?.[Symbol.dispose]?.();
-    this.cachedFrame = undefined;
-    this.cachedFrameRtp = undefined;
-    this.cachedFrameAt = 0;
+    this.clearCachedFrame();
     this.lastPacketAt = 0;
     this.rtpIndex.clear();
 

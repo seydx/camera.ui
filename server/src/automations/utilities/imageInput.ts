@@ -1,5 +1,7 @@
 import { Decoder, Demuxer, Scaler } from 'node-av/api';
 
+import { isDamagedFrame } from '../../utils/image.js';
+
 import type { ActionContext } from '../actions/types.js';
 
 export async function actionImageInput(ctx: ActionContext, data: Record<string, unknown>): Promise<void> {
@@ -42,7 +44,7 @@ export async function actionImageInput(ctx: ActionContext, data: Record<string, 
   let resultHeight = 0;
 
   for await (using frame of decoder.frames(demuxer.packets(videoStream.index))) {
-    if (!frame) continue;
+    if (!frame || isDamagedFrame(frame)) continue;
 
     const width = resizeWidth || frame.width;
     const height = resizeHeight || frame.height;

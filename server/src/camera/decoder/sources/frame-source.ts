@@ -1,5 +1,6 @@
 import { Decoder } from 'node-av/api';
 
+import { isDamagedFrame } from '../../../utils/image.js';
 import { FrameHandle } from './frame-handle.js';
 import { ReconnectLoop } from './reconnect-loop.js';
 import { RtpIndex } from './rtp-index.js';
@@ -242,6 +243,10 @@ export class FrameSource implements AnalysisSource {
         const decodeStart = Date.now();
         for await (const decoded of this.decoder.frames(packet)) {
           if (!decoded) continue;
+          if (isDamagedFrame(decoded)) {
+            decoded[Symbol.dispose]?.();
+            continue;
+          }
 
           const rtp = this.rtpIndex.lookup(decoded);
           const frame = await this.applyFilter(decoded);

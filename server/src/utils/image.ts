@@ -1,4 +1,5 @@
 import { Decoder, Demuxer, Scaler } from 'node-av/api';
+import { AV_FRAME_FLAG_CORRUPT } from 'node-av/constants';
 
 import type { Frame } from 'node-av/lib';
 
@@ -43,7 +44,11 @@ export async function withPicture<T>(input: string | Buffer, use: (frame: Frame)
 
   using decoder = await Decoder.create(stream, { exitOnError: false });
   for await (using frame of decoder.frames(demuxer.packets(stream.index))) {
-    if (frame) return await use(frame);
+    if (frame && !isDamagedFrame(frame)) return await use(frame);
   }
   return undefined;
+}
+
+export function isDamagedFrame(frame: Frame): boolean {
+  return frame.decodeErrorFlags !== 0 || frame.hasFlags(AV_FRAME_FLAG_CORRUPT);
 }

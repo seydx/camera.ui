@@ -1,5 +1,6 @@
 import { Decoder, Demuxer, Scaler } from 'node-av/api';
 
+import { isDamagedFrame } from '../../utils/image.js';
 import { PrivacyMask } from './mask.js';
 
 import type { Logger } from '@camera.ui/common/logger';
@@ -45,7 +46,7 @@ export class SnapshotPrivacy {
     using decoder = await Decoder.create(stream, { exitOnError: false });
 
     for await (using frame of decoder.frames(demuxer.packets(stream.index))) {
-      if (!frame) continue;
+      if (!frame || isDamagedFrame(frame)) continue;
       if (!this.mask.apply(frame)) return null;
 
       const encoded = await this.getScaler().toJpeg(frame, { quality: JPEG_QUALITY });
