@@ -16,6 +16,19 @@ export interface NavbarGroupVm {
   first: boolean;
 }
 
+export interface CuiNavbarGroupProps {
+  group: NavbarGroupVm;
+  open: boolean;
+  active: boolean;
+  expanded: boolean;
+}
+
+export interface CuiNavbarGroupEmits {
+  toggle: [];
+  entered: [];
+  left: [];
+}
+
 export interface CuiNavbarEditItemProps {
   name: string;
   icon?: Component;

@@ -182,6 +182,7 @@ declare module 'vue' {
     CuiNavbar: typeof import('./../components/CuiNavbar/CuiNavbar.vue')['default']
     CuiNavbarEditGroupLabel: typeof import('./../components/CuiNavbar/CuiNavbarEditGroupLabel.vue')['default']
     CuiNavbarEditItem: typeof import('./../components/CuiNavbar/CuiNavbarEditItem.vue')['default']
+    CuiNavbarGroup: typeof import('./../components/CuiNavbar/CuiNavbarGroup.vue')['default']
     CuiNavbarToggle: typeof import('./../components/CuiNavbarToggle/CuiNavbarToggle.vue')['default']
     CuiNavItem: typeof import('./../components/CuiNavItem/CuiNavItem.vue')['default']
     CuiNotificationInterface: typeof import('./../components/CuiNotificationInterface/CuiNotificationInterface.vue')['default']

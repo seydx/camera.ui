@@ -48,136 +48,36 @@
         </div>
       </div>
 
-      <div class="flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden mt-4 px-1 pb-2">
+      <div ref="scrollRef" class="flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden mt-4 px-1 pb-2">
         <template v-if="!navEditMode">
           <div class="flex flex-col space-y-1">
-            <template v-for="group in topGroups" :key="group.key">
-              <div v-if="group.collapsible" class="w-full h-[50px]" :class="{ 'mt-5': !group.first }">
-                <Button
-                  text
-                  severity="secondary"
-                  class="cui-button navitem-button w-full h-full flex items-center justify-center dark-mode"
-                  :class="{
-                    '!text-white navitem-active': groupExpanded[group.key] || isGroupRouteActive(group.key),
-                    'hover:!text-color active:!text-color focus:!text-color navitem-inactive': !groupExpanded[group.key] && !isGroupRouteActive(group.key),
-                  }"
-                  :style="{
-                    color: '#a4a4a4',
-                  }"
-                  @click="toggleGroup(group.key)"
-                >
-                  <template #default>
-                    <div class="flex items-center h-full absolute left-[14px] gap-3">
-                      <i-mdi:chevron-down v-if="groupExpanded[group.key]" class="w-[22px] h-[22px]" />
-                      <i-mdi:chevron-up v-else class="w-[22px] h-[22px]" />
-                      <span v-if="navbarWidth === NAVBAR_SIZE.EXPANDED" class="text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap">{{
-                        $t(`navigation.group_${group.key}`)
-                      }}</span>
-                    </div>
-                  </template>
-                </Button>
-              </div>
-              <div v-else-if="group.key !== 'main'" class="w-full flex items-center h-[26px] mb-1" :class="{ 'mt-5': !group.first }">
-                <span
-                  v-if="navbarWidth === NAVBAR_SIZE.EXPANDED"
-                  class="pl-[17px] text-[11px] font-semibold uppercase tracking-widest text-[#7a7a7a] whitespace-nowrap"
-                  >{{ $t(`navigation.group_${group.key}`) }}</span
-                >
-                <div v-else class="w-[22px] mx-auto border-t border-[#313131]"></div>
-              </div>
-
-              <Transition name="navbar-group">
-                <div v-if="!group.collapsible || groupExpanded[group.key]" class="flex flex-col space-y-1 overflow-hidden">
-                  <div v-for="item in group.items" :key="item.name" class="w-full h-[50px] relative">
-                    <CuiNavItem
-                      :icon="item.icon"
-                      :active-icon="item.activeIcon"
-                      :to="item.to"
-                      :label="$t(`navigation.${item.labelKey}`)"
-                      :expanded="navbarWidth === NAVBAR_SIZE.EXPANDED"
-                      dark-mode
-                      show-tooltip
-                      :icon-size="22"
-                      :button-props="{
-                        style: {
-                          color: '#a4a4a4',
-                        },
-                      }"
-                      class="w-[50px] h-[50px]"
-                      :class="{
-                        'w-full': navbarWidth === NAVBAR_SIZE.EXPANDED,
-                      }"
-                    />
-                  </div>
-                </div>
-              </Transition>
-            </template>
+            <CuiNavbarGroup
+              v-for="group in topGroups"
+              :key="group.key"
+              :group
+              :open="groupExpanded[group.key]"
+              :active="isGroupRouteActive(group.key)"
+              :expanded="navbarWidth === NAVBAR_SIZE.EXPANDED"
+              @toggle="toggleGroup(group.key)"
+              @entered="onGroupEntered(group.key)"
+              @left="revealActiveItem"
+            />
           </div>
 
           <div class="flex-1 mt-10"></div>
 
           <div class="flex flex-col space-y-1">
-            <template v-for="group in bottomGroups" :key="group.key">
-              <div v-if="group.collapsible" class="w-full h-[50px]" :class="{ 'mt-5': !group.first }">
-                <Button
-                  text
-                  severity="secondary"
-                  class="cui-button navitem-button w-full h-full flex items-center justify-center dark-mode"
-                  :class="{
-                    '!text-white navitem-active': groupExpanded[group.key] || isGroupRouteActive(group.key),
-                    'hover:!text-color active:!text-color focus:!text-color navitem-inactive': !groupExpanded[group.key] && !isGroupRouteActive(group.key),
-                  }"
-                  :style="{
-                    color: '#a4a4a4',
-                  }"
-                  @click="toggleGroup(group.key)"
-                >
-                  <template #default>
-                    <div class="flex items-center h-full absolute left-[14px] gap-3">
-                      <i-mdi:chevron-down v-if="groupExpanded[group.key]" class="w-[22px] h-[22px]" />
-                      <i-mdi:chevron-up v-else class="w-[22px] h-[22px]" />
-                      <span v-if="navbarWidth === NAVBAR_SIZE.EXPANDED" class="text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap">{{
-                        $t(`navigation.group_${group.key}`)
-                      }}</span>
-                    </div>
-                  </template>
-                </Button>
-              </div>
-              <div v-else-if="group.key !== 'main'" class="w-full flex items-center h-[26px] mb-1" :class="{ 'mt-5': !group.first }">
-                <span
-                  v-if="navbarWidth === NAVBAR_SIZE.EXPANDED"
-                  class="pl-[17px] text-[11px] font-semibold uppercase tracking-widest text-[#7a7a7a] whitespace-nowrap"
-                  >{{ $t(`navigation.group_${group.key}`) }}</span
-                >
-                <div v-else class="w-[22px] mx-auto border-t border-[#313131]"></div>
-              </div>
-
-              <Transition name="navbar-group">
-                <div v-if="!group.collapsible || groupExpanded[group.key]" class="flex flex-col space-y-1 overflow-hidden">
-                  <div v-for="item in group.items" :key="item.name" class="w-full h-[50px] relative">
-                    <CuiNavItem
-                      :icon="item.icon"
-                      :active-icon="item.activeIcon"
-                      :to="item.to"
-                      :label="$t(`navigation.${item.labelKey}`)"
-                      :expanded="navbarWidth === NAVBAR_SIZE.EXPANDED"
-                      dark-mode
-                      show-tooltip
-                      :icon-size="22"
-                      :button-props="{
-                        style: {
-                          color: '#a4a4a4',
-                        },
-                      }"
-                      class="w-[50px] h-[50px]"
-                      :class="{
-                        'w-full': navbarWidth === NAVBAR_SIZE.EXPANDED,
-                      }"
-                    />
-                  </div>
-                </div>
-              </Transition>
-            </template>
+            <CuiNavbarGroup
+              v-for="group in bottomGroups"
+              :key="group.key"
+              :group
+              :open="groupExpanded[group.key]"
+              :active="isGroupRouteActive(group.key)"
+              :expanded="navbarWidth === NAVBAR_SIZE.EXPANDED"
+              @toggle="toggleGroup(group.key)"
+              @entered="onGroupEntered(group.key)"
+              @left="revealActiveItem"
+            />
 
             <div v-for="route in bottomPrimaryRoutes" v-show="!(settingsInNav && route.path === '/settings')" :key="route.name" class="w-full h-[50px] relative">
               <Badge v-if="anyUpdateAvailable && route.name === 'Updates'" class="absolute min-w-[8px] w-[8px] h-[8px] left-[31px] top-[10px] z-1"></Badge>
@@ -348,8 +248,10 @@ const { uiSettings } = storeToRefs(uiStore);
 const { data: apiInfo } = apiQuery.apiInfoQuery();
 
 const signOut = canSignOut();
+const REVEAL_MARGIN = 8;
 
 const navbarRef = useTemplateRef('navbarRef');
+const scrollRef = useTemplateRef('scrollRef');
 const state = ref<NavbarState>('closed');
 const serverUpdateAvailable = ref(false);
 const pluginUpdateAvailable = ref(false);
@@ -358,6 +260,7 @@ const workerUpdateAvailable = ref(false);
 const groupExpanded = ref<Record<NavLayoutGroup, boolean>>({ main: true, manage: true, system: false, settings: false });
 const navEditMode = ref(false);
 const editLists = ref<Record<NavLayoutGroup, string[]>>({ main: [], manage: [], system: [], settings: [] });
+let userOpenedGroup: NavLayoutGroup | undefined;
 
 const anyUpdateAvailable = computed(() => serverUpdateAvailable.value || pluginUpdateAvailable.value || workerUpdateAvailable.value);
 
@@ -423,14 +326,35 @@ function isGroupRouteActive(key: NavLayoutGroup): boolean {
 
 function toggleGroup(key: NavLayoutGroup) {
   groupExpanded.value[key] = !groupExpanded.value[key];
-  if (groupExpanded.value[key] && key === 'system') {
-    setTimeout(() => {
-      const el = navbarRef.value?.firstElementChild as HTMLElement | null;
-      if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }, 250);
-  } else if (!groupExpanded.value[key]) {
-    setTimeout(() => scrollActiveItemIntoView(), 250);
+  userOpenedGroup = groupExpanded.value[key] ? key : undefined;
+}
+
+function onGroupEntered(key: NavLayoutGroup) {
+  if (userOpenedGroup === key) {
+    userOpenedGroup = undefined;
+    reveal(Array.from(scrollRef.value?.querySelectorAll(`[data-nav-group="${key}"]`) ?? []));
+  } else {
+    revealActiveItem();
   }
+}
+
+function revealActiveItem() {
+  nextTick(() => {
+    // group headers are marked active too, and the settings entry hidden by v-show has no box
+    const active = Array.from(scrollRef.value?.querySelectorAll('a .navitem-active') ?? []).find((el) => el.getClientRects().length > 0);
+    if (active) reveal([active]);
+  });
+}
+
+function reveal(elements: Element[]) {
+  const container = scrollRef.value;
+  if (!container || !elements.length) return;
+  const view = container.getBoundingClientRect();
+  const rects = elements.map((el) => el.getBoundingClientRect());
+  const top = Math.min(...rects.map((rect) => rect.top)) - view.top - REVEAL_MARGIN;
+  const bottom = Math.max(...rects.map((rect) => rect.bottom)) - view.top + REVEAL_MARGIN;
+  const offset = top < 0 || bottom - top > container.clientHeight ? top : Math.max(0, bottom - container.clientHeight);
+  if (offset !== 0) container.scrollBy({ top: offset, behavior: 'smooth' });
 }
 
 function snapshotEditLists(): void {
@@ -515,16 +439,7 @@ async function initElectronUpdater() {
   } catch {}
 }
 
-function scrollActiveItemIntoView() {
-  nextTick(() => {
-    const activeItem = navbarRef.value?.querySelector('.navitem-active');
-    if (activeItem) {
-      activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
-  });
-}
-
-const debouncedScrollActiveItemIntoView = useDebounceFn(scrollActiveItemIntoView, 100);
+const debouncedRevealActiveItem = useDebounceFn(revealActiveItem, 100);
 
 onClickOutside(navbarRef, (event) => {
   if (navbarState.value !== 'opened') return;
@@ -538,7 +453,7 @@ onClickOutside(navbarRef, (event) => {
 });
 
 useResizeObserver(navbarRef, () => {
-  debouncedScrollActiveItemIntoView();
+  debouncedRevealActiveItem();
 });
 
 watch(navbarState, (value) => {
@@ -551,6 +466,7 @@ watch(
     for (const key of ALL_NAV_GROUPS) {
       if (isGroupRouteActive(key)) groupExpanded.value[key] = true;
     }
+    revealActiveItem();
   },
   { immediate: true },
 );
@@ -612,7 +528,7 @@ watch(
 );
 
 onMounted(() => {
-  scrollActiveItemIntoView();
+  revealActiveItem();
 });
 
 onUnmounted(() => {
@@ -625,24 +541,6 @@ defineExpose({
 </script>
 
 <style scoped>
-.navbar-group-enter-active,
-.navbar-group-leave-active {
-  transition: all 0.2s ease;
-  overflow: hidden;
-}
-
-.navbar-group-enter-from,
-.navbar-group-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.navbar-group-enter-to,
-.navbar-group-leave-from {
-  max-height: 400px;
-  opacity: 1;
-}
-
 .nav-edit-move,
 .nav-edit-enter-active,
 .nav-edit-leave-active {
