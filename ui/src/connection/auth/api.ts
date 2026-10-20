@@ -29,6 +29,9 @@ interface ProxyMintResponse {
 }
 
 const DEFAULT_DEVICE = { id: 'camera.ui-web', name: 'camera.ui-web' };
+const LOCAL_SUFFIXES = ['.local', '.lan', '.home', '.home.arpa', '.internal', '.localdomain', '.fritz.box'];
+const IPV4_LITERAL = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+const UNIQUE_LOCAL_IPV6 = /^f[cd][0-9a-f]{2}:/;
 
 export function createAuthApi(): AuthApi {
   const httpClient = axios.create({
@@ -110,8 +113,7 @@ export function createAuthApi(): AuthApi {
       timeout: 30_000,
       signal,
     });
-    const internalAddresses = Array.isArray(response.data.internalAddresses) ? response.data.internalAddresses : [];
-    const externalAddresses = Array.isArray(response.data.externalAddresses) ? response.data.externalAddresses : [];
+    const { internalAddresses, externalAddresses } = screenTunnelAddresses(response.data.internalAddresses, response.data.externalAddresses);
     if (internalAddresses.length === 0 && externalAddresses.length === 0) {
       const contentType = (response.headers as Record<string, string> | undefined)?.['content-type'] ?? 'unknown';
       const body = typeof response.data === 'string' ? (response.data as string).slice(0, 300) : JSON.stringify(response.data)?.slice(0, 300);
@@ -153,6 +155,66 @@ export function createAuthApi(): AuthApi {
     refreshProxy,
     remintProxyFromL1,
   };
+}
+
+function screenTunnelAddresses(internal: unknown, external: unknown): Pick<TunnelAddresses, 'internalAddresses' | 'externalAddresses'> {
+  const internalAddresses: string[] = [];
+  const demoted: string[] = [];
+  for (const url of stringsOf(internal)) {
+    const host = candidateHostOf(url);
+    if (host === null) continue;
+    (isLanHost(host) ? internalAddresses : demoted).push(url);
+  }
+  const externals = stringsOf(external).filter(isCandidateUrl);
+  const externalAddresses = [...new Set([...externals, ...demoted])];
+  return { internalAddresses, externalAddresses };
+}
+
+export function isCandidateUrl(url: string): boolean {
+  return candidateHostOf(url) !== null;
+}
+
+export function isLanCandidate(url: string): boolean {
+  const host = candidateHostOf(url);
+  return host !== null && isLanHost(host);
+}
+
+function stringsOf(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function candidateHostOf(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+    return isLoopbackHost(parsed.hostname) ? null : parsed.hostname;
+  } catch {
+    return null;
+  }
+}
+
+function ipv4Prefix(host: string): [number, number] | null {
+  const octets = IPV4_LITERAL.exec(host);
+  return octets ? [Number(octets[1]), Number(octets[2])] : null;
+}
+
+function isLoopbackHost(host: string): boolean {
+  const name = host.endsWith('.') ? host.slice(0, -1) : host;
+  if (name === 'localhost' || name.endsWith('.localhost')) return true;
+  if (host === '[::1]' || host === '[::]' || host.startsWith('[::ffff:7f')) return true;
+  const prefix = ipv4Prefix(host);
+  return prefix !== null && (prefix[0] === 127 || prefix[0] === 0);
+}
+
+function isLanHost(host: string): boolean {
+  if (host.startsWith('[')) return UNIQUE_LOCAL_IPV6.test(host.slice(1, -1));
+  const prefix = ipv4Prefix(host);
+  if (prefix) {
+    const [a, b] = prefix;
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  if (host.endsWith('.')) return false;
+  return !host.includes('.') || LOCAL_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
 
 function isTwoFactorPendingResponse(data: LoginRawResponse): data is TwoFactorPendingResponse {

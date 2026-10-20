@@ -1,5 +1,7 @@
 import { isCapacitor } from '../runtime.js';
 
+export const NETWORK_PATH_EVENT = 'path';
+
 export interface NetworkAdapters {
   readonly networkSource: EventTarget;
   readonly networkChangeSource?: EventTarget;
@@ -27,7 +29,8 @@ function createCapacitorNetworkAdapters(): NetworkAdapters {
     lastType = status.connectionType;
 
     Network.addListener('networkStatusChange', (next) => {
-      if (lastConnected !== next.connected) {
+      const connectivityChanged = lastConnected !== next.connected;
+      if (connectivityChanged) {
         lastConnected = next.connected;
         networkSource.dispatchEvent(new Event(next.connected ? 'online' : 'offline'));
       }
@@ -36,6 +39,8 @@ function createCapacitorNetworkAdapters(): NetworkAdapters {
       if (next.connected && lastType !== next.connectionType) {
         lastType = next.connectionType;
         networkChangeSource.dispatchEvent(new Event('change'));
+      } else if (next.connected && !connectivityChanged) {
+        networkChangeSource.dispatchEvent(new Event(NETWORK_PATH_EVENT));
       }
     });
   })();

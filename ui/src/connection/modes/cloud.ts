@@ -51,6 +51,12 @@ export function buildCloudMode(options: CloudModeOptions): CloudModeBundle {
     logger: options.logger,
   });
 
+  if (isCapacitor) {
+    watch(cloudSession.state, (session, previous) => {
+      if (session && session.proxyToken !== previous?.proxyToken) storeRotatedPair(cloudSession, session);
+    });
+  }
+
   const storage = createStorageAdapter();
   const serverId = options.initialSession.serverId;
   const discover = createDiscoverCloud({ api, cloudSession, cloudSessionLifecycle, storage, serverId, logger: options.logger });
@@ -76,6 +82,27 @@ export function buildCloudMode(options: CloudModeOptions): CloudModeBundle {
   };
 
   return { options: connectionOptions, api, cloudSession, cloudSessionLifecycle };
+}
+
+async function storeRotatedPair(cloudSession: CloudSessionHolder, session: CloudSession): Promise<void> {
+  try {
+    const [{ Preferences }, { SecureStorage }] = await Promise.all([import('@capacitor/preferences'), import('@aparajita/capacitor-secure-storage')]);
+    if (cloudSession.state.value !== session) return;
+    const refreshExpiresAt = session.proxyRefreshToken ? session.proxyRefreshTokenExpiresAt : undefined;
+    await Promise.all([
+      SecureStorage.set('proxyAuthToken', session.proxyToken),
+      session.proxyRefreshToken ? SecureStorage.set('proxyRefreshToken', session.proxyRefreshToken) : SecureStorage.remove('proxyRefreshToken'),
+      Preferences.set({ key: 'mobileOrigin', value: new URL(session.proxyUrl).origin }),
+      session.proxyTokenExpiresAt
+        ? Preferences.set({ key: 'proxyTokenExpiresAt', value: String(session.proxyTokenExpiresAt) })
+        : Preferences.remove({ key: 'proxyTokenExpiresAt' }),
+      refreshExpiresAt
+        ? Preferences.set({ key: 'proxyRefreshTokenExpiresAt', value: String(refreshExpiresAt) })
+        : Preferences.remove({ key: 'proxyRefreshTokenExpiresAt' }),
+    ]);
+  } catch {
+    // the next cold start falls back to the older pair
+  }
 }
 
 async function readL1AccessTokenFromSecureStorage(): Promise<string | null> {

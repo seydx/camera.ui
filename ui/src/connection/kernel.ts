@@ -262,6 +262,7 @@ export function createConnection(options: ConnectionOptions): Connection {
       }
     },
     lastTarget: () => target.value ?? restoredTarget ?? persistence.peek(),
+    ready: () => persistence.ready,
     prefer: (ep) => ep.mode === 'direct-lan',
     preferGraceMs: 1_000,
     isCurrentHealthy: () => [socketio, nats].some((t) => t.health().up),
@@ -269,10 +270,23 @@ export function createConnection(options: ConnectionOptions): Connection {
   });
   cleanups.push(() => backgroundProbe.dispose());
 
-  const UPGRADE_RETRY_DELAYS_MS = [3_000, 8_000];
   let upgradeRetryTimer: ReturnType<typeof setTimeout> | undefined;
+  let pathSettleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const upgradeThrottle = createTrailingThrottle(UPGRADE_THROTTLE_MS, () => {
+    if (canUpgrade()) runUpgradeProbe(0);
+  });
+
+  function canUpgrade(): boolean {
+    return kernel.phase.kind === 'online' && target.value?.endpoint.mode !== 'direct-lan';
+  }
+
+  function requestUpgrade(): void {
+    if (canUpgrade()) upgradeThrottle.request();
+  }
 
   function runUpgradeProbe(retriesLeft = UPGRADE_RETRY_DELAYS_MS.length): void {
+    upgradeThrottle.mark();
     if (upgradeRetryTimer !== undefined) {
       clearTimeout(upgradeRetryTimer);
       upgradeRetryTimer = undefined;
@@ -286,8 +300,19 @@ export function createConnection(options: ConnectionOptions): Connection {
       upgradeRetryTimer = setTimeout(() => runUpgradeProbe(retriesLeft - 1), delay);
     });
   }
+
+  function onPathChange(): void {
+    if (pathSettleTimer !== undefined) clearTimeout(pathSettleTimer);
+    pathSettleTimer = setTimeout(() => {
+      pathSettleTimer = undefined;
+      requestUpgrade();
+    }, PATH_SETTLE_MS);
+  }
+
   cleanups.push(() => {
     if (upgradeRetryTimer !== undefined) clearTimeout(upgradeRetryTimer);
+    if (pathSettleTimer !== undefined) clearTimeout(pathSettleTimer);
+    upgradeThrottle.dispose();
   });
 
   cleanups.push(
@@ -319,6 +344,7 @@ export function createConnection(options: ConnectionOptions): Connection {
         diag('presence', 'tab visible');
         wakeTokens();
         if (shouldRetryOnWake()) k.dispatch({ type: 'USER_RETRY' });
+        else requestUpgrade();
       },
       onVisibilityHidden: () => diag('presence', 'tab hidden'),
     }),
@@ -400,6 +426,7 @@ export function createConnection(options: ConnectionOptions): Connection {
       probe: options.callbacks.probe,
       prefer: (ep) => ep.mode === 'direct-lan',
       lastTarget: () => target.value ?? restoredTarget ?? persistence.peek(),
+      ready: () => persistence.ready,
       onDiscoverStart: () => {
         attempts.roundStarted();
         diag('probe', 'discover start');

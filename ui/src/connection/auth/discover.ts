@@ -2,6 +2,7 @@ import axios from 'axios';
 
 import { trustInternalCa } from '../certTrust.js';
 import { instanceOverride } from '../instance.js';
+import { isCandidateUrl, isLanCandidate } from './api.js';
 
 import type { Logger } from '@camera.ui/logger';
 import type { Endpoint, StorageAdapter } from '@camera.ui/transport';
@@ -20,6 +21,12 @@ function buildPool(addresses: TunnelAddresses): Endpoint[] {
     pool.push({ url, mode: 'direct-wan', priority: 1 });
   }
   return pool;
+}
+
+function screenPersistedPool(pool: readonly Endpoint[]): Endpoint[] {
+  return pool
+    .filter((endpoint) => isCandidateUrl(endpoint.url))
+    .map((endpoint) => (endpoint.mode === 'direct-lan' && !isLanCandidate(endpoint.url) ? { ...endpoint, mode: 'direct-wan', priority: 1 } : endpoint));
 }
 
 interface PersistedPool {
@@ -81,8 +88,9 @@ export function createDiscoverCloud(options: DiscoverCloudOptions): DiscoverFn {
       const raw = await storage.get(poolKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as PersistedPool;
-      if (parsed?.pool?.length && Date.now() - parsed.at < CACHED_POOL_TTL_MS) {
-        cachedPool = parsed.pool;
+      const pool = parsed?.pool?.length ? screenPersistedPool(parsed.pool) : [];
+      if (pool.length && Date.now() - parsed.at < CACHED_POOL_TTL_MS) {
+        cachedPool = pool;
         cachedPoolAt = parsed.at;
         cachedCa = parsed.ca;
       }
