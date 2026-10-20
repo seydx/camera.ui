@@ -182,9 +182,9 @@ export class FreeBSDInstaller extends BasePlatform {
       // check if user exists
       execSync(`id ${this.cli.asUser} 2> /dev/null`);
     } catch {
-      // if not create the user
-      execSync(`pw useradd -q -n ${this.cli.asUser} -s /usr/sbin/nologin 2> /dev/null`);
+      execSync(`pw useradd -q -n ${this.cli.asUser} -m -s /usr/sbin/nologin 2> /dev/null`);
       this.cli.logger(`Created service user: ${this.cli.asUser}`, 'info');
+      this.cli.serviceUserCreated();
     }
   }
 

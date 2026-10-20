@@ -108,6 +108,10 @@ export class Spinner {
     return this.persist('succeed', text);
   }
 
+  public warn(text = this.text): this {
+    return this.persist('warn', text);
+  }
+
   public fail(text = this.text): this {
     return this.persist('fail', text);
   }

@@ -1,4 +1,4 @@
-import { getNpmPath } from '@camera.ui/common/node';
+import { npmCommand } from '@camera.ui/common/node';
 import { IS_ELECTRON } from '@camera.ui/common/utils';
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -201,8 +201,9 @@ export function installDependencies(packageDir: string, allowScripts: boolean, o
     // rejected in project-scoped installs).
     const scriptsFlag = allowScripts ? (declaresAllowScripts(packageDir) ? undefined : '--dangerously-allow-all-scripts') : '--ignore-scripts';
 
-    const command = bundledNpmCli ? process.execPath : getNpmPath()[0];
-    const args = [...(bundledNpmCli ? [bundledNpmCli] : []), 'install', ...(scriptsFlag ? [scriptsFlag] : []), '--omit=dev', '--include=prod', '--no-progress'];
+    const npm = bundledNpmCli ? { command: process.execPath, args: [bundledNpmCli] } : npmCommand();
+    const command = npm.command;
+    const args = [...npm.args, 'install', ...(scriptsFlag ? [scriptsFlag] : []), '--omit=dev', '--include=prod', '--no-progress'];
 
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -213,7 +214,7 @@ export function installDependencies(packageDir: string, allowScripts: boolean, o
       npm_config_prefix: packageDir,
       npm_config_color: 'always',
       FORCE_COLOR: '1',
-      ...(bundledNpmCli && IS_ELECTRON ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+      ...(command === process.execPath && IS_ELECTRON ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
       ...envRegistryToken(),
     };
 

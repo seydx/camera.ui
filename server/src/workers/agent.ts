@@ -390,6 +390,7 @@ export class WorkerAgent implements WorkerAgentRPC {
       await this.publishDisconnect({});
     }
 
+    await this.statusFile.stop();
     await this.closeHandler?.();
     await this.proxy?.disconnect();
 

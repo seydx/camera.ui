@@ -743,10 +743,10 @@ export class ServerManager {
 
   private fetchAllowScripts(version: string): Promise<Record<string, boolean> | undefined> {
     return new Promise((resolve) => {
-      const npmPath = getNpmPath().join(' ');
-      const args = ['view', `${APP_SERVER_NAME}@${version}`, 'allowScripts', '--json', '--loglevel', 'silent'];
+      const npmCli = npmCommand();
+      const args = [...npmCli.args, 'view', `${APP_SERVER_NAME}@${version}`, 'allowScripts', '--json', '--loglevel', 'silent'];
 
-      const npm = spawn(npmPath, args, {
+      const npm = spawn(npmCli.command, args, {
         uid: this.cli.allowRunRoot && this.cli.uid ? this.cli.uid : undefined,
         gid: this.cli.allowRunRoot && this.cli.gid ? this.cli.gid : undefined,
         env: process.env,
@@ -804,7 +804,7 @@ export class ServerManager {
     }
 
     return new Promise<void>((resolve, reject) => {
-      const npmPath = getNpmPath().join(' ');
+      const npmCli = npmCommand();
 
       const env = {
         ...process.env,
@@ -813,6 +813,7 @@ export class ServerManager {
       };
 
       const args = [
+        ...npmCli.args,
         'install',
         `${APP_SERVER_NAME}@${version}`,
         // bypass only when the manifest declares no allowScripts policy
@@ -829,7 +830,7 @@ export class ServerManager {
         '--fetch-retry-maxtimeout=60000',
       ];
 
-      const npm = spawn(npmPath, args, {
+      const npm = spawn(npmCli.command, args, {
         uid: this.cli.allowRunRoot && this.cli.uid ? this.cli.uid : undefined,
         gid: this.cli.allowRunRoot && this.cli.gid ? this.cli.gid : undefined,
         env,

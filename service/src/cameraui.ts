@@ -32,6 +32,20 @@ import type { BasePlatform } from './installer/base.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const MIN_NODE_VERSION = '24.5.0';
+
+const WORKER_STATUS_FILE = 'worker-status.json';
+const WORKER_STATUS_FRESH_MS = 60_000;
+const WORKER_LINK_WAIT_MS = 30_000;
+
+interface WorkerStatus {
+  state?: string;
+  reason?: string;
+  master?: string;
+  lastAnswerAt?: number;
+  at: number;
+}
+
 export class CameraUiCLI {
   public readonly DEFAULT_PORT = 3443;
   public selfPath = __filename;
@@ -57,6 +71,7 @@ export class CameraUiCLI {
 
   private shuttingDown = false;
   private shuttingDownNodemon = false;
+  private homePathFollowsUser = false;
 
   private restartTimeout?: NodeJS.Timeout;
   private readonly restartBudget = new RestartBudget();
@@ -81,7 +96,7 @@ export class CameraUiCLI {
   get uiPort(): number {
     try {
       const config: any = load(readFileSync(this.configFilePath, 'utf-8'));
-      return config.port;
+      return config?.port ?? this.DEFAULT_PORT;
     } catch {
       return this.DEFAULT_PORT;
     }
@@ -104,6 +119,15 @@ export class CameraUiCLI {
   }
 
   public async printPostInstallInstructions(type: 'start' | 'restart' | 'status'): Promise<void> {
+    if (this.worker) {
+      const master = this.readWorkerMaster();
+      console.log(`\nThis machine runs as a camera.ui worker${master ? ` for ${master}` : ''}. Manage it on the main server under Workers.\n`);
+      if (type !== 'status') {
+        this.logger(`camera.ui ${type} complete`, 'succeed');
+      }
+      return;
+    }
+
     const defaultAdapter = await networkInterfaceDefault();
     const netInterfaces = await networkInterfaces();
 
@@ -164,6 +188,13 @@ export class CameraUiCLI {
     return getUserHomeDir(this.asUser);
   }
 
+  public serviceUserCreated(): void {
+    if (this.homePathFollowsUser) {
+      this.homePath = join(this.getUserHomeDir(), '.camera.ui');
+      this.storagePath = join(this.homePath, 'volume');
+    }
+  }
+
   public async waitForApiHealth(maxWaitTime = 300000): Promise<boolean> {
     const startTime = Date.now();
     const checkInterval = 5000; // Check every 5 seconds
@@ -175,6 +206,10 @@ export class CameraUiCLI {
 
     this.logger('Setup in progress. To view installation logs in real-time, run this in another terminal:', 'info');
     this.logger(`  ${logsCommand}`, 'info');
+
+    if (this.worker) {
+      return this.waitForWorker(startTime, maxWaitTime);
+    }
 
     const spinner = new Spinner({ text: 'Initializing UI (this may take a few minutes)...' }).start();
 
@@ -192,6 +227,14 @@ export class CameraUiCLI {
 
     try {
       while (Date.now() - startTime < maxWaitTime) {
+        // start and restart get no --worker flag, only the status file shows a worker
+        if (this.readWorkerStatus(startTime)) {
+          clearInterval(updateSpinner);
+          spinner.stop();
+          this.worker = true;
+          return this.waitForWorker(startTime, maxWaitTime);
+        }
+
         try {
           const isHealthy = await this.fetchApiHealth();
           if (isHealthy) {
@@ -385,14 +428,11 @@ export class CameraUiCLI {
       if (IS_DEV) {
         this.homePath = join(__dirname, '..', '..', '..', '..', '.camera.ui');
       } else {
-        // the service often runs as a dedicated user; without -H, commands that
-        // target the existing install must use the home path the installer
-        // recorded, not the invoking user's home. In docker nothing is
-        // persisted (s6 passes -H itself), but the image sets the env — an
-        // exec'd update-server without -H must not stage into /root/.camera.ui
-        const targetsExistingInstall = ['logs', 'status', 'start', 'stop', 'restart', 'update-server', 'uninstall'].includes(this.action);
-        const persistedHomePath = targetsExistingInstall ? this.installer.getPersistedHomePath() : undefined;
-        this.homePath = persistedHomePath ?? process.env.CAMERA_UI_HOME_PATH ?? join(this.getUserHomeDir(), '.camera.ui');
+        // the service often runs as another user, so the recorded home and the env beat the caller's home
+        const targetsExistingInstall = ['logs', 'status', 'start', 'stop', 'restart', 'update-server', 'uninstall', 'backup', 'restore'].includes(this.action);
+        const homePath = (targetsExistingInstall ? this.installer.getPersistedInstall().homePath : undefined) ?? process.env.CAMERA_UI_HOME_PATH;
+        this.homePathFollowsUser = homePath === undefined;
+        this.homePath = homePath ?? join(this.getUserHomeDir(), '.camera.ui');
       }
     } else {
       this.homePath = resolve(this.homePath);
@@ -569,6 +609,27 @@ export class CameraUiCLI {
   }
 
   private async statusCheck(): Promise<void> {
+    const workerStatus = this.readWorkerStatus();
+    if (this.worker || workerStatus) {
+      if (!workerStatus) {
+        this.logger('camera.ui worker not running!', 'fail');
+        process.exit(1);
+      }
+      this.worker = true;
+      if (workerStatus.state === 'unpaired' || workerStatus.state === 'pairing') {
+        this.logger(`camera.ui worker running, not paired: ${workerStatus.reason ?? `waiting for ${workerStatus.master}`}`, 'warn');
+      } else {
+        this.logger(
+          workerStatus.lastAnswerAt
+            ? `camera.ui worker running, connected to ${workerStatus.master}`
+            : `camera.ui worker running, no answer from ${workerStatus.master} yet`,
+          'succeed',
+        );
+      }
+      await this.printPostInstallInstructions('status');
+      return;
+    }
+
     this.logger(`Check if camera.ui is running on port ${this.uiPort}...`, 'info');
 
     try {
@@ -578,6 +639,95 @@ export class CameraUiCLI {
     } catch {
       this.logger('camera.ui not running!', 'fail');
       process.exit(1);
+    }
+  }
+
+  private async backupAction(): Promise<void> {
+    if (this.readWorkerStatus()) {
+      this.logger('A worker keeps no configuration of its own, back up the main server instead.', 'fail');
+      process.exit(1);
+    }
+
+    const port = Number(process.env.CAMERA_UI_PORT) || this.uiPort;
+    const api = new CameraUiApi(`https://127.0.0.1:${port}`);
+    const prompt = createPrompt();
+    let success = false;
+
+    try {
+      await api.signIn({ ...this.credentials, password: process.env.CAMERA_UI_PASSWORD }, prompt, this.action === 'restore');
+      if (this.action === 'backup') {
+        await backupCommand(api, { output: this.backupOutput });
+        const reminder = await remindBackupKey(api);
+        if (reminder) this.logger(reminder, 'warn');
+        success = true;
+      } else {
+        success = await restoreCommand(api, this.restoreFile!, this.restoreOptions, prompt);
+      }
+    } catch (error) {
+      if (error.code === 'ECONNREFUSED') {
+        this.logger(`camera.ui does not run on port ${port}.`, 'fail');
+      } else {
+        this.logger(error.message, 'fail');
+      }
+    } finally {
+      await api.signOut();
+    }
+
+    process.exit(success ? 0 : 1);
+  }
+
+  private async waitForWorker(startTime: number, maxWaitTime: number): Promise<boolean> {
+    const spinner = new Spinner({ text: 'Starting the worker...' }).start();
+    let firstWriteAt: number | undefined;
+
+    while (Date.now() - startTime < maxWaitTime) {
+      const status = this.readWorkerStatus(startTime);
+      if (status) {
+        firstWriteAt ??= Date.now();
+        if (status.lastAnswerAt) {
+          spinner.succeed(`Worker is running and connected to ${status.master}`);
+          return true;
+        }
+        // it waits for a new code in its config, nothing changes on its own
+        if (status.state === 'unpaired') {
+          spinner.warn(`Worker is running, but not paired: ${status.reason ?? 'waiting for a pairing code'}`);
+          return true;
+        }
+        if (status.state === 'pairing' && Date.now() - firstWriteAt >= WORKER_LINK_WAIT_MS) {
+          spinner.warn(`Worker is running and keeps trying to pair: ${status.reason ?? `no answer from ${status.master}`}`);
+          return true;
+        }
+        if (Date.now() - firstWriteAt >= WORKER_LINK_WAIT_MS) {
+          spinner.warn(`Worker is running, but ${status.master} does not answer yet`);
+          return true;
+        }
+      } else if (Date.now() - startTime >= WORKER_LINK_WAIT_MS && !this.readWorkerMaster()) {
+        // without a master the server stops at boot, before it writes the file
+        spinner.warn(`No main server set yet. Add the pairing snippet from the main server to ${this.configFilePath}, then restart the service.`);
+        return true;
+      }
+      await sleep(1000);
+    }
+
+    spinner.fail('The worker did not start within the expected time.');
+    return false;
+  }
+
+  private readWorkerStatus(since = Date.now() - WORKER_STATUS_FRESH_MS): WorkerStatus | undefined {
+    try {
+      const status = JSON.parse(readFileSync(join(this.storagePath, WORKER_STATUS_FILE), 'utf8')) as WorkerStatus;
+      return typeof status.at === 'number' && status.at >= since ? status : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private readWorkerMaster(): string | undefined {
+    try {
+      const config: any = load(readFileSync(this.configFilePath, 'utf-8'));
+      return config?.worker?.master;
+    } catch {
+      return undefined;
     }
   }
 

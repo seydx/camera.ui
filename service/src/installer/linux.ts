@@ -36,7 +36,6 @@ export class LinuxInstaller extends BasePlatform {
     this.checkForRoot();
 
     await this.checkUser();
-    this.setupSudo();
     await this.cli.portCheck();
     await this.cli.homePathCheck();
 
@@ -283,6 +282,7 @@ export class LinuxInstaller extends BasePlatform {
       // if not create the user
       execSync(`useradd -m --system ${this.cli.asUser}`);
       this.cli.logger(`Created service user: ${this.cli.asUser}`, 'info');
+      this.cli.serviceUserCreated();
       if (this.cli.addGroup) {
         execSync(`usermod -a -G ${this.cli.addGroup} ${this.cli.asUser}`, { timeout: 10000 });
         this.cli.logger(`Added ${this.cli.asUser} to group ${this.cli.addGroup}`, 'info');
@@ -433,24 +433,6 @@ export class LinuxInstaller extends BasePlatform {
 
     await writeFile(permissionScriptPath, permissionScript);
     await chmod(permissionScriptPath, '755');
-  }
-
-  private setupSudo() {
-    try {
-      const sysctlPath = execSync('which sysctl').toString('utf8').trim();
-      const sudoersEntry = `${this.cli.asUser}    ALL=(ALL) NOPASSWD:SETENV: ${sysctlPath}}}`;
-
-      // check if the sudoers file already contains the entry
-      const sudoers = readFileSync('/etc/sudoers', 'utf-8');
-      if (sudoers.includes(sudoersEntry)) {
-        return;
-      }
-
-      // grant the user restricted sudo privileges to /sbin/sysctl
-      execSync(`echo '${sudoersEntry}' | sudo EDITOR='tee -a' visudo`);
-    } catch (error) {
-      this.cli.logger(`WARNING: Failed to setup /etc/sudoers, you may see performance issues when streaming: ${error.message}`, 'warn');
-    }
   }
 
   private async createSystemdEnvFile(): Promise<void> {
