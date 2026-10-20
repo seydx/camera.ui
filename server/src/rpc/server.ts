@@ -10,8 +10,10 @@ import { container } from 'tsyringe';
 
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
-import { LeafConnection } from './leafConnection.js';
+import { isLeafDialError, LeafConnection } from './leafConnection.js';
 import { NamespaceManager, SUBJECT_TOKEN } from './namespaces.js';
+import { RepeatedLines } from './repeatedLines.js';
+import { generateCredentials } from './utils.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess, ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -94,6 +96,7 @@ export class NATS {
 
   private logger: Logger;
   private configService: ConfigService;
+  private repeatedLines: RepeatedLines;
 
   private tmpDir: string;
   private config: NatsConfig;
@@ -114,6 +117,7 @@ export class NATS {
 
     const loggerService = container.resolve<LoggerService>('logger');
     this.logger = loggerService.createSystemLogger('Nats', 'nats');
+    this.repeatedLines = new RepeatedLines((level, line) => this.logger[level](line));
 
     this.tmpDir = mkdtempSync(join(this.configService.TMP_PATH, 'nats-'));
 
@@ -296,6 +300,15 @@ export class NATS {
     this.leafNodeRemotes = remotes;
   }
 
+  public setServerName(name: string): void {
+    this.config.server_name = name;
+  }
+
+  public linkConfirmed(): void {
+    this.leaf.reset();
+    this.repeatedLines.settle(isLeafDialError, 'until the link came up');
+  }
+
   public async start(): Promise<void> {
     this.manuallyKilled = false;
 
@@ -471,6 +484,7 @@ export class NATS {
     await Promise.all(promises);
     this.leafAcceptorProcess = undefined;
     this.leaf.reset();
+    this.repeatedLines.flush();
 
     this.stdoutLine?.close();
     this.stderrLine?.close();
@@ -881,14 +895,18 @@ export class NATS {
   }
 
   private logLine(blankLine: string): void {
-    if (this.isIgnorableString(blankLine)) {
+    const body = blankLine.replace(/^leaf-acceptor: /, '');
+    if (this.isIgnorableString(body)) {
       return;
     }
 
-    if (blankLine.includes('WRN')) {
-      this.logger.warn(blankLine);
-    } else if (blankLine.includes('FTL') || blankLine.includes('ERR')) {
-      this.logger.error(blankLine);
+    const level = NATS_LEVEL.exec(body)?.[1];
+    if (level === 'WRN') {
+      this.repeatedLines.push('warn', blankLine);
+    } else if (level === 'ERR' && body.includes(PROBE_HANGUP)) {
+      this.logger.debug(blankLine);
+    } else if (level === 'ERR' || level === 'FTL') {
+      this.repeatedLines.push('error', blankLine);
     } else {
       this.logger.trace(blankLine);
     }
@@ -896,9 +914,7 @@ export class NATS {
 
   private isIgnorableString(line: string): boolean {
     switch (true) {
-      case line.includes('Git:'):
-      case line.includes('Name:'):
-      case line.includes('ID:'):
+      case /^\[INF\]\s+(Git|Name|ID):/.test(line):
       case line.includes('Route connection created'):
       case line.includes('Using configuration file'):
       case line.includes('Listening for route connections'):
