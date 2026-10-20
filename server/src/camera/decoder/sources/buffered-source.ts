@@ -502,6 +502,8 @@ export class BufferedSource implements AnalysisSource {
     this.connected = false;
     this.clearBuffer();
     this.waitingForKeyframe = true;
+    // the decode in flight still feeds the native decoder
+    if (this.inflightDecode) await this.inflightDecode;
     this.disposeDecoder();
     this.videoStream = undefined;
 

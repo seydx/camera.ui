@@ -410,8 +410,13 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
   }
 
   async #onError(error: Error): Promise<void> {
+    if (this.#shutdownPromise) {
+      return this.#shutdownPromise;
+    }
+
+    const shutdown = this.#onEnded();
     this.onError.next(error);
-    await this.#onEnded();
+    await shutdown;
   }
 
   #onEnded(): Promise<void> {

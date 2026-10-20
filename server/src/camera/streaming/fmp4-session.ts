@@ -17,6 +17,9 @@ import type { CameraDevice } from '../index.js';
 
 export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterface {
   static readonly #MAX_QUEUED_BOXES = 32;
+  static readonly #STARTUP_TIMEOUT_MS = 30_000;
+  static readonly #MIN_VIDEO_STALL_MS = 24_000;
+  static readonly #KEYFRAME_FRAGMENT_STALL_MS = 60_000;
 
   readonly onStarted = new ReplaySubject<void>(1);
   readonly onError = new Subject<Error>();
@@ -34,6 +37,10 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
   #fmp4Stream?: FMP4Stream;
   #initSegmentSubject = new ReplaySubject<Buffer>(1);
   #boxDataSubject = new Subject<Buffer>();
+
+  #watchdog?: NodeJS.Timeout;
+  #videoTrackIds = new Set<number>();
+  #fragmentsWithoutVideo = 0;
 
   constructor(cameraDevice: CameraDevice, source: CameraInput, urlOrOptions?: string | RTSPUrlOptions) {
     super();
@@ -108,8 +115,12 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
     let initSegment: Buffer | undefined;
     let initSegmentSent = false;
 
+    // an explicit undefined would replace node-av's live input defaults (rtsp_transport, timeout)
+    const inputOptions = Object.fromEntries(Object.entries(this.#options.input?.options ?? {}).filter(([, value]) => value !== undefined && value !== null));
+
     const fmp4Stream = FMP4Stream.create(this.#url, {
       signal: this.#abort.signal,
+      inputOptions: { options: inputOptions },
       onData: (data: Buffer, info: FMP4Data) => {
         for (const box of info.boxes) {
           if (box.type === 'ftyp') {
@@ -118,6 +129,7 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
 
           if (box.type === 'moov') {
             moovData = data;
+            this.#videoTrackIds = videoTrackIds(box.data);
           }
 
           if (ftypData && moovData && !initSegment) {
@@ -128,20 +140,19 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
 
         if (initSegment && !initSegmentSent) {
           initSegmentSent = true;
+          this.#armVideoWatchdog();
           this.onStarted.next();
         }
 
         // Only send fragments (moof+mdat), not init boxes (ftyp/moov)
         const isFragment = initSegment && info.boxes.some((box) => box.type === 'moof');
         if (isFragment) {
+          this.#trackVideo(info.boxes);
           this.#boxDataSubject.next(data);
         }
       },
       onClose: (err?: Error) => {
-        const shutdown = err ? this.#onError(err) : this.#onEnded();
-        shutdown.catch((error) => {
-          this.#logger.error('Failed to shut down FMP4 session:', error);
-        });
+        this.#end(err);
       },
       boxMode: this.#options.boxMode,
       fragDuration: this.#options.fragDuration,
@@ -162,6 +173,9 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
     });
 
     this.#fmp4Stream = fmp4Stream;
+    this.#watchdog = setTimeout(() => {
+      this.#end(new Error(`FMP4 session produced no init segment within ${Fmp4Session.#STARTUP_TIMEOUT_MS / 1000}s`));
+    }, Fmp4Session.#STARTUP_TIMEOUT_MS);
 
     try {
       await fmp4Stream.start();
@@ -244,9 +258,53 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
     await this.#onEnded();
   }
 
+  #armVideoWatchdog(): void {
+    clearTimeout(this.#watchdog);
+    this.#watchdog = undefined;
+
+    if (this.#videoTrackIds.size === 0 || this.#shutdownPromise) {
+      return;
+    }
+
+    const fragMs = (this.#options.fragDuration ?? 1) / 1000;
+    const stallMs = fragMs > 0 ? Math.max(3 * fragMs, Fmp4Session.#MIN_VIDEO_STALL_MS) : Fmp4Session.#KEYFRAME_FRAGMENT_STALL_MS;
+
+    this.#watchdog = setTimeout(() => {
+      const fragments = this.#fragmentsWithoutVideo;
+      const detail = fragments > 0 ? `${fragments} fragments without video` : 'no fragments';
+      this.#end(new Error(`FMP4 session emitted no video for ${stallMs / 1000}s (${detail})`));
+    }, stallMs);
+  }
+
+  #trackVideo(boxes: MP4Box[]): void {
+    if (this.#videoTrackIds.size === 0) {
+      return;
+    }
+
+    const samples = boxes.reduce((count, box) => (box.type === 'moof' ? count + trackSampleCount(box.data, this.#videoTrackIds) : count), 0);
+    if (samples > 0) {
+      this.#fragmentsWithoutVideo = 0;
+      this.#watchdog?.refresh();
+    } else {
+      this.#fragmentsWithoutVideo++;
+    }
+  }
+
+  #end(error?: Error): void {
+    const shutdown = error ? this.#onError(error) : this.#onEnded();
+    shutdown.catch((err) => {
+      this.#logger.error('Failed to shut down FMP4 session:', err);
+    });
+  }
+
   async #onError(error: Error): Promise<void> {
+    if (this.#shutdownPromise) {
+      return this.#shutdownPromise;
+    }
+
+    const shutdown = this.#onEnded();
     this.onError.next(error);
-    await this.#onEnded();
+    await shutdown;
   }
 
   #onEnded(): Promise<void> {
@@ -256,6 +314,8 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
 
   async #shutdown(): Promise<void> {
     this.#hasEnded = true;
+    clearTimeout(this.#watchdog);
+    this.#watchdog = undefined;
     this.#abort.abort();
 
     const fmp4Stream = this.#fmp4Stream;
@@ -275,4 +335,82 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
       this.onEnded.complete();
     }
   }
+}
+
+function videoTrackIds(moov: Buffer): Set<number> {
+  const ids = new Set<number>();
+
+  for (const trak of childBoxes(moov)) {
+    if (trak.type !== 'trak') {
+      continue;
+    }
+
+    let trackId: number | undefined;
+    let handler: string | undefined;
+    for (const child of childBoxes(trak.data)) {
+      if (child.type === 'tkhd' && child.data.length >= 24) {
+        trackId = child.data.readUInt32BE(child.data[0] === 1 ? 20 : 12);
+      } else if (child.type === 'mdia') {
+        const hdlr = childBoxes(child.data).find((box) => box.type === 'hdlr');
+        handler = hdlr && hdlr.data.length >= 12 ? hdlr.data.toString('latin1', 8, 12) : undefined;
+      }
+    }
+
+    if (trackId !== undefined && handler === 'vide') {
+      ids.add(trackId);
+    }
+  }
+
+  return ids;
+}
+
+function trackSampleCount(moof: Buffer, trackIds: Set<number>): number {
+  let samples = 0;
+
+  for (const traf of childBoxes(moof)) {
+    if (traf.type !== 'traf') {
+      continue;
+    }
+
+    const children = childBoxes(traf.data);
+    const tfhd = children.find((box) => box.type === 'tfhd');
+    if (!tfhd || tfhd.data.length < 8 || !trackIds.has(tfhd.data.readUInt32BE(4))) {
+      continue;
+    }
+
+    for (const trun of children) {
+      if (trun.type === 'trun' && trun.data.length >= 8) {
+        samples += trun.data.readUInt32BE(4);
+      }
+    }
+  }
+
+  return samples;
+}
+
+function childBoxes(payload: Buffer): { type: string; data: Buffer }[] {
+  const boxes: { type: string; data: Buffer }[] = [];
+
+  let pos = 0;
+  while (pos + 8 <= payload.length) {
+    const size = payload.readUInt32BE(pos);
+    let header = 8;
+    let end = size === 0 ? payload.length : pos + size;
+    if (size === 1) {
+      if (pos + 16 > payload.length) {
+        break;
+      }
+      header = 16;
+      end = pos + Number(payload.readBigUInt64BE(pos + 8));
+    }
+
+    if (end < pos + header || end > payload.length) {
+      break;
+    }
+
+    boxes.push({ type: payload.toString('latin1', pos + 4, pos + 8), data: payload.subarray(pos + header, end) });
+    pos = end;
+  }
+
+  return boxes;
 }
