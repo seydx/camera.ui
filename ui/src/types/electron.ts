@@ -6,9 +6,15 @@ export type InvokeChannel =
   | 'set-desktop-notifications'
   | 'get-mic-access'
   | 'ask-mic-access'
-  | 'open-mic-settings';
+  | 'open-mic-settings'
+  | 'cert-trust';
 export type SendChannel = 'change-language' | 'change-window' | 'check-for-updates' | 'show-notification' | 'set-badge-count';
-export type ReceiveChannel = 'fullscreen' | 'app-status' | 'notification-click' | 'deep-link';
+export type ReceiveChannel = 'fullscreen' | 'app-status' | 'notification-click' | 'deep-link' | 'power-resume';
+
+export interface CertTrustPayload {
+  ca: string;
+  hosts: string[];
+}
 
 export interface DesktopNotificationPayload {
   id: string;

@@ -175,10 +175,24 @@ function readCertificate(certPath: string): X509Certificate {
   return new X509Certificate(readFileSync(certPath, 'utf8'));
 }
 
-function isCertificateValid(certPath: string): boolean {
-  const cert = readCertificate(certPath);
-  const now = new Date();
-  return now >= cert.notBefore && now <= cert.notAfter;
+const HOST_RENEW_BEFORE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isCertificateValid(certPath: string, renewBeforeMs = 0): boolean {
+  try {
+    const cert = readCertificate(certPath);
+    const now = Date.now();
+    return now >= cert.notBefore.getTime() && now + renewBeforeMs <= cert.notAfter.getTime();
+  } catch {
+    return false;
+  }
+}
+
+function isCertificateExpired(certPath: string): boolean {
+  try {
+    return Date.now() > readCertificate(certPath).notAfter.getTime();
+  } catch {
+    return true;
+  }
 }
 
 function getCertAltNames(certPath: string): string[] {
@@ -321,14 +335,18 @@ export class CertificateGeneration {
     const certFile = configService.HOST_CERT_FILE;
     const keyFile = configService.HOST_KEY_FILE;
     const caFile = configService.ROOT_CERT_FILE;
+    const rootKeyPath = configService.ROOT_KEY_FILE;
 
     const requiredAddresses = CertificateGeneration.requiredAddresses();
 
-    const certExists = existsSync(certFile) && existsSync(keyFile) && existsSync(caFile);
-    const certIsValid = certExists && isCertificateValid(certFile) && isCertificateValid(caFile);
-    const isLegacy = certExists && isLegacyCertificate(certFile) && getCertAltNames(certFile).length === 0;
+    const hostExists = existsSync(certFile) && existsSync(keyFile);
+    const altNames = hostExists ? getCertAltNames(certFile) : [];
+    const isLegacy = hostExists && isLegacyCertificate(certFile) && altNames.length === 0;
+    const missingSans = requiredAddresses.filter((address) => !altNames.includes(address));
+    const hostCurrent = hostExists && isCertificateValid(certFile, HOST_RENEW_BEFORE_MS) && missingSans.length === 0;
+    const caUsable = existsSync(caFile) && !isCertificateExpired(caFile) && (hostCurrent || existsSync(rootKeyPath));
 
-    if (!certExists || !certIsValid || isLegacy || forceNew) {
+    if (!caUsable || isLegacy || forceNew) {
       logCertificate(`Issuing a new root CA and host certificate for ${requiredAddresses.join(', ')}`);
       const CA = CertificateGeneration.createRootCA(requiredAddresses);
       const hostCert = CertificateGeneration.createHostCert(requiredAddresses, CA);
@@ -340,14 +358,15 @@ export class CertificateGeneration {
       };
     }
 
-    // Keep the root CA (paired workers pin it) but re-issue the host cert
-    // when a required address is missing from its SANs.
-    const rootKeyPath = configService.ROOT_KEY_FILE;
-    const altNames = getCertAltNames(certFile);
-    const missingSans = requiredAddresses.filter((address) => !altNames.includes(address));
+    if (!hostCurrent) {
+      if (!hostExists) {
+        logCertificate(`Issuing a host certificate from the existing root CA for ${requiredAddresses.join(', ')}`);
+      } else if (missingSans.length > 0) {
+        logCertificate(`Re-issuing the host certificate, not yet covered: ${missingSans.join(', ')}. Browsers that stored an exception will ask again.`);
+      } else {
+        logCertificate('Renewing the host certificate from the existing root CA, it expires within 30 days.');
+      }
 
-    if (missingSans.length > 0 && existsSync(rootKeyPath)) {
-      logCertificate(`Re-issuing the host certificate, not yet covered: ${missingSans.join(', ')}. Browsers that stored an exception will ask again.`);
       const CA: Certificate = {
         cert: readFileSync(caFile, 'utf8'),
         certPath: caFile,

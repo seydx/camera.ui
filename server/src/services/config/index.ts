@@ -312,7 +312,7 @@ export class ConfigService {
   }
 
   public reissueSslCertificate(): void {
-    this._ssl = this.readSSL();
+    this.updateSsl();
   }
 
   public readWorkerConfig(): IConfig['worker'] {
@@ -326,7 +326,18 @@ export class ConfigService {
   public refreshHostCertificate(newRoot = false): void {
     removeSync(this.HOST_CERT_FILE);
     removeSync(this.HOST_KEY_FILE);
-    this._ssl = this.readSSL();
+    if (newRoot) {
+      removeSync(this.ROOT_CERT_FILE);
+      removeSync(this.ROOT_KEY_FILE);
+    }
+    this.updateSsl();
+  }
+
+  public onSslChange(listener: (ssl: SSLConfig) => void): () => void {
+    (this.sslListeners ??= new Set()).add(listener);
+    return () => {
+      this.sslListeners?.delete(listener);
+    };
   }
 
   public writeConfig(newConfig?: DeepPartial<IConfig>): void {
@@ -730,6 +741,13 @@ export class ConfigService {
     this.cleanupWebRtcFilters(config.webrtc);
 
     return config;
+  }
+
+  private updateSsl(): void {
+    const previous = this._ssl;
+    this._ssl = this.readSSL();
+    if (previous?.cert.equals(this._ssl.cert)) return;
+    for (const listener of this.sslListeners ?? []) listener(this._ssl);
   }
 
   private readSSL(): SSLConfig {

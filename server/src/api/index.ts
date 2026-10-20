@@ -340,6 +340,18 @@ export class Server {
     });
   }
 
+  private watchCertificate(): void {
+    this.stopCertificateWatch?.();
+    this.stopCertificateWatch = this.configService.onSslChange((ssl) => {
+      try {
+        this.app?.server.setSecureContext({ cert: ssl.cert, key: ssl.key, ca: ssl.ca });
+        this.logger.log('camera.ui serves the renewed host certificate');
+      } catch (error) {
+        this.logger.warn(`Could not load the renewed host certificate, it is used after the next restart: ${(error as Error).message}`);
+      }
+    });
+  }
+
   private startSharesCleanup(): void {
     const sharesService = new SharesService();
     const run = () => sharesService.cleanup().catch(() => {});
