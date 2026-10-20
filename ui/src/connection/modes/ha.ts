@@ -43,6 +43,14 @@ function wsOrigin(url: URL): string {
   return `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}`;
 }
 
+function natsAppendsDeflate(): boolean {
+  try {
+    return new DecompressionStream('deflate-raw') instanceof DecompressionStream;
+  } catch {
+    return false;
+  }
+}
+
 export function buildHaMode(host: HaHost, entryId: string, logger?: Logger): ConnectionOptions {
   const network = createNetworkAdapters();
   const proxyPath = haProxyPath(entryId);
@@ -82,8 +90,12 @@ export function buildHaMode(host: HaHost, entryId: string, logger?: Logger): Con
       nats: {
         resolveServers: async ({ target, connId }) => {
           const base = new URL(target.endpoint.url);
-          const path = await signPath(host, `${base.pathname}/api/proxy?connId=${encodeURIComponent(connId)}`, SIGN_EXPIRES_S);
-          return [`${wsOrigin(base)}${path}`];
+          const deflate = natsAppendsDeflate();
+          const query = new URLSearchParams({ connId });
+          if (deflate) query.set('compress', 'cui-deflate');
+          const signed = new URL(await signPath(host, `${base.pathname}/api/proxy?${query.toString()}`, SIGN_EXPIRES_S), base.origin);
+          if (deflate) signed.searchParams.delete('compress');
+          return [`${wsOrigin(base)}${signed.pathname}${signed.search}`];
         },
         resolveRefreshMs: RESOLVE_REFRESH_MS,
       },

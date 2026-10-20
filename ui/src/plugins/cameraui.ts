@@ -10,6 +10,7 @@ export function registerEcosystemPlugins(app: App, connection: Connection): void
   app.use(
     createCameraUiPlugin({
       natsTransport: connection.nats,
+      bulkTransport: connection.natsBulk,
       target: connection.target,
       wsTransport: connection.ws,
     }),

@@ -949,6 +949,7 @@ const drawer = useCuiCameraDrawer();
 const dialog = useCuiDialog();
 const toast = useCuiToast();
 const notificationsSocket = useNotificationsSocket();
+const { connect: connectStreamStatus, onSourceCodecsChange } = useStreamStatus();
 const { mdBreakpoint } = useSharedCuiBreakpoint();
 const { width: windowWidth, height: windowHeight } = useSharedWindowSize();
 const { isPipSupported, isAndroid } = useSharedCuiUserAgent();
@@ -2366,12 +2367,19 @@ watch(isDisabled, (disabled, wasDisabled) => {
   }
 });
 
+onSourceCodecsChange(
+  cameraId,
+  () => cameraStream.stream.value?.source.value?.name,
+  () => cameraStream.stream.value?.invalidateProbe(),
+);
+
 onKeyStroke('Escape', () => exitShortcutsEditMode());
 
 onBeforeMount(() => {
   if (typeof cameraInfo.value === 'string') {
     camerasQuery.toggleQueryActivator('getCameraQuery', true);
   }
+  connectStreamStatus();
 });
 
 onMounted(() => {

@@ -16,12 +16,14 @@ import type { TransportOptions } from './types.js';
 export const HTTP_SPEC: TransportSpec = { id: 'http', kind: 'request', phaseGating: false };
 export const SOCKETIO_SPEC: TransportSpec = { id: 'socketio', kind: 'persistent', phaseGating: true };
 export const NATS_SPEC: TransportSpec = { id: 'nats', kind: 'persistent', phaseGating: true };
+export const NATS_BULK_SPEC: TransportSpec = { id: 'nats-bulk', kind: 'persistent', phaseGating: false };
 export const WS_SPEC: TransportSpec = { id: 'ws', kind: 'per-resource', phaseGating: false };
 
 export const TRANSPORT_SPECS: ReadonlyMap<string, TransportSpec> = new Map([
   [HTTP_SPEC.id, HTTP_SPEC],
   [SOCKETIO_SPEC.id, SOCKETIO_SPEC],
   [NATS_SPEC.id, NATS_SPEC],
+  [NATS_BULK_SPEC.id, NATS_BULK_SPEC],
   [WS_SPEC.id, WS_SPEC],
 ]);
 
@@ -29,6 +31,7 @@ export interface TransportBundle {
   readonly http: HttpTransport;
   readonly socketio: SocketioTransport;
   readonly nats: NatsTransport;
+  readonly natsBulk: NatsTransport;
   readonly ws: WsTransport;
 }
 
@@ -37,6 +40,7 @@ export function createTransports(apiPrefix: string, overrides: TransportOptions 
   installNativeHttp(http.client);
   const socketio = createSocketioTransport({ spec: SOCKETIO_SPEC, logger: new Logger('SioT'), ...overrides.socketio });
   const nats = createNatsTransport({ spec: NATS_SPEC, logger: new Logger('NatsT'), ...overrides.nats });
+  const natsBulk = createNatsTransport({ clientName: '@camera.ui/transport/nats-bulk', logger: new Logger('NatsBulkT'), ...overrides.nats, spec: NATS_BULK_SPEC });
   const ws = createWsTransport({ spec: WS_SPEC, logger: new Logger('WsT'), ...overrides.ws });
-  return { http, socketio, nats, ws };
+  return { http, socketio, nats, natsBulk, ws };
 }

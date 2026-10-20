@@ -42,8 +42,10 @@ export interface SnapshotUpdatedEvent {
 }
 
 export interface SnapshotWithMeta {
-  data: ArrayBuffer;
+  data?: ArrayBuffer;
   ageMs: number;
+  fetchedAt?: number;
+  notModified?: boolean;
 }
 
 export type CameraDeviceListenerMessagePayload =
@@ -58,7 +60,7 @@ export interface CameraDeviceInterface extends CameraDeviceImplementation {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   snapshot(sourceId: string, forceNew?: boolean, preferNative?: boolean): Promise<ArrayBuffer | undefined>;
-  snapshotWithMeta(sourceId: string, forceNew?: boolean): Promise<SnapshotWithMeta | undefined>;
+  snapshotWithMeta(sourceId: string, forceNew?: boolean, knownFetchedAt?: number): Promise<SnapshotWithMeta | undefined>;
   probeStream(sourceId: string, probeConfig?: ProbeConfig, refresh?: boolean): Promise<ProbeStream | undefined>;
   getStreamStatus(sourceId: string): Promise<string>;
 }

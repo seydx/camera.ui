@@ -47,7 +47,7 @@ export function createConnection(options: ConnectionOptions): Connection {
       if (next === prev) journal.record('kernel', `${action.type} dropped`, `phase=${prev.kind}`);
     },
   });
-  const { http, socketio, nats, ws } = createTransports(apiPrefix, options.transportOptions);
+  const { http, socketio, nats, natsBulk, ws } = createTransports(apiPrefix, options.transportOptions);
 
   const phase = shallowRef<ConnectionPhase>(kernel.phase);
   const target = shallowRef<ConnectionTarget | null>(null);
@@ -78,7 +78,7 @@ export function createConnection(options: ConnectionOptions): Connection {
   }
   const wakeListeners = new Set<() => void>();
 
-  for (const transport of [http, socketio, nats, ws]) {
+  for (const transport of [http, socketio, nats, natsBulk, ws]) {
     const id = transport.spec.id;
     cleanups.push(transport.on('up', () => journal.record(id, 'up')));
     cleanups.push(transport.on('down', ({ reason }) => journal.record(id, 'down', reason)));
@@ -188,7 +188,7 @@ export function createConnection(options: ConnectionOptions): Connection {
   cleanups.push(
     attachTransportSync({
       kernel,
-      transports: [http, socketio, nats, ws],
+      transports: [http, socketio, nats, natsBulk, ws],
       onApplied: (t) => {
         target.value = t;
         if (t) restoredTarget = null;
@@ -224,7 +224,7 @@ export function createConnection(options: ConnectionOptions): Connection {
   }
 
   function ensureTransportsAlive(): void {
-    for (const transport of [nats, socketio] as const) {
+    for (const transport of [nats, natsBulk, socketio] as const) {
       const before = transport.health();
       transport
         .ensureAlive()
@@ -348,7 +348,7 @@ export function createConnection(options: ConnectionOptions): Connection {
 
   const lifecycle: TokenLifecycle = attachTokenLifecycle({
     kernel,
-    transports: [http, nats, socketio, ws],
+    transports: [http, nats, natsBulk, socketio, ws],
     graceMs: 5_000,
     maxTransientRetries: 5,
     transientRetryDelayMs: 2_000,
@@ -481,7 +481,7 @@ export function createConnection(options: ConnectionOptions): Connection {
         logger?.warn('connection', 'cleanup error', err);
       }
     }
-    await Promise.allSettled([http.dispose(), socketio.dispose(), nats.dispose(), ws.dispose()]);
+    await Promise.allSettled([http.dispose(), socketio.dispose(), nats.dispose(), natsBulk.dispose(), ws.dispose()]);
     kernel.dispose();
   }
 
@@ -520,6 +520,7 @@ export function createConnection(options: ConnectionOptions): Connection {
     http,
     socketio,
     nats,
+    natsBulk,
     ws,
     lastReachableEndpoint,
     troubleElapsedMs,

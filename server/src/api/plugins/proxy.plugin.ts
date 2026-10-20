@@ -6,6 +6,7 @@ import { createSourceName } from '../../utils/camera.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
 import { NatsSubFirewall } from './natsSubFirewall.js';
+import { FrameDeflater, isRemoteClient, wantsFrameDeflate, worthCompressing } from './relayCompression.js';
 
 import type { FastifyInstance, FastifyPluginAsync, HookHandlerDoneFunction } from 'fastify';
 import type { IncomingMessage } from 'node:http';
@@ -39,6 +40,8 @@ function isValidCloseCode(code: number): boolean {
 
 class WebSocketProxy {
   private wss: WebSocketServer;
+  private wssDeflate?: WebSocketServer;
+  private wssRefusal: WebSocketServer;
   private upstream: string;
   private upstreamHost: string;
   private prefix: string;
@@ -68,6 +71,21 @@ class WebSocketProxy {
       perMessageDeflate: false,
     });
 
+    // video does not compress; context takeover stays on, without it small replies stop compressing
+    if (this.target === 'nats') {
+      this.wssDeflate = new WebSocketServer({
+        noServer: true,
+        maxPayload: NATS_MAX_CLIENT_FRAME,
+        perMessageDeflate: { zlibDeflateOptions: { level: 1, chunkSize: 64 * 1024 } },
+      });
+    }
+
+    // passed as a variable: @types/ws does not know closeTimeout yet
+    const refusalOptions = { noServer: true, perMessageDeflate: false, clientTracking: false, closeTimeout: REFUSAL_CLOSE_TIMEOUT_MS };
+    this.wssRefusal = new WebSocketServer(refusalOptions);
+
+    this.heartbeat = setInterval(() => this.checkClients(), HEARTBEAT_MS).unref();
+
     fastify.server.on('upgrade', async (request, socket, head) => {
       if (request.url?.startsWith(this.prefix)) {
         await this.handleUpgrade(request, socket, head);
@@ -78,6 +96,10 @@ class WebSocketProxy {
   public close(): void {
     this.wss.removeAllListeners();
     this.wss.close();
+    this.wssDeflate?.removeAllListeners();
+    this.wssDeflate?.close();
+    this.wssRefusal.removeAllListeners();
+    this.wssRefusal.close();
   }
 
   private async handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
@@ -169,6 +191,8 @@ class WebSocketProxy {
     firewallConnId: string | null,
     firewallUserId: string | undefined,
     go2rtcViewer: boolean,
+    early: [RawData, boolean][],
+    deflater?: FrameDeflater,
   ): void {
     if (firewallConnId) {
       const firewall = new NatsSubFirewall(
@@ -249,11 +273,13 @@ class WebSocketProxy {
     server.on('pong', (data) => client.readyState === WebSocket.OPEN && client.pong(data));
 
     server.on('close', (code, reason) => {
-      if (client.readyState === WebSocket.OPEN) {
-        // abnormal upstream death (1006/no code) must not read as a clean
-        // close — 4500 tells the client to retry with backoff
+      const close = (): void => {
+        if (client.readyState !== WebSocket.OPEN) return;
+        // an abnormal upstream close must not read as clean, 4500 makes the client retry
         client.close(isValidCloseCode(code) ? code : 4500, isValidCloseCode(code) ? reason : reason?.length ? reason : 'upstream lost');
-      }
+      };
+      if (deflater) deflater.whenDrained(close);
+      else close();
     });
 
     server.on('error', () => {

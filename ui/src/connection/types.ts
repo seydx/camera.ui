@@ -73,6 +73,7 @@ export interface Connection {
   readonly http: HttpTransport;
   readonly socketio: SocketioTransport;
   readonly nats: NatsTransport;
+  readonly natsBulk: NatsTransport;
   readonly ws: WsTransport;
 
   readonly lastReachableEndpoint: Ref<string | null>;

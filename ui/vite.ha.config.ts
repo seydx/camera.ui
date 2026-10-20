@@ -88,6 +88,40 @@ function inlineExtractedCss(): Plugin {
   };
 }
 
+function preloadCardsChunk(): Plugin {
+  return {
+    name: 'cui-ha-preload-cards',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter((item) => item.type === 'chunk');
+      const entry = chunks.find((item) => item.isEntry);
+      const cards = chunks.find((item) => item.facadeModuleId?.endsWith('/src/ha/cards.ts'));
+      if (!entry || !cards) this.error('cards entry or chunk not found');
+      const call = `import("./${cards.fileName}")`;
+      if (!entry.code.includes(call)) this.error(`cards import not found in ${entry.fileName}`);
+
+      const loaded = new Set([entry.fileName, ...entry.imports]);
+      const files = new Set<string>([cards.fileName]);
+      for (const file of files) {
+        const chunk = bundle[file];
+        if (chunk?.type === 'chunk') for (const dep of chunk.imports) files.add(dep);
+      }
+      const urls = [...files].filter((file) => !loaded.has(file)).map((file) => `./${file}`);
+      const preload = `function __cuiPreloadCards() {
+  for (const url of ${JSON.stringify(urls)}) {
+    const link = document.createElement("link");
+    link.rel = "modulepreload";
+    link.crossOrigin = "";
+    link.href = new URL(url, import.meta.url).href;
+    document.head.appendChild(link);
+  }
+}
+`;
+      entry.code = preload + entry.code.replace(call, `(__cuiPreloadCards(), ${call})`);
+    },
+  };
+}
+
 export default defineConfig({
   root: resolve(__dirname),
   envDir: resolve(__dirname, '..'),
@@ -136,6 +170,7 @@ export default defineConfig({
       resolvers: [PrimeVueResolver(), IconsResolver()],
     }),
     inlineExtractedCss(),
+    preloadCardsChunk(),
   ],
   css: {
     postcss: { plugins: [scopeToCards()] },
@@ -165,6 +200,7 @@ export default defineConfig({
     sourcemap: false,
     outDir: resolve(__dirname, '..', 'server', 'dist', 'interface', 'ha'),
     emptyOutDir: true,
+    copyPublicDir: false,
     cssCodeSplit: false,
     chunkSizeWarningLimit: 4000,
     lib: {

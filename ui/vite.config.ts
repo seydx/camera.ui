@@ -308,6 +308,7 @@ export default defineConfig(({ command }) => ({
             registerType: 'prompt',
             manifestFilename: 'manifest.webmanifest',
             manifest: manifest,
+            includeManifestIcons: false,
             devOptions: {
               enabled: process.env.NODE_ENV === 'development',
               suppressWarnings: true,
@@ -317,7 +318,7 @@ export default defineConfig(({ command }) => ({
               clientsClaim: true,
               cleanupOutdatedCaches: true,
               globPatterns: ['**/*.{js,css,html,ico,png,svg,json,vue,jpg,jpeg,mp4,txt,woff2,ttf}'],
-              globIgnores: ['ha/**'],
+              globIgnores: ['ha/**', 'pwa/apple-splash-*', 'pwa/maskable-icon-*', 'og-share.png', 'robots.txt'],
               navigateFallback: null,
               directoryIndex: null,
               runtimeCaching: [
@@ -362,25 +363,29 @@ export default defineConfig(({ command }) => ({
       },
       output: {
         format: 'es',
-        manualChunks(id: string) {
-          if (id.includes('node_modules')) {
-            if (id.includes('/vue/') || id.includes('vue-router') || id.includes('pinia') || id.includes('vue-i18n') || id.includes('@vueuse')) return 'vendor-core';
-            if (id.includes('primevue') || id.includes('@primevue') || id.includes('@primeuix')) return 'vendor-primevue';
-            if (id.includes('ace-builds')) return 'vendor-ace';
-            if (id.includes('zod')) return 'vendor-zod';
-            if (id.includes('nats.js/core') || id.includes('@nats-io') || id.includes('msgpackr') || id.includes('tweetnacl')) return 'vendor-rpc';
-            if (id.includes('@camera.ui')) return 'vendor-cameraui';
-            if (id.includes('@xterm') || id.includes('xterm')) return 'vendor-xterm';
-            if (id.includes('chart.js') || id.includes('@kurkle') || id.includes('vue-chartjs')) return 'vendor-chart';
-            if (id.includes('@vue-flow')) return 'vendor-vueflow';
-            if (id.includes('leaflet') || id.includes('vue-leaflet')) return 'vendor-leaflet';
-            if (id.includes('gridstack')) return 'vendor-gridstack';
-            if (id.includes('draggabilly')) return 'vendor-draggabilly';
-            if (id.includes('vue3-dnd') || id.includes('react-dnd')) return 'vendor-dnd';
-            if (id.includes('@capacitor') || id.includes('@capgo') || id.includes('@aparajita')) return 'vendor-capacitor';
-            if (id.includes('highlight.js') || id.includes('markdown-it')) return 'vendor-markdown';
-            return 'vendor';
-          }
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-core',
+              test: /node_modules[\\/](vue|@vue|vue-router|pinia|vue-i18n|@intlify|@vueuse|@capacitor[\\/]core)[\\/]|vite[\\/]preload-helper/,
+              priority: 30,
+            },
+            { name: 'vendor-openvue', test: /node_modules[\\/](openvue|@openvue|@openuxkit)[\\/]/, priority: 20 },
+            { name: 'vendor-ace', test: /node_modules[\\/]ace-builds[\\/]/, priority: 10 },
+            { name: 'vendor-zod', test: /node_modules[\\/]zod[\\/]/, priority: 10 },
+            { name: 'vendor-rpc', test: /nats\.js[\\/]core[\\/]|node_modules[\\/](@nats-io|msgpackr|tweetnacl)[\\/]/, priority: 10 },
+            { name: 'vendor-xterm', test: /node_modules[\\/]@xterm[\\/]/, priority: 10 },
+            { name: 'vendor-chart', test: /node_modules[\\/](chart\.js|@kurkle|vue-chartjs)[\\/]/, priority: 10 },
+            { name: 'vendor-vueflow', test: /node_modules[\\/]@vue-flow[\\/]/, priority: 10 },
+            { name: 'vendor-leaflet', test: /node_modules[\\/](leaflet|@vue-leaflet)[\\/]/, priority: 10 },
+            { name: 'vendor-gridstack', test: /node_modules[\\/]gridstack[\\/]/, priority: 10 },
+            { name: 'vendor-draggabilly', test: /node_modules[\\/]draggabilly[\\/]/, priority: 10 },
+            { name: 'vendor-dnd', test: /node_modules[\\/](vue3-dnd|react-dnd[^\\/]*)[\\/]/, priority: 10 },
+            { name: 'vendor-capacitor', test: /node_modules[\\/](@capacitor[^\\/]*|@capgo|@aparajita)[\\/]/, priority: 10 },
+            { name: 'vendor-markdown', test: /node_modules[\\/](highlight\.js|markdown-it[^\\/]*)[\\/]/, priority: 10 },
+            { name: 'vendor', test: /node_modules[\\/](?!@camera\.ui[\\/])/, priority: 5 },
+            { name: 'vendor-cameraui', test: /node_modules[\\/]@camera\.ui[\\/]/, priority: 0 },
+          ],
         },
       },
       onwarn(warning, defaultHandler) {

@@ -19,7 +19,7 @@ export { isLanEndpoint, isLanHostname, isLanTarget } from './endpointScope.js';
 export { createNetworkAdapters } from './adapters/network.js';
 export { createStorageAdapter } from './adapters/storage.js';
 export { createVisibilitySource } from './adapters/visibility.js';
-export { createTransports, HTTP_SPEC, NATS_SPEC, SOCKETIO_SPEC, TRANSPORT_SPECS, WS_SPEC } from './transports.js';
+export { createTransports, HTTP_SPEC, NATS_BULK_SPEC, NATS_SPEC, SOCKETIO_SPEC, TRANSPORT_SPECS, WS_SPEC } from './transports.js';
 
 export { createCloudSession, proxyRefreshLooksValid, proxyTokenLooksValid } from './cloudSession.js';
 export { createCloudSessionLifecycle } from './cloudSessionLifecycle.js';

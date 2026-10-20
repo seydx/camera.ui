@@ -295,14 +295,19 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   }
 
   @RPCMethod
-  public async snapshotWithMeta(sourceId: string, forceNew?: boolean): Promise<SnapshotWithMeta | undefined> {
+  public async snapshotWithMeta(sourceId: string, forceNew?: boolean, knownFetchedAt?: number): Promise<SnapshotWithMeta | undefined> {
     const data = await this.snapshot(sourceId, forceNew);
     if (!data) return undefined;
 
     const stored = this.snapshots.get(sourceId);
-    const ageMs = stored?.data === data ? Math.max(0, Date.now() - stored.fetchedAt) : 0;
+    if (stored?.data !== data) return { data, ageMs: 0 };
 
-    return { data, ageMs };
+    const ageMs = Math.max(0, Date.now() - stored.fetchedAt);
+    if (!forceNew && knownFetchedAt !== undefined && stored.fetchedAt === knownFetchedAt) {
+      return { notModified: true, fetchedAt: stored.fetchedAt, ageMs };
+    }
+
+    return { data, ageMs, fetchedAt: stored.fetchedAt };
   }
 
   @RPCMethod
@@ -570,7 +575,8 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       if (!masked || masked.byteLength === 0) {
         this.snapshots.delete(sourceId);
       } else if (masked !== entry.data) {
-        this.snapshots.set(sourceId, masked, entry.fetchedAt, sourceId === preferred);
+        // a new stamp, so a client holding the unmasked picture never gets it confirmed as current
+        this.snapshots.set(sourceId, masked, entry.fetchedAt + 1, sourceId === preferred);
       }
     }
   }

@@ -17,7 +17,7 @@ interface EventThumbnails {
 }
 
 interface NvrRpc {
-  getEventThumbnails(cameraId: string, startMs: number, eventId: string): Promise<EventThumbnails | undefined>;
+  getEventThumbnails(cameraId: string, startMs: number, eventId: string, keys?: string[]): Promise<EventThumbnails | undefined>;
 }
 
 export class NvrController {
@@ -34,7 +34,7 @@ export class NvrController {
 
     try {
       const rpc = this.proxyServer.proxy.createProxy<NvrRpc>(namespace);
-      const thumbnails = await rpc.getEventThumbnails(req.query.cameraId, req.query.startMs, req.params.eventId);
+      const thumbnails = await rpc.getEventThumbnails(req.query.cameraId, req.query.startMs, req.params.eventId, ['card:cover']);
       const image = this.pickPrimaryThumbnail(thumbnails);
       if (!image) {
         return reply.code(404).send({ statusCode: 404, message: 'No thumbnail for this event' });

@@ -12,7 +12,7 @@ import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fast
 import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import qs from 'qs';
 import { networkInterfaceDefault, networkInterfaces } from 'systeminformation';
@@ -30,6 +30,7 @@ import { ProxyPlugin } from './plugins/proxy.plugin.js';
 import { PROXY_AUTH_HEADER, ProxyAuth } from './proxy-auth.js';
 import { SocketIoPlugin } from './plugins/socket.plugin.js';
 import { SystemPlugin } from './plugins/system.plugin.js';
+import { normalizeEmbed } from './render-index.js';
 import { FastifyRoutes } from './routes/index.js';
 import { SharesService } from './services/shares.service.js';
 import { CertificateGeneration } from './utils/cert.js';
@@ -77,6 +78,8 @@ export class Server {
   private proxyServer: ProxyServer;
 
   private _internalPort = 0;
+  private loopback?: HttpServer;
+  private loopbackPort = 0;
   private sharesCleanupTimer?: NodeJS.Timeout;
   private mdnsService = new MdnsService();
 
@@ -299,9 +302,7 @@ export class Server {
 
   private async forwardRequests(app: FastifyInstance, rewrite: RewriteRequestHeaders): Promise<void> {
     await app.register(FastifyHttpProxy, {
-      upstream: `https://127.0.0.1:${this.configService.config.port}`,
-      websocket: true,
-      undici: { connect: { rejectUnauthorized: false } },
+      upstream: await this.forwarderUpstream(),
       replyOptions: {
         rewriteRequestHeaders: rewrite,
         rewriteHeaders: (headers) => {
@@ -395,9 +396,16 @@ export class Server {
     await this.app?.register(ProxyPlugin, this.natsProxyOptions);
     await this.app?.register(ProxyPlugin, this.go2rtcProxyOptions);
     await this.app?.register(FastifyMultipart, this.multipartOptions);
-    await this.app?.register(FastifyStatic, this.staticOptions);
+    await this.registerInterface();
     await this.app?.register(FastifySwagger, this.swaggerOptions);
     await this.app?.register(FastifySwaggerUI, this.swaggerUiOptions);
+  }
+
+  private async registerInterface(): Promise<void> {
+    this.app?.addHook('onRequest', async (req) => this.limitEmbedEncoding(req.headers));
+    await this.app?.register(FastifyStatic, this.staticOptions);
+    await this.app?.register(FastifyStatic, this.staticAssetOptions);
+    await this.app?.register(FastifyStatic, this.staticCardsOptions);
   }
 
   private async registerRouters(): Promise<void> {
@@ -600,11 +608,46 @@ export class Server {
   }
 
   private get staticOptions(): FastifyStaticOptions {
+    const root = this.configService.INTERFACE_CACHE_PATH;
     return {
-      root: this.configService.INTERFACE_CACHE_PATH,
+      root,
       prefix: '/',
       index: false,
+      setHeaders: (reply, path) => cacheInterfaceFile(reply, root, path),
     };
+  }
+
+  private get staticAssetOptions(): FastifyStaticOptions {
+    return {
+      root: join(this.configService.INTERFACE_CACHE_PATH, 'assets'),
+      prefix: '/assets/',
+      index: false,
+      wildcard: false,
+      globIgnore: ['**/*.br', '**/*.gz'],
+      preCompressed: true,
+      decorateReply: false,
+      setHeaders: cacheImmutable,
+    };
+  }
+
+  private get staticCardsOptions(): FastifyStaticOptions {
+    const root = this.configService.INTERFACE_CACHE_PATH;
+    return {
+      root: join(root, 'ha'),
+      prefix: '/ha/',
+      index: false,
+      wildcard: false,
+      globIgnore: ['**/*.br', '**/*.gz'],
+      preCompressed: true,
+      decorateReply: false,
+      setHeaders: (reply, path) => cacheInterfaceFile(reply, root, path),
+    };
+  }
+
+  private limitEmbedEncoding(headers: IncomingHttpHeaders): void {
+    const accepted = headers['accept-encoding'];
+    if (!accepted || !normalizeEmbed(headers['x-cui-embed']) || headers['x-cui-encoding'] === 'passthrough') return;
+    headers['accept-encoding'] = /\bgzip\b/i.test(accepted) ? 'gzip' : 'identity';
   }
 
   private get swaggerOptions(): FastifyDynamicSwaggerOptions {
