@@ -275,8 +275,8 @@ export function getSchemasByGroup(schemas: JsonSchema[], group: string): JsonSch
 }
 
 export function schemaGroupIsReadonly(schemas: JsonSchema[], group: string): boolean {
-  const groupSchemas = getSchemasByGroup(schemas, group);
-  return groupSchemas.length > 0 && groupSchemas.every((schema) => 'readonly' in schema && schema.readonly);
+  const valueSchemas = getSchemasByGroup(schemas, group).filter((schema) => !isButtonType(schema) && !isSubmitType(schema));
+  return valueSchemas.length > 0 && valueSchemas.every((schema) => 'readonly' in schema && schema.readonly);
 }
 
 export function schemaGroupIsStorable(schemas: JsonSchema[], group: string): boolean {
