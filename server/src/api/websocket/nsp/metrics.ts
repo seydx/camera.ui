@@ -164,12 +164,24 @@ export class MetricsNamespace {
       controllers.map(async (controller) => {
         const snapshot = await controller.frameWorker.getPerfSnapshot();
         if (snapshot && snapshot.uptimeMs > 0) {
-          next[controller.frameWorker.name] = deriveWorkerPerf(snapshot, (pluginId) => this.pluginName(pluginId));
+          const cameraHost = controller.frameWorker.isRemoteWorker ? this.workerManager.getAssignment(controller.id) : undefined;
+          next[controller.frameWorker.name] = deriveWorkerPerf(
+            snapshot,
+            (pluginId) => this.pluginName(pluginId),
+            (pluginId) => this.pluginHost(pluginId) !== cameraHost,
+          );
         }
       }),
     );
 
     this.workerPerf = next;
+  }
+
+  private pluginHost(pluginId: string): string | undefined {
+    for (const plugin of this.pluginManager.plugins.values()) {
+      if (plugin.id === pluginId) return plugin.worker.isRemoteWorker ? this.workerManager.getPluginAssignment(plugin.pluginName) : undefined;
+    }
+    return undefined;
   }
 
   private pluginName(pluginId?: string): string | undefined {

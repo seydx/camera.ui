@@ -104,6 +104,7 @@ const pages = computed(() => {
     { label: t('views.metrics.bench_cameras'), value: String(run.total.cameras) },
     { label: t('views.metrics.bench_calls'), value: `${run.total.iterations}${run.total.failed > 0 ? ` (+${run.total.failed} ✗)` : ''}` },
     { label: t('views.metrics.bench_concurrency'), value: String(run.total.concurrency) },
+    ...effectiveRow(run.cameras.every((camera) => camera.effectiveConcurrency !== undefined) ? run.total.effectiveConcurrency : undefined),
     { label: t('views.metrics.bench_duration'), value: `${(run.total.totalMs / 1000).toFixed(1)} s` },
     { label: t('views.metrics.bench_rate'), value: `${run.total.perSecond}/s` },
     ...(run.hosts.length > 1
@@ -142,10 +143,15 @@ function cameraRows(camera: ObjectBenchmarkResult) {
     { label: t('views.metrics.bench_input'), value: camera.input },
     { label: t('views.metrics.bench_calls'), value: `${camera.iterations}${camera.failed > 0 ? ` (+${camera.failed} ✗)` : ''}` },
     { label: t('views.metrics.bench_concurrency'), value: String(camera.concurrency) },
+    ...effectiveRow(camera.effectiveConcurrency),
     { label: t('views.metrics.bench_duration'), value: `${(camera.totalMs / 1000).toFixed(1)} s` },
     { label: t('views.metrics.bench_rate'), value: `${camera.perSecond}/s` },
     { label: t('views.metrics.bench_handler'), value: `${camera.handlerMs} ms` },
   ];
+}
+
+function effectiveRow(effectiveConcurrency?: number) {
+  return effectiveConcurrency === undefined ? [] : [{ label: t('views.metrics.bench_effective_concurrency'), value: String(effectiveConcurrency) }];
 }
 
 function toggle(camera: string) {

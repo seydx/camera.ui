@@ -32,6 +32,17 @@ export const WorkersRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
   });
 
   app.route({
+    url: '/frame-links',
+    method: 'GET',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
+    handler: workersController.getCrossHostFrameLinks.bind(workersController),
+    schema: {
+      tags: ['Workers'],
+      summary: 'List cameras whose frames go to a detection plugin on another host',
+    },
+  });
+
+  app.route({
     url: '/config',
     method: 'GET',
     preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],

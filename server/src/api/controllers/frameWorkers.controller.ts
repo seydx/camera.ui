@@ -112,6 +112,7 @@ export class FrameWorkersController {
 
       const done = measured.reduce((sum, result) => sum + result.iterations, 0);
       const handlerMs = measured.reduce((sum, result) => sum + result.handlerMs * result.iterations, 0);
+      const effective = measured.filter((result) => result.effectiveConcurrency !== undefined);
 
       return {
         hosts: await this.benchmarkHosts(measured, systems),
@@ -120,6 +121,8 @@ export class FrameWorkersController {
           iterations: done,
           failed: measured.reduce((sum, result) => sum + result.failed, 0),
           concurrency: concurrency * measured.length,
+          effectiveConcurrency:
+            effective.length === measured.length ? Math.round(effective.reduce((sum, result) => sum + (result.effectiveConcurrency ?? 0), 0) * 10) / 10 : undefined,
           totalMs: Math.max(...measured.map((result) => result.totalMs)),
           perSecond: Math.round(measured.reduce((sum, result) => sum + result.perSecond, 0) * 10) / 10,
           handlerMs: done > 0 ? Math.round((handlerMs / done) * 10) / 10 : 0,

@@ -13,7 +13,11 @@ function percent(part: number, whole: number): number {
   return whole > 0 ? Math.min(100, Math.round((part / whole) * 100)) : 0;
 }
 
-export function deriveWorkerPerf(snapshot: FrameWorkerPerfSnapshot, pluginName: (pluginId: string) => string | undefined): WorkerPerfStats {
+export function deriveWorkerPerf(
+  snapshot: FrameWorkerPerfSnapshot,
+  pluginName: (pluginId: string) => string | undefined,
+  isCrossHost: (pluginId: string) => boolean = () => false,
+): WorkerPerfStats {
   const objectFrames = snapshot.objectCount;
   const judgedFrames = snapshot.objectCount + snapshot.assistCount;
   const fallback: Partial<Record<string, number>> = {
@@ -37,7 +41,19 @@ export function deriveWorkerPerf(snapshot: FrameWorkerPerfSnapshot, pluginName: 
       inferenceMs: info.calls ? per(info.handlerMs ?? 0, info.calls) : (fallback[type] ?? 0),
       transportMs: info.calls ? per(info.transportMs ?? 0, info.calls) : 0,
       stamped: Boolean(info.calls),
+      crossHost: (snapshot.frameBytes?.[info.plugin] ?? 0) > 0 && isCrossHost(info.plugin),
     };
+  }
+
+  const seconds = snapshot.uptimeMs / 1000;
+  let frameBytes = 0;
+  let crossHostBytes = 0;
+  const crossHostPlugins: string[] = [];
+  for (const [pluginId, bytes] of Object.entries(snapshot.frameBytes ?? {})) {
+    frameBytes += bytes;
+    if (!isCrossHost(pluginId)) continue;
+    crossHostBytes += bytes;
+    crossHostPlugins.push(pluginName(pluginId) ?? pluginId);
   }
 
   const scaleMs = per(snapshot.scaleMs, objectFrames);
@@ -77,5 +93,8 @@ export function deriveWorkerPerf(snapshot: FrameWorkerPerfSnapshot, pluginName: 
     closeDelayMs: per(snapshot.closeDelayMs, snapshot.closeDelays),
     switches: snapshot.switches,
     minutes: Math.round(snapshot.uptimeMs / 60_000),
+    frameBytesPerSec: seconds > 0 ? Math.round(frameBytes / seconds) : 0,
+    crossHostBytesPerSec: seconds > 0 ? Math.round(crossHostBytes / seconds) : 0,
+    crossHostPlugins,
   };
 }

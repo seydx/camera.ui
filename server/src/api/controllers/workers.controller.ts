@@ -44,6 +44,14 @@ export class WorkersController {
     }
   }
 
+  public async getCrossHostFrameLinks(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      return reply.code(200).send(this.workerManager.getCrossHostFrameLinks());
+    } catch (error: any) {
+      return reply.code(500).send({ statusCode: 500, message: error.message });
+    }
+  }
+
   public async getConfig(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const configService = container.resolve<ConfigService>('configService');

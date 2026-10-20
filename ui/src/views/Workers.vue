@@ -108,7 +108,10 @@
 
               <Column field="name" :header="$t('views.workers.camera')" header-class="p-2 min-w-40" class="p-2 min-w-40">
                 <template #body="{ data }">
-                  <span class="font-bold text-color text-sm">{{ data.name }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-color text-sm">{{ data.name }}</span>
+                    <i-mdi:alert-circle v-if="frameLinkHints.has(data._id)" v-tooltip="frameLinkHints.get(data._id)" class="w-4 h-4 shrink-0 text-orange-500" />
+                  </div>
                 </template>
               </Column>
 
@@ -361,6 +364,7 @@ const { mutateAsync: removeWorkerMutation } = workersQuery.removeWorkerQuery();
 const { mutateAsync: assignPlugin } = workersQuery.assignPluginQuery();
 const { mutateAsync: unassignPlugin } = workersQuery.unassignPluginQuery();
 const { mutateAsync: patchWorkerMutation } = workersQuery.patchWorkerQuery();
+const { data: frameLinks } = workersQuery.getFrameLinksQuery(() => Boolean(workersConfig.value?.enabled) && workers.value.length > 0);
 const { data: apiInfo } = apiQuery.apiInfoQuery();
 
 const assignmentTablePt: PassThrough<DataTablePassThroughOptions> = {
@@ -400,6 +404,23 @@ const portChanged = computed(() => portDraft.value !== (workersConfig.value?.por
 const configDirty = computed(() => addressDraft.value !== (workersConfig.value?.address ?? '') || portChanged.value);
 const workerIds = computed(() => new Set(workers.value.map((w) => w.agentId)));
 const masterVersion = computed(() => updatesStore.targetServerVersion ?? apiInfo.value?.version);
+
+const camerasDirty = computed(() => cameras.value.some((camera) => !sameAssignment(cameraDraft(camera), savedAssignment(camera))));
+const pluginsDirty = computed(() => plugins.value.some((plugin) => !sameAssignment(pluginDraft(plugin), savedAssignment(plugin))));
+
+const frameLinkHints = computed(() => {
+  const hints = new Map<string, string>();
+  for (const link of frameLinks.value ?? []) {
+    const hint = t('views.workers.frame_link_hint', {
+      plugin: plugins.value.find((plugin) => plugin.pluginName === link.pluginName)?.displayName ?? link.pluginName,
+      pluginHost: hostName(link.pluginWorker),
+      types: link.sensorTypes.map((type) => t(`components.camera_options.sensor_type_${type}`)).join(', '),
+    });
+    const before = hints.get(link.cameraId);
+    hints.set(link.cameraId, before ? `${before} ${hint}` : hint);
+  }
+  return hints;
+});
 
 const pairingMinutesLeft = computed(() => {
   if (!pairing.value) return 0;

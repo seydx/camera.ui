@@ -1,10 +1,23 @@
 import { axiosInstance as api } from '..';
 
-import type { CamerasResponse, PatchWorkerInput, PatchWorkersConfigInput, WorkerInfo, WorkerPairingResponse, WorkersConfigResponse } from '@shared/types';
+import type {
+  CamerasResponse,
+  CrossHostFrameLink,
+  PatchWorkerInput,
+  PatchWorkersConfigInput,
+  WorkerInfo,
+  WorkerPairingResponse,
+  WorkersConfigResponse,
+} from '@shared/types';
 import type { AxiosResponse } from 'axios';
 
 export async function getWorkers(): Promise<WorkerInfo[]> {
   const response: AxiosResponse<WorkerInfo[]> = await api.get('/workers');
+  return response.data;
+}
+
+export async function getCrossHostFrameLinks(): Promise<CrossHostFrameLink[]> {
+  const response: AxiosResponse<CrossHostFrameLink[]> = await api.get('/workers/frame-links');
   return response.data;
 }
 
@@ -67,6 +80,17 @@ export class WorkersQuery {
     return useQueryEnhanced({
       queryKey: ['workersConfig'],
       queryFn: () => getWorkersConfig(),
+      refetchInterval: 15_000,
+      retry: false,
+    });
+  }
+
+  public getFrameLinksQuery(enabled: () => boolean) {
+    return useQueryEnhanced({
+      queryKey: ['workersFrameLinks'],
+      queryFn: () => getCrossHostFrameLinks(),
+      enabled,
+      refetchInterval: 10_000,
       retry: false,
     });
   }
@@ -157,7 +181,7 @@ export class WorkersQuery {
       onError: (error) => {
         this.toast.add({ severity: 'error', detail: error, life: 3000 });
       },
-      onSettled: () => this._queryClient.invalidateQueries({ queryKey: ['pluginsList'] }),
+      onSettled: () => this.invalidateAssignments('pluginsList'),
     });
   }
 
@@ -167,11 +191,15 @@ export class WorkersQuery {
       onError: (error) => {
         this.toast.add({ severity: 'error', detail: error, life: 3000 });
       },
-      onSettled: () => this._queryClient.invalidateQueries({ queryKey: ['pluginsList'] }),
+      onSettled: () => this.invalidateAssignments('pluginsList'),
     });
   }
 
-  private patchCameraWorker(cameraId: string, agentId: string | undefined): { rollback: () => void } {
+  private invalidateAssignments(listKey: 'camerasList' | 'pluginsList') {
+    return Promise.all([this._queryClient.invalidateQueries({ queryKey: [listKey] }), this._queryClient.invalidateQueries({ queryKey: ['workersFrameLinks'] })]);
+  }
+
+  private patchCameraWorker(cameraId: string, agentId: string | undefined, workerOnly?: boolean): { rollback: () => void } {
     const snapshots: [readonly unknown[], CamerasResponse | undefined][] = [];
     for (const [key, data] of this._queryClient.getQueriesData<CamerasResponse>({ queryKey: ['camerasList'] })) {
       if (!data?.result) continue;

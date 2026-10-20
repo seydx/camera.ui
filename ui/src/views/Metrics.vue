@@ -574,6 +574,14 @@ const analysisPerformanceHeaders = computed<TableHeader[]>(() => {
     },
     {
       type: 'category',
+      field: (item: ProcessInfo) => bitrate((item.perf?.crossHostBytesPerSec ?? 0) * 8),
+      name: t('views.metrics.col_cross_host'),
+      headerTooltip: t('views.metrics.info_cross_host'),
+      columnProps: analysisColumnProps,
+      tooltip: (item: ProcessInfo) => (item.perf?.crossHostPlugins?.length ? item.perf.crossHostPlugins.join(' · ') : undefined),
+    },
+    {
+      type: 'category',
       field: (item: ProcessInfo) => `${fps(item.perf?.analysedFps)} / ${fps(item.perf?.mainFps)}`,
       name: t('views.metrics.col_analysed'),
       headerTooltip: t('views.metrics.info_analysed'),

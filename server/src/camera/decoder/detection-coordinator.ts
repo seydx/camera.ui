@@ -467,6 +467,7 @@ export class DetectionCoordinator {
     });
     await Promise.all(workers);
     const totalMs = Date.now() - startedAt;
+    const effectiveConcurrency = handlerMs > 0 && totalMs > 0 ? Math.round((handlerMs / totalMs) * 10) / 10 : undefined;
 
     return {
       camera: '',
@@ -478,6 +479,7 @@ export class DetectionCoordinator {
       iterations: completed,
       failed,
       concurrency,
+      effectiveConcurrency,
       totalMs,
       perSecond: totalMs > 0 ? Math.round((completed / (totalMs / 1000)) * 10) / 10 : 0,
       handlerMs: completed > 0 ? Math.round((handlerMs / completed) * 10) / 10 : 0,

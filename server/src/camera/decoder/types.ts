@@ -68,6 +68,7 @@ export interface ObjectBenchmarkResult {
   iterations: number;
   failed: number;
   concurrency: number;
+  effectiveConcurrency?: number;
   totalMs: number;
   perSecond: number;
   handlerMs: number;
@@ -87,6 +88,7 @@ export interface ObjectBenchmarkRun {
     iterations: number;
     failed: number;
     concurrency: number;
+    effectiveConcurrency?: number;
     totalMs: number;
     perSecond: number;
     handlerMs: number;
@@ -175,4 +177,5 @@ export interface FrameWorkerPerfSnapshot extends FrameWorkerPerfCounters {
   mainStreamEnabled: boolean;
   frameAnalysis: boolean;
   detectors: Record<string, DetectorInfo>;
+  frameBytes?: Record<string, number>;
 }

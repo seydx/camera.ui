@@ -9,6 +9,7 @@ import { PluginsService } from '../api/services/plugins.service.js';
 import { updatesService } from '../api/services/updates.service.js';
 import { WorkersService } from '../api/services/workers.service.js';
 import { NamespaceManager, SUBJECT_TOKEN } from '../rpc/namespaces.js';
+import { DETECTION_SENSOR_TYPES, getAssignmentKey } from '../sensors/types.js';
 import { ConfigService } from '../services/config/index.js';
 import { setInstancePrefix } from '../utils/instance-id.js';
 import { describePlatformRequirement, isPlatformCompatible } from '../utils/platform.js';
@@ -450,16 +451,39 @@ export class WorkerManager {
     return new PluginsService().getPluginDbByName(pluginName)?.workerAgentId;
   }
 
-  public async updateWorker(agentId: string, version = ConfigService.RUNNING_VERSION): Promise<void> {
-    const worker = this.workers.get(agentId);
-    if (!worker?.online) {
-      throw new Error(`Worker ${agentId} is not online`);
+  public getCrossHostFrameLinks(): CrossHostFrameLink[] {
+    const registry = inject('sensorRegistry');
+    const pluginsService = new PluginsService();
+    const links = new Map<string, CrossHostFrameLink>();
+    // without workers.address every camera decodes here
+    const camerasLeave = Boolean(this.configService.config.workers?.address);
+
+    for (const camera of this.camerasService.list()) {
+      const cameraWorker = camerasLeave ? camera.workerAgentId : undefined;
+      for (const sensor of registry.getAllSensors({ connectedOnly: true, cameraId: camera._id })) {
+        if (!sensor.data.requiresFrames || !feedsFrames(camera, sensor.type, sensor.data.pluginId)) continue;
+        const plugin = pluginsService.getPluginDbById(sensor.data.pluginId);
+        if (!plugin || plugin.workerAgentId === cameraWorker) continue;
+
+        const key = `${camera._id}/${plugin.pluginName}`;
+        let link = links.get(key);
+        if (!link) {
+          link = {
+            cameraId: camera._id,
+            cameraName: camera.name,
+            cameraWorker,
+            pluginName: plugin.pluginName,
+            pluginWorker: plugin.workerAgentId,
+            sensorTypes: [],
+          };
+          links.set(key, link);
+        }
+        link.sensorTypes.push(sensor.type);
+      }
     }
 
-    // pre-2.1.0 agents don't send it and have no update handler to call
-    if (!worker.update) {
-      throw new Error(`Worker ${worker.name} runs ${worker.version ?? 'an older version'} and has to be updated once on its own machine`);
-    }
+    return Array.from(links.values());
+  }
 
   public getRemoteProcess(capability: WorkerCapability, id: string): { worker: string; system?: SystemInfo; sample?: WorkerProcessSample } | undefined {
     const host = this.owners.get(workloadKey(capability, id))?.host;

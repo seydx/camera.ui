@@ -22,6 +22,7 @@ export interface WorkerDetectorStats {
   inferenceMs: number;
   transportMs: number;
   stamped: boolean;
+  crossHost: boolean;
 }
 
 export interface WorkerPerfStats {
@@ -57,6 +58,9 @@ export interface WorkerPerfStats {
   closeDelayMs: number;
   switches: number;
   minutes: number;
+  frameBytesPerSec: number;
+  crossHostBytesPerSec: number;
+  crossHostPlugins: string[];
 }
 
 export interface ProcessInfo {

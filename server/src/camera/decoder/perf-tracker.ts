@@ -59,6 +59,7 @@ export class PerfTracker {
   // stamped by the plugin itself, per sensor type: the wall-clock counters above
   // still hold the whole round trip
   public readonly detectors = new Map<string, DetectorTiming>();
+  public readonly frameBytes = new Map<string, number>();
 
   private readonly enabled = Boolean(process.env.CAMERA_UI_DEBUG_DIR);
   private cpu = process.cpuUsage();
@@ -71,6 +72,7 @@ export class PerfTracker {
       uptimeMs: Date.now() - this.startedAt,
       ticks: this.idleTicks + this.activeTicks,
       timings: Object.fromEntries(this.detectors),
+      frameBytes: Object.fromEntries(this.frameBytes),
       ...this.counters(),
     };
   }
@@ -83,11 +85,16 @@ export class PerfTracker {
     this.detectors.set(sensorType, entry);
   }
 
+  public trackFrameBytes(pluginId: string, bytes: number): void {
+    this.frameBytes.set(pluginId, (this.frameBytes.get(pluginId) ?? 0) + bytes);
+  }
+
   public reset(): void {
     for (const key of Object.keys(this.counters()) as (keyof FrameWorkerPerfCounters)[]) {
       this[key] = 0;
     }
     this.detectors.clear();
+    this.frameBytes.clear();
     this.startedAt = Date.now();
     this.since = Date.now();
     this.cpu = process.cpuUsage();
