@@ -175,7 +175,11 @@ export class Server {
     this.app = Fastify(this.serverOptions);
     this.internalApp = Fastify({ bodyLimit: 1e6, logController: new LogController({ disableRequestLogging: true }) });
 
-    this.app.setValidatorCompiler(validatorCompiler);
+    // fastify validates a missing body as null, which an optional body schema rejects
+    this.app.setValidatorCompiler((route: Parameters<typeof validatorCompiler>[0]) => {
+      const validate = validatorCompiler(route);
+      return route.httpPart === 'body' ? (data: unknown) => validate(data ?? undefined) : validate;
+    });
     this.app.setSerializerCompiler(serializerCompiler);
     this.app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_req, body, done) => {
       done(null, (body as Buffer).length > 0 ? body : undefined);
