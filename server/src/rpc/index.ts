@@ -83,8 +83,10 @@ export class ProxyServer {
       this.server.setClusterListenerEnabled(true);
 
       const credentials = new WorkersService().listCredentials();
+      // workers find the new server only while this one stays silent
+      const movedAway = isMovedAway(readMoveRecord(configService.MOVE_FILE));
       this.server.setLeafNodeConfig({
-        enabled: !!workersConfig?.enabled,
+        enabled: !!workersConfig?.enabled && !movedAway,
         host: '0.0.0.0',
         port: workersConfig?.port ?? 7422,
         users: credentials.map((cred) => ({ agentId: cred.agentId, user: cred.user, password: cred.secret })),

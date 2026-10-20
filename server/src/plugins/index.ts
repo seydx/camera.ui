@@ -334,6 +334,53 @@ export class PluginManager {
     await plugin?.worker.teardown();
   }
 
+  public async loadInstalledPlugins(): Promise<void> {
+    const searchPath = this.configService.PLUGINS_INSTALL_PATH;
+
+    const relativeinstallPaths = readdirSync(searchPath).filter((relativePath) => {
+      try {
+        return statSync(join(searchPath, relativePath)).isDirectory();
+      } catch (error: any) {
+        this.logger.debug(`Ignoring path ${resolve(searchPath, relativePath)}`, error);
+        return false;
+      }
+    });
+
+    for (const scopeDirectory of [...relativeinstallPaths].filter((path) => path.startsWith('@'))) {
+      const index = relativeinstallPaths.indexOf(scopeDirectory);
+      relativeinstallPaths.splice(index, 1);
+      const absolutePath = resolve(searchPath, scopeDirectory);
+
+      for (const name of readdirSync(absolutePath)
+        .filter((name) => PluginManager.isQualifiedPluginIdentifier(name))
+        .filter((name) => {
+          try {
+            return statSync(join(absolutePath, name)).isDirectory();
+          } catch (error: any) {
+            this.logger.debug(`Ignoring path ${resolve(absolutePath, name)} - ${error.message}`);
+            return false;
+          }
+        }))
+        relativeinstallPaths.push(join(scopeDirectory, name));
+    }
+
+    relativeinstallPaths.forEach((pluginIdentifier) => {
+      if (PluginManager.isQualifiedPluginIdentifier(pluginIdentifier)) {
+        this.pluginIdentifiers.add(pluginIdentifier);
+      }
+    });
+
+    for (const pluginIdentifier of this.pluginIdentifiers) {
+      try {
+        const absolutePath = join(searchPath, pluginIdentifier);
+        await this.loadPlugin(absolutePath);
+      } catch (error: any) {
+        this.logger.warn(error.message);
+        continue;
+      }
+    }
+  }
+
   public async initializePlugins(): Promise<void> {
     sendIPCMessage({
       type: 'START_OUTPUT',

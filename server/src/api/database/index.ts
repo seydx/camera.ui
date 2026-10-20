@@ -287,6 +287,7 @@ export class Database {
     const streams = this.configService.go2rtcConfig.streams;
     const preload = this.configService.go2rtcConfig.preload;
     const validSourceNames = new Set<string>();
+    const movedAway = isMovedAway(readMoveRecord(this.configService.MOVE_FILE));
 
     for (const { value: camera } of this.camerasDB.getRange()) {
       for (const source of camera.sources) {
@@ -296,8 +297,7 @@ export class Database {
         source.urls = generatedSourceUrls(camera._id, port, source);
         streams[sourceName] = go2rtcStreamUrls(sourceName, source, source.urls, this.configService.STREAM_URL_TOKEN);
 
-        // a disabled camera must not be preloaded by go2rtc at its own startup
-        if (source.hotMode && !camera.disabled) {
+        if (source.hotMode && !camera.disabled && !movedAway) {
           preload[sourceName] = 'video&audio&microphone';
         } else {
           delete preload[sourceName];

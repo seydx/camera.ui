@@ -149,6 +149,7 @@
 <script setup lang="ts">
 import { ErrorMessage, Field, Form } from 'vee-validate';
 
+import { movedAwayStateFn } from '@/api/routes/backup.js';
 import { CLOUD_SERVICE_URL } from '@/common/constants.js';
 import { extractErrorMessage, getImageUrl } from '@/common/utils.js';
 import CuiAuthCard from '@/components/CuiAuthCard/CuiAuthCard.vue';

@@ -317,13 +317,27 @@ export function useBackupRestore() {
     lastError.value = '';
 
     try {
-      const fd = new FormData();
-      fd.append('upload', file);
+      pull.value = await startMovePullFn(code, address);
+      writeSession(MOVE_SESSION_KEY, true);
+      pollPull();
+    } catch (error) {
+      fail(error);
+    }
+  }
 
-      const ls = await restoreBackupFn(fd, (p) => {
-        uploadPercent.value = p;
-        if (p >= 100) phase.value = 'restoring';
-      });
+  async function cancelFetch(): Promise<void> {
+    busy.value = true;
+    await cancelMovePullFn().catch(() => {});
+    removeSession(MOVE_SESSION_KEY);
+    reset();
+  }
+
+  function showStaged(current: RestoreStatus): void {
+    if (isRestoreActive.value) return;
+
+    status.value = current;
+    phase.value = 'ready';
+  }
 
   async function confirm(mode: RestoreMode): Promise<void> {
     busy.value = true;

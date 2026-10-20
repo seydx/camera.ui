@@ -49,7 +49,7 @@
                     <div v-if="isMaster" class="flex flex-col items-center gap-3 w-full">
                       <p class="text-center text-muted max-w-[375px]">{{ $t('views.firststeps.start_message') }}</p>
 
-                      <div class="flex flex-row items-center justify-center gap-2">
+                      <div class="flex flex-row flex-wrap items-center justify-center gap-2">
                         <Button class="cui-button-medium" :loading="isLoading" :label="$t('views.firststeps.new_installation')" @click="nextStep" />
                         <Button
                           class="cui-button-medium"
@@ -58,9 +58,18 @@
                           :label="$t('views.firststeps.from_backup')"
                           @click="triggerFileInput"
                         />
+                        <Button
+                          class="cui-button-medium"
+                          severity="secondary"
+                          :loading="isLoading"
+                          :label="$t('views.firststeps.from_server')"
+                          @click="showMoveForm = !showMoveForm"
+                        />
                       </div>
 
-                      <input ref="backupFileInputRef" type="file" accept="application/gzip, .tar, .tar.gz" class="hidden" @change="handleBackupFileSelect" />
+                      <CuiMoveCodeForm v-if="showMoveForm" class="max-w-[375px]" />
+
+                      <input ref="backupFileInputRef" type="file" accept=".cuibackup, application/gzip, .tar, .tar.gz" class="hidden" @change="handleBackupFileSelect" />
 
                       <Message v-if="restoreError" severity="error" variant="simple" size="small" class="max-w-[375px] text-center select-text">
                         {{ restoreError }}
@@ -138,7 +147,7 @@ const steps = ref(['welcome', 'appearance', 'account', 'finish']);
 const accountFormRef = useTemplateRef<InstanceType<typeof SettingsAccount>>('accountFormRef');
 const backupFileInputRef = useTemplateRef('backupFileInputRef');
 const file = shallowRef<File>();
-const uploadedFile = shallowRef<File>();
+const showMoveForm = ref(false);
 
 const backupRestore = useBackupRestore();
 const restoreError = backupRestore.lastError;

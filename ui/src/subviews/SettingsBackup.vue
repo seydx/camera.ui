@@ -7,7 +7,120 @@
           <template #content>
             <div class="flex flex-col gap-6">
               <span class="text-sm">{{ $t('views.settings.create_backup_info') }}</span>
-              <Button :loading="isLoading" class="ml-auto cui-button-medium" :label="$t('components.form.button.download_backup_archive')" @click="downloadBackup" />
+
+              <div v-if="job?.state === 'running'" class="flex flex-col gap-2">
+                <span class="text-xs text-muted">{{ jobText }}</span>
+                <ProgressBar :mode="jobPercent === null ? 'indeterminate' : 'determinate'" :value="jobPercent ?? 0" :show-value="false" class="h-2" />
+              </div>
+
+              <div class="flex items-center gap-4">
+                <span class="text-xs text-muted">{{ lastBackupText }}</span>
+                <Button
+                  :loading="isLoading || job?.state === 'running'"
+                  class="ml-auto shrink-0 cui-button-medium"
+                  :label="$t('components.form.button.download_backup_archive')"
+                  @click="downloadBackup"
+                />
+              </div>
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <div v-if="backupKey">
+        <span class="card-title">{{ $t('views.settings.backup_key') }}</span>
+        <Card class="cui-card">
+          <template #content>
+            <div class="flex flex-col gap-6">
+              <span class="text-sm">{{ $t('views.settings.backup_key_info') }}</span>
+
+              <div class="flex flex-col field-gap">
+                <InputGroup>
+                  <InputText :model-value="backupKey.key" readonly type="text" class="font-mono" />
+                  <InputGroupAddon>
+                    <CuiActionButton
+                      :action-text="$t('views.settings.backup_key_copied')"
+                      :icon="CopyIcon"
+                      :button-props="{
+                        severity: 'secondary',
+                        text: true,
+                      }"
+                      @action="copyToClipboard(backupKey.key)"
+                    />
+                  </InputGroupAddon>
+                </InputGroup>
+                <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
+                  {{
+                    backupKey.confirmedAt
+                      ? $t('views.settings.backup_key_saved', { date: new Date(backupKey.confirmedAt).toLocaleDateString() })
+                      : $t('views.settings.backup_key_not_saved')
+                  }}
+                </Message>
+              </div>
+
+              <div class="flex gap-2 ml-auto">
+                <Button severity="secondary" outlined class="cui-button-medium" :label="$t('views.settings.backup_key_save')" @click="saveKeyFile" />
+                <Button v-if="!backupKey.confirmedAt" class="cui-button-medium" :label="$t('views.settings.backup_key_dialog_confirm')" @click="confirmKey" />
+              </div>
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <div>
+        <span class="card-title">{{ $t('views.settings.move_server') }}</span>
+        <Card class="cui-card">
+          <template #content>
+            <div class="flex flex-col gap-6">
+              <template v-if="move && move.state !== 'offered' && move.state !== 'failed'">
+                <span class="text-sm">{{ moveText }}</span>
+                <ProgressBar v-if="move.transferred !== undefined" :value="moveSentPercent" />
+                <Button
+                  severity="secondary"
+                  outlined
+                  class="ml-auto cui-button-medium"
+                  :label="move.state === 'sent' ? $t('components.form.button.keep_running_here') : $t('components.form.button.cancel_move')"
+                  @click="confirmRunHere"
+                />
+              </template>
+
+              <template v-else>
+                <span class="text-sm">{{ $t('views.settings.move_server_info') }}</span>
+                <span v-if="move?.state === 'failed'" class="text-xs text-muted select-text">{{ move.error }}</span>
+
+                <div v-if="move?.state === 'offered' && moveCode" class="flex flex-col field-gap">
+                  <label class="cui-label">{{ $t('restore.move_code') }}</label>
+                  <InputGroup>
+                    <InputText :model-value="moveCode" readonly type="text" class="font-mono" />
+                    <InputGroupAddon>
+                      <CuiActionButton
+                        :action-text="$t('views.settings.move_code_copied')"
+                        :icon="CopyIcon"
+                        :button-props="{
+                          severity: 'secondary',
+                          text: true,
+                        }"
+                        @action="copyToClipboard(moveCode)"
+                      />
+                    </InputGroupAddon>
+                  </InputGroup>
+                  <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">
+                    {{ $t('views.settings.move_code_info') }} {{ $t('views.settings.move_code_expires', { time: moveExpiry }) }}
+                  </Message>
+                </div>
+                <span v-else-if="move?.state === 'offered'" class="text-xs text-muted">{{ $t('views.settings.move_code_hidden', { time: moveExpiry }) }}</span>
+
+                <div class="flex gap-2 ml-auto">
+                  <Button v-if="move?.state === 'offered'" severity="secondary" text :label="$t('components.form.button.withdraw')" @click="withdrawMove" />
+                  <Button
+                    :loading="moveBusy"
+                    :disabled="isRestoreActive"
+                    class="cui-button-medium"
+                    :label="move?.state === 'offered' ? $t('components.form.button.new_move_code') : $t('components.form.button.create_move_code')"
+                    @click="createMoveCode"
+                  />
+                </div>
+              </template>
             </div>
           </template>
         </Card>
@@ -276,7 +389,16 @@
 </template>
 
 <script setup lang="ts">
+import CopyIcon from '~icons/fluent/copy-16-filled';
+
 import {
+  backupDownloadSourceFn,
+  backupJobFn,
+  backupKeyFn,
+  cancelMoveFn,
+  cancelRestoreFn,
+  confirmBackupKeyFn,
+  createMoveFn,
   deleteScheduledBackupFn,
   discardRestorePluginFn,
   getBackupSchedulerFn,
@@ -290,7 +412,23 @@ import { extractErrorMessage } from '@/common/utils.js';
 import { readThemeStorage } from '@/stores/theme.js';
 
 import type CuiUploadFiles from '@/components/CuiUploadFIles/CuiUploadFiles.vue';
-import type { DBBackupSchedulerLastRun, DBBackupSchedulerSettings, ScheduledBackupEntry, UiLocalStorage, UserLanguage } from '@shared/types';
+import type {
+  BackupJob,
+  BackupKeyInfo,
+  DBBackupSchedulerLastRun,
+  DBBackupSchedulerSettings,
+  MoveState,
+  MoveStatus,
+  RestoreOverview,
+  ScheduledBackupEntry,
+  UiLocalStorage,
+  UserLanguage,
+} from '@shared/types';
+
+const MOVE_PENDING_STATES = new Set<MoveState>(['offered', 'preparing', 'packing', 'ready']);
+const MOVE_POLL_INTERVAL_MS = 2000;
+const JOB_POLL_INTERVAL_MS = 1000;
+const JOB_POLL_ATTEMPTS = 10;
 
 const dialog = useCuiDialog();
 const toast = useCuiToast();
@@ -309,6 +447,12 @@ const downloadingBackup = ref<string | null>(null);
 const scheduledBackups = ref<ScheduledBackupEntry[]>([]);
 const defaultDestination = ref('');
 const lastRun = ref<DBBackupSchedulerLastRun>();
+const restoreOverview = ref<RestoreOverview>();
+const pluginBusy = ref<string | null>(null);
+const move = ref<MoveStatus | null>(null);
+const moveCode = ref('');
+const moveBusy = ref(false);
+let movePollTimer: ReturnType<typeof setTimeout> | undefined;
 const schedulerForm = reactive<Omit<DBBackupSchedulerSettings, 'lastRun'>>({
   enabled: false,
   interval: 'daily',
@@ -449,16 +593,102 @@ async function loadRestore(): Promise<void> {
   }
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = bytes;
-  let unit = -1;
-  do {
-    value /= 1024;
-    unit++;
-  } while (value >= 1024 && unit < units.length - 1);
-  return `${value.toFixed(1)} ${units[unit]}`;
+async function discardStaged(): Promise<void> {
+  try {
+    await cancelRestoreFn();
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  }
+  await loadRestore();
+}
+
+async function retryPlugin(name: string): Promise<void> {
+  pluginBusy.value = name;
+  try {
+    await retryRestorePluginFn(name);
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 10000 });
+  } finally {
+    pluginBusy.value = null;
+    await loadRestore();
+  }
+}
+
+async function discardPlugin(name: string): Promise<void> {
+  pluginBusy.value = name;
+  try {
+    await discardRestorePluginFn(name);
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  } finally {
+    pluginBusy.value = null;
+    await loadRestore();
+  }
+}
+
+function confirmUndo(): void {
+  dialog.openTextDialog({
+    data: {
+      title: t('components.dialog.title.confirm'),
+      contentText: t('components.dialog.message.confirm_undo_restore'),
+      confirmText: t('components.form.button.undo_restore'),
+    },
+    onConfirm: () => backupRestore.undo(),
+  });
+}
+
+async function loadMove(): Promise<void> {
+  clearTimeout(movePollTimer);
+  try {
+    move.value = await moveStatusFn();
+  } catch {
+    // the server restarts for the move, the next round asks again
+  }
+
+  if (move.value?.state !== 'offered') moveCode.value = '';
+  if (move.value && MOVE_PENDING_STATES.has(move.value.state)) movePollTimer = setTimeout(loadMove, MOVE_POLL_INTERVAL_MS);
+}
+
+async function createMoveCode(): Promise<void> {
+  moveBusy.value = true;
+  try {
+    const offer = await createMoveFn([location.host]);
+    move.value = offer.status;
+    moveCode.value = offer.code;
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 10000 });
+  } finally {
+    moveBusy.value = false;
+  }
+}
+
+async function withdrawMove(): Promise<void> {
+  try {
+    const { restart } = await cancelMoveFn();
+    if (restart) beginServerRestart();
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  }
+  moveCode.value = '';
+  await loadMove();
+}
+
+function confirmRunHere(): void {
+  const sent = move.value?.state === 'sent';
+  dialog.openTextDialog({
+    data: {
+      title: t('components.dialog.title.confirm'),
+      contentText: sent ? t('components.dialog.message.confirm_keep_running_here') : t('components.dialog.message.confirm_cancel_move'),
+      confirmText: sent ? t('components.form.button.keep_running_here') : t('components.form.button.cancel_move'),
+    },
+    onConfirm: withdrawMove,
+  });
+}
+
+function backupDetails(backup: ScheduledBackupEntry): string {
+  const details = [new Date(backup.timestamp).toLocaleString(), formatBytes(backup.size)];
+  if (backup.encrypted) details.push(backup.ownKey === false ? t('views.settings.backup_foreign_key') : t('views.settings.backup_encrypted'));
+  return details.join(' · ');
 }
 
 async function loadScheduler(): Promise<void> {

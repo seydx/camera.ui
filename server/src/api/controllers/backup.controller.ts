@@ -1,11 +1,13 @@
 import { createReadStream, readFile } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { container } from 'tsyringe';
+import { pipeline, Transform } from 'node:stream';
 
 import { inject } from '../../container.js';
 import { RestoreError } from '../../services/config/restore.js';
 import { BackupService } from '../services/backup.service.js';
+import { MovePullService } from '../services/move-pull.service.js';
+import { MoveService } from '../services/move.service.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { LoggerService } from '../../services/logger/index.js';
@@ -35,12 +37,16 @@ const BACKUP_MIME_TYPE = 'application/gzip';
 export class BackupController {
   private logger: LoggerService;
   private service: BackupService;
+  private move: MoveService;
+  private movePull: MovePullService;
   private scheduler: BackupSchedulerService;
 
   constructor(private app: FastifyInstance) {
     this.logger = container.resolve<LoggerService>('logger');
     this.scheduler = container.resolve<BackupSchedulerService>('backupScheduler');
     this.service = new BackupService();
+    this.move = new MoveService();
+    this.movePull = new MovePullService();
   }
 
   public async download(req: FastifyRequest<AuthLoginRequest & BackupCreateRequest>, reply: FastifyReply): Promise<FastifyReply | void> {
@@ -277,6 +283,55 @@ export class BackupController {
           callback(null, chunk);
         },
       });
+      reply.raw.once('close', () => archive.done(reply.raw.writableFinished || transferred === archive.size));
+
+      reply.header('Content-Type', BACKUP_MIME_TYPE);
+      reply.header('Content-Length', archive.size);
+      return reply.send(pipeline(createReadStream(archive.path), counter, () => {}));
+    } catch (error) {
+      return this.fail(reply, error);
+    }
+  }
+
+  public async movePeerReceived(req: FastifyRequest<MovePeerRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      return reply.code(200).send(this.move.confirmReceived(req.body.secret));
+    } catch (error) {
+      return this.fail(reply, error);
+    }
+  }
+
+  public async movePeerAbandon(req: FastifyRequest<MovePeerRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      if (this.move.abandon(req.body.secret)) this.restartWhenReady(req.system);
+      return reply.code(204).send();
+    } catch (error) {
+      return this.fail(reply, error);
+    }
+  }
+
+  public async startMovePull(req: FastifyRequest<AuthLoginRequest & MovePullRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      return reply.code(202).send(this.movePull.start(req.body.code, req.body.address));
+    } catch (error) {
+      return this.fail(reply, error);
+    }
+  }
+
+  public async movePullStatus(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    const status = this.movePull.status();
+    if (!status) {
+      return reply.code(404).send({ statusCode: 404, message: 'No move' });
+    }
+    return reply.code(200).send(status);
+  }
+
+  public async cancelMovePull(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      await this.movePull.cancel();
+      return reply.code(204).send();
+    } catch (error) {
+      return this.fail(reply, error);
     }
   }
 

@@ -178,6 +178,7 @@ declare module 'vue' {
     CuiMarkdownPanel: typeof import('./../components/CuiMarkdownPanel/CuiMarkdownPanel.vue')['default']
     CuiMeasurementInfo: typeof import('./../components/CuiMeasurementInfo/CuiMeasurementInfo.vue')['default']
     CuiMenu: typeof import('./../components/CuiMenu/CuiMenu.vue')['default']
+    CuiMoveCodeForm: typeof import('./../components/CuiMoveCodeForm/CuiMoveCodeForm.vue')['default']
     CuiNavbar: typeof import('./../components/CuiNavbar/CuiNavbar.vue')['default']
     CuiNavbarEditGroupLabel: typeof import('./../components/CuiNavbar/CuiNavbarEditGroupLabel.vue')['default']
     CuiNavbarEditItem: typeof import('./../components/CuiNavbar/CuiNavbarEditItem.vue')['default']
