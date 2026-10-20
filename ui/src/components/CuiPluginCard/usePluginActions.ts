@@ -72,6 +72,7 @@ export function usePluginActions(plugin: Ref<CameraUiPlugin>) {
       pluginsSocket.status.value === PLUGIN_STATUS.DISABLED ||
       pluginsSocket.status.value === PLUGIN_STATUS.ERROR ||
       pluginsSocket.status.value === PLUGIN_STATUS.UNKNOWN ||
+      pluginsSocket.status.value === PLUGIN_STATUS.INCOMPATIBLE ||
       pluginsSocket.status.value === PLUGIN_STATUS.UPDATE_REQUIRED ||
       pluginsSocket.status.value === PLUGIN_STATUS.SERVER_UPDATE_REQUIRED,
   );

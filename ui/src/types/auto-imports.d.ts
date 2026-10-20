@@ -347,6 +347,7 @@ declare global {
   const usePlacementLabel: typeof import('../composables/usePlacementLabel').usePlacementLabel
   const usePlacementSocket: typeof import('../composables/sockets/usePlacementSocket').usePlacementSocket
   const usePlugin: typeof import('@camera.ui/browser').usePlugin
+  const usePluginStatuses: typeof import('../composables/sockets/usePluginsSocket').usePluginStatuses
   const usePluginUpdates: typeof import('../composables/usePluginUpdates').usePluginUpdates
   const usePluginsSocket: typeof import('../composables/sockets/usePluginsSocket').usePluginsSocket
   const usePointer: typeof import('@vueuse/core').usePointer
@@ -934,6 +935,7 @@ declare module 'vue' {
     readonly usePlacementLabel: UnwrapRef<typeof import('../composables/usePlacementLabel')['usePlacementLabel']>
     readonly usePlacementSocket: UnwrapRef<typeof import('../composables/sockets/usePlacementSocket')['usePlacementSocket']>
     readonly usePlugin: UnwrapRef<typeof import('@camera.ui/browser')['usePlugin']>
+    readonly usePluginStatuses: UnwrapRef<typeof import('../composables/sockets/usePluginsSocket')['usePluginStatuses']>
     readonly usePluginUpdates: UnwrapRef<typeof import('../composables/usePluginUpdates')['usePluginUpdates']>
     readonly usePluginsSocket: UnwrapRef<typeof import('../composables/sockets/usePluginsSocket')['usePluginsSocket']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>

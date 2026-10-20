@@ -124,6 +124,7 @@ class SensorConnectedChangedEvent(TypedDict):
     sensorId: str
     sensorType: SensorType
     connected: bool
+    assignedCameraIds: NotRequired[list[str]]
 
 
 class SensorCapabilitiesChangedEvent(TypedDict):

@@ -931,8 +931,12 @@ function getPlacement(type: 'system' | 'core' | 'frameworker' | 'plugins', name:
 function getStatusColor(status: RUNTIME_STATUS | PLUGIN_STATUS): string {
   switch (status) {
     case PLUGIN_STATUS.ERROR:
+    case PLUGIN_STATUS.INCOMPATIBLE:
     case RUNTIME_STATUS.ERROR:
       return '#9d5752';
+    case PLUGIN_STATUS.UPDATE_REQUIRED:
+    case PLUGIN_STATUS.SERVER_UPDATE_REQUIRED:
+      return 'orange';
     case RUNTIME_STATUS.STOPPED:
     case PLUGIN_STATUS.STOPPED:
     case PLUGIN_STATUS.STOPPING:
@@ -976,6 +980,12 @@ function getStatusText(status: RUNTIME_STATUS | PLUGIN_STATUS): string {
       return t('components.process_table.status_started');
     case PLUGIN_STATUS.DISABLED:
       return t('components.process_table.status_disabled');
+    case PLUGIN_STATUS.INCOMPATIBLE:
+      return t('components.process_table.status_incompatible');
+    case PLUGIN_STATUS.UPDATE_REQUIRED:
+      return t('components.process_table.status_update_required');
+    case PLUGIN_STATUS.SERVER_UPDATE_REQUIRED:
+      return t('components.process_table.status_server_update_required');
     case PLUGIN_STATUS.UNKNOWN:
     case RUNTIME_STATUS.UNKNOWN:
       return t('components.process_table.status_unknown');

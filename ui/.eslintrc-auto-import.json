@@ -430,6 +430,7 @@
     "usePlacementLabel": true,
     "usePlacementSocket": true,
     "usePlugin": true,
+    "usePluginStatuses": true,
     "usePluginUpdates": true,
     "usePluginsSocket": true,
     "usePointer": true,

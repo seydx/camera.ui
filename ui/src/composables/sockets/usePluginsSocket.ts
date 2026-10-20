@@ -177,6 +177,40 @@ export function usePluginsSocket(pluginName: string) {
   };
 }
 
+export function usePluginStatuses(pluginNames: MaybeRefOrGetter<string[]>) {
+  const tracked = shallowReactive(new Map<string, { scope: ReturnType<typeof effectScope>; socket: ReturnType<typeof usePluginsSocket> }>());
+
+  watch(
+    () => [...new Set(toValue(pluginNames))],
+    (names) => {
+      for (const [name, entry] of tracked) {
+        if (names.includes(name)) continue;
+        entry.scope.stop();
+        tracked.delete(name);
+      }
+      for (const name of names) {
+        if (tracked.has(name)) continue;
+        // detached: a scope made in a watch callback has no owner that would stop it
+        const scope = effectScope(true);
+        const socket = scope.run(() => usePluginsSocket(name))!;
+        socket.connect();
+        tracked.set(name, { scope, socket });
+      }
+    },
+    { immediate: true },
+  );
+
+  tryOnScopeDispose(() => {
+    for (const entry of tracked.values()) entry.scope.stop();
+    tracked.clear();
+  });
+
+  return {
+    status: (pluginName: string) => tracked.get(pluginName)?.socket.status.value,
+    placement: (pluginName: string) => tracked.get(pluginName)?.socket.placement.value,
+  };
+}
+
 export function resetPluginsSocket(): void {
   for (const timer of pluginDisposalTimers.values()) clearTimeout(timer);
   pluginDisposalTimers.clear();

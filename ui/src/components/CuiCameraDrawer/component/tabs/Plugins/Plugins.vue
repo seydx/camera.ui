@@ -23,8 +23,9 @@
           <CuiChip
             v-for="extension in cameraTabPlugins"
             :key="extension.pluginName"
+            v-tooltip.top="pluginChipTooltip(extension.pluginName)"
             size="small"
-            :disabled="!isPluginEnabled(extension.pluginName) || loading"
+            :disabled="isPluginChipDisabled(extension.pluginName, selectedPlugin)"
             :value="extension.pluginName"
           >
             {{ extension.displayName }}
@@ -62,8 +63,9 @@
           <CuiChip
             v-for="extension in hubExtensions"
             :key="extension.pluginName"
+            v-tooltip.top="pluginChipTooltip(extension.pluginName)"
             size="small"
-            :disabled="!isPluginEnabled(extension.pluginName) || loading"
+            :disabled="isPluginChipDisabled(extension.pluginName, selectedHubPlugin)"
             :value="extension.pluginName"
           >
             {{ extension.displayName }}
@@ -112,9 +114,10 @@
             <CuiChip
               v-for="extension in detectionPluginsForType"
               :key="extension.pluginName"
+              v-tooltip.top="pluginChipTooltip(extension.pluginName)"
               size="small"
               filter
-              :disabled="!isPluginEnabled(extension.pluginName) || loading"
+              :disabled="isPluginChipDisabled(extension.pluginName, selectedDetectionPlugin)"
               :value="extension.pluginName"
             >
               {{ extension.displayName }}
@@ -141,7 +144,14 @@
           <SectionLabel :label="$t('components.camera_options.sensors')" :loading="detectionSensorConfigLoading" />
 
           <CuiChipGroup v-if="detectionSensorsForType.length" v-model="selectedDetectionSensorId" mandatory class="min-h-[30px]">
-            <CuiChip v-for="sensor in detectionSensorsForType" :key="sensor.id" size="small" :value="sensor.id">
+            <CuiChip
+              v-for="sensor in detectionSensorsForType"
+              :key="sensor.id"
+              v-tooltip.top="sensorChipTooltip(sensor)"
+              size="small"
+              :disabled="!sensor.connected.value && sensor.id !== selectedDetectionSensorId"
+              :value="sensor.id"
+            >
               {{ sensor.displayName.value }}
             </CuiChip>
           </CuiChipGroup>
@@ -173,9 +183,10 @@
             <CuiChip
               v-for="extension in objectAssistPlugins"
               :key="extension.pluginName"
+              v-tooltip.top="pluginChipTooltip(extension.pluginName)"
               size="small"
               filter
-              :disabled="!isPluginEnabled(extension.pluginName) || loading"
+              :disabled="isPluginChipDisabled(extension.pluginName, selectedObjectAssistPlugin)"
               :value="extension.pluginName"
             >
               {{ extension.displayName }}
@@ -224,9 +235,10 @@
             <CuiChip
               v-for="extension in corePluginsForType"
               :key="extension.pluginName"
+              v-tooltip.top="pluginChipTooltip(extension.pluginName)"
               size="small"
               filter
-              :disabled="!isPluginEnabled(extension.pluginName) || loading"
+              :disabled="isPluginChipDisabled(extension.pluginName, selectedCorePlugin)"
               :value="extension.pluginName"
             >
               {{ extension.displayName }}
@@ -253,7 +265,14 @@
           <SectionLabel :label="$t('components.camera_options.sensors')" :loading="coreSensorConfigLoading" />
 
           <CuiChipGroup v-if="coreSensorsForType.length" v-model="selectedCoreSensorId" mandatory class="min-h-[30px]">
-            <CuiChip v-for="sensor in coreSensorsForType" :key="sensor.id" size="small" :value="sensor.id">
+            <CuiChip
+              v-for="sensor in coreSensorsForType"
+              :key="sensor.id"
+              v-tooltip.top="sensorChipTooltip(sensor)"
+              size="small"
+              :disabled="!sensor.connected.value && sensor.id !== selectedCoreSensorId"
+              :value="sensor.id"
+            >
               {{ sensor.displayName.value }}
             </CuiChip>
           </CuiChipGroup>
@@ -308,9 +327,10 @@
             <CuiChip
               v-for="extension in accessoryPluginsForType"
               :key="extension.pluginName"
+              v-tooltip.top="pluginChipTooltip(extension.pluginName)"
               size="small"
               filter
-              :disabled="!isPluginEnabled(extension.pluginName) || loading"
+              :disabled="isPluginChipDisabled(extension.pluginName, assignedAccessoryPlugins)"
               :value="extension.pluginName"
             >
               {{ extension.displayName }}
@@ -338,7 +358,14 @@
         <SectionLabel :label="$t('components.camera_options.sensors')" :loading="sensorConfigLoading" />
 
         <CuiChipGroup v-if="accessorySensorsForType.length" v-model="selectedAccessorySensorId" mandatory class="min-h-[30px]">
-          <CuiChip v-for="sensor in accessorySensorsForType" :key="sensor.id" size="small" :value="sensor.id">
+          <CuiChip
+            v-for="sensor in accessorySensorsForType"
+            :key="sensor.id"
+            v-tooltip.top="sensorChipTooltip(sensor)"
+            size="small"
+            :disabled="!sensor.connected.value && sensor.id !== selectedAccessorySensorId"
+            :value="sensor.id"
+          >
             {{ sensor.displayName.value }}
           </CuiChip>
         </CuiChipGroup>
@@ -413,7 +440,15 @@
 <script setup lang="ts">
 import { useCameraStorage, useSensors, useSensorStorage } from '@camera.ui/browser';
 import { canCreateCameras, canProvideSensorsToAnyCameras, isHub, SensorType } from '@camera.ui/sdk';
-import { getAccessorySensorTypes, getAssignmentKey, getCoreSensorTypes, getDetectionSensorTypes, isSingleProviderType, VIRTUAL_SENSOR_OWNER_ID } from '@shared/types';
+import {
+  getAccessorySensorTypes,
+  getAssignmentKey,
+  getCoreSensorTypes,
+  getDetectionSensorTypes,
+  isSingleProviderType,
+  PLUGIN_STATUS,
+  VIRTUAL_SENSOR_OWNER_ID,
+} from '@shared/types';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { PluginsQuery } from '@/api/routes/plugins.js';
@@ -447,6 +482,7 @@ defineEmits<CameraOptionsTabEmits>();
 const toast = useCuiToast();
 const dialog = useCuiDialog();
 const { t } = useI18n();
+const { statusWithPlacement } = usePlacementLabel();
 const { camera, cameraDevice, loading } = toRefs(props);
 
 const { data: plugins, isBusy: pluginsLoading } = pluginsQuery.getPluginsQuery({ page: 1, pageSize: -1 });
@@ -459,6 +495,10 @@ const { mutateAsync: activateExtension, isPending: activateExtensionPending } = 
 const { mutateAsync: deactivateExtension, isPending: deactivateExtensionPending } = camerasQuery.deactivateCameraExtensionQuery();
 
 const { sensors: allSensors, isLoading: sensorsLoading } = useSensors(cameraDevice);
+const pluginStatuses = usePluginStatuses(() => [
+  ...(cameraExtensions.value ?? []).map((p) => p.pluginName),
+  ...(camera.value.pluginInfo ? [camera.value.pluginInfo.name] : []),
+]);
 
 const schemaRef = useTemplateRef<InstanceType<typeof CuiSchema>>('schemaRef');
 const selectedExtension = ref<ExtensionTypes>();
@@ -853,6 +893,34 @@ function isPluginEnabled(extension?: AssignedPlugin | string): string | undefine
   if (name && plugins.value && plugins.value.result.some((plugin) => plugin.pluginName === name && !plugin.disabled)) {
     return name;
   }
+}
+
+function isPluginOffline(pluginName: string): boolean {
+  const status = pluginStatuses.status(pluginName);
+  return status !== undefined && status !== PLUGIN_STATUS.UNKNOWN && status !== PLUGIN_STATUS.DISABLED && status !== PLUGIN_STATUS.STARTED;
+}
+
+function isPluginChipDisabled(pluginName: string, selected: string | string[] | undefined): boolean {
+  if (!isPluginEnabled(pluginName) || loading.value) return true;
+  const isSelected = Array.isArray(selected) ? selected.includes(pluginName) : selected === pluginName;
+  return isPluginOffline(pluginName) && !isSelected;
+}
+
+function pluginChipTooltip(pluginName: string): string {
+  if (!isPluginEnabled(pluginName)) return t('components.plugin_card.status_disabled');
+  const status = pluginStatuses.status(pluginName);
+  if (!status || !isPluginOffline(pluginName)) return '';
+  return statusWithPlacement(t(`components.plugin_card.status_${status}`), pluginStatuses.placement(pluginName));
+}
+
+function sensorChipTooltip(sensor: ReactiveSensor): string {
+  if (sensor.connected.value) return '';
+  const pluginName = getPluginNameFromId(sensor.pluginId);
+  return (pluginName && isPluginOffline(pluginName) ? pluginChipTooltip(pluginName) : '') || t('components.camera_options.sensor_offline');
+}
+
+function firstConnectedSensorId(sensors: ReactiveSensor[]): string | undefined {
+  return (sensors.find((s) => s.connected.value) ?? sensors[0])?.id;
 }
 
 function sortExtensions(extensions: PluginExtension[]): PluginExtension[] {
@@ -1449,7 +1517,7 @@ watch(
   detectionSensorsForType,
   (sensors) => {
     if (selectedDetectionSensorId.value && sensors.some((s) => s.id === selectedDetectionSensorId.value)) return;
-    selectedDetectionSensorId.value = sensors[0]?.id;
+    selectedDetectionSensorId.value = firstConnectedSensorId(sensors);
   },
   { immediate: true, flush: 'sync' },
 );
@@ -1506,7 +1574,7 @@ watch(
   coreSensorsForType,
   (sensors) => {
     if (selectedCoreSensorId.value && sensors.some((s) => s.id === selectedCoreSensorId.value)) return;
-    selectedCoreSensorId.value = sensors[0]?.id;
+    selectedCoreSensorId.value = firstConnectedSensorId(sensors);
   },
   { immediate: true, flush: 'sync' },
 );
@@ -1541,7 +1609,7 @@ watch(
   accessorySensorsForType,
   (sensors) => {
     if (selectedAccessorySensorId.value && sensors.some((s) => s.id === selectedAccessorySensorId.value)) return;
-    selectedAccessorySensorId.value = sensors[0]?.id;
+    selectedAccessorySensorId.value = firstConnectedSensorId(sensors);
   },
   { immediate: true, flush: 'sync' },
 );
