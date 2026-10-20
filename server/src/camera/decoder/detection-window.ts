@@ -5,13 +5,35 @@ export const MOTION_PAD = 1.5;
 export const TRACK_PAD = 1.25;
 const SHRINK_PATIENCE = 5;
 const FULL_FRAME_FRACTION = 0.98;
-const SWEEP_EVERY = 10;
+const LOOKS_BEFORE_FULL = 2;
+const DEBT_PATIENCE = 12;
+
+export type PlanMode = 'window' | 'sweep' | 'full';
+export type LookReason = 'reset' | 'ptz' | 'motion-sensor' | 'witness';
+export type WindowMode = PlanMode | 'cover';
+
+export interface PlanRecord {
+  mode: PlanMode;
+  windows: BoundingBox[];
+  motion: BoundingBox[];
+  tracks: BoundingBox[];
+  reason?: LookReason | 'no-anchors' | 'cover';
+  debt?: LookReason;
+  waited?: number;
+  pending: number;
+}
+
+interface Debt {
+  reason: LookReason;
+  plans: number;
+}
 
 interface Cluster {
   box: BoundingBox;
   lastServed: number;
   window?: BoundingBox;
   shrink: number;
+  looks: number;
 }
 
 export function padBox(box: BoundingBox, factor: number): BoundingBox {
@@ -142,16 +164,21 @@ export function planWindowsOnce(boxes: BoundingBox[], pad: number, frameWidth: n
 export class DetectionWindow {
   private clusters: Cluster[] = [];
   private tick = 0;
-  private windowedTicks = 0;
+  private owed?: Debt = { reason: 'reset', plans: 0 };
+  private paid?: Debt;
+  private last?: PlanRecord;
 
   // null = analyse the full frame (no anchors, a cover swallowed the frame, or
   // the periodic sweep against motion under-reporters)
   public plan(motionAnchors: BoundingBox[], trackAnchors: BoundingBox[], frameWidth: number, frameHeight: number, minSidePx: number): BoundingBox[] | null {
+    this.last = undefined;
+    this.paid = undefined;
     this.tick++;
 
     const padded = [...motionAnchors.map((box) => padBox(box, MOTION_PAD)), ...trackAnchors.map((box) => padBox(box, TRACK_PAD))];
     if (padded.length === 0) {
       this.clusters = [];
+      this.last = { mode: 'full', windows: [], motion: motionAnchors, tracks: trackAnchors, reason: 'no-anchors', ...this.payDebt(), pending: 0 };
       return null;
     }
 
@@ -165,11 +192,24 @@ export class DetectionWindow {
         },
         { score: 0 },
       ).cluster;
-      return { box, lastServed: match?.lastServed ?? 0, window: match?.window, shrink: match?.shrink ?? 0 };
+      return { box, lastServed: match?.lastServed ?? 0, window: match?.window, shrink: match?.shrink ?? 0, looks: match?.looks ?? 0 };
     });
 
-    this.windowedTicks++;
-    if (this.windowedTicks % SWEEP_EVERY === 0) return null;
+    // raw boxes, padding would merge a newcomer into the person next to it
+    const fresh = new Set<Cluster>();
+    for (const anchor of motionAnchors) {
+      if (trackAnchors.some((track) => overlaps(anchor, track))) continue;
+      const grown = padBox(anchor, MOTION_PAD);
+      const cluster = this.clusters.find((candidate) => overlaps(candidate.box, grown));
+      if (cluster) fresh.add(cluster);
+    }
+    const pending = [...fresh].filter((cluster) => cluster.looks < LOOKS_BEFORE_FULL).length;
+
+    // a sweep tick neither serves nor re-centres a window
+    if (this.owed && (pending === 0 || this.owed.plans >= DEBT_PATIENCE)) {
+      this.last = { mode: 'sweep', windows: [], motion: motionAnchors, tracks: trackAnchors, reason: this.owed.reason, ...this.payDebt(), pending };
+      return null;
+    }
 
     const served =
       this.clusters.length <= WINDOW_CAP
@@ -180,15 +220,43 @@ export class DetectionWindow {
     for (const cluster of served) {
       cluster.lastServed = this.tick;
       const window = this.applyHysteresis(cluster, frameWidth, frameHeight, minSidePx);
-      if (!window) return null;
+      if (!window) {
+        this.last = { mode: 'full', windows: [], motion: motionAnchors, tracks: trackAnchors, reason: 'cover', ...this.payDebt(), pending };
+        return null;
+      }
       windows.push(window);
     }
 
+    for (const cluster of served) cluster.looks++;
+    if (this.owed) this.owed.plans++;
+    this.last = { mode: 'window', windows, motion: motionAnchors, tracks: trackAnchors, pending };
     return windows;
+  }
+
+  public oweLook(reason: LookReason): void {
+    this.owed ??= { reason, plans: 0 };
+  }
+
+  public lookFailed(): void {
+    if (this.paid) this.owed = this.paid;
+    this.paid = undefined;
+  }
+
+  public takePlan(): PlanRecord | undefined {
+    const plan = this.last;
+    this.last = undefined;
+    return plan;
   }
 
   public reset(): void {
     this.clusters = [];
+    this.oweLook('reset');
+  }
+
+  private payDebt(): Pick<PlanRecord, 'debt' | 'waited'> {
+    this.paid = this.owed;
+    this.owed = undefined;
+    return this.paid ? { debt: this.paid.reason, waited: this.paid.plans } : {};
   }
 
   private applyHysteresis(cluster: Cluster, frameWidth: number, frameHeight: number, minSidePx: number): BoundingBox | null {

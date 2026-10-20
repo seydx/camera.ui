@@ -202,6 +202,10 @@ export class DetectionCoordinator {
   private farewellBoxes: BoundingBox[] = [];
   private lastTrackedById = new Map<number, BoundingBox>();
   private detectionWindow = new DetectionWindow();
+  private ptzWasSuppressed = false;
+  private ptzEndPending = false;
+  private liveLabels = new Set<string>();
+  private witnessLabels = new Map<string, Set<string>>();
   private mainStreamActive = false;
   private idleSince = 0;
   private lastMotionAt = 0;
@@ -227,8 +231,10 @@ export class DetectionCoordinator {
     faceAt?: number;
     licensePlate?: LicensePlateResult;
     licensePlateAt?: number;
-    classifiers?: Record<string, ClassifierResult>;
+    classifiers?: Record<string, ClassifierResult & { at: number }>;
+    classifiersAt?: number;
     clip?: ClipResult;
+    clipAt?: number;
     audio?: AudioResult;
     faceEmbeddingModel?: string;
     clipEmbeddingModel?: string;
@@ -329,6 +335,9 @@ export class DetectionCoordinator {
 
     this.cascadeUnsubscribe = this.cascade.onChange((event) => {
       if (event.type === 'activated') {
+        // no object tick ran while the cascade was off, these tracks are stale
+        this.trackAnchorBoxes = [];
+        this.witnessLabels.clear();
         this.startAdHocVideoLoopIfNeeded();
         this.seedLocalizerReference();
       } else {
@@ -638,7 +647,7 @@ export class DetectionCoordinator {
   @RPCMethod
   public async reportSensorWrite(sensorId: string, sensorType: SensorType, properties: Record<string, unknown>): Promise<void> {
     if (sensorType === SensorType.Object && this.witnessSensors.has(sensorId)) {
-      this.recordWitness(properties);
+      this.recordWitness(sensorId, properties);
       return;
     }
 
@@ -763,6 +772,8 @@ export class DetectionCoordinator {
       if (this.ptzAutotracker.suppressionActive) return;
 
       const filtered = this.applyExternalDetectionFilters(sensorType, properties);
+      // before the dwell refresh: only the start of camera motion owes a look
+      if (filtered.detected === true && !this.dwell.isActive(sensorId)) this.detectionWindow.oweLook('motion-sensor');
       this.ingestDetectionResult(SensorType.Motion, sensorId, filtered);
       const snapshot = this.buildSnapshot();
       // some cameras report where it moved, that is a tick worth keeping
@@ -957,14 +968,24 @@ export class DetectionCoordinator {
     });
   }
 
-  private recordWitness(properties: Record<string, unknown>): void {
-    if (properties.detected !== true) return;
+  private recordWitness(sensorId: string, properties: Record<string, unknown>): void {
+    if (properties.detected !== true) {
+      this.witnessLabels.delete(sensorId);
+      return;
+    }
     const detections = (properties.detections as { label?: string }[] | undefined) ?? [];
     const labels = new Set<string>();
     for (const detection of detections) {
       const label = detection.label?.toLowerCase();
       if (label && this.pipeline.objectLabelAllowed(label)) labels.add(label);
     }
+    // cameras re-send labels on every push, news is a detectable label new to this sensor and the world
+    const previous = this.witnessLabels.get(sensorId);
+    const detectable = this.config.detectionSettings.object.confidences;
+    if ([...labels].some((label) => !previous?.has(label) && label in detectable && !this.liveLabels.has(label))) {
+      this.detectionWindow.oweLook('witness');
+    }
+    this.witnessLabels.set(sensorId, labels);
     if (labels.size === 0) return;
     const at = Date.now();
     for (const label of labels) {
@@ -1002,8 +1023,10 @@ export class DetectionCoordinator {
       plateMinConfidence: this.config.detectionSettings.licensePlate?.ocrConfidence,
       plateMinLength: this.config.detectionSettings.licensePlate?.minLength,
       faceMinConfidence: this.config.detectionSettings.face?.confidence,
-      classifiers: cs.classifiers ? Object.values(cs.classifiers).flatMap((c) => c.detections) : [],
+      classifiers: cs.classifiers ? Object.values(cs.classifiers).flatMap((c) => ((cs.classifiersAt ?? 0) - c.at <= SECONDARY_FRESH_MS ? c.detections : [])) : [],
+      classifiersAt: cs.classifiersAt,
       clips: cs.clip?.embeddings ?? [],
+      clipsAt: cs.clipAt,
       clipEmbeddingModel: cs.clipEmbeddingModel,
       thumbnails: undefined,
       lineCrossings: cs.lineCrossings,
@@ -1210,12 +1233,14 @@ export class DetectionCoordinator {
         break;
       case SensorType.Classifier:
         if (pluginId) {
+          cs.classifiersAt = Date.now();
           cs.classifiers ??= {};
-          cs.classifiers[pluginId] = { detected, detections: detections as ClassifierDetection[] };
+          cs.classifiers[pluginId] = { detected, detections: detections as ClassifierDetection[], at: cs.classifiersAt };
         }
         break;
       case SensorType.Clip:
         cs.clip = { embeddings: (properties.embeddings as ClipEmbedding[] | undefined) ?? [], embeddingModel: cs.clipEmbeddingModel ?? '' };
+        cs.clipAt = Date.now();
         break;
     }
   }
@@ -1596,6 +1621,10 @@ export class DetectionCoordinator {
     // background model and track ids survive the pan, but nothing below
     // reaches dwell/events until the settle window ends
     const ptzSuppressed = this.ptzAutotracker.suppressionActive;
+    const ptzEnded = this.ptzWasSuppressed && !ptzSuppressed;
+    if (ptzEnded) this.detectionWindow.oweLook('ptz');
+    this.ptzWasSuppressed = ptzSuppressed;
+    this.ptzEndPending ||= ptzEnded;
 
     // motion runs every frame and re-arms the cascade; the cascade gates
     // object detection, not motion
@@ -1670,8 +1699,13 @@ export class DetectionCoordinator {
 
     if (shouldDetectObjects) {
       try {
+        // a run that threw left its plan behind
+        if (this.detectionWindow.takePlan()) this.detectionWindow.lookFailed();
         const detected = await this.runObjectDetection(objectPlugin, analysis, results.motion?.detections ?? []);
+        const plan = this.detectionWindow.takePlan();
+        if (plan) detectionRecord.plan(plan);
         if (!this.loopRunning) return;
+        if (plan && !detected) this.detectionWindow.lookFailed();
         if (detected) {
           this.trackDetectionCadence();
 

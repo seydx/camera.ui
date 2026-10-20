@@ -101,7 +101,9 @@ export interface ProcessedDetectionData {
   plateMinLength?: number;
   faceMinConfidence?: number;
   classifiers: TrackedClassifierDetection[];
+  classifiersAt?: number;
   clips: TrackedClipEmbedding[];
+  clipsAt?: number;
   clipEmbeddingModel?: string;
   thumbnails?: DetectionThumbnail[];
   eventThumbnail?: Buffer;
@@ -165,6 +167,25 @@ function mayAlert(label: string, box: BoundingBox | undefined, hits: Set<string>
 function jpegInfo(jpeg: Buffer): string {
   const size = jpegSize(jpeg);
   return `${size ? `${size.width}x${size.height}` : '?x?'}/${Math.round(jpeg.length / 1024)}kb`;
+}
+
+function freshResult(at: number | undefined, now: number): boolean {
+  return at !== undefined && now - at <= SECONDARY_FRESH_MS;
+}
+
+function newResult(at: number | undefined, carried: number | undefined, now: number): boolean {
+  return at !== carried && freshResult(at, now);
+}
+
+function clipArea(clip: TrackedClipEmbedding): number {
+  const box = clip.parentBox ?? clip.box;
+  return box ? box.width * box.height : 0;
+}
+
+function faceBucket(face: TrackedFaceDetection, shared: number | undefined, epoch: number): string {
+  if (face.parentTrackId !== undefined) return epoch > 0 ? `t${face.parentTrackId}:${epoch}` : `t${face.parentTrackId}`;
+  if (shared !== undefined) return `s${shared}:${face.identity ?? ''}`;
+  return `untracked:${face.identity ?? ''}`;
 }
 
 interface HeldAttribute {
@@ -255,6 +276,9 @@ export class DetectionEventManager {
   private uncountedClips: UncountedClip[] = [];
   private countedAt = 0;
   private trackPersonVectors = new Map<number, HeldPerson>();
+  private carriedFacesAt?: number;
+  private carriedPlatesAt?: number;
+  private carriedClassifiersAt?: number;
 
   private readonly eventSubject: string;
   private readonly nvr: NvrSink;
@@ -308,17 +332,21 @@ export class DetectionEventManager {
     return this.beatsMoment(rank, score, stream, this.incumbentMoment(at));
   }
 
-  public processResults(data: ProcessedDetectionData): void {
+  public processResults(snapshot: ProcessedDetectionData): void {
+    const data = this.freshResults(snapshot);
     const now = data.timestamp;
     this.training.observe(this.sceneObservations(data, now), now);
     const triggers = this.extractTriggers(data, now);
     const hasDetections = this.hasNewDetections(data);
+    this.carriedFacesAt = data.facesAt;
+    this.carriedPlatesAt = data.platesAt;
+    this.carriedClassifiersAt = data.classifiersAt;
 
     if (triggers.length === 0 && !this.activeEvent) return;
 
     if (!this.activeEvent) {
       if (triggers.length === 0) return;
-      this.startEvent(triggers, data, now);
+      this.startEvent(triggers, data, now, hasDetections);
       if (data.trace) this.trace.add(data.trace);
       return;
     }
@@ -532,7 +560,7 @@ export class DetectionEventManager {
     const thumbInfo = this.eventThumbnail ? jpegInfo(this.eventThumbnail) : 'pending';
     this.logger.log(`[event] start id=${this.activeEvent.id.slice(0, 8)} triggers=[${triggerTypes}] types=[${this.activeEvent.types.join(',')}] thumb=${thumbInfo}`);
 
-    if (this.hasNewDetections(data) && data.hasOpenSpans) {
+    if (hasDetections && data.hasOpenSpans) {
       this.openSegment(data, now);
     }
   }
@@ -1139,8 +1167,18 @@ export class DetectionEventManager {
     this.activeEvent.types = [...types];
   }
 
+  private freshResults(data: ProcessedDetectionData): ProcessedDetectionData {
+    const staleClassifiers = data.classifiers.length > 0 && !freshResult(data.classifiersAt, data.timestamp);
+    const staleClips = data.clips.length > 0 && !freshResult(data.clipsAt, data.timestamp);
+    if (!staleClassifiers && !staleClips) return data;
+    return { ...data, classifiers: staleClassifiers ? [] : data.classifiers, clips: staleClips ? [] : data.clips };
+  }
+
   private hasNewDetections(data: ProcessedDetectionData): boolean {
-    return data.objects.length > 0 || data.faces.length > 0 || data.plates.length > 0 || data.classifiers.length > 0;
+    if (data.objects.length > 0) return true;
+    if (data.classifiers.length > 0 && newResult(data.classifiersAt, this.carriedClassifiersAt, data.timestamp)) return true;
+    if (data.faces.length > 0 && newResult(data.facesAt, this.carriedFacesAt, data.timestamp)) return true;
+    return data.plates.length > 0 && newResult(data.platesAt, this.carriedPlatesAt, data.timestamp);
   }
 
   private updateThumbnails(thumbnails: DetectionThumbnail[]): void {
