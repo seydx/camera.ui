@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.app.json",
+  "include": [
+    "env.d.ts",
+    "src/types/*.d.ts",
+    "src/**/__tests__/*",
+    "../server/types/**/*.d.ts"
+  ],
+  "exclude": [],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@shared/types": [
+        "../shared/types/index.js"
+      ],
+      "@camera.ui/transport/testing": [
+        "./node_modules/@camera.ui/transport/dist/testing/index.d.ts"
+      ]
+    }
+  }
+}

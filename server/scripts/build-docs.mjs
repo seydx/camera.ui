@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DOCS = resolve(ROOT, '..', '..', 'docs');
+const DOCS = process.env.CAMERA_UI_DOCS_DIR ? resolve(process.env.CAMERA_UI_DOCS_DIR) : resolve(ROOT, '..', '..', 'docs');
 const OUT = join(ROOT, 'dist', 'server', 'assets', 'docs.json');
 const SKIP = new Set(['de', 'private', 'public', 'node_modules', '.vitepress']);
 const MAX_SECTION_CHARS = 2500;
@@ -80,6 +80,9 @@ if (existsSync(DOCS)) {
     const title = /^#\s+(.+)$/m.exec(raw)?.[1]?.trim() ?? pagePath(file);
     index.push(...sections(pagePath(file), title, clean(raw)));
   }
+} else if (process.env.CAMERA_UI_DOCS_DIR) {
+  console.error(`docs checkout not found at ${DOCS}`);
+  process.exit(1);
 } else {
   console.warn(`docs checkout not found at ${DOCS}, writing an empty assistant docs index`);
 }

@@ -34,3 +34,4 @@ coverage
 /vite.config.*.timestamp*
 /public/pwa/*.ico
 /public/pwa/*.png
+__tests__/
