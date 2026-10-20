@@ -3,6 +3,7 @@ import * as zod from 'zod';
 export const updateServerSchema = zod
   .object({
     version: zod.string().trim().optional().default('latest'),
+    confirmWorkers: zod.boolean().optional(),
   })
   .strict();
 

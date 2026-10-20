@@ -6,6 +6,7 @@ import { performance } from 'node:perf_hooks';
 
 import { CamerasService } from '../api/services/cameras.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
+import { updatesService } from '../api/services/updates.service.js';
 import { WorkersService } from '../api/services/workers.service.js';
 import { NamespaceManager, SUBJECT_TOKEN } from '../rpc/namespaces.js';
 import { ConfigService } from '../services/config/index.js';
@@ -216,6 +217,15 @@ export class WorkerManager {
     this.tunnels = new StreamTunnels(this.logger);
     this.camerasService = new CamerasService();
     this.workersService = new WorkersService();
+    this.updates = new WorkerUpdates(
+      this.workersService,
+      this.logger,
+      (agentId) => this.nameOf(agentId),
+      (result) => this.onUpdateResult(result),
+    );
+
+    // local instance ids carry the run, a worker's carry its boot
+    setInstancePrefix(`m${this.runId.slice(0, 8)}`);
   }
 
   public isEnabled(): boolean {
@@ -416,7 +426,8 @@ export class WorkerManager {
   }
 
   public getWorkers(): WorkerInfo[] {
-    return Array.from(this.workers.values());
+    const target = this.updateTarget();
+    return Array.from(this.workers.values(), (worker) => this.withStanding(worker, target));
   }
 
   public isWorkerOnline(agentId: string): boolean {
@@ -518,30 +529,61 @@ export class WorkerManager {
     }
   }
 
-  public async assignPlugin(pluginName: string, agentId: string): Promise<void> {
-    this.logger.log(`Assigning plugin ${pluginName} to worker ${agentId}`);
-
-    const pluginsService = new PluginsService();
-    const plugin = pluginsService.getPluginByName(pluginName);
-    if (!plugin) {
-      throw new Error(`Plugin ${pluginName} not found`);
+  public async preparePlugin(pluginName: string, build: PluginBuild): Promise<void> {
+    const key = workloadKey(WorkerCapability.PluginHost, pluginName);
+    const desired = this.desired.get(key);
+    const report = desired ? this.reports.get(desired.agentId)?.workloads.get(key) : undefined;
+    // not running there yet, it starts with the new version anyway
+    if (!desired || report?.phase !== 'running' || report.version === build.version) {
+      return;
     }
 
-    const worker = this.workers.get(agentId);
-    if (!worker) {
-      throw new Error(`Worker ${agentId} is unknown`);
-    }
+    const { agentId } = desired;
+    const name = this.nameOf(agentId);
+    desired.workload.live = { ...desired.workload.live, prepare: build };
+    this.bumpSeq(agentId);
+    this.nudge(agentId);
+    this.logger.log(`Worker ${name} installs ${pluginName}@${build.version} beside the running ${report.version}`);
 
-    // Reject obviously wrong placements early; if the worker's platform is
-    // still unknown (never heartbeated) the agent double-checks on its side.
-    if (worker.platform && !isPlatformCompatible(plugin.info.os, plugin.info.cpu, worker.platform.os, worker.platform.arch)) {
-      const requirement = describePlatformRequirement(plugin.info.os, plugin.info.cpu);
-      throw new Error(`Plugin ${pluginName} requires ${requirement} — worker ${worker.name} is ${worker.platform.os}/${worker.platform.arch}`);
+    const install = (): PluginInstallReport | undefined => {
+      const current = this.reports.get(agentId)?.workloads.get(key)?.install;
+      return current?.version === build.version ? current : undefined;
+    };
+    // an older agent never reports the install and installs at the switch
+    let heard = mono();
+    const settled = await this.until(() => {
+      const step = install()?.step;
+      if (step === 'staged' || step === 'failed') return true;
+      if (step) heard = mono();
+      return this.desired.get(key)?.agentId !== agentId || mono() - heard >= PREPARE_SILENT_MS;
+    }, INSTALL_CAP_MS);
+
+    const result = install();
+    if (result?.step === 'failed') {
+      this.logger.warn(`Worker ${name} could not install ${pluginName}@${build.version} ahead: ${result.error}`);
+    } else if (!settled) {
+      this.logger.warn(`Worker ${name} did not finish installing ${pluginName}@${build.version} ahead, switching anyway`);
     }
   }
 
-  public async unassignPlugin(pluginName: string): Promise<void> {
-    this.logger.log(`Unassigning plugin ${pluginName}`);
+  public async waitPluginVersion(pluginName: string, version: string): Promise<string | undefined> {
+    const key = workloadKey(WorkerCapability.PluginHost, pluginName);
+    let reason: string | undefined;
+    const settled = await this.until(() => {
+      const desired = this.desired.get(key);
+      if (!desired) {
+        reason = 'it left its worker';
+        return true;
+      }
+      const report = this.reports.get(desired.agentId)?.workloads.get(key);
+      if (report?.failure?.terminal) {
+        reason = report.failure.message;
+        return true;
+      }
+      return report?.phase === 'running' && report.version === version && desired.workload.bound?.instanceId === report.instanceId;
+    }, INSTALL_CAP_MS);
+    return settled ? reason : `it did not start within ${Math.round(INSTALL_CAP_MS / 60_000)} min`;
+  }
 
   public pluginApiIssue(agentId: string, protocolLevel: number | undefined): string | undefined {
     const range = this.pluginProtocols.get(agentId);
@@ -552,51 +594,83 @@ export class WorkerManager {
     return `Worker ${this.nameOf(agentId)} runs plugin API ${range.min} to ${range.level}, this plugin version needs ${protocolLevel}. ${fix}`;
   }
 
-  public getPluginAssignment(pluginName: string): string | undefined {
-    return new PluginsService().getPluginDbByName(pluginName)?.workerAgentId;
+  public purgePlugin(agentId: string, pluginName: string, storage: boolean): void {
+    const purges = this.purges.get(agentId) ?? new Map<string, { storage: boolean; seq: number }>();
+    purges.set(pluginName, { storage, seq: this.bumpSeq(agentId) });
+    this.purges.set(agentId, purges);
+    this.nudge(agentId);
   }
 
-  public getRemotePluginState(pluginName: string): RemotePluginState | undefined {
-    const agentId = this.getPluginAssignment(pluginName);
-    if (!agentId) {
-      return undefined;
+  public async restartWorker(agentId: string): Promise<void> {
+    const state = this.presence.get(agentId)?.state;
+    if (state !== 'online' && state !== 'outdated') {
+      throw new WorkerRequestError(409, `Worker ${this.nameOf(agentId)} is not online`);
     }
+    if (this.updates.active(agentId)) {
+      throw new WorkerRequestError(409, `Worker ${this.nameOf(agentId)} is updating, it restarts by itself when the update is done`);
+    }
+    await this.createWorkerProxy(agentId).restart();
+  }
 
+  public async updateWorker(agentId: string, version = ConfigService.RUNNING_VERSION): Promise<void> {
     const worker = this.workers.get(agentId);
-    if (!worker?.online) {
-      return undefined;
+    const presence = this.presence.get(agentId);
+    if (!worker || (presence?.state !== 'online' && presence?.state !== 'outdated')) {
+      throw new WorkerRequestError(409, `Worker ${worker?.name ?? agentId} is not online`);
+    }
+    if (this.updates.active(agentId) || this.legacyRestarting.has(agentId)) {
+      throw new WorkerRequestError(409, `Worker ${worker.name} is already updating`);
     }
 
-    return worker.plugins?.find((plugin) => plugin.id === pluginName)?.state;
+    if (!worker.update) {
+      throw new WorkerRequestError(409, `Worker ${worker.name} runs ${worker.version ?? 'an older version'} and has to be updated once on its own machine`);
+    }
+    if (!worker.update.updatable) {
+      throw new WorkerRequestError(
+        409,
+        worker.update.desktop === undefined
+          ? `Worker ${worker.name} runs inside the desktop app and updates with it`
+          : worker.update.desktop
+            ? `There is no update for the desktop app of worker ${worker.name} yet`
+            : `Worker ${worker.name} runs without the camera.ui launcher, which installs updates`,
+      );
+    }
+    if (!worker.update.desktop && versionStanding(worker.version, version) === 'ahead') {
+      throw new WorkerRequestError(409, `Worker ${worker.name} runs ${worker.version}, which is newer than ${version}`);
+    }
+
+    this.logger.log(`Updating worker ${worker.name} (${agentId}) to ${version}`);
+
+    const from = { bootId: presence.bootId, pid: worker.pid, version: worker.version, protocol: worker.protocol, appVersion: worker.appVersion };
+    // a restart applies what the earlier attempt staged
+    if (this.legacyAttempted.has(agentId) && (await this.restartLegacy(agentId, worker.name))) {
+      this.updates.start(agentId, version, from, false);
+      this.syncInfo(agentId);
+      return;
+    }
+
+    const legacy = this.legacyAgents.has(agentId);
+    await this.createWorkerProxy(agentId)
+      .update(version)
+      .catch((error: unknown) => {
+        throw legacy ? this.legacyUpdateError(agentId, worker.name, error) : error;
+      });
+    if (legacy) {
+      this.legacyAttempted.add(agentId);
+    }
+
+    this.updates.start(agentId, version, from, worker.update.desktop === true, legacy);
+    this.syncInfo(agentId);
   }
 
-  public getRemoteProcess(capability: WorkerCapability, id: string): { worker: string; system?: SystemInfo; sample?: WorkerProcessSample } | undefined {
-    const agentId = capability === WorkerCapability.FrameDecoding ? this.getAssignment(id) : this.getPluginAssignment(id);
-    if (!agentId) {
-      return undefined;
-    }
-
-    const worker = this.workers.get(agentId);
-    if (!worker) {
-      return undefined;
-    }
-
-    return {
-      worker: worker.name,
-      system: worker.system,
-      sample: worker.processes?.find((process) => process.capability === capability && process.id === id),
-    };
+  public waitWorkerUpdate(agentId: string): Promise<WorkerUpdateResult> {
+    return this.updates.wait(agentId);
   }
 
-  public getWorkerByName(name: string): WorkerInfo | undefined {
-    for (const worker of this.workers.values()) {
-      if (worker.name === name) return worker;
-    }
-    return undefined;
+  public workerUpdatesActive(): boolean {
+    // a gone worker's item ends on its own
+    return this.updates.activeIds().some((agentId) => this.presence.get(agentId)?.state !== 'offline');
   }
-
-  public async renameWorker(agentId: string, name: string): Promise<void> {
-    await this.workersService.renameWorker(agentId, name);
 
   public async noteWorkerPaired(agentId: string, name: string): Promise<void> {
     await this.workersService.rememberWorker(agentId, name);
@@ -1994,28 +2068,20 @@ export class WorkerManager {
     return { ...entry, pluginId, targetId: undefined, targetType: 'system', suffix: this.nameOf(agentId) };
   }
 
-  private emitWorkerUpdate(worker: WorkerInfo): void {
-    try {
-      const socketService = container.resolve<SocketService>('socketService');
-      socketService.io.of('/workers').emit('worker-update', worker);
-
-      // Push to WorkersNamespace for history accumulation
-      const workersNsp = socketService.namespaces.get('/workers') as WorkersNamespace | undefined;
-      workersNsp?.handleWorkerUpdate(worker);
-
-      const serverNsp = socketService.namespaces.get('/server') as ServerNamespace | undefined;
-      serverNsp?.refreshWorkerUpdateAvailable();
-    } catch {
-      // SocketService may not be available yet during startup
-    }
+  private onUpdateResult(result: WorkerUpdateResult): void {
+    this.syncInfo(result.agentId);
+    updatesService().noteWorkerUpdateResult(result, this.nameOf(result.agentId));
   }
 
-  private onWorkerOnline(agentId: string): void {
-    const api = container.resolve<CameraUiAPI>('api');
+  private updateTarget(): string {
+    const serverNsp = tryInject('socketService')?.namespaces.get('/server') as ServerNamespace | undefined;
+    return serverNsp?.targetServerVersion() ?? ConfigService.RUNNING_VERSION;
+  }
 
-    for (const camera of this.camerasService.listByAgentId(agentId)) {
-      const controller = api.cameraControllers.get(camera._id);
-      if (!controller) continue;
+  private withStanding(worker: WorkerInfo, target: string): WorkerInfo {
+    worker.versionStanding = versionStanding(worker.version, target);
+    return worker;
+  }
 
   private emitWorkerUpdate(worker: WorkerInfo): void {
     const { agentId } = worker;

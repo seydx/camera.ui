@@ -69,6 +69,7 @@ import type {
 import type { CloudflareManagedConnectInput, PairInitInput, PairPollInput, PatchRemoteInput } from '../schemas/remote.schema.js';
 import type { CreateVirtualSensorInput, PatchSensorInput, SensorCommandInput } from '../schemas/sensors.schema.js';
 import type { PatchServerInput, ServerChangelogQueryInput, UpdateServerInput } from '../schemas/server.schema.js';
+import type { RunUpdatesInput } from '../schemas/updates.schema.js';
 import type { PatchStorateInput, SetStorageInput, SubmitStorageInput } from '../schemas/storage.schema.js';
 import type {
   CreateShortcutInput,
@@ -568,6 +569,10 @@ export interface ServerPatchRequest {
 
 export interface ServerUpdateRequest {
   Body: UpdateServerInput;
+}
+
+export interface UpdatesRunRequest {
+  Body?: RunUpdatesInput;
 }
 
 export interface ServerChangelogRequest {

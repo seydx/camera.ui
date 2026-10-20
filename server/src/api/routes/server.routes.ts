@@ -110,6 +110,7 @@ export const ServerRoute: FastifyPluginAsync = async (app: FastifyInstance): Pro
     schema: {
       tags: ['Server'],
       summary: 'Install a specific server version',
+      description: 'Answers 409 with the workers that would no longer connect after the update, unless confirmWorkers is set.',
       body: updateServerSchema,
     },
   });

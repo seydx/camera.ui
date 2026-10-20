@@ -566,7 +566,7 @@ const workerHeaders = computed<TableHeader[]>(() => [
         icon: RestartIcon,
         buttonProps: { severity: 'secondary' },
         loading: (item: WorkerInfo) => workersRestarting.value.includes(item.name),
-        disabled: (item: WorkerInfo) => !item.online,
+        disabled: (item: WorkerInfo) => !reachable(item) || item.update?.updating === true,
         tooltip: () => t('views.workers.restart_worker'),
         action: (item: WorkerInfo) => handleRestartWorker(item.name, item.agentId),
       },
@@ -818,7 +818,7 @@ function movingText(name: string, agentId: string | null): string {
 }
 
 function updateTooltip(item: WorkerInfo): string {
-  if (item.update?.updating) return t('views.workers.updating');
+  if (item.update?.updating) return updateLabel(item) ?? t('views.workers.updating');
   if (!masterVersion.value) return t('views.workers.update_worker_short');
   return t('views.workers.update_worker', { version: masterVersion.value });
 }
@@ -837,6 +837,8 @@ async function handleRestartWorker(workerName: string, agentId: string) {
   workersRestarting.value.push(workerName);
   try {
     await restartWorkerMutation(agentId);
+  } catch {
+    // handled in the mutation's onError
   } finally {
     workersRestarting.value = workersRestarting.value.filter((n) => n !== workerName);
   }

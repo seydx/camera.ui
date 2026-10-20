@@ -2,6 +2,7 @@ import type { BaseCamera, Point, SENSOR_META, SensorSourceState, SensorType, Sev
 import type { CameraInputSettings } from '@camera.ui/sdk/internal';
 import type { Types } from '@eneris/push-receiver/dist/client.js';
 import type { NotificationSource } from '../../manager/types.js';
+import type { WorkerUpdate } from '../../workers/lifecycle/update.js';
 import type { LanguageAbbreviations, UserLanguage } from '../schemas/users.schema.js';
 import type { NavLayoutSettings } from '../types/index.js';
 
@@ -128,6 +129,8 @@ export interface DBKnownWorker {
   displayName?: string;
   serverAddresses?: string[];
   lastSeen: number;
+  version?: string;
+  protocol?: number;
 }
 
 export interface DBWorkerCredential {

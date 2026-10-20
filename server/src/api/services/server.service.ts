@@ -1,11 +1,12 @@
 import { buildHttpsUrl, fetchViableNetworkAddresses } from '@camera.ui/common/network';
-import { APP_SERVER_NAME, mergeWith } from '@camera.ui/common/utils';
+import { APP_SERVER_NAME, IS_ELECTRON, mergeWith } from '@camera.ui/common/utils';
 import { readFileSync } from 'node:fs';
 import { userInfo } from 'node:os';
 import { satisfies } from 'semver';
 import { container } from 'tsyringe';
 
 import { ConfigService } from '../../services/config/index.js';
+import { assertServerUpdateSpace } from '../../utils/disk-space.js';
 import { getTerminalCols, InstallLogger } from '../utils/install-logger.js';
 import { updatesService } from './updates.service.js';
 
@@ -97,6 +98,15 @@ export class ServerService {
     if (this.installInProgress) {
       log.error('Update already in progress.');
       throw new Error('Update already in progress.');
+    }
+
+    if (!IS_ELECTRON) {
+      try {
+        assertServerUpdateSpace(inject('configService').HOME_PATH);
+      } catch (error: any) {
+        log.error(error.message);
+        throw error;
+      }
     }
 
     this.installInProgress = true;

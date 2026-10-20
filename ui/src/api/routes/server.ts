@@ -37,7 +37,8 @@ export async function removeCertificate(): Promise<CustomCertificateState> {
 }
 
 export async function updateServerFn({ serverData }: { serverData: UpdateServerInput }): Promise<AckResponse> {
-  const response: AxiosResponse<AckResponse> = await api.post('/server/update', serverData, { timeout: 31 * 60_000 });
+  const { confirmWorkers, ...data } = serverData;
+  const response: AxiosResponse<AckResponse> = await api.post('/server/update', confirmWorkers ? serverData : data, { timeout: 31 * 60_000 });
   return response.data;
 }
 

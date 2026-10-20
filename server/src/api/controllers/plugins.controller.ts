@@ -988,6 +988,7 @@ export class PluginsController {
     if (protocolCompat === 'pluginTooOld') {
       throw Object.assign(new Error('This plugin version was built for an older camera.ui and cannot run anymore. Pick a newer version.'), { statusCode: 409 });
     }
+    await this.service.assertWorkerCanRun(pluginname, pluginversion);
 
     let plugin = this.pluginManager.plugins.get(pluginname);
 

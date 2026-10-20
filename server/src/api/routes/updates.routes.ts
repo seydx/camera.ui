@@ -1,8 +1,10 @@
 import { UpdatesController } from '../controllers/updates.controller.js';
 import { onlyAdminCanDoThisAction } from '../middlewares/authPermission.middleware.js';
 import { validJWTNeeded } from '../middlewares/authValidation.middleware.js';
+import { runUpdatesSchema } from '../schemas/updates.schema.js';
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export const UpdatesRoute: FastifyPluginAsync = async (app: FastifyInstance): Promise<void> => {
   const updatesController = new UpdatesController();
@@ -18,7 +20,7 @@ export const UpdatesRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
     },
   });
 
-  app.route({
+  app.withTypeProvider<ZodTypeProvider>().route({
     url: '/run',
     method: 'POST',
     preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
@@ -26,6 +28,8 @@ export const UpdatesRoute: FastifyPluginAsync = async (app: FastifyInstance): Pr
     schema: {
       tags: ['Updates'],
       summary: 'Update everything: workers onto the target version, plugins without restart, the server last',
+      description: 'Answers 409 with the workers that would no longer connect after the server update, unless confirmWorkers is set.',
+      body: runUpdatesSchema,
     },
   });
 

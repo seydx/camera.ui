@@ -1,13 +1,15 @@
 import { installPluginFn } from '@/api/routes/plugins.js';
 import { restartSystemFn, updateServerFn } from '@/api/routes/server.js';
-import { cancelUpdates, checkUpdates, getUpdatesStatus, runUpdates } from '@/api/routes/updates.js';
+import { cancelUpdates, checkUpdates, getUpdatesStatus, runUpdates, workersLeftBehind } from '@/api/routes/updates.js';
 import { updateWorker } from '@/api/routes/workers.js';
+import { i18n } from '@/i18n/index.js';
 
-import type { UpdatesActivityItem, UpdatesStatus } from '@shared/types';
+import type { WorkersLeftBehind } from '@/api/routes/updates.js';
+import type { EngineIssue, UpdatesActivityItem, UpdatesBlockedReason, UpdatesStatus } from '@shared/types';
 
 export type UpdateKind = 'server' | 'plugin' | 'worker';
 export type UpdateItemStatus = 'pending' | 'updating' | 'restarting' | 'success' | 'error' | 'uptodate' | 'blocked';
-export type UpdateBlockedReason = 'desktop' | 'legacy';
+export type UpdateBlockedReason = UpdatesBlockedReason;
 
 export interface UpdateItem {
   id: string;
@@ -18,6 +20,7 @@ export interface UpdateItem {
   latestVersion?: string;
   status: UpdateItemStatus;
   blockedReason?: UpdateBlockedReason;
+  engineIssue?: EngineIssue;
   error?: string;
 }
 
@@ -25,6 +28,8 @@ const STATUS_POLL_MS = 30_000;
 
 export const useUpdatesStore = defineStore('updates', () => {
   const toast = useCuiToast();
+  const dialog = useCuiDialog();
+  const { t } = i18n.global;
   const updatesSocket = useUpdatesSocket();
   const { beginServerRestart } = useServerRestart();
 
@@ -62,6 +67,7 @@ export const useUpdatesStore = defineStore('updates', () => {
         latestVersion: pending.server.latestVersion ?? pending.server.installedVersion,
         status: pending.server.updateAvailable ? (pending.server.blockedReason ? 'blocked' : 'pending') : 'uptodate',
         blockedReason: pending.server.updateAvailable ? pending.server.blockedReason : undefined,
+        engineIssue: pending.server.engineIssue,
       }),
     );
 
@@ -164,7 +170,7 @@ export const useUpdatesStore = defineStore('updates', () => {
     }
   }
 
-  async function updateItem(id: string): Promise<void> {
+  async function updateItem(id: string, confirmWorkers = false): Promise<void> {
     const item = items.value.find((entry) => entry.id === id);
     if (!item || runActive.value) return;
     if (item.status !== 'pending' && item.status !== 'error') return;
@@ -175,26 +181,55 @@ export const useUpdatesStore = defineStore('updates', () => {
       } else if (item.kind === 'worker') {
         await updateWorker({ agentId: id.slice('worker:'.length), version: targetServerVersion.value });
       } else {
-        await updateServerFn({ serverData: { version: item.latestVersion ?? 'latest' } });
+        await updateServerFn({ serverData: { version: item.latestVersion ?? 'latest', confirmWorkers } });
         beginServerRestart();
         await restartSystemFn();
       }
     } catch (error: any) {
-      toast.add({ severity: 'error', detail: error?.response?.data?.message ?? error?.message, life: 5000 });
+      const leftBehind = workersLeftBehind(error);
+      if (leftBehind) {
+        confirmLeftBehind(leftBehind, () => updateItem(id, true));
+      } else {
+        toast.add({ severity: 'error', detail: error?.response?.data?.message ?? error?.message, life: 5000 });
+      }
     } finally {
       fetchStatus();
     }
   }
 
-  async function updateAll(): Promise<void> {
+  async function updateAll(confirmWorkers = false): Promise<void> {
     if (busy.value || pendingCount.value === 0) return;
     try {
-      await runUpdates();
+      await runUpdates({ confirmWorkers });
     } catch (error: any) {
-      toast.add({ severity: 'error', detail: error?.response?.data?.message ?? error?.message, life: 5000 });
+      const leftBehind = workersLeftBehind(error);
+      if (leftBehind) {
+        confirmLeftBehind(leftBehind, () => updateAll(true));
+      } else {
+        toast.add({ severity: 'error', detail: error?.response?.data?.message ?? error?.message, life: 5000 });
+      }
     } finally {
       fetchStatus();
     }
+  }
+
+  function confirmLeftBehind({ workers, target }: WorkersLeftBehind, onConfirm: () => void): void {
+    const lines = workers.map((worker) => `- ${worker.name}${worker.version ? ` (v${worker.version})` : ''}: ${t(`views.updates.left_behind_${worker.reason}`)}`);
+    const intro = target.protocolKnown
+      ? t('views.updates.left_behind_message', { version: target.version })
+      : t('views.updates.left_behind_unknown', { version: target.version });
+
+    dialog.openTextDialog({
+      data: {
+        title: t('views.updates.left_behind_title'),
+        contentText: [intro, '', ...lines].join('\n'),
+        markdown: true,
+        confirmText: t('views.updates.update_anyway'),
+        confirmButtonProps: { severity: 'danger' },
+      },
+      dialogSize: { desktop: { width: 'auto', maxWidth: '560px', maxHeight: '90vh' } },
+      onConfirm,
+    });
   }
 
   async function cancelRun(): Promise<void> {
@@ -238,6 +273,7 @@ export const useUpdatesStore = defineStore('updates', () => {
     allUpToDate,
     serverPending,
     targetServerVersion,
+    confirmLeftBehind,
     connect,
     refresh,
     updateItem,

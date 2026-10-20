@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -35,7 +35,7 @@ export interface PackageManifest {
   cpu?: string[];
   deprecated?: string;
   displayName?: string;
-  cameraui?: { protocolLevel?: number };
+  cameraui?: { protocolLevel?: number; workerProtocol?: { level?: number; min?: number } };
   [key: string]: unknown;
 }
 
@@ -87,6 +87,10 @@ export async function fetchPackument(name: string, full: boolean): Promise<Packu
   }
 }
 
+export async function fetchVersionManifest(name: string, version: string): Promise<PackageManifest> {
+  return fetchJson<PackageManifest>(`${packumentUrl(name)}/${encodeURIComponent(version)}`, FULL_ACCEPT);
+}
+
 export function resolveManifest(packument: Packument, spec: string, wanted: string): PackageManifest {
   const tagged = packument['dist-tags']?.[wanted];
   const version = tagged ?? wanted;
@@ -107,12 +111,12 @@ export async function searchRegistry(query: string, size: number): Promise<Searc
   return (result.objects ?? []).map((entry) => entry.package);
 }
 
-export async function extractTarball(manifest: PackageManifest, dest: string): Promise<void> {
+export async function extractTarball(manifest: PackageManifest, dest: string, signal?: AbortSignal): Promise<void> {
   const staging = await mkdtemp(join(tmpdir(), 'camera.ui-pkg-'));
   const tarball = join(staging, 'package.tgz');
 
   try {
-    const digest = await download(manifest.dist.tarball, tarball);
+    const digest = await download(manifest.dist.tarball, tarball, signal);
     verifyIntegrity(manifest, digest);
 
     await emptyDir(dest);
@@ -135,6 +139,16 @@ export async function extractTarball(manifest: PackageManifest, dest: string): P
   } finally {
     await rm(staging, { recursive: true, force: true });
   }
+}
+
+export async function markBins(manifest: PackageManifest, dir: string): Promise<void> {
+  await Promise.all(
+    packageBins(manifest).map(async (bin) => {
+      const path = join(dir, bin);
+      const { mode } = await stat(path);
+      await chmod(path, mode | 0o111);
+    }),
+  );
 }
 
 export function registryFor(name?: string): string {
@@ -208,19 +222,21 @@ async function fetchJson<T>(url: string, accept: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function request(url: string, accept: string): Promise<Response> {
+async function request(url: string, accept: string, signal?: AbortSignal): Promise<Response> {
   let lastError: RegistryError | undefined;
 
   for (let attempt = 0; attempt <= RETRIES; attempt++) {
     if (attempt > 0) {
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
     }
+    signal?.throwIfAborted();
 
     try {
+      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
       const response = (await fetch(url, {
         headers: { accept, 'user-agent': userAgent(), ...authHeaders(url) },
         dispatcher: requestDispatcher(),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         redirect: 'follow',
       })) as unknown as Response;
 
@@ -235,6 +251,7 @@ async function request(url: string, accept: string): Promise<Response> {
         break;
       }
     } catch (error) {
+      signal?.throwIfAborted();
       lastError = error as RegistryError;
     }
   }
@@ -242,8 +259,8 @@ async function request(url: string, accept: string): Promise<Response> {
   throw lastError ?? registryError(`Request failed: ${url}`, 'EUNKNOWN');
 }
 
-async function download(url: string, dest: string): Promise<string> {
-  const response = await request(url, '*/*');
+async function download(url: string, dest: string, signal?: AbortSignal): Promise<string> {
+  const response = await request(url, '*/*', signal);
   if (!response.body) {
     throw registryError(`Empty response for ${url}`, 'EEMPTYBODY');
   }
@@ -297,14 +314,15 @@ function entryMode(manifest: PackageManifest, path: string, mode: number, type: 
 }
 
 function isPackageBin(manifest: PackageManifest, path: string): boolean {
-  if (!manifest.bin) {
-    return false;
-  }
-
-  const bins = typeof manifest.bin === 'string' ? { [manifest.name]: manifest.bin } : manifest.bin;
   const relative = path.replace(/^[^\\/]*\//, '');
+  return packageBins(manifest).includes(relative);
+}
 
-  return Object.values(bins).includes(relative);
+function packageBins(manifest: PackageManifest): string[] {
+  if (!manifest.bin) {
+    return [];
+  }
+  return Object.values(typeof manifest.bin === 'string' ? { [manifest.name]: manifest.bin } : manifest.bin);
 }
 
 async function emptyDir(dir: string): Promise<void> {

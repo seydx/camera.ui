@@ -185,6 +185,39 @@ export class PluginManager {
     return extractBundledPlugin(packageDir, bundlePath);
   }
 
+  public static async removeSparingKeptDirs(dir: string): Promise<boolean> {
+    if (!(await pathExists(dir))) {
+      return true;
+    }
+    if (await pathExists(join(dir, KEEP_MARKER))) {
+      return false;
+    }
+
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+
+    let removedAll = true;
+    for (const entry of entries) {
+      const entryPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!(await PluginManager.removeSparingKeptDirs(entryPath))) {
+          removedAll = false;
+        }
+      } else {
+        await remove(entryPath);
+      }
+    }
+
+    if (removedAll) {
+      await remove(dir);
+    }
+    return removedAll;
+  }
+
   public async initializeInstalledPlugins(): Promise<void> {
     if (this.plugins.size === 0) {
       this.logger.warn('No plugins found. See the README for information on installing plugins.');
@@ -241,12 +274,16 @@ export class PluginManager {
   }
 
   public async removePlugin(plugin: Plugin, removeStorage?: boolean): Promise<void> {
+    const workerAgentId = this.pluginsService.getPluginDbByName(plugin.pluginName)?.workerAgentId;
     await plugin.worker.cleanup();
 
     await this.pluginsService.removePluginDbById(plugin.id);
+    if (workerAgentId) {
+      tryInject('workerManager')?.purgePlugin(workerAgentId, plugin.pluginName, removeStorage === true);
+    }
 
     if (removeStorage) {
-      const fullyRemoved = await this.removeSparingKeptDirs(plugin.storagePath);
+      const fullyRemoved = await PluginManager.removeSparingKeptDirs(plugin.storagePath);
       if (!fullyRemoved) {
         this.logger.log(`Kept parts of the ${plugin.pluginName} storage (${KEEP_MARKER} marker present)`);
       }
@@ -505,39 +542,6 @@ export class PluginManager {
     if (allSucceeded) {
       await outputFile(this.configService.DEFAULTS_INSTALLED_FILE, new Date().toISOString());
     }
-  }
-
-  private async removeSparingKeptDirs(dir: string): Promise<boolean> {
-    if (!(await pathExists(dir))) {
-      return true;
-    }
-    if (await pathExists(join(dir, KEEP_MARKER))) {
-      return false;
-    }
-
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return false;
-    }
-
-    let removedAll = true;
-    for (const entry of entries) {
-      const entryPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!(await this.removeSparingKeptDirs(entryPath))) {
-          removedAll = false;
-        }
-      } else {
-        await remove(entryPath);
-      }
-    }
-
-    if (removedAll) {
-      await remove(dir);
-    }
-    return removedAll;
   }
 
   private async removeOrphanedPlugins(): Promise<void> {

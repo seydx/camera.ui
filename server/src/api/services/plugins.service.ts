@@ -1,16 +1,15 @@
 import { move, pathExists, readJson, remove } from 'fs-extra/esm';
 
 import { sleep, uuidv4 } from '@camera.ui/common/utils';
-import { readdir } from 'node:fs/promises';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { container, delay, registry } from 'tsyringe';
 import { describePlatformRequirement, isPlatformCompatible } from '../../utils/platform.js';
 
 import { PluginManager } from '../../plugins/index.js';
-import { Plugin } from '../../plugins/plugin.js';
-import { extractPackage, installDependencies } from '../../utils/npm/index.js';
-import { Database } from '../database/index.js';
+import { pythonEnvEntries, writeInstallMarker } from '../../plugins/install-state.js';
+import { extractPackage, getFullManifest, installDependencies } from '../../utils/npm/index.js';
+import { describePlatformRequirement, isPlatformCompatible } from '../../utils/platform.js';
 import { elidePath, getTerminalCols, InstallLogger } from '../utils/install-logger.js';
 import { CamerasService } from './cameras.service.js';
 import { updatesService } from './updates.service.js';
@@ -20,11 +19,7 @@ import type { PluginWorker } from '../../plugins/worker.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { DBPlugin } from '../database/types.js';
-import type { PluginsProgress } from '../types/index.js';
-import type { SocketService } from '../websocket/index.js';
-
-const VENV_DIR = /^python(-electron)?-\d+\.\d+-/;
-const REQUIREMENTS_LOCK = 'requirements-lock.txt';
+import type { BackupInfo, PluginsProgress } from '../types/index.js';
 
 const MANAGE_CONCURRENCY = 2;
 const manageQueue: PluginsProgress[] = [];
@@ -210,7 +205,7 @@ export class PluginsService {
     action: 'install' | 'update' | 'uninstall',
     version?: string,
     pluginId?: string,
-    opts: { internal?: boolean; restart?: boolean } = {},
+    opts: { internal?: boolean; restart?: boolean; onLeftStopped?: () => void } = {},
   ): Promise<string> {
     if (!opts.internal) {
       updatesService().assertManualAllowed('plugin');
@@ -267,6 +262,23 @@ export class PluginsService {
     }
   }
 
+  public async startPlugin(pluginName: string): Promise<void> {
+    await this.pluginManager.startPluginChild(pluginName);
+  }
+
+  public async assertWorkerCanRun(pluginName: string, version: string): Promise<void> {
+    const agentId = this.getPluginDbByName(pluginName)?.workerAgentId;
+    const workerManager = tryInject('workerManager');
+    if (!agentId || !workerManager) {
+      return;
+    }
+    const manifest = await getFullManifest(`${pluginName}@${version}`).catch(() => undefined);
+    const issue = workerManager.pluginApiIssue(agentId, manifest?.cameraui?.protocolLevel);
+    if (issue) {
+      throw Object.assign(new Error(issue), { statusCode: 409 });
+    }
+  }
+
   public installingPlugins(): PluginsProgress[] {
     return [...manageQueue];
   }
@@ -276,17 +288,24 @@ export class PluginsService {
     return id && !this.getPluginDbById(id) ? id : undefined;
   }
 
-  private async runManage(log: InstallLogger, entry: PluginsProgress, targetDir: string, pluginId?: string, opts: { restart?: boolean } = {}): Promise<string> {
+  private async runManage(
+    log: InstallLogger,
+    entry: PluginsProgress,
+    targetDir: string,
+    pluginId?: string,
+    opts: { restart?: boolean; onLeftStopped?: () => void } = {},
+  ): Promise<string> {
     const { pluginName, action, version } = entry;
 
     const worker = this.getPluginProcessByName(pluginName);
-    const wasRunning = worker?.isRunning() === true;
+    const wasRunning = worker?.isRunning() === true || worker?.isRemoteWorker === true;
+    // a worker keeps running the old version until the new one is installed beside it
+    const onWorker = action === 'update' && opts.restart !== false && worker?.isRemoteWorker === true && worker.isRunning();
     let installedNew = false;
 
     try {
-      // also tear down a process stuck in STARTING — it holds file locks that
-      // make the backup rename fail on windows
-      if (worker && (wasRunning || worker.getPID() > 0)) {
+      // a process stuck in STARTING holds file locks that break the backup rename on windows
+      if (worker && !onWorker && (wasRunning || worker.getPID() > 0)) {
         log.step('Stopping running plugin');
         await worker.teardown();
         log.done();
@@ -315,10 +334,16 @@ export class PluginsService {
           ?.reparsePackageJson()
           .catch(() => {});
 
-        if (wasRunning && opts.restart !== false) {
+        if (onWorker) {
+          if (installedNew && worker) {
+            await this.switchOnWorker(log, worker, pluginName);
+          }
+        } else if (wasRunning && opts.restart !== false) {
           log.step('Starting plugin');
           await this.pluginManager.startPluginChild(pluginName);
           log.done();
+        } else if (wasRunning) {
+          opts.onLeftStopped?.();
         }
       }
     }
@@ -328,6 +353,30 @@ export class PluginsService {
     }
 
     return targetDir;
+  }
+
+  private async switchOnWorker(log: InstallLogger, worker: PluginWorker, pluginName: string): Promise<void> {
+    const plugin = this.getPluginByName(pluginName);
+    const version = plugin?.info.installedVersion;
+    const manager = tryInject('workerManager');
+    if (!plugin || !version || !manager) {
+      await worker.restart();
+      return;
+    }
+
+    const artifact = plugin.artifact?.version === version ? plugin.artifact : undefined;
+    log.step('Installing on its worker beside the running version');
+    await manager.preparePlugin(pluginName, { version, integrity: artifact?.integrity, tarball: artifact?.tarball });
+    log.done();
+
+    log.step('Switching to the new version on its worker');
+    await worker.restart();
+    const reason = await manager.waitPluginVersion(pluginName, version);
+    if (reason) {
+      log.error(`Its worker could not start ${pluginName}@${version}: ${reason}`);
+      throw new Error(`Its worker could not start ${pluginName}@${version}: ${reason}`);
+    }
+    log.done();
   }
 
   private emitManageQueue(): void {
@@ -359,7 +408,7 @@ export class PluginsService {
       }
 
       log.step('Downloading and extracting package');
-      await extractPackage(`${pluginName}@${version}`, targetDir);
+      const manifest = await extractPackage(`${pluginName}@${version}`, targetDir);
       log.done();
 
       // Skip dependency install when the plugin can't run on this host anyway
@@ -384,6 +433,8 @@ export class PluginsService {
       if (update && backedUp) {
         await this.keepPythonEnv(log, backupTempDir, targetDir);
       }
+      // workers install the same build
+      await writeInstallMarker(targetDir, { version: manifest.version, integrity: manifest.dist.integrity, tarball: manifest.dist.tarball });
 
       log.step('Cleaning up');
       await remove(backupTempDir);
@@ -432,17 +483,15 @@ export class PluginsService {
   }
 
   private async keepPythonEnv(log: InstallLogger, backupTempDir: string, targetDir: string): Promise<void> {
-    const entries = await readdir(backupTempDir, { withFileTypes: true }).catch(() => []);
-    const kept = entries.filter((entry) => (entry.isDirectory() && VENV_DIR.test(entry.name)) || entry.name === REQUIREMENTS_LOCK);
-
+    const kept = await pythonEnvEntries(backupTempDir);
     if (!kept.length) {
       return;
     }
 
     log.step('Keeping Python environment');
 
-    for (const entry of kept) {
-      await move(join(backupTempDir, entry.name), join(targetDir, entry.name), { overwrite: true });
+    for (const name of kept) {
+      await move(join(backupTempDir, name), join(targetDir, name), { overwrite: true });
     }
 
     log.done();

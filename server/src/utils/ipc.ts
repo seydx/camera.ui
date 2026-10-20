@@ -1,5 +1,7 @@
 import { IS_ELECTRON } from '@camera.ui/common/utils';
 
+import { serverNodeIssue } from './engines.js';
+
 import type { AppUpdateAvailableMessage, CLIMessage, IPCMessage } from '../types.js';
 
 const REPORT_TIMEOUT_MS = 1000;
@@ -54,6 +56,14 @@ export async function requestServerUpdate(version?: string): Promise<AsyncGenera
 
   if (!process.send) {
     throw new Error('Cannot update server: No CLI process found');
+  }
+
+  // the desktop app ships its own Node.js
+  if (!IS_ELECTRON) {
+    const issue = await serverNodeIssue(version ?? 'latest');
+    if (issue) {
+      throw new Error(`Node.js ${issue.required} is required, this machine runs ${process.version}. Update Node.js first.`);
+    }
   }
 
   sendIPCMessage({

@@ -6,12 +6,14 @@ import { ConfigService } from '../services/config/index.js';
 import { checkEngineCompatibility, checkProtocolCompat } from '../utils/engines.js';
 import { isPlatformCompatible } from '../utils/platform.js';
 import { PluginManager } from './index.js';
+import { readInstallMarker, readInstallMarkerSync } from './install-state.js';
 import { resolvePluginMain } from './main-file.js';
 import { PluginWorker } from './worker.js';
 
 import type { PluginContract } from '@camera.ui/sdk';
 import type { CameraUiPlugin, IPackageJson } from '../api/types/index.js';
 import type { LoggerService } from '../services/logger/index.js';
+import type { InstallArtifact } from './install-state.js';
 import type { Context } from './types.js';
 
 export class Plugin {
@@ -27,6 +29,7 @@ export class Plugin {
   readonly logPath: string;
   readonly worker: PluginWorker;
   public runningVersion?: string;
+  public artifact?: InstallArtifact;
 
   private logger: LoggerService;
   private configService: ConfigService;
@@ -60,6 +63,7 @@ export class Plugin {
 
     this._contract = contract;
     this._info = this.parsePackageJson(packageJSON, installPath);
+    this.artifact = readInstallMarkerSync(this.installPath);
 
     this.displayName = this.info.displayName;
 
@@ -129,6 +133,7 @@ not satisfy the current Node.js version of ${process.version}. You may need to u
     const pjson = PluginManager.loadPackageJSON(this.installPath);
     this._contract = await PluginManager.parseContractAsync(this.installPath, pjson);
     this._info = this.parsePackageJson(pjson, this.installPath);
+    this.artifact = await readInstallMarker(this.installPath);
   }
 
   private parsePackageJson(pjson: IPackageJson, installPath: string): CameraUiPlugin {

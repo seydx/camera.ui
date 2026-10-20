@@ -1,7 +1,12 @@
+import { APP_SERVER_NAME } from '@camera.ui/common/utils';
 import { PROTOCOL_LEVEL } from '@camera.ui/sdk';
 import semver from 'semver';
 
+import { getPackument } from './npm/index.js';
+import { fetchVersionManifest, resolveManifest } from './npm/registry.js';
+
 import type { EngineIssue, ProtocolCompat } from '../api/types/index.js';
+import type { WorkerProtocolRange } from '../workers/lifecycle/update.js';
 
 export const MIN_SUPPORTED_PROTOCOL_LEVEL = 1;
 
@@ -39,4 +44,24 @@ export function checkEngineCompatibility(engines: Record<string, string> | undef
   }
 
   return issues;
+}
+
+export async function serverNodeIssue(version: string, nodeVersion = process.version): Promise<EngineIssue | undefined> {
+  try {
+    const manifest = resolveManifest(await getPackument(APP_SERVER_NAME), `${APP_SERVER_NAME}@${version}`, version);
+    return checkEngineCompatibility(manifest.engines, manifest.version, nodeVersion).find((issue) => issue.engine === 'node');
+  } catch {
+    return undefined;
+  }
+}
+
+export async function serverTarget(spec: string): Promise<{ version: string; workerProtocol?: WorkerProtocolRange } | undefined> {
+  try {
+    const manifest = await fetchVersionManifest(APP_SERVER_NAME, spec);
+    const range = manifest.cameraui?.workerProtocol;
+    const workerProtocol = typeof range?.level === 'number' && typeof range.min === 'number' ? { level: range.level, min: range.min } : undefined;
+    return { version: manifest.version, workerProtocol };
+  } catch {
+    return undefined;
+  }
 }

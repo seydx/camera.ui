@@ -580,7 +580,10 @@ export class ServerManager {
         if (code === 0) {
           resolve();
         } else {
-          const error = new Error(`npm install failed with code ${code}`) as Error & { stderr?: string };
+          const npmCode = /npm (?:error|ERR!) code (\w+)/.exec(stderrTail)?.[1];
+          const message =
+            npmCode === 'ENOSPC' ? 'npm install failed, the disk is full (ENOSPC)' : `npm install failed with code ${code}${npmCode ? ` (${npmCode})` : ''}`;
+          const error = new Error(message) as Error & { stderr?: string };
           error.stderr = stderrTail;
           reject(error);
         }

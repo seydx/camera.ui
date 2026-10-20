@@ -1,5 +1,6 @@
 import { fetchViableNetworkAddresses } from '@camera.ui/common/network';
-import { isEqual, SignalHandler } from '@camera.ui/common/utils';
+import { UPDATE_STATE_FILE } from '@camera.ui/common/node';
+import { IS_ELECTRON } from '@camera.ui/common/utils';
 import { createRPCClient, ERROR_CODES, isNoRespondersError, isRPCError } from '@camera.ui/rpc';
 import { PROTOCOL_LEVEL } from '@camera.ui/sdk';
 import { randomUUID } from 'node:crypto';
@@ -175,6 +176,7 @@ export class WorkerAgent implements WorkerAgentRPC {
   private linkHintTimer?: NodeJS.Timeout;
   private codeWatchTimer?: NodeJS.Timeout;
   private appliedUpdateChannel?: 'latest' | 'beta';
+  private purged = new Set<string>();
 
   private closeHandler?: () => Promise<void>;
   private unsubscribeSync?: () => void;
@@ -421,7 +423,9 @@ export class WorkerAgent implements WorkerAgentRPC {
   }
 
   public async restart(): Promise<void> {
-    this.logger.log('Restart requested — shutting down gracefully');
+    if (this.updating) {
+      throw new Error('An update is running on this worker, it restarts by itself when the update is done');
+    }
 
     // Defer so the RPC response is sent before the connection drops
     setTimeout(async () => {
@@ -438,9 +442,13 @@ export class WorkerAgent implements WorkerAgentRPC {
     if (this.updating) {
       throw new Error('Update already in progress');
     }
+    assertServerUpdateSpace(this.configService.HOME_PATH);
 
     this.updating = true;
     this.updateError = undefined;
+    this.updatePhase = 'installing';
+    this.updateTarget = version;
+    this.lastUpdateResult = undefined;
 
     // an install takes minutes: answer the master now, report through the heartbeat
     this.runUpdate(version);
@@ -642,7 +650,9 @@ export class WorkerAgent implements WorkerAgentRPC {
   }
 
   private async runUpdate(version = 'latest'): Promise<void> {
-    this.report('log', `Updating to ${version}`);
+    // the desktop app installs what its feed offers
+    const target = (IS_ELECTRON ? appUpdateState()?.version : undefined) ?? version;
+    this.logger.log(`Updating to ${target}`);
 
     try {
       this.appliedUpdateChannel = version.includes('-beta') ? 'beta' : 'latest';
@@ -652,12 +662,14 @@ export class WorkerAgent implements WorkerAgentRPC {
         this.logger.raw(line);
       }
 
-      this.report('log', `Updated to ${version} — restarting`);
-      await this.restart();
-    } catch (error: any) {
+      this.updatePhase = 'staged';
+      this.logger.log(`Updated to ${target}, restarting`);
+      this.requestShutdown('update');
+    } catch (error) {
       this.updating = false;
-      this.updateError = error?.message ?? String(error);
-      this.report('error', `Update to ${version} failed: ${this.updateError}`);
+      this.updatePhase = 'failed';
+      this.updateError = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Update to ${target} failed: ${this.updateError}`);
     }
   }
 
@@ -1214,6 +1226,10 @@ export class WorkerAgent implements WorkerAgentRPC {
         updatable: canRequestServerUpdate(),
         updating: this.updating,
         error: this.updateError,
+        phase: this.updatePhase,
+        target: this.updateTarget,
+        desktop: IS_ELECTRON,
+        lastResult: this.lastUpdateResult,
       },
       appVersion: process.env.CAMERA_UI_APP_VERSION,
       bootId: this.boot,

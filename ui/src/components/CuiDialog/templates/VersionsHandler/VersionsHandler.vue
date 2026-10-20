@@ -56,6 +56,7 @@ import { compareVersions } from 'compare-versions';
 import { ConfigQuery } from '@/api/routes/config.js';
 import { PluginsQuery } from '@/api/routes/plugins.js';
 import { ServerQuery } from '@/api/routes/server.js';
+import { workersLeftBehind } from '@/api/routes/updates.js';
 import { describePlatform } from '@/common/platformLabels.js';
 import { isPluginTarget, isServerTarget } from './types.js';
 
@@ -81,6 +82,7 @@ const router = useRouter();
 const { mdBreakpoint } = useSharedCuiBreakpoint();
 const { beginServerRestart } = useServerRestart();
 const { isBeta } = useUpdateChannel();
+const updatesStore = useUpdatesStore();
 const dialogRef = inject<Ref<DynamicDialogInstance>>('dialogRef')!;
 const dialogRefProps = inject<DialogRefProps>('dialogRefProps')!;
 
@@ -254,7 +256,7 @@ function shouldShowChangelog(version: string): boolean {
   return true;
 }
 
-async function installTarget(version: string): Promise<void> {
+async function installTarget(version: string, confirmWorkers = false): Promise<void> {
   if (!showReleaseNotes.value && shouldShowChangelog(version)) {
     await fetchChangelog();
 
@@ -296,6 +298,7 @@ async function installTarget(version: string): Promise<void> {
       await updateServer({
         serverData: {
           version: version,
+          confirmWorkers,
         },
       });
       queryClient.invalidateQueries({ queryKey: ['api'] });
@@ -311,6 +314,11 @@ async function installTarget(version: string): Promise<void> {
       dialogRefProps.confirmText.value = t('components.form.button.finish');
     }
   } catch (error: any) {
+    const leftBehind = workersLeftBehind(error);
+    if (leftBehind) {
+      updatesStore.confirmLeftBehind(leftBehind, () => installTarget(version, true));
+      return;
+    }
     toast.add({ severity: 'error', detail: error, life: 3000 });
   }
 }

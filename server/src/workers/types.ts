@@ -19,8 +19,8 @@ export interface RemotePluginConfig {
   pluginId: string;
   pluginName: string;
   version: string;
-  displayName: string;
-  loggerLevel: string;
+  integrity?: string;
+  tarball?: string;
   rtspUsername?: string;
   rtspPassword?: string;
   displayName?: string;
@@ -183,6 +183,10 @@ export interface WorkerUpdateState {
   updatable: boolean;
   updating: boolean;
   error?: string;
+  phase?: 'installing' | 'staged' | 'restarting' | 'failed';
+  target?: string;
+  desktop?: boolean;
+  lastResult?: { target: string; result: 'applied' | 'swap-failed' | 'rolled-back'; reason?: string };
 }
 
 export type VersionStanding = 'behind' | 'same' | 'ahead' | 'unknown';
@@ -206,6 +210,8 @@ export interface WorkerInfo {
   capabilities: WorkerCapability[];
   version?: string;
   versionMismatch?: boolean;
+  versionStanding?: VersionStanding;
+  appVersion?: string;
   update?: WorkerUpdateState;
   platform?: WorkerPlatform;
   addresses?: UsableNetworkAddress[];
@@ -254,6 +260,7 @@ export interface PluginPurge {
 
 export interface WorkerSyncResponse {
   workloads: WorkloadSpec[];
+  purge?: PluginPurge[];
   updateChannel?: 'latest' | 'beta';
   updateTarget?: string;
   master?: MasterSyncInfo;

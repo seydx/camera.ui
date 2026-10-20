@@ -69,6 +69,16 @@
             />
           </div>
 
+          <div v-else-if="allUpToDate && nodeBlockedServer" class="flex items-center gap-4">
+            <i-mdi:information-outline class="w-7 h-7 shrink-0 text-muted" />
+            <div class="flex flex-col field-switch-gap min-w-0 flex-1">
+              <span class="text-sm font-bold text-color">{{ $t('views.updates.server_needs_node', { version: nodeBlockedServer.latestVersion }) }}</span>
+              <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
+                {{ blockedLabel(nodeBlockedServer) }}
+              </Message>
+            </div>
+          </div>
+
           <div v-else-if="allUpToDate" class="flex items-center gap-4">
             <i-mdi:check-circle-outline class="w-7 h-7 shrink-0 text-success" />
             <div class="flex flex-col field-switch-gap min-w-0 flex-1">
@@ -189,9 +199,15 @@ const sections = computed<{ kind: UpdateKind; title: string; items: UpdateItem[]
 );
 
 const checkedAtLabel = computed(() => new Date(checkedAt.value).toLocaleTimeString());
+const nodeBlockedServer = computed(() => updatesStore.itemsOf('server').find((item) => item.status === 'blocked' && item.blockedReason === 'node'));
 
 function blockedLabel(item: UpdateItem): string {
   if (item.blockedReason === 'legacy') return t('views.updates.blocked_legacy');
+  if (item.blockedReason === 'launcher') return t('views.updates.blocked_launcher');
+  if (item.blockedReason === 'offline') return t('views.updates.blocked_offline');
+  if (item.blockedReason === 'node' && item.engineIssue) {
+    return t('components.plugin_card.compat_engine', { engine: 'Node.js', required: item.engineIssue.required, current: item.engineIssue.current });
+  }
   return t('views.updates.blocked_desktop');
 }
 

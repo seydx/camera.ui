@@ -2,8 +2,11 @@ import { createHash, randomBytes } from 'node:crypto';
 import { hostname } from 'node:os';
 import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
+import { LASTSEEN_WRITE_MS } from '../../workers/lifecycle/timing.js';
 import { Database } from '../database/index.js';
 
+import type { WorkerUpdate } from '../../workers/lifecycle/update.js';
 import type { KnownWorker } from '../../workers/types.js';
 import type { DBSettings, DBWorkerConnection, DBWorkerCredential, DBWorkerLastShutdown, DBWorkerPairing, DBWorkerRelease, DBWorkerState } from '../database/types.js';
 
@@ -81,20 +84,23 @@ export class WorkersService {
     return this.dbs.settingsDB.get('settings')?.knownWorkers ?? [];
   }
 
-  public async rememberWorker(agentId: string, name: string): Promise<void> {
+  public async rememberWorker(agentId: string, name: string, runs: { version?: string; protocol?: number } = {}): Promise<void> {
     await this.commitSettings((settings) => {
       const known = settings.knownWorkers ?? [];
       const existing = known.find((worker) => worker.agentId === agentId);
 
       if (existing) {
-        // Only persist on change — this runs on every heartbeat.
-        if (existing.name === name && Date.now() - existing.lastSeen < 60_000) {
+        // runs on every heartbeat, persist only on change
+        const same = existing.name === name && (runs.version ?? existing.version) === existing.version && (runs.protocol ?? existing.protocol) === existing.protocol;
+        if (same && Date.now() - existing.lastSeen < LASTSEEN_WRITE_MS) {
           return undefined;
         }
         existing.name = name;
         existing.lastSeen = Date.now();
+        existing.version = runs.version ?? existing.version;
+        existing.protocol = runs.protocol ?? existing.protocol;
       } else {
-        known.push({ agentId, name, lastSeen: Date.now() });
+        known.push({ agentId, name, lastSeen: Date.now(), ...runs });
       }
 
       settings.knownWorkers = known;

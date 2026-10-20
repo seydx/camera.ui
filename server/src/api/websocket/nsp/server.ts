@@ -1,12 +1,12 @@
 import { APP_SERVER_NAME, IS_ELECTRON } from '@camera.ui/common/utils';
 import { Severity } from '@camera.ui/sdk';
-import { lt, valid } from 'semver';
-import { container } from 'tsyringe';
 
 import { SystemNotificationTypeId } from '../../../manager/types.js';
 import { ConfigService } from '../../../services/config/index.js';
+import { serverNodeIssue } from '../../../utils/engines.js';
 import { announceUpdateChannel } from '../../../utils/ipc.js';
 import { checkForUpdate } from '../../../utils/npm/index.js';
+import { workerBehind } from '../../../workers/lifecycle/update.js';
 import { PluginsService } from '../../services/plugins.service.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
@@ -14,8 +14,7 @@ import type { MqttManager } from '../../../mqtt/manager.js';
 import type { MqttStatus } from '../../../mqtt/types.js';
 import type { ProxyServer } from '../../../rpc/index.js';
 import type { AppUpdateAvailableMessage } from '../../../types.js';
-import type { WorkerManager } from '../../../workers/manager.js';
-import type { INpmPluginState } from '../../types/index.js';
+import type { EngineIssue, INpmPluginState } from '../../types/index.js';
 import type { SocketNsp } from '../types.js';
 
 export class ServerNamespace {
@@ -31,9 +30,12 @@ export class ServerNamespace {
     betaUpdateAvailable: false,
   };
 
+  private serverEngineIssue: EngineIssue | undefined;
+
   private pluginUpdates: INpmPluginState[] = [];
 
   private workerUpdateAvailable = false;
+  private notifiedWorkerUpdates = new Set<string>();
 
   private checkPluginUpdateInterval: NodeJS.Timeout | undefined;
   private checkServerUpdateInterval: NodeJS.Timeout | undefined;
@@ -74,39 +76,43 @@ export class ServerNamespace {
     return data;
   }
 
-  public refreshWorkerUpdateAvailable(): void {
-    let available = false;
-    try {
-      const workerManager = container.resolve<WorkerManager>('workerManager');
-      const hasUpdate = this.serverUpdate.updateAvailable || this.serverUpdate.betaUpdateAvailable;
-      const target = (hasUpdate ? this.serverUpdate.latestVersion : undefined) ?? ConfigService.RUNNING_VERSION;
-      available = workerManager.getWorkers().some((worker) => {
-        if (!worker.online) return false;
-        if (!worker.version || !valid(worker.version) || !valid(target)) return worker.versionMismatch === true;
-        return lt(worker.version, target);
-      });
-    } catch {
-      // manager not constructed (worker mode)
-    }
+  public getServerEngineIssue(): EngineIssue | undefined {
+    return this.serverEngineIssue;
+  }
 
+  public targetServerVersion(): string {
+    const hasUpdate = !IS_ELECTRON && (this.serverUpdate.updateAvailable || this.serverUpdate.betaUpdateAvailable) && !this.serverEngineIssue;
+    return (hasUpdate ? this.serverUpdate.latestVersion : undefined) ?? ConfigService.RUNNING_VERSION;
+  }
+
+  public refreshWorkerUpdateAvailable(): void {
+    const workers = tryInject('workerManager')?.getWorkers() ?? [];
+    const behind = workers.filter((worker) => workerBehind(worker));
+    const updatable = behind.filter((worker) => worker.state === 'online' || worker.state === 'outdated');
+
+    const available = updatable.length > 0;
     if (available !== this.workerUpdateAvailable) {
       this.workerUpdateAvailable = available;
       this.nsp.emit('worker-updates', { updateAvailable: available });
+    }
 
-      if (available) {
-        this.proxyServer.notificationManager.notify({
-          source: { kind: 'system', id: SystemNotificationTypeId.WorkerUpdateAvailable },
-          notification: {
-            title: 'Worker Update',
-            body: 'New worker updates available',
-            severity: Severity.Info,
-            tag: SystemNotificationTypeId.WorkerUpdateAvailable,
-            deepLink: '/updates',
-          },
-        });
-      } else {
-        this.proxyServer.notificationManager.removeByTagForAll(SystemNotificationTypeId.WorkerUpdateAvailable);
-      }
+    const target = this.targetServerVersion();
+    const fresh = updatable.map((worker) => `${worker.agentId}:${worker.bootId}:${target}`).filter((key) => !this.notifiedWorkerUpdates.has(key));
+    if (fresh.length > 0) {
+      fresh.forEach((key) => this.notifiedWorkerUpdates.add(key));
+      this.proxyServer.notificationManager.notify({
+        source: { kind: 'system', id: SystemNotificationTypeId.WorkerUpdateAvailable },
+        notification: {
+          title: 'Worker Update',
+          body: 'New worker updates available',
+          severity: Severity.Info,
+          tag: SystemNotificationTypeId.WorkerUpdateAvailable,
+          deepLink: '/updates',
+        },
+      });
+    } else if (behind.length === 0 && this.notifiedWorkerUpdates.size > 0) {
+      this.notifiedWorkerUpdates.clear();
+      this.proxyServer.notificationManager.removeByTagForAll(SystemNotificationTypeId.WorkerUpdateAvailable);
     }
   }
 
@@ -248,7 +254,10 @@ export class ServerNamespace {
 
   private async checkServerUpdate(): Promise<void> {
     try {
-      this.serverUpdate = await checkForUpdate(APP_SERVER_NAME, ConfigService.VERSION, 'beta', this.configService.config.betaUpdates ?? false);
+      const state = await checkForUpdate(APP_SERVER_NAME, ConfigService.VERSION, 'beta', this.configService.config.betaUpdates ?? false);
+      const hasUpdate = state.updateAvailable || state.betaUpdateAvailable;
+      this.serverEngineIssue = hasUpdate && state.latestVersion ? await serverNodeIssue(state.latestVersion) : undefined;
+      this.serverUpdate = state;
     } catch {
       // ignore — keep the last known state
     }

@@ -9,7 +9,7 @@ import { gt, parse } from 'semver';
 
 import { TtlCache } from '../ttl-cache.js';
 import { nerfDart } from './auth.js';
-import { extractTarball, fetchPackument, registryFor, resolveManifest, searchRegistry } from './registry.js';
+import { extractTarball, fetchPackument, markBins, registryFor, resolveManifest, searchRegistry } from './registry.js';
 
 import type { PackageManifest, Packument } from './registry.js';
 
@@ -123,11 +123,42 @@ export async function searchPackages(query: string, size = 250): Promise<NpmSear
   return searchRegistry(query, size);
 }
 
-export async function extractPackage(spec: string, dest: string): Promise<void> {
+export async function extractPackage(spec: string, dest: string): Promise<PackageManifest> {
   const { name, wanted } = parseSpec(spec);
   const packument = await getPackument(name, { refresh: true });
+  const manifest = resolveManifest(packument, spec, wanted);
 
-  await extractTarball(resolveManifest(packument, spec, wanted), dest);
+  await extractTarball(manifest, dest);
+  return manifest;
+}
+
+export async function extractArtifact(
+  name: string,
+  version: string,
+  artifact: { integrity?: string; tarball?: string },
+  dest: string,
+  signal?: AbortSignal,
+): Promise<PackageManifest> {
+  let manifest: PackageManifest;
+  try {
+    manifest = resolveManifest(await getPackument(name, { refresh: true }), `${name}@${version}`, version);
+  } catch (error) {
+    if (!artifact.tarball) throw error;
+    return extractForeignTarball({ name, version, dist: { tarball: artifact.tarball, integrity: artifact.integrity } }, dest, signal);
+  }
+
+  if (artifact.integrity && manifest.dist.integrity && manifest.dist.integrity !== artifact.integrity) {
+    throw Object.assign(new Error(`The registry serves another build of ${name}@${version} than the master installed`), { code: 'EINTEGRITY' });
+  }
+  await extractTarball(manifest, dest, signal);
+  return manifest;
+}
+
+async function extractForeignTarball(manifest: PackageManifest, dest: string, signal?: AbortSignal): Promise<PackageManifest> {
+  await extractTarball(manifest, dest, signal);
+  const { bin } = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8')) as Pick<PackageManifest, 'bin'>;
+  await markBins({ ...manifest, bin }, dest);
+  return { ...manifest, bin };
 }
 
 function envRegistryToken(): NodeJS.ProcessEnv {

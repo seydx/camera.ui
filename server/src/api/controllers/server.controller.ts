@@ -61,6 +61,7 @@ export class ServerController {
   public async updateServer(req: FastifyRequest<AuthLoginRequest & ServerUpdateRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       updatesService().assertManualAllowed('server');
+      await updatesService().assertWorkersFollow(req.body.version, req.body.confirmWorkers === true);
 
       this.logger.log(`Updating server: ${APP_SERVER_NAME}@${req.body.version}`);
 
@@ -77,6 +78,8 @@ export class ServerController {
       return reply.code(statusCode).send({
         statusCode,
         message: error.message,
+        workers: error.workers,
+        target: error.target,
       });
     }
   }

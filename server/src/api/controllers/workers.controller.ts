@@ -266,7 +266,8 @@ export class WorkersController {
       await this.workerManager.restartWorker(req.params.agentId);
       return reply.code(204).send();
     } catch (error: any) {
-      return reply.code(500).send({ statusCode: 500, message: error.message });
+      const statusCode = error.statusCode ?? 500;
+      return reply.code(statusCode).send({ statusCode, message: error.message });
     }
   }
 

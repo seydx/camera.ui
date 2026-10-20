@@ -23,6 +23,7 @@ export type {
   UpdatesBlockedReason,
   UpdatesItemKind,
   UpdatesItemStatus,
+  UpdatesLeftBehindWorker,
   UpdatesPending,
   UpdatesPendingPlugin,
   UpdatesPendingWorker,

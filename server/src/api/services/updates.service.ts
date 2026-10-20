@@ -7,18 +7,23 @@ import { lt, valid } from 'semver';
 import { container } from 'tsyringe';
 
 import { ConfigService } from '../../services/config/index.js';
+import { assertServerUpdateSpace } from '../../utils/disk-space.js';
+import { serverTarget } from '../../utils/engines.js';
 import { appUpdateState, requestAppUpdateCheck } from '../../utils/ipc.js';
+import { connectsAfter, workerBehind } from '../../workers/lifecycle/update.js';
 import { PluginsService } from './plugins.service.js';
 import { ServerService } from './server.service.js';
 
 import type { LoggerService } from '../../services/logger/index.js';
-import type { WorkerManager } from '../../workers/manager.js';
-import type { SocketService } from '../websocket/index.js';
+import type { WorkerProtocolRange } from '../../workers/lifecycle/update.js';
+import type { WorkerInfo } from '../../workers/types.js';
+import type { WorkerUpdateResult } from '../../workers/updates.js';
+import type { EngineIssue } from '../types/index.js';
 import type { ServerNamespace } from '../websocket/nsp/server.js';
 
 export type UpdatesItemKind = 'server' | 'plugin' | 'worker';
 export type UpdatesItemStatus = 'pending' | 'updating' | 'restarting' | 'success' | 'error';
-export type UpdatesBlockedReason = 'desktop' | 'legacy';
+export type UpdatesBlockedReason = 'desktop' | 'legacy' | 'launcher' | 'offline' | 'node';
 
 export interface UpdatesActivityItem {
   id: string;
@@ -50,6 +55,13 @@ export interface UpdatesPendingWorker {
   blockedReason?: UpdatesBlockedReason;
 }
 
+export interface UpdatesLeftBehindWorker {
+  agentId: string;
+  name: string;
+  version?: string;
+  reason: UpdatesBlockedReason | 'pending' | 'failed';
+}
+
 export interface UpdatesPendingPlugin {
   pluginName: string;
   displayName: string;
@@ -59,7 +71,7 @@ export interface UpdatesPendingPlugin {
 }
 
 export interface UpdatesPending {
-  server: { installedVersion: string; latestVersion?: string; updateAvailable: boolean; blockedReason?: UpdatesBlockedReason };
+  server: { installedVersion: string; latestVersion?: string; updateAvailable: boolean; blockedReason?: UpdatesBlockedReason; engineIssue?: EngineIssue };
   plugins: UpdatesPendingPlugin[];
   workers: UpdatesPendingWorker[];
   targetServerVersion: string;
@@ -80,12 +92,28 @@ interface UpdatesStamp {
   startedAt: number;
 }
 
+interface ServerTarget {
+  version: string;
+  workerProtocol?: WorkerProtocolRange;
+}
+
 export class UpdatesLockedError extends Error {
   public readonly statusCode = 409;
 }
 
-const WORKER_UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
-const WORKER_POLL_MS = 2_000;
+export class WorkersLeftBehindError extends Error {
+  public readonly statusCode = 409;
+  public readonly target: { version: string; protocolKnown: boolean };
+
+  constructor(
+    target: ServerTarget,
+    public readonly workers: UpdatesLeftBehindWorker[],
+  ) {
+    super(leftBehindMessage(target, workers));
+    this.target = { version: target.version, protocolKnown: target.workerProtocol !== undefined };
+  }
+}
+
 const CHECK_TTL_MS = 60_000;
 const MANUAL_ITEM_LINGER_MS = 60_000;
 const STAMP_FILE = 'updates-run.json';
@@ -97,6 +125,23 @@ export function updatesService(): UpdatesService {
   return instance;
 }
 
+function leftBehindMessage(target: ServerTarget, workers: UpdatesLeftBehindWorker[]): string {
+  const names = workers.map((worker) => worker.name).join(', ');
+  return target.workerProtocol
+    ? `${names} would no longer connect to camera.ui ${target.version}. Update them first or confirm the update.`
+    : `camera.ui ${target.version} does not say which workers it accepts, ${names} might no longer connect. Update them first or confirm the update.`;
+}
+
+function reachableWorker(worker: WorkerInfo): boolean {
+  return worker.state === 'online' || worker.state === 'outdated';
+}
+
+function workerBlockedReason(worker: WorkerInfo): UpdatesBlockedReason | undefined {
+  if (!worker.update) return 'legacy';
+  if (worker.update.updatable) return undefined;
+  return worker.update.desktop === false ? 'launcher' : 'desktop';
+}
+
 export class UpdatesService {
   private logger: LoggerService;
   private configService: ConfigService;
@@ -106,7 +151,6 @@ export class UpdatesService {
   private manual = new Map<string, UpdatesActivityItem>();
   private manualCleanupTimers = new Map<string, NodeJS.Timeout>();
   private serverInstallActive = false;
-  private workerPollTimer: NodeJS.Timeout | undefined;
   private lastCheckAt = 0;
 
   constructor() {
@@ -162,7 +206,13 @@ export class UpdatesService {
 
   public notifyWorkerUpdate(agentId: string, name: string, targetVersion?: string): void {
     this.notifyActivity('worker', `worker:${agentId}`, name, 'start', { version: targetVersion });
-    this.ensureWorkerPoll();
+  }
+
+  public noteWorkerUpdateResult(result: WorkerUpdateResult, name: string): void {
+    this.notifyActivity('worker', `worker:${result.agentId}`, name, result.ok ? 'success' : 'error', { error: result.reason });
+    if (!this.isRunActive()) {
+      this.refreshUpdateStates();
+    }
   }
 
   public status(): UpdatesStatus {
@@ -194,7 +244,7 @@ export class UpdatesService {
       server: { installedVersion: ConfigService.VERSION, updateAvailable: false },
       plugins: [],
       workers: [],
-      targetServerVersion: ConfigService.RUNNING_VERSION,
+      targetServerVersion: this.serverNamespace()?.targetServerVersion() ?? ConfigService.RUNNING_VERSION,
     };
 
     const serverNsp = this.serverNamespace();
@@ -209,10 +259,14 @@ export class UpdatesService {
         blockedReason: app && !app.remoteInstall ? 'desktop' : undefined,
       };
     } else if (updates?.server && (updates.server.updateAvailable || updates.server.betaUpdateAvailable)) {
-      pending.server = { installedVersion: ConfigService.VERSION, latestVersion: updates.server.latestVersion, updateAvailable: true };
-      if (updates.server.latestVersion) {
-        pending.targetServerVersion = updates.server.latestVersion;
-      }
+      const engineIssue = serverNsp?.getServerEngineIssue();
+      pending.server = {
+        installedVersion: ConfigService.VERSION,
+        latestVersion: updates.server.latestVersion,
+        updateAvailable: true,
+        blockedReason: engineIssue ? 'node' : undefined,
+        engineIssue,
+      };
     }
 
     const pluginUpdates = new Map((updates?.plugins ?? []).filter((entry) => entry.pluginName).map((entry) => [entry.pluginName!, entry]));
@@ -227,41 +281,61 @@ export class UpdatesService {
       });
     }
 
-    for (const worker of this.workerManager()?.getWorkers() ?? []) {
-      if (!worker.online) continue;
-      if (!this.workerBehindTarget(worker.version, pending.targetServerVersion, worker.versionMismatch === true)) {
-        pending.workers.push({ agentId: worker.agentId, name: worker.name, installedVersion: worker.version, updateAvailable: false, updatable: true });
-      } else if (worker.update?.updatable) {
-        pending.workers.push({ agentId: worker.agentId, name: worker.name, installedVersion: worker.version, updateAvailable: true, updatable: true });
+    for (const worker of tryInject('workerManager')?.getWorkers() ?? []) {
+      if (worker.state === 'released') continue;
+      const reachable = reachableWorker(worker);
+      if (!reachable && !workerBehind(worker)) continue;
+
+      const entry = { agentId: worker.agentId, name: worker.name, installedVersion: worker.version };
+      const blockedReason = reachable ? workerBlockedReason(worker) : 'offline';
+      if (!workerBehind(worker)) {
+        pending.workers.push({ ...entry, updateAvailable: false, updatable: true });
+      } else if (!blockedReason) {
+        pending.workers.push({ ...entry, updateAvailable: true, updatable: true });
       } else {
-        pending.workers.push({
-          agentId: worker.agentId,
-          name: worker.name,
-          installedVersion: worker.version,
-          updateAvailable: true,
-          updatable: false,
-          blockedReason: worker.update ? 'desktop' : 'legacy',
-        });
+        pending.workers.push({ ...entry, updateAvailable: true, updatable: false, blockedReason });
       }
     }
 
     return pending;
   }
 
-  public async runAll(): Promise<UpdatesRunState> {
-    if (this.isRunActive()) {
-      throw new UpdatesLockedError('An update run is already in progress.');
+  public async assertWorkersFollow(spec: string, confirmWorkers: boolean): Promise<void> {
+    const target = await this.resolveServerTarget(spec);
+    const behind = this.leftBehind(target);
+    if (behind.length === 0) return;
+    if (!confirmWorkers) {
+      throw new WorkersLeftBehindError(target, behind);
     }
-    if (this.serverInstallActive || this.anyManualActive() || this.anyWorkerUpdating()) {
-      throw new UpdatesLockedError('Manual updates are running. Wait for them to finish.');
-    }
+    this.logger.warn(`Server update to ${target.version} confirmed, these workers stay behind: ${behind.map((worker) => worker.name).join(', ')}`);
+  }
+
+  public async runAll({ confirmWorkers = false }: { confirmWorkers?: boolean } = {}): Promise<UpdatesRunState> {
+    this.assertRunAllowed();
 
     const pending = this.pending();
     const serverPending = pending.server.updateAvailable && !pending.server.blockedReason;
+    const workerIds = new Set(pending.workers.filter((worker) => worker.updateAvailable && worker.updatable).map((worker) => `worker:${worker.agentId}`));
+
+    let target: ServerTarget | undefined;
+    let behind: UpdatesLeftBehindWorker[] = [];
+    if (serverPending) {
+      // check before the run stops plugins for a server step that cannot work
+      if (!IS_ELECTRON) {
+        assertServerUpdateSpace(this.configService.HOME_PATH);
+      }
+      target = await this.resolveServerTarget(pending.server.latestVersion ?? 'latest');
+      behind = this.leftBehind(target).filter((worker) => !workerIds.has(`worker:${worker.agentId}`));
+      if (behind.length > 0 && !confirmWorkers) {
+        throw new WorkersLeftBehindError(target, behind);
+      }
+      // another run may have started while the registry answered
+      this.assertRunAllowed();
+    }
 
     const items: UpdatesActivityItem[] = [
       ...pending.workers
-        .filter((worker) => worker.updateAvailable && worker.updatable)
+        .filter((worker) => workerIds.has(`worker:${worker.agentId}`))
         .map<UpdatesActivityItem>((worker) => ({
           id: `worker:${worker.agentId}`,
           kind: 'worker',
@@ -311,9 +385,12 @@ export class UpdatesService {
     };
 
     this.logger.log(`Update run started: ${items.length} target(s)${serverPending ? ', server last' : ''}`);
+    if (behind.length > 0) {
+      this.logger.warn(`Update run: confirmed that these workers stay behind: ${behind.map((worker) => worker.name).join(', ')}`);
+    }
     this.emitStatus();
 
-    this.executeRun(serverPending, pending.targetServerVersion);
+    this.executeRun(this.run, pending.targetServerVersion, target, new Set(behind.map((worker) => worker.agentId)));
 
     return this.run;
   }
@@ -324,20 +401,29 @@ export class UpdatesService {
     this.emitStatus();
   }
 
-  private async executeRun(serverPending: boolean, targetServerVersion: string): Promise<void> {
-    const run = this.run!;
+  private async executeRun(run: UpdatesRunState, workerTarget: string, target: ServerTarget | undefined, confirmed: Set<string>): Promise<void> {
+    const stopped: string[] = [];
+    let blockers: UpdatesLeftBehindWorker[] | undefined;
 
     for (const item of run.items) {
       if (run.cancelRequested) break;
 
       try {
         if (item.kind === 'worker') {
-          await this.runWorkerItem(item, targetServerVersion);
-        } else if (item.kind === 'plugin') {
-          await this.runPluginItem(item, serverPending);
+          await this.runWorkerItem(item, workerTarget);
         } else {
-          await this.runServerItem(item, run);
-          return;
+          // worker items come first, their results are final here
+          blockers ??= target ? this.leftBehind(target, run).filter((worker) => !confirmed.has(worker.agentId)) : [];
+          if (item.kind === 'plugin') {
+            await this.runPluginItem(item, target !== undefined && blockers.length === 0, stopped);
+          } else if (blockers.length > 0) {
+            item.status = 'error';
+            item.error = `Skipped: ${blockers.map((worker) => worker.name).join(', ')} would no longer connect after the update`;
+            this.logger.warn(`Update run: server skipped, ${item.error.slice('Skipped: '.length)}`);
+          } else {
+            await this.runServerItem(item, run);
+            return;
+          }
         }
       } catch (error: any) {
         item.status = 'error';
@@ -348,6 +434,7 @@ export class UpdatesService {
     }
 
     this.finishRun();
+    await this.startStopped(stopped);
     await this.refreshUpdateStates();
   }
 
@@ -361,28 +448,24 @@ export class UpdatesService {
 
     await manager.updateWorker(agentId, targetVersion);
 
-    const deadline = Date.now() + WORKER_UPDATE_TIMEOUT_MS;
-    for (;;) {
-      await sleep(WORKER_POLL_MS);
-      const worker = manager.getWorkers().find((entry) => entry.agentId === agentId);
-      if (worker?.update && !worker.update.updating) {
-        if (worker.update.error) throw new Error(worker.update.error);
-        item.status = 'success';
-        item.installedVersion = worker.version;
-        return;
-      }
-      if (Date.now() > deadline) {
-        throw new Error('Timed out waiting for the worker to finish updating');
-      }
-    }
+    const result = await manager.waitWorkerUpdate(agentId);
+    if (!result.ok) throw new Error(result.reason);
+    item.status = 'success';
+    item.installedVersion = result.version;
   }
 
-  private async runPluginItem(item: UpdatesActivityItem, serverPending: boolean): Promise<void> {
+  private async runPluginItem(item: UpdatesActivityItem, serverAhead: boolean, stopped: string[]): Promise<void> {
     item.status = 'updating';
     this.emitStatus();
 
+    const pluginsService = new PluginsService();
+    await pluginsService.assertWorkerCanRun(item.name, item.targetVersion ?? 'latest');
     // with a server update ahead the restart brings the plugins up anyway
-    await new PluginsService().manage(item.name, 'update', item.targetVersion, undefined, { internal: true, restart: !serverPending });
+    await pluginsService.manage(item.name, 'update', item.targetVersion, undefined, {
+      internal: true,
+      restart: !serverAhead,
+      onLeftStopped: () => stopped.push(item.name),
+    });
     item.status = 'success';
     item.installedVersion = item.targetVersion;
   }
@@ -401,20 +484,58 @@ export class UpdatesService {
 
     try {
       await new ServerService().install(item.targetVersion ?? 'latest', { internal: true });
-    } catch (error: any) {
+    } catch (error) {
       await this.clearStamp();
-      item.status = 'error';
-      item.error = error?.message ?? String(error);
-      this.finishRun();
-      await this.refreshUpdateStates();
-      return;
+      throw error;
     }
 
     item.status = 'restarting';
     this.finishRun();
     this.logger.log('Update run: server updated, restarting to apply');
 
-    setTimeout(() => process.kill(process.pid, 'SIGTERM'), 1_000);
+    setTimeout(() => inject('cameraui').shutdown('update'), 1_000);
+  }
+
+  private assertRunAllowed(): void {
+    if (this.isRunActive()) {
+      throw new UpdatesLockedError('An update run is already in progress.');
+    }
+    if (this.serverInstallActive || this.anyManualActive() || this.anyWorkerUpdating()) {
+      throw new UpdatesLockedError('Manual updates are running. Wait for them to finish.');
+    }
+  }
+
+  private async resolveServerTarget(spec: string): Promise<ServerTarget> {
+    // the desktop app ships its own server, its version shows only after the update
+    if (IS_ELECTRON) {
+      return { version: spec };
+    }
+    return (await serverTarget(spec)) ?? { version: spec };
+  }
+
+  private leftBehind(target: ServerTarget, run?: UpdatesRunState): UpdatesLeftBehindWorker[] {
+    if (IS_ELECTRON) return [];
+
+    const behind: UpdatesLeftBehindWorker[] = [];
+    for (const worker of tryInject('workerManager')?.getWorkers() ?? []) {
+      // a disabled worker runs nothing and shows as outdated once enabled again
+      if (worker.state === 'released' || connectsAfter(worker, target.version, target.workerProtocol)) continue;
+
+      const failed = run?.items.some((item) => item.id === `worker:${worker.agentId}` && item.status === 'error');
+      const reason = failed ? 'failed' : reachableWorker(worker) ? (workerBlockedReason(worker) ?? 'pending') : 'offline';
+      behind.push({ agentId: worker.agentId, name: worker.name, version: worker.version, reason });
+    }
+    return behind;
+  }
+
+  private async startStopped(pluginNames: string[]): Promise<void> {
+    if (pluginNames.length === 0) return;
+    this.logger.log(`Update run: the server did not update, starting the stopped plugins again: ${pluginNames.join(', ')}`);
+
+    const pluginsService = new PluginsService();
+    for (const pluginName of pluginNames) {
+      await pluginsService.startPlugin(pluginName).catch((error) => this.logger.warn(`Update run: could not start ${pluginName} again: ${error?.message ?? error}`));
+    }
   }
 
   private finishRun(): void {
@@ -474,33 +595,7 @@ export class UpdatesService {
   }
 
   private anyWorkerUpdating(): boolean {
-    return (this.workerManager()?.getWorkers() ?? []).some((worker) => worker.update?.updating === true);
-  }
-
-  private ensureWorkerPoll(): void {
-    if (this.workerPollTimer) return;
-    this.workerPollTimer = setInterval(() => {
-      const manager = this.workerManager();
-      const workers = manager?.getWorkers() ?? [];
-      let anyUpdating = false;
-
-      for (const [id, item] of this.manual) {
-        if (item.kind !== 'worker' || item.status !== 'updating') continue;
-        const agentId = id.slice('worker:'.length);
-        const worker = workers.find((entry) => entry.agentId === agentId);
-        if (worker?.update?.updating) {
-          anyUpdating = true;
-          continue;
-        }
-        this.notifyActivity('worker', id, item.name, worker?.update?.error ? 'error' : 'success', { error: worker?.update?.error });
-      }
-
-      if (!anyUpdating) {
-        clearInterval(this.workerPollTimer);
-        this.workerPollTimer = undefined;
-        this.refreshUpdateStates();
-      }
-    }, WORKER_POLL_MS);
+    return tryInject('workerManager')?.workerUpdatesActive() === true;
   }
 
   private emitStatus(): void {
@@ -602,19 +697,6 @@ export class UpdatesService {
   }
 
   private serverNamespace(): ServerNamespace | undefined {
-    return this.socketService()?.namespaces.get('/server') as ServerNamespace | undefined;
-  }
-
-  private workerManager(): WorkerManager | undefined {
-    try {
-      return container.resolve<WorkerManager>('workerManager');
-    } catch {
-      return undefined;
-    }
-  }
-
-  private workerBehindTarget(workerVersion: string | undefined, targetVersion: string, versionMismatch: boolean): boolean {
-    if (!workerVersion || !valid(workerVersion) || !valid(targetVersion)) return versionMismatch;
-    return lt(workerVersion, targetVersion);
+    return tryInject('socketService')?.namespaces.get('/server') as ServerNamespace | undefined;
   }
 }
