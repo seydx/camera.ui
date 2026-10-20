@@ -1,4 +1,4 @@
-import { EventType } from '@tanstack/ai';
+import { CONTEXT_OVERFLOW_CODE, EventType } from '@tanstack/ai';
 
 import { flattenToolHistory } from './history.js';
 
@@ -11,8 +11,22 @@ interface TokenUsage {
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;
+  promptTokensDetails?: { cachedTokens?: number; cacheWriteTokens?: number };
 }
 
+const OVERFLOW_SHRINK = 0.6;
+const MODEL_OUTPUT = new Set<string>([
+  EventType.TEXT_MESSAGE_START,
+  EventType.TEXT_MESSAGE_CONTENT,
+  EventType.TEXT_MESSAGE_CHUNK,
+  EventType.TOOL_CALL_START,
+  EventType.TOOL_CALL_CHUNK,
+  EventType.REASONING_START,
+  EventType.REASONING_MESSAGE_START,
+  EventType.REASONING_MESSAGE_CHUNK,
+  EventType.RUN_FINISHED,
+  EventType.RUN_ERROR,
+]);
 const RETRY_PROMPT = 'Your previous reply came back empty. Answer the user now, from the conversation and the tool results you already have.';
 const TEXT_ONLY_PROMPT =
   'Your replies came back empty and no tool is available anymore. Write the answer now as plain text from what the tools already returned, ' +
@@ -64,6 +78,39 @@ export function withEmptyTurnRetry(adapter: AssistantAdapter, onRetry: () => voi
   return wrapChatStream(adapter, chatStream);
 }
 
+// eslint-disable-next-line @stylistic/generator-star-spacing
+export async function* retryOnOverflow(
+  start: (budget: number) => AsyncIterable<StreamChunk>,
+  budget: number,
+  onRetry: (budget: number) => void,
+): AsyncIterable<StreamChunk> {
+  const held: StreamChunk[] = [];
+  let answered = false;
+  let overflowed = false;
+  for await (const chunk of start(budget)) {
+    if (answered) {
+      yield chunk;
+      continue;
+    }
+    if (chunk.type === EventType.RUN_ERROR && chunk.code === CONTEXT_OVERFLOW_CODE) {
+      overflowed = true;
+      break;
+    }
+    held.push(chunk);
+    if (MODEL_OUTPUT.has(chunk.type)) {
+      answered = true;
+      yield* held;
+    }
+  }
+  if (!overflowed) {
+    if (!answered) yield* held;
+    return;
+  }
+  const smaller = Math.floor(budget * OVERFLOW_SHRINK);
+  onRetry(smaller);
+  yield* start(smaller);
+}
+
 export function wrapChatStream(adapter: AssistantAdapter, chatStream: (options: ChatStreamOptions) => AsyncGenerator<StreamChunk>): AssistantAdapter {
   return new Proxy(adapter, {
     get(target, property, receiver) {
@@ -76,11 +123,15 @@ export function wrapChatStream(adapter: AssistantAdapter, chatStream: (options: 
 
 function addUsage<T>(first: unknown, second: T): T {
   if (!isUsage(first) || !isUsage(second)) return second ?? (first as T);
+  // promptTokens includes the cache parts, they must add up too
+  const cachedTokens = (first.promptTokensDetails?.cachedTokens ?? 0) + (second.promptTokensDetails?.cachedTokens ?? 0);
+  const cacheWriteTokens = (first.promptTokensDetails?.cacheWriteTokens ?? 0) + (second.promptTokensDetails?.cacheWriteTokens ?? 0);
   return {
     ...second,
     promptTokens: (first.promptTokens ?? 0) + (second.promptTokens ?? 0),
     completionTokens: (first.completionTokens ?? 0) + (second.completionTokens ?? 0),
     totalTokens: (first.totalTokens ?? 0) + (second.totalTokens ?? 0),
+    ...(cachedTokens || cacheWriteTokens ? { promptTokensDetails: { ...second.promptTokensDetails, cachedTokens, cacheWriteTokens } } : {}),
   };
 }
 

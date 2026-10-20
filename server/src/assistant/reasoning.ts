@@ -1,45 +1,97 @@
+import type { FetchWrapper } from '@tanstack/ai';
 import type { DBAssistantReasoning } from '../api/database/types.js';
 import type { AssistantSettings } from './types.js';
 
 type Level = Exclude<DBAssistantReasoning, 'default'>;
+type AnthropicThinking = { type: 'disabled' } | { type: 'enabled'; budget_tokens: number } | { type: 'adaptive'; display: 'summarized' };
+
+export interface ReasoningOptions {
+  reasoning?: Level;
+  modelOptions?: Record<string, unknown>;
+  wrapFetch?: FetchWrapper;
+}
 
 const ANTHROPIC_BUDGET: Record<Level, number> = { off: 0, low: 2048, high: 12_000 };
 const GEMINI_BUDGET: Record<Level, number> = { off: 0, low: 1024, high: 8192 };
 // the claude 4.0, 4.1 and 4.5 generation and everything before it only knows a thinking budget, newer ones think adaptively
 const ANTHROPIC_BUDGET_ONLY = /^claude-(?:opus-4(?:-[015])?|sonnet-4(?:-5)?|haiku-4-5)(?:-\d{8})?$|^claude-3-/;
-// families that accept the ollama think flag, everything else keeps its default
+const INTERLEAVED_THINKING_BETA = 'interleaved-thinking-2025-05-14';
 const OLLAMA_THINKERS = /qwen3|deepseek-r1|gpt-oss|magistral|qwq|cogito|smollm3|glm|nemotron|phi4-reasoning|granite3\.[3-9]|granite4/i;
 // system prompt, tool list and the answer sit outside the compaction budget
 const OLLAMA_CONTEXT_HEADROOM = 16_384;
 
-export function modelOptionsFor(settings: Pick<AssistantSettings, 'provider' | 'model' | 'reasoning' | 'contextTokens'>): Record<string, unknown> | undefined {
+export function reasoningFor(settings: Pick<AssistantSettings, 'provider' | 'model' | 'reasoning' | 'contextTokens'>): ReasoningOptions {
   const level = settings.reasoning;
   const model = settings.model.trim();
 
   if (settings.provider === 'ollama') {
-    return { options: { num_ctx: settings.contextTokens + OLLAMA_CONTEXT_HEADROOM }, ...(level === 'default' ? {} : ollama(model, level)) };
+    const modelOptions = { options: { num_ctx: settings.contextTokens + OLLAMA_CONTEXT_HEADROOM } };
+    if (level === 'default' || (level === 'off' && !OLLAMA_THINKERS.test(model))) return { modelOptions };
+    return { reasoning: level, modelOptions };
   }
 
-  if (level === 'default') return undefined;
+  if (level === 'default') return {};
 
   switch (settings.provider) {
     case 'anthropic':
-      return anthropic(model, level);
+      return { reasoning: level, wrapFetch: anthropicFallback(model, level) };
     case 'openai':
-      return openai(model, level);
+      return { reasoning: level, modelOptions: openai(model, level) };
     case 'gemini':
-      return gemini(model, level);
+      return { reasoning: level, modelOptions: gemini(model, level) };
     case 'openrouter':
-      return level === 'off' ? { reasoning: { enabled: false } } : { reasoning: { effort: level } };
+      return { reasoning: level, modelOptions: level === 'off' ? { reasoning: { enabled: false } } : { reasoning: { effort: level } } };
     case 'openai-compatible':
-      return level === 'off' ? undefined : { reasoning_effort: level };
+      return level === 'off' ? {} : { modelOptions: { reasoning_effort: level } };
+    default:
+      return {};
   }
 }
 
-function anthropic(model: string, level: Level): Record<string, unknown> {
-  if (level === 'off') return { thinking: { type: 'disabled' } };
-  if (ANTHROPIC_BUDGET_ONLY.test(model)) return { thinking: { type: 'enabled', budget_tokens: ANTHROPIC_BUDGET[level] } };
-  return { thinking: { type: 'adaptive', display: 'summarized' }, effort: level };
+function anthropicFallback(model: string, level: Level): FetchWrapper {
+  const thinking = anthropicThinking(model, level);
+  return (next) => async (input, init) => {
+    const body = jsonBody(init?.body);
+    if (!body || !Array.isArray(body.messages) || 'thinking' in body || forcesOutput(body)) return next(input, init);
+
+    const patched: Record<string, unknown> = { ...body, thinking };
+    let headers = init?.headers;
+    if (thinking.type === 'adaptive') patched.output_config = { ...(body.output_config as object | undefined), effort: level };
+    if (thinking.type === 'enabled') {
+      patched.max_tokens = Math.max(Number(body.max_tokens) || 0, thinking.budget_tokens + 1);
+      headers = withBeta(headers, INTERLEAVED_THINKING_BETA);
+    }
+    return next(input, { ...init, headers, body: JSON.stringify(patched) });
+  };
+}
+
+function anthropicThinking(model: string, level: Level): AnthropicThinking {
+  if (level === 'off') return { type: 'disabled' };
+  if (ANTHROPIC_BUDGET_ONLY.test(model)) return { type: 'enabled', budget_tokens: ANTHROPIC_BUDGET[level] };
+  return { type: 'adaptive', display: 'summarized' };
+}
+
+function forcesOutput(body: Record<string, unknown>): boolean {
+  const choice = (body.tool_choice as { type?: string } | undefined)?.type;
+  return choice === 'tool' || choice === 'any' || (body.output_config as { format?: unknown } | undefined)?.format !== undefined;
+}
+
+function jsonBody(body: unknown): Record<string, unknown> | undefined {
+  if (typeof body !== 'string') return undefined;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function withBeta(headers: HeadersInit | undefined, beta: string): Headers {
+  const result = new Headers(headers);
+  const current = result.get('anthropic-beta');
+  const betas = current ? current.split(',').map((entry) => entry.trim()) : [];
+  if (!betas.includes(beta)) result.set('anthropic-beta', [...betas, beta].join(','));
+  return result;
 }
 
 function openai(model: string, level: Level): Record<string, unknown> | undefined {
@@ -69,9 +121,4 @@ function gemini(model: string, level: Level): Record<string, unknown> | undefine
     return { thinkingConfig: { includeThoughts: level !== 'off', thinkingBudget: budget } };
   }
   return undefined;
-}
-
-function ollama(model: string, level: Level): Record<string, unknown> | undefined {
-  if (level === 'off') return OLLAMA_THINKERS.test(model) ? { think: false } : undefined;
-  return { think: /gpt-oss/i.test(model) ? level : true };
 }

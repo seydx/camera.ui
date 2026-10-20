@@ -1,6 +1,7 @@
 import type { AssistantModelSpec, AssistantModelStatus, AssistantToolReference, AssistantToolSpec } from '@camera.ui/sdk';
 import type { Interrupt, JSONSchema, UIMessage } from '@tanstack/ai';
 import type { DBAssistant, DBAssistantAttachment, DBAssistantModel, DBAssistantProvider, DBAssistantUsageMonth, DBRoles } from '../api/database/types.js';
+import type { AssistantUsageTotals } from './pricing.js';
 
 export const ASSISTANT_PROVIDERS: DBAssistantProvider[] = ['ollama', 'openai-compatible', 'openai', 'anthropic', 'gemini', 'openrouter'];
 
@@ -48,12 +49,14 @@ export interface AssistantRunStats {
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number;
+  cacheWriteTokens: number;
   reasoningTokens: number;
   iterations: number;
   toolCalls: number;
+  calls: AssistantUsageTotals[];
 }
 
-export interface AssistantUsageEvent extends Omit<AssistantRunStats, 'startedAt'> {
+export interface AssistantUsageEvent extends Omit<AssistantRunStats, 'startedAt' | 'calls'> {
   durationMs: number;
   provider: DBAssistantProvider;
   model: string;

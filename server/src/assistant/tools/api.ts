@@ -98,10 +98,15 @@ async function request(
   for (const [key, value] of Object.entries(query ?? {})) search.set(key, String(value));
   const url = search.size ? `${path}?${search.toString()}` : path;
 
+  // fastify rejects a json content type without a body
   const response = await app.inject({
     method,
     url,
-    headers: { authorization: ctx.context.authorization, 'content-type': 'application/json', accept: 'application/json, image/*, text/plain' },
+    headers: {
+      authorization: ctx.context.authorization,
+      accept: 'application/json, image/*, text/plain',
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
     payload: body === undefined ? undefined : JSON.stringify(body),
   });
 

@@ -1,6 +1,6 @@
-import type { PluginInfo, PluginInterface } from '@camera.ui/sdk';
+import type { AssistantAccess, AssistantAskResult, PluginInfo, PluginInterface } from '@camera.ui/sdk';
 import type { DBFloorPlan, DBRoomCatalog, TrainingBoxSource, TrainingSelection } from '../../api/database/types.js';
-import type { AssistantAccess, AssistantAskRequest, AssistantAskResult, AssistantPost } from '../../assistant/types.js';
+import type { AssistantAskRequest, AssistantPost } from '../../assistant/types.js';
 
 export interface HostPluginInfo extends PluginInfo {
   running: boolean;

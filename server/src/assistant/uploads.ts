@@ -119,6 +119,7 @@ function newestPictures(messages: ModelMessage[], limit: number): ModelMessage[]
 function answerAfterResults(messages: ModelMessage[]): ModelMessage[] {
   const out: ModelMessage[] = [];
   let answer: ModelMessage | undefined;
+  let split: { index: number; message: ModelMessage } | undefined;
 
   for (const message of messages) {
     if (answer && message.role !== 'tool') {
@@ -128,12 +129,14 @@ function answerAfterResults(messages: ModelMessage[]): ModelMessage[] {
     const { toolCalls, ...rest } = message as ModelMessage & { toolCalls?: unknown[] };
     if (message.role === 'assistant' && toolCalls?.length && message.content) {
       answer = { ...rest, id: rest.id ? `${rest.id}-answer` : undefined };
+      split = { index: out.length, message };
       out.push({ ...message, content: null });
       continue;
     }
     out.push(message);
   }
-  if (answer) out.push(answer);
+
+  if (answer && split) out[split.index] = split.message;
 
   return out;
 }

@@ -1,5 +1,15 @@
 import { hasInterface, PluginInterface, Severity } from '@camera.ui/sdk';
-import { chat, chatParamsFromRequestBody, EventType, maxIterations, modelMessagesToUIMessages, toolDefinition, toServerSentEventsResponse } from '@tanstack/ai';
+import {
+  chat,
+  chatParamsFromRequestBody,
+  convertMessagesToModelMessages,
+  DISCOVERY_TOOL_NAME,
+  EventType,
+  maxIterations,
+  modelMessagesToUIMessages,
+  toolDefinition,
+  toServerSentEventsResponse,
+} from '@tanstack/ai';
 import { clearToolResults, composeStrategies, evictOldest, withCompaction } from '@tanstack/ai-compaction';
 import { memoryMiddleware } from '@tanstack/ai-memory';
 import { withPersistence } from '@tanstack/ai-persistence';
@@ -28,10 +38,10 @@ import { estimateCost, warmPrices } from './pricing.js';
 import { AssistantProfileStore } from './profiles.js';
 import { composePrompt, promptSections } from './prompt.js';
 import { createAdapter, listModels, providerNeedsKey } from './providers.js';
-import { modelOptionsFor } from './reasoning.js';
+import { reasoningFor } from './reasoning.js';
 import { RECAP_TOOL, recapCard } from './recap.js';
 import { AssistantToolRegistry, toolGroup } from './registry.js';
-import { withEmptyTurnRetry } from './retry.js';
+import { retryOnOverflow, withEmptyTurnRetry } from './retry.js';
 import { questionText, ROUTE_TIMEOUT_MS, ROUTED_TOOLS, routeTools } from './router.js';
 import { AssistantScheduler, PUSH_BODY_MAX } from './scheduler.js';
 import { SEARCH_SCHEMA, searchPrompt, toSearchResult } from './search.js';
@@ -44,8 +54,8 @@ import { ASSISTANT_CARD_EVENT } from './tools/shared.js';
 import { describeUploads, extractUploads, messagesForModel } from './uploads.js';
 import { AssistantUsageStore } from './usage.js';
 
-import type { AssistantModelSpec } from '@camera.ui/sdk';
-import type { ChatMiddleware, Interrupt, ModelMessage, StreamChunk, StreamDurability, SystemPrompt, UIMessage } from '@tanstack/ai';
+import type { AssistantAccess, AssistantAskResult, AssistantModelSpec } from '@camera.ui/sdk';
+import type { ChatMiddleware, FetchWrapper, Interrupt, ModelMessage, StreamChunk, StreamDurability, UIMessage } from '@tanstack/ai';
 import type { MemoryAdapter, MemoryTurn } from '@tanstack/ai-memory';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { CameraUiAPI } from '../api.js';
@@ -160,6 +170,7 @@ const FINAL_TURN_PROMPT =
   'and say plainly what you could not check. Do not write a tool call or a tool name with arguments into the answer.';
 const DUPLICATE_CALL_RESULT = 'Same call as the one before in this answer, its result is above.';
 const TEST_TIMEOUT_MS = 45_000;
+const MODEL_RETRY = { maxRetries: 2, maxWaitMs: 30_000 };
 const PROBE_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
 
 export class AssistantManager {
@@ -448,7 +459,8 @@ export class AssistantManager {
         adapter: this.baseAdapter(model, entry, 'en', timeoutMs),
         systemPrompts: request.system ? [request.system] : [],
         messages: [{ role: 'user', content: [{ type: 'text', content: request.prompt }, ...images] }],
-        modelOptions: modelOptionsFor(model) as never,
+        ...reasoningFor(model),
+        retry: MODEL_RETRY,
         middleware: [countUsage(stats)],
         abortController: abort,
       };
@@ -625,7 +637,9 @@ export class AssistantManager {
     // a routed model gets the few tools that matter and no catalog: it calls what it sees and never opened one
     const offered = routed ? planned.filter((tool) => !tool.lazy) : planned;
     const hiddenTools = planned.filter((tool) => tool.lazy).map((tool) => ({ ...tool, lazy: false }));
-    const tools = resume.length ? offered.map((tool) => (tool.lazy ? { ...tool, lazy: false } : tool)) : offered;
+    // a resumed run executes the interrupted calls before any discovery, their tools must be listed
+    const fetched = resume.length ? fetchedThisTurn(params.messages) : undefined;
+    const tools = fetched ? offered.map((tool) => (tool.lazy && fetched.has(tool.name) ? { ...tool, lazy: false } : tool)) : offered;
     const prompt = composePrompt(sections, routed ? { ...plan, demoted: 0, hidden: [], routed: picks } : plan);
     // a procedure names tools the router did not pick, the room for them comes off the history
     const skillRoom = routed && plan.skillsOnDemand ? Math.min(SKILL_TOOLS_TOKENS, Math.floor(plan.historyTokens * SKILL_TOOLS_SHARE)) : 0;
@@ -642,46 +656,55 @@ export class AssistantManager {
     const runId = params.runId ?? randomUUID();
     this.runs.set(runId, { userId: ctx.userId, threadId: thread._id, abort: abortController });
 
-    const stream = chat({
-      adapter,
-      messages: params.messages,
-      threadId: thread._id,
-      runId,
-      parentRunId: params.parentRunId,
-      ...(resume.length ? { resume } : {}),
-      tools,
-      interrupts: [ASK_USER_INTERRUPT],
-      context: ctx,
-      systemPrompts: [...cachedPrompts(prompt, model.provider), describeUploads(ctx.uploads, ctx.sendImages)].filter(Boolean),
-      agentLoopStrategy: maxIterations(rounds + 1),
-      lazyToolsConfig: { includeDescription: plan.catalogDescriptions },
-      modelOptions: modelOptionsFor(model) as never,
-      middleware: [
-        withPersistence(persistence),
-        settings.memoryEnabled ? this.memoryMiddleware : NO_MIDDLEWARE,
-        plan.skillsOnDemand ? (withSkills(skillSources()) as ChatMiddleware) : NO_MIDDLEWARE,
-        withCompaction({
-          maxTokens: contextBudget,
-          estimateTokens: estimateMessage,
-          strategyKey: `discovery-trim-clear-evict-skills:${contextBudget}`,
-          strategy: composeStrategies(
-            clearDiscoveryResults(),
-            trimToolResults({ maxTokens: toolResultTokens(contextBudget) }),
-            keepSkills(clearToolResults({ keepRecentToolResults: 6 })),
-            keepQuestion(keepSkills(evictOldest({ keepRecentTokens: Math.floor(contextBudget / 2) }))),
-          ),
-        }),
-        this.runMiddleware({ ...model, maxIterations: rounds }, ctx, thread._id, params.messages, stats, pictureLimit(contextBudget), skillTools),
-        toolCacheMiddleware({ ttl: TOOL_CACHE_TTL_MS, toolNames: CACHED_TOOLS }),
-        secretGuard(this.logger),
-      ],
-      abortController,
-    });
+    const systemPrompts = [...prompt, describeUploads(ctx.uploads, ctx.sendImages)].filter(Boolean);
+    const start = (budget: number): AsyncIterable<StreamChunk> =>
+      chat({
+        adapter,
+        messages: params.messages,
+        threadId: thread._id,
+        runId,
+        parentRunId: params.parentRunId,
+        ...(resume.length ? { resume } : {}),
+        tools,
+        interrupts: [ASK_USER_INTERRUPT],
+        context: ctx,
+        systemPrompts,
+        agentLoopStrategy: maxIterations(rounds + 1),
+        lazyToolsConfig: { includeDescription: plan.catalogDescriptions },
+        ...tuningOf(model),
+        retry: MODEL_RETRY,
+        middleware: [
+          withPersistence(persistence),
+          settings.memoryEnabled ? this.memoryMiddleware : NO_MIDDLEWARE,
+          plan.skillsOnDemand ? (withSkills(skillSources()) as ChatMiddleware) : NO_MIDDLEWARE,
+          withCompaction({
+            maxTokens: budget,
+            estimateTokens: estimateMessage,
+            strategyKey: `discovery-trim-clear-evict-skills:${budget}`,
+            strategy: composeStrategies(
+              clearDiscoveryResults(),
+              trimToolResults({ maxTokens: toolResultTokens(budget) }),
+              keepSkills(clearToolResults({ keepRecentToolResults: 6 })),
+              keepQuestion(keepSkills(evictOldest({ keepRecentTokens: Math.floor(budget / 2) }))),
+            ),
+          }),
+          this.runMiddleware({ ...model, maxIterations: rounds }, ctx, thread._id, params.messages, stats, pictureLimit(budget), skillTools),
+          toolCacheMiddleware({ ttl: TOOL_CACHE_TTL_MS, toolNames: CACHED_TOOLS }),
+          secretGuard(this.logger),
+        ],
+        abortController,
+      }) as AsyncIterable<StreamChunk>;
+    // a resumed run executes approved tools first, a second start would run them twice
+    const stream = resume.length
+      ? start(contextBudget)
+      : retryOnOverflow(start, contextBudget, (budget) =>
+          this.logger.debug(`Assistant: ${entry.name} rejected the request as too long, trying with ${budget} history tokens`),
+        );
 
     const attachments: Record<string, DBAssistantAttachment> = {};
     const recap = tools.some((tool) => tool.name === 'show_report') ? { language: ctx.language, timezone: ctx.timezone } : undefined;
     const observed = this.collectAttachments(
-      stream as AsyncIterable<StreamChunk>,
+      stream,
       attachments,
       ctx.userId,
       thread._id,
@@ -771,7 +794,8 @@ export class AssistantManager {
         systemPrompts,
         agentLoopStrategy: maxIterations(settings.maxIterations),
         lazyToolsConfig: { includeDescription: plan.catalogDescriptions },
-        modelOptions: modelOptionsFor(model) as never,
+        ...tuningOf(model),
+        retry: MODEL_RETRY,
         middleware: [countUsage(stats), plan.skillsOnDemand ? (withSkills(skillSources()) as ChatMiddleware) : NO_MIDDLEWARE],
         abortController,
       });
@@ -1188,15 +1212,28 @@ function finishReasonOf(chunk: StreamChunk): string | undefined {
   return (chunk as { metadata?: { tanstack?: { finishReason?: string } } }).metadata?.tanstack?.finishReason;
 }
 
+function tuningOf(model: AssistantSettings): { reasoning?: never; modelOptions?: never; wrapFetch?: FetchWrapper } {
+  return reasoningFor(model) as { reasoning?: never; modelOptions?: never; wrapFetch?: FetchWrapper };
+}
+
 function countUsage(stats: AssistantRunStats): Pick<Required<ChatMiddleware<AssistantRunContext>>, 'name' | 'onUsage'> {
   return {
     name: 'camera.ui-usage',
     onUsage: (_ctx, usage) => {
+      const call = {
+        promptTokens: usage.promptTokens ?? 0,
+        completionTokens: usage.completionTokens ?? 0,
+        cachedTokens: usage.promptTokensDetails?.cachedTokens ?? 0,
+        cacheWriteTokens: usage.promptTokensDetails?.cacheWriteTokens ?? 0,
+        reasoningTokens: usage.completionTokensDetails?.reasoningTokens ?? 0,
+      };
       stats.iterations += 1;
-      stats.promptTokens += usage.promptTokens ?? 0;
-      stats.completionTokens += usage.completionTokens ?? 0;
-      stats.cachedTokens += usage.promptTokensDetails?.cachedTokens ?? 0;
-      stats.reasoningTokens += usage.completionTokensDetails?.reasoningTokens ?? 0;
+      stats.promptTokens += call.promptTokens;
+      stats.completionTokens += call.completionTokens;
+      stats.cachedTokens += call.cachedTokens;
+      stats.cacheWriteTokens += call.cacheWriteTokens;
+      stats.reasoningTokens += call.reasoningTokens;
+      stats.calls.push(call);
     },
   };
 }
@@ -1224,17 +1261,27 @@ function pendingQuestions(messages: readonly ModelMessage[]): AssistantQuestion[
 }
 
 function newStats(): AssistantRunStats {
-  return { startedAt: Date.now(), promptTokens: 0, completionTokens: 0, cachedTokens: 0, reasoningTokens: 0, iterations: 0, toolCalls: 0 };
+  return {
+    startedAt: Date.now(),
+    promptTokens: 0,
+    completionTokens: 0,
+    cachedTokens: 0,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
+    iterations: 0,
+    toolCalls: 0,
+    calls: [],
+  };
 }
 
 function usageEvent(settings: Pick<AssistantSettings, 'provider' | 'model'>, stats: AssistantRunStats): AssistantUsageEvent {
-  const { startedAt, ...totals } = stats;
+  const { startedAt, calls, ...totals } = stats;
   return {
     ...totals,
     durationMs: Date.now() - startedAt,
     provider: settings.provider,
     model: settings.model,
-    costUsd: estimateCost(settings.provider, settings.model, stats),
+    costUsd: estimateCost(settings.provider, settings.model, calls),
   };
 }
 
@@ -1302,18 +1349,32 @@ function applyPlan(tools: CoreTool[], plan: RunPlan): CoreTool[] {
   });
 }
 
+function fetchedThisTurn(messages: (UIMessage | ModelMessage)[]): Set<string> {
+  const history = convertMessagesToModelMessages(messages);
+  const asked = history.findLastIndex((message) => message.role === 'user');
+  const names = new Set<string>();
+  for (const call of history.slice(asked + 1).flatMap((message) => message.toolCalls ?? [])) {
+    if (call.function.name !== DISCOVERY_TOOL_NAME) names.add(call.function.name);
+    else for (const name of discoveredNames(call.function.arguments)) names.add(name);
+  }
+  return names;
+}
+
+function discoveredNames(args: string): string[] {
+  try {
+    const names: unknown = JSON.parse(args || '{}').toolNames;
+    return Array.isArray(names) ? names.filter((name) => typeof name === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function pictureLimit(contextBudget: number): number {
   return Math.max(1, Math.floor(contextBudget / 2 / PICTURE_TOKENS));
 }
 
 function toolResultTokens(contextBudget: number): number {
   return Math.max(MIN_TOOL_RESULT_TOKENS, Math.floor(contextBudget / TOOL_RESULT_SHARE));
-}
-
-function cachedPrompts(prompts: string[], provider: string): SystemPrompt<never>[] {
-  if (provider !== 'anthropic') return prompts;
-  const [first, ...rest] = prompts;
-  return [{ content: first, metadata: { cache_control: { type: 'ephemeral' } } } as unknown as SystemPrompt<never>, ...rest];
 }
 
 function modelsFor(models: DBAssistantModel[], role?: DBRoles): DBAssistantModel[] {
