@@ -7,6 +7,8 @@ import { isCapacitor } from '../runtime.js';
 
 import type { CloudSession, ConnectionMode } from '../types.js';
 
+const CLOUD_REFRESH_TIMEOUT_MS = 10_000;
+
 export interface DetectedMode {
   readonly mode: ConnectionMode;
   readonly directEndpointUrl?: string;
@@ -76,6 +78,7 @@ async function detectWebCloudMode(): Promise<DetectedMode> {
     const response = await fetch(`${CLOUD_SERVICE_URL}/api/proxy/refresh`, {
       method: 'POST',
       credentials: 'include',
+      signal: AbortSignal.timeout(CLOUD_REFRESH_TIMEOUT_MS),
     });
     if (!response.ok) return { mode: 'cloud' };
     const body = (await response.json()) as {

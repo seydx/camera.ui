@@ -1,15 +1,21 @@
-import { copy, ensureDir, pathExists, readJson, remove, writeJson } from 'fs-extra/esm';
-import { readdir } from 'node:fs/promises';
+import { ensureDir, outputFile, pathExists, readJson, remove, writeJson } from 'fs-extra/esm';
+import { createHash } from 'node:crypto';
+import { readdir, readFile, stat, utimes } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+
+import type { Stats } from 'node:fs';
 
 interface ReleaseEntry {
   version: string;
   timestamp: number;
   files: string[];
+  sources?: Record<string, string>;
 }
 
 const RELEASES_FILE = '.cui-releases.json';
 const RETAINED_RELEASES = 2;
+const MTIME_BASE = Date.UTC(2020, 0, 1);
+const MTIME_SPAN = 2 ** 37;
 
 export async function syncInterfaceCache(sourceDir: string, cacheDir: string, version: string): Promise<void> {
   try {
@@ -20,53 +26,52 @@ export async function syncInterfaceCache(sourceDir: string, cacheDir: string, ve
     await ensureDir(cacheDir);
 
     const sourceFiles = await walkFiles(sourceDir);
-    const cacheFiles = (await walkFiles(cacheDir)).filter((rel) => rel !== RELEASES_FILE);
-
-    if (cacheFiles.length === 0) {
-      await copy(sourceDir, cacheDir, { overwrite: true });
-      await writeReleases(cacheDir, [{ version, timestamp: Date.now(), files: sourceFiles }]);
-      return;
-    }
+    const cacheFiles = await walkFiles(cacheDir);
+    const releases = await readReleases(cacheDir);
+    const stored = JSON.stringify(releases);
+    const newest = releases[releases.length - 1];
+    const current = newest?.version === version ? newest : undefined;
+    const verified = current?.sources ?? {};
+    const sources: Record<string, string> = {};
 
     for (const rel of sourceFiles) {
       const source = join(sourceDir, ...rel.split('/'));
       const dest = join(cacheDir, ...rel.split('/'));
+      const [from, to] = await Promise.all([stat(source), stat(dest).catch(() => undefined)]);
 
-      if (isAccumulating(rel)) {
-        if (await pathExists(dest)) {
-          continue;
-        }
-        await copy(source, dest, { overwrite: false });
+      if (rel.startsWith('assets/')) {
+        // names under assets/ carry the content hash
+        if (to?.size === from.size) continue;
       } else {
-        await copy(source, dest, { overwrite: true });
+        sources[rel] = fingerprint(from);
+        if (to?.size === from.size && (verified[rel] === sources[rel] || (await sameContent(source, dest)))) continue;
       }
+
+      await copyStable(source, dest);
     }
 
-    const releases = await readReleases(cacheDir);
-    const newest = releases[releases.length - 1];
-    if (newest?.version === version) {
-      newest.timestamp = Date.now();
-      newest.files = sourceFiles;
-    } else {
-      releases.push({ version, timestamp: Date.now(), files: sourceFiles });
+    if (current) {
+      releases.pop();
     }
+    for (const entry of releases) {
+      delete entry.sources;
+    }
+    releases.push({ version, timestamp: current?.timestamp ?? Date.now(), files: sourceFiles, sources });
 
     const retained = releases.slice(-RETAINED_RELEASES);
-    const keep = new Set<string>();
-    for (const entry of retained) {
-      for (const file of entry.files) {
-        keep.add(file);
+    // without an earlier release on record, the files open tabs still load are unknown
+    if (retained.some((entry) => entry.version !== version)) {
+      const keep = new Set(retained.flatMap((entry) => entry.files));
+      for (const rel of cacheFiles) {
+        if (rel !== RELEASES_FILE && !keep.has(rel)) {
+          await remove(join(cacheDir, ...rel.split('/')));
+        }
       }
     }
 
-    for (const rel of cacheFiles) {
-      if (!isAccumulating(rel) || keep.has(rel)) {
-        continue;
-      }
-      await remove(join(cacheDir, ...rel.split('/')));
+    if (JSON.stringify(retained) !== stored) {
+      await writeReleases(cacheDir, retained);
     }
-
-    await writeReleases(cacheDir, retained);
   } catch {
     // ignore
   }
@@ -92,17 +97,21 @@ async function walkFiles(dir: string, base: string = dir): Promise<string[]> {
   return files;
 }
 
-function isAccumulating(relPath: string): boolean {
-  if (relPath.startsWith('assets/')) {
-    return true;
-  }
+function fingerprint(stats: Stats): string {
+  return `${stats.ino}:${stats.size}:${stats.mtimeMs}:${stats.ctimeMs}`;
+}
 
-  const name = relPath.split('/').pop()!;
-  if (/^workbox-.+\.js$/i.test(name)) {
-    return true;
-  }
+async function sameContent(a: string, b: string): Promise<boolean> {
+  const [left, right] = await Promise.all([readFile(a), readFile(b)]);
+  return left.equals(right);
+}
 
-  return /[.-][a-f0-9]{8,}\.[a-z0-9]+$/i.test(name);
+async function copyStable(source: string, dest: string): Promise<void> {
+  const data = await readFile(source);
+  const offset = createHash('sha256').update(data).digest().readUIntBE(0, 6) % MTIME_SPAN;
+  const mtime = new Date(MTIME_BASE + offset);
+  await outputFile(dest, data);
+  await utimes(dest, mtime, mtime);
 }
 
 async function readReleases(cacheDir: string): Promise<ReleaseEntry[]> {
@@ -113,10 +122,15 @@ async function readReleases(cacheDir: string): Promise<ReleaseEntry[]> {
 
   try {
     const data = await readJson(file);
-    return Array.isArray(data) ? (data as ReleaseEntry[]) : [];
+    return Array.isArray(data) && data.every(isReleaseEntry) ? data : [];
   } catch {
     return [];
   }
+}
+
+function isReleaseEntry(value: unknown): value is ReleaseEntry {
+  const entry = value as ReleaseEntry | null;
+  return typeof entry?.version === 'string' && Array.isArray(entry.files);
 }
 
 async function writeReleases(cacheDir: string, releases: ReleaseEntry[]): Promise<void> {
