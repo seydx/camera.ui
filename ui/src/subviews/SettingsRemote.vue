@@ -698,7 +698,7 @@ const { endpoint, isOnline } = useConnection();
 const { data: serverInfo, isBusy: serverInfoLoading } = serverQuery.getServerInfoQuery();
 const { data: remoteInfo, isBusy: remoteInfoLoading } = remoteQuery.getRemoteInfoQuery();
 const { data: registrationStatus, isBusy: registrationStatusLoading } = remoteQuery.getRegistrationStatusQuery();
-const { data: tunnelStatus, isLoading: tunnelStatusLoading } = remoteQuery.getTunnelStatusQuery();
+const { data: tunnelStatus, isLoading: tunnelStatusLoading } = remoteQuery.getTunnelStatusQuery(() => registrationStatus.value?.isRegistered ?? false);
 const { data: connectionInfo } = remoteQuery.getConnectionInfoQuery();
 const { mutateAsync: patchServer, isPending: patchServerLoading } = serverQuery.patchSystemInfoQuery();
 const { mutateAsync: patchRemote, isPending: patchRemoteLoading } = remoteQuery.patchRemoteInfoQuery();

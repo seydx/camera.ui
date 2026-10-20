@@ -58,6 +58,10 @@ export class SensorDiscoveryManager {
     }
   }
 
+  public list(): DiscoveredSensorListItem[] {
+    return [...this.cache.values()].flat();
+  }
+
   public isScanningNow(): boolean {
     return this.isScanning;
   }
@@ -136,10 +140,6 @@ export class SensorDiscoveryManager {
   public destroy(): void {
     this.stopAutoRescanTimer();
     this.cache.clear();
-  }
-
-  private list(): DiscoveredSensorListItem[] {
-    return [...this.cache.values()].flat();
   }
 
   private isSensorDiscoveryPlugin(plugin: Plugin): boolean {

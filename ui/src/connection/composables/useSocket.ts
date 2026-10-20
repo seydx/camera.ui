@@ -29,7 +29,6 @@ export function useSocket(namespace: string): SocketChannel {
   const ready = computed(() => connected.value);
 
   let socket: Socket | null = null;
-  let attachedUrl: string | null = null;
   const handlers = new Map<string, Set<SocketEventHandler>>();
 
   function handleConnect(): void {
@@ -66,27 +65,25 @@ export function useSocket(namespace: string): SocketChannel {
     connected.value = false;
   }
 
-  const stop = watch(
-    [() => connection.target.value?.endpoint.url, connection.signal],
-    ([url]) => {
-      if (url && socket && attachedUrl === url) return;
-      detach();
-      attachedUrl = null;
-      if (url) {
-        const s = connection.socketio.ensureSocket(namespace);
-        if (s) {
-          attach(s);
-          attachedUrl = url;
-        }
-      }
-    },
-    { immediate: true },
-  );
+  function sync(): void {
+    const url = connection.target.value?.endpoint.url;
+    if (url && socket && socket === connection.socketio.socket(namespace)) return;
+    detach();
+    if (!url) return;
+    const s = connection.socketio.ensureSocket(namespace);
+    if (s) attach(s);
+  }
+
+  const release = connection.socketio.acquire(namespace);
+  const stop = watch([() => connection.target.value?.endpoint.url, connection.signal], sync, { immediate: true });
+  const stopRebuild = connection.socketio.onRebuild(sync);
 
   tryOnScopeDispose(() => {
     stop();
+    stopRebuild();
     detach();
     handlers.clear();
+    release();
   });
 
   function on<TPayload = unknown>(event: string, handler: SocketEventHandler<TPayload>): SocketUnsubscribe {

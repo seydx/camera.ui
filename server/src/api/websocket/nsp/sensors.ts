@@ -46,10 +46,11 @@ export class SensorsNamespace {
   private onConnection(socket: Socket): void {
     socket.on('sensors:subscribe', (_payload: unknown, callback?: (data: { success: boolean; sensors?: DiscoveredSensorListItem[]; isScanning?: boolean }) => void) => {
       const socketWithSub = socket as Socket & { sensorsSubscribed?: boolean };
-      socketWithSub.sensorsSubscribed ??= true;
+      const discovery = getSensorDiscovery();
+      const sensors = socketWithSub.sensorsSubscribed ? discovery.list() : discovery.subscribe();
+      socketWithSub.sensorsSubscribed = true;
 
-      const sensors = getSensorDiscovery().subscribe();
-      callback?.({ success: true, sensors, isScanning: getSensorDiscovery().isScanningNow() });
+      callback?.({ success: true, sensors, isScanning: discovery.isScanningNow() });
     });
 
     socket.on('sensors:unsubscribe', (_payload: unknown, callback?: (data: { success: boolean }) => void) => {

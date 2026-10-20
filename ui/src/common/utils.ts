@@ -1,10 +1,5 @@
 import axios from 'axios';
 
-function proxySessionQuery(): string {
-  const token = useConnection().proxySession.value;
-  return token ? `&session=${encodeURIComponent(token)}` : '';
-}
-
 export function isCancellationError(err: unknown): boolean {
   if (axios.isCancel(err)) return true;
   if (err instanceof Error) {
@@ -113,7 +108,7 @@ export function notificationImageUrl(imageUrl?: string): string | undefined {
   if (!token) return undefined;
   const origin = connection.endpoint.value ?? location.origin;
   const separator = path.includes('?') ? '&' : '?';
-  return `${origin}${path}${separator}token=${token}${proxySessionQuery()}`;
+  return `${origin}${path}${separator}token=${token}`;
 }
 
 export function getImageUrl(img: string = 'logo-512.png'): string {
@@ -137,14 +132,14 @@ export function getImageUrl(img: string = 'logo-512.png'): string {
   if (img === 'avatar') {
     const avatar = authStore.user?.avatar;
     if (token && avatar && avatar !== 'logo-256.png') {
-      return `${origin}/api/files/${avatar}?token=${token}${proxySessionQuery()}`;
+      return `${origin}/api/files/${avatar}?token=${token}`;
     }
     img = 'logo-256.png';
   }
 
   if (img.includes('avatar')) {
     if (token) {
-      return `${origin}/api/files/${img}?token=${token}${proxySessionQuery()}`;
+      return `${origin}/api/files/${img}?token=${token}`;
     }
     img = 'logo-256.png';
   }

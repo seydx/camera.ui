@@ -38,6 +38,12 @@ const PROBE_HANGUP = 'TLS leafnode handshake error: EOF';
 const WORKER_LEAF_DENY = ['rpc.terminalManager.>', 'stream.rpc.terminalManager.>', 'terminalManager.>', 'tunnel.>', 'notifications.user.>', 'cast.>'];
 const SHARED_WORKER_SUBJECTS = ['rpc.workers.manager.rpc.>', 'workers.logs', 'workers.disconnect'];
 
+const TUNNEL_AGENT_PERMISSIONS = {
+  publish: { allow: ['tunnel.client.>', 'tunnel.server.credentials'] },
+  subscribe: { allow: ['tunnel.client.>', '_INBOX.>'] },
+  allow_responses: true,
+};
+
 export interface LeafNodeUser {
   agentId: string;
   user: string;
@@ -192,6 +198,11 @@ export class NATS {
                 ],
               },
             },
+          },
+          {
+            user: this.tunnelAuth.user,
+            password: this.tunnelAuth.password,
+            permissions: TUNNEL_AGENT_PERMISSIONS,
           },
         ],
       },

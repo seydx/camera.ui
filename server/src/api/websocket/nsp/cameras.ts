@@ -136,12 +136,13 @@ export class CamerasNamespace {
     callback?: (data: { success: boolean; devices?: DeviceListItem[]; isScanning?: boolean; hiddenDevices?: DBHiddenDevice[] }) => void,
   ): void {
     const socketWithSub = socket as Socket & { camerasSubscribed?: boolean };
-    socketWithSub.camerasSubscribed ??= true;
+    const alreadySubscribed = socketWithSub.camerasSubscribed === true;
+    socketWithSub.camerasSubscribed = true;
 
     const decodedToken = socket.decodedToken as JwtTokenDecoded | undefined;
     const hiddenDevices = decodedToken ? this.usersService.getHiddenDevices(decodedToken.username) : [];
 
-    const devices = this.proxyServer.discoveryManager.subscribe();
+    const devices = alreadySubscribed ? this.proxyServer.discoveryManager.list() : this.proxyServer.discoveryManager.subscribe();
     const isScanning = this.proxyServer.discoveryManager.isScanningNow();
     callback?.({ success: true, devices, isScanning, hiddenDevices });
   }

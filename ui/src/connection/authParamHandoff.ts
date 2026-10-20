@@ -30,6 +30,16 @@ export interface ConsumeAuthParamOptions {
   readonly onReset?: () => void;
 }
 
+export function redirectOrigin(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function consumeAuthParam(connection: Connection, options: ConsumeAuthParamOptions = {}): Promise<boolean> {
   const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
   const hashParams = new URLSearchParams(hash);
@@ -47,9 +57,10 @@ export async function consumeAuthParam(connection: Connection, options: ConsumeA
     return false;
   }
 
-  if (data._sourceUrl) {
+  const sourceUrl = redirectOrigin(data._sourceUrl);
+  if (sourceUrl) {
     options.onRedirectInfo?.({
-      sourceUrl: data._sourceUrl,
+      sourceUrl,
       instanceName: data._instanceName ?? 'Remote',
     });
   }

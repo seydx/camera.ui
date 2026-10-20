@@ -588,7 +588,7 @@ export class Server {
         origin: '*',
       },
       path: '/api/socket.io',
-      maxHttpBufferSize: 1e7,
+      maxHttpBufferSize: 1e6,
       pingInterval: 25000,
       pingTimeout: 20000,
       destroyUpgrade: false,

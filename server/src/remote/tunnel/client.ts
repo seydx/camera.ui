@@ -2,7 +2,7 @@ import { sleep } from '@camera.ui/common/utils';
 import { API_EVENT } from '@camera.ui/sdk';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { container } from 'tsyringe';
+import { stripVTControlCharacters } from 'node:util';
 
 import { RemoteService } from '../../api/services/remote.service.js';
 import { PROXY_TUNNEL_ENDPOINT } from '../../services/config/constants.js';
@@ -123,16 +123,14 @@ export class TunnelClient {
 
     return new Promise((resolve, reject) => {
       this.tunnelClientProcess = spawn(command, [], {
-        env: Object.assign(
-          {
-            TUNNEL_ENDPOINT: PROXY_TUNNEL_ENDPOINT,
-            LOCAL_PORT: String(this.getInternalPort()),
-            NATS_USER: this.proxyServer.auth.server.user,
-            NATS_PASSWORD: this.proxyServer.auth.server.password,
-            NATS_ENDPOINTS: this.proxyServer.server.endpoints.join(','),
-          },
-          process.env,
-        ),
+        env: {
+          ...process.env,
+          TUNNEL_ENDPOINT: PROXY_TUNNEL_ENDPOINT,
+          LOCAL_PORT: String(this.getInternalPort()),
+          NATS_USER: this.proxyServer.server.tunnelAuth.user,
+          NATS_PASSWORD: this.proxyServer.server.tunnelAuth.password,
+          NATS_ENDPOINTS: this.proxyServer.server.endpoints.join(','),
+        },
         stdio: 'pipe',
         windowsHide: true,
       });
@@ -314,9 +312,11 @@ export class TunnelClient {
   }
 
   private processLogger(line: string): void {
-    if (line.includes('FTL') || line.includes('ERR') || (!line.includes('DBG') && /error/i.test(line))) {
+    const level = LEVEL_TOKEN.exec(stripVTControlCharacters(line))?.[1];
+
+    if (level === 'ERR' || level === 'FTL' || level === 'PNC' || (!level && /error|panic|fatal/i.test(line))) {
       this.logger.error(line);
-    } else if (line.includes('WRN')) {
+    } else if (level === 'WRN') {
       this.logger.warn(line);
     } else {
       this.logger.debug(line);

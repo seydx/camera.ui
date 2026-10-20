@@ -175,11 +175,11 @@ export class RemoteQuery {
     });
   }
 
-  public getTunnelStatusQuery() {
+  public getTunnelStatusQuery(registered: () => boolean = () => true) {
     return useQueryEnhanced({
       queryKey: ['remote', 'tunnel'],
       queryFn: ({ signal }) => getTunnelStatus({ signal }),
-      enabled: () => this.queryActivator.value.some((query) => query.name === 'getTunnelStatusQuery' && query.enabled),
+      enabled: () => registered() && this.queryActivator.value.some((query) => query.name === 'getTunnelStatusQuery' && query.enabled),
       refetchInterval: 30000,
       staleTime: 10000,
     });

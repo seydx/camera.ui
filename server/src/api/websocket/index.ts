@@ -106,7 +106,7 @@ export class SocketService {
   private authorizeConnection(nsp: SocketNsp) {
     return (socket: Socket, next: (error?: UnauthorizedError) => void): void => {
       const decodedToken = socket.decodedToken as JwtTokenDecoded | undefined;
-      const user = this.usersService.findByName(decodedToken?.username ?? '');
+      const user = this.usersService.findById(decodedToken?._id ?? '');
 
       if (!user) {
         return next(new UnauthorizedError('user_not_found', { message: 'User not found' }));
@@ -119,8 +119,13 @@ export class SocketService {
         return next(new UnauthorizedError('insufficient_role', { message: `Not authorized to connect to ${nsp}` }));
       }
 
+      // the first-steps page only needs the main connection
+      if (user.firstLogin && nsp !== '/camera.ui') {
+        return next(new UnauthorizedError('first_login', { message: 'Password change required before first use' }));
+      }
+
       const dbToken = this.authService.resolveAccessToken(socket.encodedToken!)?.token;
-      if (!dbToken) {
+      if (dbToken?.user_id !== user._id || dbToken.stream_scope) {
         return next(new UnauthorizedError('unauthenticated', { message: 'Unauthenticated' }));
       }
 
@@ -129,8 +134,7 @@ export class SocketService {
   }
 
   private setupConnection(socket: Socket, nsp: SocketNsp): void {
-    const decodedToken = socket.decodedToken as JwtTokenDecoded | undefined;
-    const user = this.usersService.findByName(decodedToken?.username ?? '');
+    const user = this.usersService.findById(socket.data.userId ?? '');
     const address = socket.conn.remoteAddress;
     const dbToken = this.authService.resolveAccessToken(socket.encodedToken!)?.token;
     const device = dbToken?.device.name;

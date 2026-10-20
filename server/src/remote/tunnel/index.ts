@@ -50,6 +50,11 @@ export class ProxyService extends EventEmitter {
   }
 
   public async getStatus(): Promise<TunnelStatus> {
+    // without an agent the request only waits out the no-responder retries
+    if (!this.agentRunning() || !this.remoteService.getCloud().oauth) {
+      return { connected: false };
+    }
+
     try {
       const response = await this.proxyServer.proxy.request<{}, CloudStatusResponse>(STATUS_SUBJECT, {}, CLOUD_RETRY_OPTIONS);
       const data = response.data;
@@ -64,6 +69,10 @@ export class ProxyService extends EventEmitter {
   }
 
   public async disconnect(): Promise<void> {
+    if (!this.agentRunning()) {
+      return;
+    }
+
     try {
       this.logger.log('Stopping cloud tunnel agent...');
       await this.proxyServer.proxy.request<{}, CloudBaseResponse>(SHUTDOWN_SUBJECT, {}, CLOUD_RETRY_OPTIONS);

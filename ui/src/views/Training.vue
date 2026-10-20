@@ -528,7 +528,8 @@ useIntersectionObserver(loadMoreRef, ([entry]) => {
 });
 
 trainingSocket.connect();
-const stopCandidatesListener = trainingSocket.onCandidatesChanged(() => {
+const stopCandidatesListener = trainingSocket.onCandidatesChanged((change) => {
+  if (change.onlyRemoved && trainingQuery.removeCandidatesFromCache(change.removed ?? [])) return;
   candidates.refetch();
 });
 

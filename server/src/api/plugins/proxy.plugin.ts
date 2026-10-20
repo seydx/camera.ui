@@ -105,7 +105,7 @@ class WebSocketProxy {
   private async handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
     try {
       const url = new URL(request.url!, `http://${request.headers.host}`);
-      const token = url.searchParams.get('token') ?? '';
+      const token = url.searchParams.get('token') ?? bearerToken(request.headers.authorization);
 
       const resolved = this.authService.resolveAccessToken(token);
       if (!resolved) {
@@ -256,10 +256,14 @@ class WebSocketProxy {
         if (!connectHandled && this.target === 'nats') {
           connectHandled = true;
           try {
-            const msg = this.extractMessage(data);
+            // a client may send its first PING in the same frame
+            const frame = this.toBuffer(data);
+            const end = frame.indexOf('\r\n');
+            const msg = (end < 0 ? frame : frame.subarray(0, end)).toString('utf-8');
             if (msg.startsWith('CONNECT ')) {
               const connectData = this.applyNatsCreds(JSON.parse(msg.slice(8)), natsCreds);
-              server.send(Buffer.from(`CONNECT ${JSON.stringify(connectData)}\r\n`), { binary: isBinary });
+              const connect = Buffer.from(`CONNECT ${JSON.stringify(connectData)}\r\n`);
+              server.send(end < 0 ? connect : Buffer.concat([connect, frame.subarray(end + 2)]), { binary: isBinary });
               return;
             }
           } catch {
@@ -309,9 +313,48 @@ class WebSocketProxy {
 
   private reject(request: IncomingMessage, socket: Duplex, head: Buffer, code: number, reason: string, token: string): void {
     this.logger.warn(`Proxy rejected (${code}) target=${this.target} token=${token.slice(0, 8)}… — ${reason}`);
-    this.wss.handleUpgrade(request, socket, head, (clientWs) => {
-      clientWs.close(code, reason);
+    this.refuse(request, socket, head, code, reason);
+  }
+
+  private upstreamFailed(request: IncomingMessage, socket: Duplex, head: Buffer, err: Error, src: string): void {
+    this.warnDialFailure(src, err.message);
+    const reason = err.message.includes('timed out') ? 'upstream timeout' : 'upstream unavailable';
+    this.refuse(request, socket, head, 4500, reason);
+  }
+
+  private refuse(request: IncomingMessage, socket: Duplex, head: Buffer, code: number, reason: string): void {
+    const notice = request.headers['x-cui-embed'] ? this.refusalNotice(code, reason) : undefined;
+    this.wssRefusal.handleUpgrade(request, socket, head, (clientWs) => {
+      clientWs.on('error', () => {});
+      if (!notice) {
+        clientWs.close(code, reason);
+        return;
+      }
+      clientWs.send(notice);
+      setTimeout(() => clientWs.close(code, reason), REFUSAL_NOTICE_LEAD_MS).unref();
     });
+  }
+
+  private refusalNotice(code: number, reason: string): string | Buffer | undefined {
+    if (this.target === 'go2rtc') return JSON.stringify({ type: 'error', value: reason });
+    if (code !== 4401 && code !== 4403) return undefined;
+    return Buffer.from(`${NATS_REFUSAL_INFO}-ERR 'Authorization Violation: ${reason}'\r\n`);
+  }
+
+  private warnDialFailure(src: string, message: string): void {
+    const key = `${src}\n${message}`;
+    const now = performance.now();
+    const last = this.dialWarnings.get(key);
+    if (last && now - last.at < DIAL_WARNING_INTERVAL_MS) {
+      last.suppressed++;
+      return;
+    }
+
+    this.dialWarnings.delete(key);
+    if (this.dialWarnings.size >= MAX_DIAL_WARNING_KEYS) this.dialWarnings.delete(this.dialWarnings.keys().next().value!);
+    this.dialWarnings.set(key, { at: now, suppressed: 0 });
+    const repeated = last?.suppressed ? ` (${last.suppressed} more since the last warning)` : '';
+    this.logger.warn(`Proxy upstream dial failed (4500) target=${this.target}: ${message}${repeated}`);
   }
 
   private isAdmin(userId: string): boolean {

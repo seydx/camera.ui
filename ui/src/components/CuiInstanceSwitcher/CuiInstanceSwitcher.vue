@@ -37,6 +37,8 @@
 import GoBackIcon from '~icons/mdi/arrow-left';
 import SettingsIcon from '~icons/mdi/cog';
 
+import { redirectOrigin } from '@/connection/authParamHandoff.js';
+
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types';
 
@@ -96,9 +98,9 @@ const items = computed<MenuItem[]>(() => {
           // set), "home" lives on a different Origin → full-page nav back.
           // Otherwise an in-SPA switch to the local home suffices.
           onClick: () => {
-            const info = instanceStore.redirectInfo;
-            if (info) {
-              window.location.href = info.sourceUrl;
+            const source = redirectOrigin(instanceStore.redirectInfo?.sourceUrl);
+            if (source) {
+              window.location.href = source;
             } else {
               instanceStore.switchInstance(null);
             }

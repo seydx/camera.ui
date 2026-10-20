@@ -127,6 +127,10 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     return cachedDevices;
   }
 
+  public list(): DeviceListItem[] {
+    return this.mergeResults();
+  }
+
   public isScanningNow(): boolean {
     return this.isScanning;
   }

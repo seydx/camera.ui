@@ -155,6 +155,7 @@ import { extractErrorMessage, getImageUrl } from '@/common/utils.js';
 import CuiAuthCard from '@/components/CuiAuthCard/CuiAuthCard.vue';
 import { checkBiometryAvailable, clearCredentials, hasStoredCredentials, saveCredentials, unlockCredentials } from '@/composables/useBiometricCredentials.js';
 import { getDeviceId, getDeviceName } from '@/composables/useDeviceIdentity.js';
+import { redirectOrigin } from '@/connection/authParamHandoff.js';
 import { clearCapacitorCloudPreferences } from '@/connection/cloudHandoff.js';
 import { useBootMode } from '@/connection/index.js';
 import { isCapacitor } from '@/connection/runtime.js';
@@ -240,11 +241,12 @@ function onRetry() {
 
 function goBack() {
   if (instanceStore.redirectInfo) {
-    // Arrived via full-page redirect — navigate back to source URL
-    const src = instanceStore.redirectInfo.sourceUrl;
+    const src = redirectOrigin(instanceStore.redirectInfo.sourceUrl);
     instanceStore.redirectInfo = null;
-    window.location.href = src;
-    return;
+    if (src) {
+      window.location.href = src;
+      return;
+    }
   }
   // In-app switch back to home
   instanceStore.switchInstance(null);

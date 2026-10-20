@@ -19,7 +19,7 @@ export class PluginsNamespace {
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {
       socket.on('get-plugin-status', this.pluginStatus.bind(this));
-      socket.on('get-manage-queue', (callback?: (data: unknown) => void) => callback?.(this.pluginsService.installingPlugins()));
+      socket.on('get-manage-queue', (_payload: unknown, callback?: (data: unknown) => void) => callback?.(this.pluginsService.installingPlugins()));
       socket.emit('manage-queue', this.pluginsService.installingPlugins());
     });
   }
