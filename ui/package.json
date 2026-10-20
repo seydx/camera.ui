@@ -119,7 +119,7 @@
     "@vue/tsconfig": "^0.9.1",
     "dotenv": "^18.0.8",
     "eslint": "9.39.2",
-    "eslint-plugin-better-tailwindcss": "^4.9.1",
+    "eslint-plugin-better-tailwindcss": "^4.10.0",
     "eslint-plugin-vue": "^10.11.1",
     "jiti": "^2.7.0",
     "prettier": "^3.9.10",
