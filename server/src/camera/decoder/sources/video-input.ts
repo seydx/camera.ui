@@ -7,7 +7,7 @@ import { createHardwareContext } from '../hardware.js';
 import type { Logger } from '@camera.ui/common/logger';
 import type { FrameWorkerDecoderSettings } from '@camera.ui/sdk';
 import type { HardwareContext } from 'node-av/api';
-import type { Stream } from 'node-av/lib';
+import type { CodecContext, Stream } from 'node-av/lib';
 
 const FALLBACK_FPS = 20;
 const MAX_LOW_DELAY_FRAME_THREADS = 4;

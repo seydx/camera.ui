@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
 import type { MqttManager } from '../../mqtt/manager.js';
 import type { MqttInfo, MqttStatus, MqttTestResult } from '../../mqtt/types.js';
@@ -10,7 +10,7 @@ export class MqttService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public info(): MqttInfo {
@@ -44,7 +44,7 @@ export class MqttService {
   }
 
   private get mqttManager(): MqttManager {
-    return container.resolve<MqttManager>('mqttManager');
+    return inject('mqttManager');
   }
 
   private settings(): DBMqtt {

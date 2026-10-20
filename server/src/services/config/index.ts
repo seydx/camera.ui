@@ -12,7 +12,6 @@ import { createRequire } from 'node:module';
 import { arch, platform, release, tmpdir, type } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { container } from 'tsyringe';
 import { ZodError } from 'zod';
 
 import { patchConfigSchema } from '../../api/schemas/config.schema.js';
@@ -20,6 +19,7 @@ import { patchGo2RtcSchema } from '../../api/schemas/go2rtc.schema.js';
 import { CertificateGeneration } from '../../api/utils/cert.js';
 import { CUSTOM_CERT_FILENAME, CUSTOM_KEY_FILENAME, HOST_CERT_FILENAME, HOST_KEY_FILENAME, ROOT_CERT_FILENAME, ROOT_KEY_FILENAME } from '../../api/utils/constants.js';
 import { customCertificatePaths } from '../../api/utils/custom-cert.js';
+import { inject, provide, tryInject } from '../../container.js';
 import { announceUpdateChannel } from '../../utils/ipc.js';
 import { execSafePath } from '../../utils/path.js';
 import { newBackupKey, parseBackupKey } from './backup-archive.js';
@@ -235,9 +235,9 @@ export class ConfigService {
   }
 
   constructor(homePath?: string, options: ConfigServiceOptions = {}) {
-    container.registerInstance('configService', this);
+    provide('configService', this);
 
-    this.logger = container.resolve<LoggerService>('logger');
+    this.logger = inject('logger');
 
     this.HOME_PATH = ConfigService.resolveHomePath(homePath);
 
@@ -366,7 +366,7 @@ export class ConfigService {
     }
 
     if (writeMethod === 'api') {
-      const go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
+      const go2rtcApi = inject('go2rtcApi');
       await go2rtcApi.configRoute.rewriteConfig(this._go2rtcConfig);
     } else {
       writeFileSync(this.GO2RTC_CONFIG_FILE, dump(this._go2rtcConfig, { lineWidth: -1, noRefs: true }));
@@ -392,7 +392,7 @@ export class ConfigService {
       this.validateAndSetGo2RtcConfig(fileConfig);
     }
 
-    const db: Database = container.resolve<Database>('dbs');
+    const db = tryInject('dbs');
 
     // Sync stream URL changes from go2rtc to DB, then push DB camera settings (ffmpeg URLs, preload, etc.) back to go2rtc
     await db?.updateCameras();

@@ -1,7 +1,7 @@
 import { PluginInterface } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
 import type { DiscoveredSensor } from '@camera.ui/sdk';
@@ -29,9 +29,9 @@ export class SensorDiscoveryManager {
   private namespaces = NamespaceManager.sensorDiscoveryNamespaces();
 
   constructor() {
-    this.registry = container.resolve<SensorRegistry>('sensorRegistry');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.registry = inject('sensorRegistry');
+    this.proxyServer = inject('proxy');
+    this.logger = inject('logger');
   }
 
   public subscribe(): DiscoveredSensorListItem[] {

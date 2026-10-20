@@ -1,8 +1,8 @@
 import { Severity } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
+
+import { inject } from '../../container.js';
 
 import type { Notification } from '@camera.ui/sdk';
-import type { ProxyServer } from '../../rpc/index.js';
 import type { ActionContext } from './types.js';
 
 const VALID_SEVERITIES = new Set<string>(Object.values(Severity));
@@ -29,7 +29,7 @@ export async function actionNotification(ctx: ActionContext, data: Record<string
   };
 
   const targets = normaliseTargets(data.targets);
-  const proxyServer = container.resolve<ProxyServer>('proxy');
+  const proxyServer = inject('proxy');
 
   await proxyServer.notificationManager.notify({
     notification,

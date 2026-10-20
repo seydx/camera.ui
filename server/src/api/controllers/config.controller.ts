@@ -1,5 +1,6 @@
 import { dump } from 'js-yaml';
-import { container } from 'tsyringe';
+
+import { inject } from '../../container.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Go2RtcApi } from '../../go2rtc/api/index.js';
@@ -12,8 +13,8 @@ export class ConfigController {
   private go2rtcApi: Go2RtcApi;
 
   constructor(private app: FastifyInstance) {
-    this.configService = container.resolve<ConfigService>('configService');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
+    this.configService = inject('configService');
+    this.go2rtcApi = inject('go2rtcApi');
   }
 
   public showConfig(req: FastifyRequest<AuthLoginRequest & ConfigRequest>, reply: FastifyReply): FastifyReply {

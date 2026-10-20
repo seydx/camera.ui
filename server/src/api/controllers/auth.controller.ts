@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { container } from 'tsyringe';
 
 import { inject } from '../../container.js';
 import { INGRESS_DEVICE_PREFIX } from '../../services/config/constants.js';
@@ -48,7 +47,7 @@ export class AuthController {
   private serverService: ServerService;
 
   constructor(_app: FastifyInstance) {
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
     this.service = new AuthService();
     this.userService = new UsersService();
     this.twoFactorService = new TwoFactorService();

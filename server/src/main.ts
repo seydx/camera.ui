@@ -37,8 +37,6 @@ class CameraUiWorker {
   private owner: ShutdownOwner;
 
   constructor() {
-    container.registerInstance('cameraui', this);
-
     this.logger = new LoggerService();
     this.owner = new ShutdownOwner(this.logger, () => this.close());
 

@@ -2,22 +2,16 @@ import { toolDefinition } from '@tanstack/ai';
 import { existsSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
 import { PluginsService } from '../../api/services/plugins.service.js';
 import { UsersService } from '../../api/services/users.service.js';
+import { inject, tryInject } from '../../container.js';
 import { getSensorDiscovery } from '../../sensors/discovery.js';
 import { approvalSchema, toolError } from './shared.js';
 
-import type { CameraUiAPI } from '../../api.js';
-import type { SocketService } from '../../api/websocket/index.js';
 import type { ServerNamespace } from '../../api/websocket/nsp/server.js';
-import type { Go2Rtc } from '../../go2rtc/index.js';
-import type { MqttManager } from '../../mqtt/manager.js';
-import type { PluginManager } from '../../plugins/index.js';
 import type { ProxyServer } from '../../rpc/index.js';
-import type { NATS } from '../../rpc/server.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
@@ -110,7 +104,7 @@ const systemAction = toolDefinition({
 });
 
 async function runQuery(action: QueryName, args: Args, ctx: ToolContext): Promise<unknown> {
-  const proxy = container.resolve<ProxyServer>('proxy');
+  const proxy = inject('proxy');
 
   switch (action) {
     case 'discovered_cameras':
@@ -154,7 +148,7 @@ async function runQuery(action: QueryName, args: Args, ctx: ToolContext): Promis
       return readLog(text(args, 'source') ?? 'server', Math.min(Math.max(Number(args.lines) || 80, 1), LOG_LINES_MAX), text(args, 'filter'));
     case 'updates': {
       if (!isAdmin(ctx)) return toolError('Updates are available to admins only.');
-      const server = container.resolve<SocketService>('socketService').namespaces.get('/server') as ServerNamespace | undefined;
+      const server = inject('socketService').namespaces.get('/server') as ServerNamespace | undefined;
       if (!server) return toolError('Update checks are not running.');
       if (args.refresh === true) await Promise.all([server.checkServer(), server.checkPlugins()]);
       const updates = server.getUpdates();
@@ -168,13 +162,13 @@ async function runQuery(action: QueryName, args: Args, ctx: ToolContext): Promis
     }
     case 'mqtt_status':
       if (!isAdmin(ctx)) return toolError('MQTT status is available to admins only.');
-      return container.isRegistered('mqttManager') ? container.resolve<MqttManager>('mqttManager').getStatus() : { enabled: false };
+      return tryInject('mqttManager')?.getStatus() ?? { enabled: false };
     case 'runtime_status': {
       if (!isAdmin(ctx)) return toolError('Process states are available to admins only.');
       const plugins = new PluginsService();
       return {
-        go2rtc: container.resolve<Go2Rtc>('go2rtc').status,
-        nats: container.resolve<NATS>('natsServer').status,
+        go2rtc: inject('go2rtc').status,
+        nats: inject('natsServer').status,
         plugins: plugins.listPlugins().map((p) => ({ name: p.displayName, version: p.info.installedVersion, status: p.worker.status })),
         installQueue: plugins.installingPlugins(),
       };
@@ -185,7 +179,7 @@ async function runQuery(action: QueryName, args: Args, ctx: ToolContext): Promis
 }
 
 async function runAction(action: ActionName, args: Args, ctx: ToolContext): Promise<unknown> {
-  const proxy = container.resolve<ProxyServer>('proxy');
+  const proxy = inject('proxy');
 
   switch (action) {
     case 'adopt_camera': {
@@ -263,7 +257,7 @@ function sensorDiscovery(snapshot: Awaited<ReturnType<ReturnType<typeof getSenso
 }
 
 async function readLog(source: string, lines: number, filter?: string): Promise<unknown> {
-  const config = container.resolve<ConfigService>('configService');
+  const config = inject('configService');
   const file = logFile(source, config);
   if (!file) return toolError(`No log source "${source}". Use server, go2rtc, nats, tunnel, all, a camera name or a plugin name.`);
   if (!existsSync(file)) return { source, lines: [], note: 'The log file does not exist yet.' };
@@ -291,9 +285,9 @@ async function readLog(source: string, lines: number, filter?: string): Promise<
 function logFile(source: string, config: ConfigService): string | undefined {
   if (source === 'all') return config.LOG_FILE;
   if (SYSTEM_LOGS.has(source)) return join(config.LOGS_PATH, `system-${source}.log`);
-  const camera = container.resolve<CameraUiAPI>('api').getCamera(source);
+  const camera = inject('api').getCamera(source);
   if (camera) return camera.logPath;
-  const plugins = container.resolve<PluginManager>('pluginManager').plugins;
+  const plugins = inject('pluginManager').plugins;
   const needle = source.toLowerCase();
   const plugin = plugins.get(source) ?? Array.from(plugins.values()).find((p) => p.displayName.toLowerCase() === needle || p.pluginName.toLowerCase() === needle);
   return plugin?.logPath;

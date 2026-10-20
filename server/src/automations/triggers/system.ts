@@ -1,10 +1,9 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { createEmptyContext } from '../context.js';
 
 import type { Disposable } from '@camera.ui/sdk';
 import type { DBAutomation, DBAutomationNode } from '../../api/database/types.js';
-import type { InternalEvent, InternalEventBus, InternalEventPayload } from '../../internal-bus.js';
+import type { InternalEvent, InternalEventPayload } from '../../internal-bus.js';
 import type { TriggerContext } from './types.js';
 
 export function subscribeSystem(ctx: TriggerContext, flow: DBAutomation, triggerNode: DBAutomationNode): void {
@@ -14,7 +13,7 @@ export function subscribeSystem(ctx: TriggerContext, flow: DBAutomation, trigger
 
   if (!eventType) return;
 
-  const bus = container.resolve<InternalEventBus>('internalBus');
+  const bus = inject('internalBus');
 
   const handler = (payload: InternalEventPayload) => {
     if (category === 'plugin' && targetId && (payload as any).pluginId !== targetId) return;

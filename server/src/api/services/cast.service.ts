@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
 import type { CastCommand, CastTarget } from '../../manager/castManager.js';
 import type { ProxyServer } from '../../rpc/index.js';
@@ -7,7 +7,7 @@ export class CastService {
   private proxyServer: ProxyServer;
 
   constructor() {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
   }
 
   public listTargets(): CastTarget[] {

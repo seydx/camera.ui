@@ -1,12 +1,11 @@
 import { Severity } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { tryInject } from '../../container.js';
 import { SystemNotificationTypeId } from '../../manager/types.js';
 import { RemoteService } from '../../api/services/remote.service.js';
 import { cloudFetch } from './instance.js';
 
 import type { ServerOAuthCredentials } from '../../api/database/types.js';
-import type { ProxyServer } from '../../rpc/index.js';
 
 export class NotAuthorizedError extends Error {}
 export class InsufficientScopeError extends Error {
@@ -80,23 +79,19 @@ export class CloudCredentialStore {
   }
 
   private notifyReauthNeeded(): void {
-    try {
-      container
-        .resolve<ProxyServer>('proxy')
-        .notificationManager.notify({
-          source: { kind: 'system', id: SystemNotificationTypeId.CloudReauth },
-          notification: {
-            title: 'Cloud sign-in required',
-            body: 'This server was signed out of cameraui.com. Reconnect it under Settings, Remote.',
-            severity: Severity.Warn,
-            tag: SystemNotificationTypeId.CloudReauth,
-            adminOnly: true,
-          },
-        })
-        .catch(() => {});
-    } catch {
-      // proxy not registered yet, the remote settings badge still shows it
-    }
+    // without the proxy the remote settings badge still shows it
+    tryInject('proxy')
+      ?.notificationManager.notify({
+        source: { kind: 'system', id: SystemNotificationTypeId.CloudReauth },
+        notification: {
+          title: 'Cloud sign-in required',
+          body: 'This server was signed out of cameraui.com. Reconnect it under Settings, Remote.',
+          severity: Severity.Warn,
+          tag: SystemNotificationTypeId.CloudReauth,
+          adminOnly: true,
+        },
+      })
+      .catch(() => {});
   }
 
   public async clear(): Promise<void> {

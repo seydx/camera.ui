@@ -1,19 +1,17 @@
 import semver from 'semver';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { Database } from './index.js';
 import { loadMigrations } from './migrations/index.js';
 
-import type { ConfigService } from '../../services/config/index.js';
-import type { LoggerService } from '../../services/logger/index.js';
 import type { MigrationContext } from './migrations/types.js';
 
 export class MigrationRunner {
   private ctx: MigrationContext;
 
   constructor(db: Database) {
-    const logger = container.resolve<LoggerService>('logger');
-    const configService = container.resolve<ConfigService>('configService');
+    const logger = inject('logger');
+    const configService = inject('configService');
 
     this.ctx = {
       db,

@@ -1,5 +1,4 @@
 import { API_EVENT } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
 import { RemoteService } from '../api/services/remote.service.js';
 import { inject, provide } from '../container.js';
@@ -11,7 +10,6 @@ import type { Logger } from '@camera.ui/common';
 import type { CameraUiAPI } from '../api.js';
 import type { DBRemoteDirectMode } from '../api/database/types.js';
 import type { ConfigService } from '../services/config/index.js';
-import type { LoggerService } from '../services/logger/index.js';
 import type { ManagedTunnelStatus } from './services/cloudflare-managed.js';
 import type { RemoteAccessStatus, RemoteTestResult, TunnelStatus } from './types.js';
 
@@ -26,11 +24,11 @@ export class RemoteAccessManager {
   private remoteAccessService: RemoteAccessService;
 
   constructor() {
-    container.registerInstance('remoteAccessManager', this);
+    provide('remoteAccessManager', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
-    const loggerService = container.resolve<LoggerService>('logger');
+    this.api = inject('api');
+    this.configService = inject('configService');
+    const loggerService = inject('logger');
 
     this.logger = loggerService.createSystemLogger('Remote');
 

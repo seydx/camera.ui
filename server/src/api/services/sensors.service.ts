@@ -1,11 +1,9 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { resolveSensorSemantics } from '../../sensors/semantics.js';
 import { isWritableSensor, SENSOR_TYPE_CONFIG, VIRTUAL_SENSOR_OWNER_ID } from '../../sensors/types.js';
 
 import type { SensorSemantics, SensorSourceState, SensorType } from '@camera.ui/sdk';
 import type { SensorRegistry } from '../../sensors/registry.js';
-import type { Database } from '../database/index.js';
 import type { CreateVirtualSensorInput, PatchSensorInput } from '../schemas/sensors.schema.js';
 
 export interface TransformedSensor {
@@ -38,11 +36,7 @@ export class SensorsService {
   private registry: SensorRegistry;
 
   constructor() {
-    this.registry = container.resolve<SensorRegistry>('sensorRegistry');
-  }
-
-  private get dbs(): Database {
-    return container.resolve<Database>('dbs');
+    this.registry = inject('sensorRegistry');
   }
 
   public list(cameraId?: string): TransformedSensor[] {
@@ -140,7 +134,7 @@ export class SensorsService {
   }
 
   private assertCameraExists(cameraId: string): void {
-    if (!this.dbs.camerasDB.get(cameraId)) {
+    if (!inject('dbs').camerasDB.get(cameraId)) {
       throw new Error(`Camera "${cameraId}" not found`);
     }
   }

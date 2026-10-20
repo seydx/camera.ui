@@ -1,8 +1,8 @@
 import { PromiseTimeout } from '@camera.ui/common/utils';
 import { createRPCClient } from '@camera.ui/rpc';
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { emitReferences, withImages } from './tools/shared.js';
 
@@ -10,7 +10,6 @@ import type { RPCClient } from '@camera.ui/rpc';
 import type { AssistantToolProvider, AssistantToolResult, AssistantToolSpec } from '@camera.ui/sdk';
 import type { JSONSchema } from '@tanstack/ai';
 import type { Plugin } from '../plugins/plugin.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { CoreTool, ToolContext } from './tools/shared.js';
 
@@ -44,7 +43,7 @@ export class PluginToolClient {
   private logger: LoggerService;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
+    this.logger = inject('logger');
   }
 
   public async fetchSpecs(plugin: Plugin): Promise<AssistantToolSpec[]> {
@@ -129,7 +128,7 @@ export class PluginToolClient {
   private async ensureClient(): Promise<RPCClient> {
     if (this.client) return this.client;
 
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
     const client = createRPCClient({
       name: 'camera.ui-assistant',
       servers: proxyServer.server.endpoints.filter((endpoint) => endpoint.startsWith('nats://')),

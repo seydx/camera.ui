@@ -26,15 +26,13 @@ import {
 import { createHash, createPrivateKey, createSign, generateKeyPairSync, randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { isIPv4, isIPv6 } from 'node:net';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
 import { ServerService } from '../services/server.service.js';
 import { DEFAULTS } from './constants.js';
 
 import type { Extension } from '@peculiar/x509';
 import type { KeyObject } from 'node:crypto';
-import type { ConfigService } from '../../services/config/index.js';
-import type { LoggerService } from '../../services/logger/index.js';
 import type { DBServer } from '../database/types.js';
 
 export interface Certificate {
@@ -146,11 +144,9 @@ const getCANotAfter = (notBefore: Date): Date => {
 };
 
 const logCertificate = (message: string): void => {
-  try {
-    container.resolve<LoggerService>('logger').log(message);
-  } catch {
-    console.log(message);
-  }
+  const logger = tryInject('logger');
+  if (logger) logger.log(message);
+  else console.log(message);
 };
 
 const storedServerInfo = (): DBServer | undefined => {
@@ -221,7 +217,7 @@ function isLegacyCertificate(certPath: string): boolean {
 
 export class CertificateGeneration {
   static createRootCA(customAddresses: string[]): Certificate {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
 
     const { privateKeyPem, privateKey, publicKey } = generateRsaKey();
     const keyId = keyIdentifierOf(publicKey);
@@ -265,7 +261,7 @@ export class CertificateGeneration {
   }
 
   static createHostCert(customAddresses: string[], rootCAObject: Certificate): Certificate {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
 
     const caCert = new X509Certificate(rootCAObject.cert);
     const caKey = createPrivateKey(rootCAObject.key);
@@ -303,7 +299,7 @@ export class CertificateGeneration {
   }
 
   static requiredAddresses(): string[] {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
     const addresses = new Set<string>(['127.0.0.1']);
 
     for (const { address, isPrivate } of fetchViableNetworkAddresses()) {
@@ -331,7 +327,7 @@ export class CertificateGeneration {
   }
 
   static generateCert(forceNew?: boolean): Certificates {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
     const certFile = configService.HOST_CERT_FILE;
     const keyFile = configService.HOST_KEY_FILE;
     const caFile = configService.ROOT_CERT_FILE;

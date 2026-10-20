@@ -1,7 +1,7 @@
 import { RPCMethod } from '@camera.ui/rpc';
-import { container } from 'tsyringe';
 
 import { CamerasService } from '../api/services/cameras.service.js';
+import { inject } from '../container.js';
 import { ProxyServer } from '../rpc/index.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
@@ -19,7 +19,7 @@ export class DeviceManager implements DeviceManagerInterface {
 
   constructor() {
     this.camerasService = new CamerasService();
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
   }
 
   public async register(): Promise<void> {

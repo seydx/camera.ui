@@ -1,9 +1,7 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { nvrRpcNamespace } from '../../plugins/nvr.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { ProxyServer } from '../../rpc/index.js';
 import type { NvrEventParams, NvrEventThumbnailQuery } from '../schemas/nvr.schema.js';
 import type { AuthLoginRequest } from '../types/index.js';
 
@@ -21,7 +19,7 @@ interface NvrRpc {
 }
 
 export class NvrController {
-  private proxyServer = container.resolve<ProxyServer>('proxy');
+  private proxyServer = inject('proxy');
 
   public async getEventThumbnail(
     req: FastifyRequest<AuthLoginRequest & { Params: NvrEventParams; Querystring: NvrEventThumbnailQuery }>,

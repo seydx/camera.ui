@@ -1,6 +1,6 @@
 import { API_EVENT } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { inject, provide } from '../../container.js';
 import { RequestManager } from './manager.js';
 import { ApplicationRoute } from './routes/application.js';
 import { ConfigRoute } from './routes/config.js';
@@ -22,9 +22,9 @@ export class Go2RtcApi {
   private requestManager: RequestManager;
 
   constructor() {
-    container.registerInstance('go2rtcApi', this);
+    provide('go2rtcApi', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
+    this.api = inject('api');
     this.requestManager = new RequestManager();
 
     this.applicationRoute = new ApplicationRoute(this.requestManager);

@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../../container.js';
 import { PluginsService } from '../../services/plugins.service.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
@@ -14,7 +13,7 @@ export class PluginsNamespace {
   private pluginsService = new PluginsService();
 
   constructor(io: Server) {
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
+    this.pluginManager = inject('pluginManager');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {

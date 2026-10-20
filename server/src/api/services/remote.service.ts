@@ -1,13 +1,10 @@
 import { mergeWith } from '@camera.ui/common/utils';
 import { hostname } from 'node:os';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
 import { dbRemoteSchema } from '../database/record-schemas.js';
 
 import type { CloudApi } from '../../remote/api/index.js';
-import type { RemoteAccessManager } from '../../remote/index.js';
-import type { TunnelClient } from '../../remote/tunnel/client.js';
-import type { ProxyServer } from '../../rpc/index.js';
 import type { DeepPartial } from '../../types.js';
 import type { Database } from '../database/index.js';
 import type { DBCloud, DBRemote } from '../database/types.js';
@@ -17,15 +14,11 @@ export class RemoteService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-  }
-
-  private get proxyServer(): ProxyServer {
-    return container.resolve<ProxyServer>('proxy');
+    this.dbs = inject('dbs');
   }
 
   private get cloudApi(): CloudApi {
-    return container.resolve<CloudApi>('cloudApi');
+    return inject('cloudApi');
   }
 
   public info(): DBRemote {
@@ -192,7 +185,7 @@ export class RemoteService {
       return; // not registered
     }
 
-    const remoteAccessManager = container.resolve<RemoteAccessManager>('remoteAccessManager');
+    const remoteAccessManager = inject('remoteAccessManager');
     const status = remoteAccessManager.getStatus();
 
     try {
@@ -216,24 +209,16 @@ export class RemoteService {
 
   private emitCloudCredsChangedIfNeeded(beforeID: string | undefined, afterID: string | undefined): void {
     if (beforeID === afterID) return;
-    this.proxyServer.coreManager.publishCoreManagerEvent('cloudAccountChanged', {
+    inject('proxy').coreManager.publishCoreManagerEvent('cloudAccountChanged', {
       connected: !!afterID,
     });
     this.syncTunnelClientRuntime(!!afterID);
-    this.reconcileDirectAccess();
-  }
-
-  private reconcileDirectAccess(): void {
-    try {
-      void container.resolve<RemoteAccessManager>('remoteAccessManager').reconcileDirect();
-    } catch {
-      // ignore
-    }
+    tryInject('remoteAccessManager')?.reconcileDirect();
   }
 
   private async syncTunnelClientRuntime(connected: boolean): Promise<void> {
     try {
-      const tunnelClient = container.resolve<TunnelClient>('tunnelClient');
+      const tunnelClient = inject('tunnelClient');
       if (connected && !tunnelClient.isRunning) {
         await tunnelClient.start();
       } else if (!connected && tunnelClient.isRunning) {

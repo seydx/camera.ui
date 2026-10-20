@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { container } from 'tsyringe';
-
-import type { ConfigService } from '../services/config/index.js';
+import { inject } from '../container.js';
 
 const BASE_RE = /^\/[A-Za-z0-9/_-]*\/$/;
 const EMBED_HOSTS = new Set(['homeassistant', 'hassio']);
@@ -12,7 +10,7 @@ let rawHtml: string | undefined;
 
 function raw(): string {
   if (rawHtml === undefined) {
-    const config = container.resolve<ConfigService>('configService');
+    const config = inject('configService');
     rawHtml = readFileSync(join(config.INTERFACE_CACHE_PATH, 'index.html'), 'utf8');
   }
   return rawHtml;

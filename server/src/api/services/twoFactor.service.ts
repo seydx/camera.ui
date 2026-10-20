@@ -1,9 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { generateTotpSecret, verifyTotp } from '../../utils/totp.js';
-
-import type { ConfigService } from '../../services/config/index.js';
 
 export class TwoFactorService {
   private static readonly MAX_ATTEMPTS = 5;
@@ -15,7 +13,7 @@ export class TwoFactorService {
   private acceptedTimeStep = new Map<string, number>();
 
   constructor() {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
     this.ENCRYPTION_KEY = Buffer.from(configService.SECRETS.twoFactorKey, 'hex');
   }
 

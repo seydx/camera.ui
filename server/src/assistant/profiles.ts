@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
+
+import { inject } from '../container.js';
 
 import type { Database } from '../api/database/index.js';
 import type { DBAssistantProfile } from '../api/database/types.js';
@@ -12,7 +13,7 @@ export class AssistantProfileStore {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public list(userId: string): DBAssistantProfile[] {

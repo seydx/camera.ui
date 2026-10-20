@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
+
+import { inject } from '../container.js';
 
 import type { MemoryAdapter, MemoryTurn } from '@tanstack/ai-memory';
 import type { Database } from '../api/database/index.js';
@@ -21,7 +22,7 @@ export class AssistantMemoryStore {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public list(userId: string): DBAssistantMemoryFact[] {

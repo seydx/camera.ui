@@ -5,7 +5,6 @@ import { readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import semver from 'semver';
-import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
 import { inject, provide, tryInject } from '../container.js';
@@ -43,11 +42,11 @@ export class PluginManager {
   private healthMonitor: PluginHealthMonitor;
 
   constructor() {
-    container.registerInstance('pluginManager', this);
+    provide('pluginManager', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.api = inject('api');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
 
     this.healthMonitor = new PluginHealthMonitor();
 

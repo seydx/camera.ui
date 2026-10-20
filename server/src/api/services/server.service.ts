@@ -3,33 +3,23 @@ import { APP_SERVER_NAME, IS_ELECTRON, mergeWith } from '@camera.ui/common/utils
 import { readFileSync } from 'node:fs';
 import { userInfo } from 'node:os';
 import { satisfies } from 'semver';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { assertServerUpdateSpace } from '../../utils/disk-space.js';
 import { getTerminalCols, InstallLogger } from '../utils/install-logger.js';
 import { updatesService } from './updates.service.js';
 
-import type { Server } from 'socket.io';
-import type { CameraUi } from '../../main.js';
-import type { RemoteAccessManager } from '../../remote/index.js';
 import type { Database } from '../database/index.js';
 import type { DBServer } from '../database/types.js';
-import type { SocketService } from '../websocket/index.js';
 
 export class ServerService {
   private dbs: Database;
-  private io: Server;
-  private socketService: SocketService;
-  private cameraui: CameraUi;
 
   private installInProgress = false;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.socketService = container.resolve<SocketService>('socketService');
-    this.cameraui = container.resolve<CameraUi>('cameraui');
-    this.io = this.socketService.io;
+    this.dbs = inject('dbs');
   }
 
   public info(): DBServer {
@@ -37,7 +27,7 @@ export class ServerService {
   }
 
   public networkEndpoints(): { internalAddresses: string[]; externalAddresses: string[]; ca?: string } {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
     const allAddresses = fetchViableNetworkAddresses();
     const selectedAddresses = this.info().serverAddresses ?? [];
     const port = configService.config.port;
@@ -51,7 +41,7 @@ export class ServerService {
     const localUrl = this.info().localUrl?.trim();
     if (localUrl) internalAddresses.unshift(localUrl);
 
-    const remoteStatus = container.resolve<RemoteAccessManager>('remoteAccessManager').getStatus();
+    const remoteStatus = inject('remoteAccessManager').getStatus();
     const externalAddresses: string[] = [];
     if (remoteStatus.externalUrl) externalAddresses.push(remoteStatus.externalUrl);
 
@@ -59,7 +49,7 @@ export class ServerService {
   }
 
   private caCertificate(): string | undefined {
-    const caFile = container.resolve<ConfigService>('configService').ROOT_CERT_FILE;
+    const caFile = inject('configService').ROOT_CERT_FILE;
     if (!caFile) return undefined;
     try {
       const pem = readFileSync(caFile, 'utf8');
@@ -89,7 +79,7 @@ export class ServerService {
 
   public async install(version = 'latest', opts: { internal?: boolean } = {}): Promise<void> {
     const log = new InstallLogger(
-      (message) => this.io.of('/logs').emit('stdout/server', message),
+      (message) => inject('socketService').io.of('/logs').emit('stdout/server', message),
       () => getTerminalCols('server'),
     );
 
@@ -123,7 +113,7 @@ export class ServerService {
     try {
       log.block('Updating server');
 
-      const updateStream = await this.cameraui.requestUpdate(version);
+      const updateStream = await inject('cameraui').requestUpdate(version);
       for await (const output of updateStream) {
         log.feed(output);
       }

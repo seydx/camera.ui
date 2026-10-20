@@ -1,8 +1,8 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { container } from 'tsyringe';
 
 import { AutomationsService } from '../api/services/automations.service.js';
 import { UsersService } from '../api/services/users.service.js';
+import { inject, provide } from '../container.js';
 import { createEmptyContext } from './context.js';
 import { haversineDistance } from './haversine.js';
 import { FlowRunner } from './runner.js';
@@ -13,7 +13,6 @@ import type { Disposable } from '@camera.ui/sdk';
 import type { CameraUiAPI } from '../api.js';
 import type { Database } from '../api/database/index.js';
 import type { DBAutomation, DBAutomationNode } from '../api/database/types.js';
-import type { InternalEventBus } from '../internal-bus.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { FlowContext } from './context.js';
 import type { GeofenceMapping, GeofenceState, TriggerContext, WebhookMapping } from './triggers/index.js';
@@ -37,11 +36,11 @@ export class AutomationEngine {
   private lastEventData = new Map<string, { key: string; at: number }>();
 
   constructor() {
-    container.registerInstance('automationEngine', this);
+    provide('automationEngine', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
+    this.api = inject('api');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
     this.userService = new UsersService();
     this.automationsService = new AutomationsService();
   }
@@ -412,7 +411,7 @@ export class AutomationEngine {
   }
 
   private subscribeCameraDeletion(): void {
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     bus.onEvent('camera:removed', (payload) => {
       const cameraId = (payload as any).cameraId as string;
       if (cameraId) this.markFlowsRequiringUpdate(cameraId);

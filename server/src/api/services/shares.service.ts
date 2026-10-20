@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { createHash, randomBytes } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { SHARE_SERVICE_URL } from '../../services/config/constants.js';
 import { createSourceName } from '../../utils/camera.js';
 import { AuthService } from './auth.service.js';
@@ -56,12 +56,12 @@ export class SharesService {
   private validateAttempts = new Map<string, { count: number; first: number }>();
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.cloudApi = container.resolve<CloudApi>('cloudApi');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
-    this.go2rtcState = container.resolve<Go2RtcState>('go2rtcState');
+    this.dbs = inject('dbs');
+    this.configService = inject('configService');
+    this.logger = inject('logger');
+    this.cloudApi = inject('cloudApi');
+    this.go2rtcApi = inject('go2rtcApi');
+    this.go2rtcState = inject('go2rtcState');
     this.authService = new AuthService();
   }
 

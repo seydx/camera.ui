@@ -1,7 +1,6 @@
-import { container } from 'tsyringe';
+import { tryInject } from '../../../container.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
-import type { TrainingCandidateManager } from '../../../manager/trainingCandidateManager.js';
 import type { TrainingCandidatesChanged, TrainingSubmitProgress } from '../../../manager/types.js';
 import type { SocketNsp } from '../types.js';
 
@@ -17,12 +16,7 @@ export class TrainingNamespace {
   }
 
   public getSubmitProgress(_payload: any, callback?: Function): TrainingSubmitProgress {
-    let progress: TrainingSubmitProgress = { active: false, total: 0, done: 0, failed: 0 };
-    try {
-      progress = container.resolve<TrainingCandidateManager>('trainingCandidateManager').currentSubmitProgress();
-    } catch {
-      // manager not registered yet
-    }
+    const progress = tryInject('trainingCandidateManager')?.currentSubmitProgress() ?? { active: false, total: 0, done: 0, failed: 0 };
     callback?.(progress);
     return progress;
   }

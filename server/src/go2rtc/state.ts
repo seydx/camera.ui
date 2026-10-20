@@ -1,13 +1,12 @@
 import { API_EVENT } from '@camera.ui/sdk';
 import { EventEmitter } from 'node:events';
-import { container } from 'tsyringe';
 import { WebSocket } from 'ws';
+
+import { inject, provide } from '../container.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { RawData } from 'ws';
-import type { CameraUiAPI } from '../api.js';
 import type { ConfigService } from '../services/config/index.js';
-import type { LoggerService } from '../services/logger/index.js';
 import type { Go2RTCOffers, Go2RTCProducer, Go2RTCReceiver, Go2RTCSender, StreamStatus, StreamStatusResponse } from './types.js';
 
 export interface Go2RtcConsumerState {
@@ -66,12 +65,12 @@ export class Go2RtcState extends EventEmitter<Go2RtcStateEvents> {
     super();
     this.setMaxListeners(0);
 
-    container.registerInstance('go2rtcState', this);
+    provide('go2rtcState', this);
 
-    this.configService = container.resolve<ConfigService>('configService');
-    this.logger = container.resolve<LoggerService>('logger').createSystemLogger('Go2RTC', 'go2rtc');
+    this.configService = inject('configService');
+    this.logger = inject('logger').createSystemLogger('Go2RTC', 'go2rtc');
 
-    const api = container.resolve<CameraUiAPI>('api');
+    const api = inject('api');
     api.setMaxListeners(api.getMaxListeners() + 1);
     api.once(API_EVENT.SHUTDOWN, () => this.disconnect());
   }

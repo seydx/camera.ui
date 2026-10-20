@@ -1,6 +1,6 @@
 import { isLanClientAddress, isLoopbackAddress, isLoopbackHost } from '@camera.ui/common/network';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { RemoteService } from '../services/remote.service.js';
 import { ServerService } from '../services/server.service.js';
 

@@ -1,19 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject, provide, tryInject } from '../container.js';
 import { ConfigService } from '../services/config/index.js';
 import { buildTrainSubmission, insideFrame, withProvenance } from './trainingSubmission.js';
 
 import type { LoggerService } from '@camera.ui/sdk';
 import type { Database } from '../api/database/index.js';
 import type { DBTrainingCandidate, DBTrainingCandidateBox, DBTrainingCandidateMeta, DBTrainingSettings } from '../api/database/types.js';
-import type { SocketService } from '../api/websocket/index.js';
 import type { TrainingNamespace } from '../api/websocket/nsp/training.js';
-import type { CloudApi } from '../remote/api/index.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { TrainingCandidateIngest, TrainingIngestResult } from '../rpc/interfaces/core.js';
 import type { TrainingSubmissionPage, TrainingSubmitProgress, TrainingSubmitResult } from './types.js';
 
@@ -33,10 +30,11 @@ export class TrainingCandidateManager {
   private retentionTimer?: NodeJS.Timeout;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
-    this.imagesDir = join(container.resolve<ConfigService>('configService').STORAGE_PATH, 'training-candidates');
-    container.registerInstance('trainingCandidateManager', this);
+    provide('trainingCandidateManager', this);
+
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
+    this.imagesDir = join(inject('configService').STORAGE_PATH, 'training-candidates');
   }
 
   public async register(): Promise<void> {
@@ -59,7 +57,7 @@ export class TrainingCandidateManager {
     const next = { ...this.getSettings(), ...patch };
     await this.dbs.commit(this.dbs.settingsDB, 'settings', (settings) => (settings ? { ...settings, training: next } : undefined));
     if (patch.enabled !== undefined) {
-      container.resolve<ProxyServer>('proxy').coreManager?.publishCoreManagerEvent('trainingSettingsChanged', { enabled: next.enabled });
+      inject('proxy').coreManager?.publishCoreManagerEvent('trainingSettingsChanged', { enabled: next.enabled });
     }
     return next;
   }
@@ -126,7 +124,7 @@ export class TrainingCandidateManager {
   }
 
   public async listSubmissions(cursor?: string): Promise<TrainingSubmissionPage> {
-    const page = await container.resolve<CloudApi>('cloudApi').trainRoute.list(cursor);
+    const page = await inject('cloudApi').trainRoute.list(cursor);
     return {
       items: page.items.map((s) => ({
         id: s.id,
@@ -142,7 +140,7 @@ export class TrainingCandidateManager {
   }
 
   public async removeSubmission(id: string): Promise<void> {
-    await container.resolve<CloudApi>('cloudApi').trainRoute.remove(id);
+    await inject('cloudApi').trainRoute.remove(id);
   }
 
   public async remove(id: string): Promise<boolean> {
@@ -232,7 +230,7 @@ export class TrainingCandidateManager {
   }
 
   private async runSubmitQueue(): Promise<void> {
-    const cloudApi = container.resolve<CloudApi>('cloudApi');
+    const cloudApi = inject('cloudApi');
 
     for (;;) {
       const id = this.submitQueue.shift();
@@ -292,11 +290,7 @@ export class TrainingCandidateManager {
   }
 
   private trainingNamespace(): TrainingNamespace | undefined {
-    try {
-      return container.resolve<SocketService>('socketService').namespaces.get('/training') as TrainingNamespace | undefined;
-    } catch {
-      return undefined;
-    }
+    return tryInject('socketService')?.namespaces.get('/training') as TrainingNamespace | undefined;
   }
 
   private emitChanged(cameraId?: string, removed?: string[]): void {

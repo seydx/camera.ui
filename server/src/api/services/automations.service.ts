@@ -1,9 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { container } from 'tsyringe';
 
 import { normalizeSwitchCaseHandles } from '../../automations/switchHandles.js';
+import { inject } from '../../container.js';
 
-import type { AutomationEngine } from '../../automations/engine.js';
 import type { AutomationRun } from '../../automations/trace.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { Database } from '../database/index.js';
@@ -19,8 +18,8 @@ export class AutomationsService {
   private logger: LoggerService;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.dbs = inject('dbs');
+    this.logger = inject('logger');
   }
 
   public list(): DBAutomation[] {
@@ -214,7 +213,7 @@ export class AutomationsService {
 
   private notifyEngine(flowId: string): void {
     try {
-      const engine = container.resolve<AutomationEngine>('automationEngine');
+      const engine = inject('automationEngine');
       engine.onFlowChanged(flowId);
     } catch (error) {
       this.logger.warn(`Failed to notify automation engine: ${error}`);
@@ -223,7 +222,7 @@ export class AutomationsService {
 
   private notifyEngineDeleted(flowId: string): void {
     try {
-      const engine = container.resolve<AutomationEngine>('automationEngine');
+      const engine = inject('automationEngine');
       engine.onFlowDeleted(flowId);
     } catch (error) {
       this.logger.warn(`Failed to notify automation engine: ${error}`);

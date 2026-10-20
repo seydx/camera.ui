@@ -50,7 +50,7 @@ interface CoreMessage {
 }
 
 export class IngressSession {
-  private readonly configService = container.resolve<ConfigService>('configService');
+  private readonly configService = inject('configService');
   private readonly authService = new AuthService();
   private readonly usersService = new UsersService();
 

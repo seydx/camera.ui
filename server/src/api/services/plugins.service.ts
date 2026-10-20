@@ -3,9 +3,8 @@ import { move, pathExists, readJson, readJsonSync, remove } from 'fs-extra/esm';
 import { sleep, uuidv4 } from '@camera.ui/common/utils';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
-import { container, delay, registry } from 'tsyringe';
-import { describePlatformRequirement, isPlatformCompatible } from '../../utils/platform.js';
 
+import { inject, tryInject } from '../../container.js';
 import { PluginManager } from '../../plugins/index.js';
 import { pythonEnvEntries, writeInstallMarker } from '../../plugins/install-state.js';
 import { extractPackage, getFullManifest, installDependencies } from '../../utils/npm/index.js';
@@ -14,10 +13,11 @@ import { elidePath, getTerminalCols, InstallLogger } from '../utils/install-logg
 import { CamerasService } from './cameras.service.js';
 import { updatesService } from './updates.service.js';
 
-import type { Server } from 'socket.io';
+import type { Plugin } from '../../plugins/plugin.js';
 import type { PluginWorker } from '../../plugins/worker.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
+import type { Database } from '../database/index.js';
 import type { DBPlugin } from '../database/types.js';
 import type { BackupInfo, PluginsProgress } from '../types/index.js';
 
@@ -44,28 +44,17 @@ function releaseManageSlot(): void {
   manageWaiters.shift()?.();
 }
 
-@registry([
-  {
-    token: 'dbs',
-    useValue: delay(() => Database),
-  },
-])
 export class PluginsService {
   private dbs: Database;
-  private io: Server;
   private logger: LoggerService;
   private pluginManager: PluginManager;
   private configService: ConfigService;
-  private socketService: SocketService;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.socketService = container.resolve<SocketService>('socketService');
-
-    this.io = this.socketService.io;
+    this.dbs = inject('dbs');
+    this.logger = inject('logger');
+    this.pluginManager = inject('pluginManager');
+    this.configService = inject('configService');
   }
 
   public listPlugins(): Plugin[] {
@@ -380,7 +369,7 @@ export class PluginsService {
   }
 
   private emitManageQueue(): void {
-    this.io.of('/plugins').emit('manage-queue', this.installingPlugins());
+    inject('socketService').io.of('/plugins').emit('manage-queue', this.installingPlugins());
   }
 
   private async installPlugin(log: InstallLogger, pluginName: string, version: string, targetDir: string, update?: boolean): Promise<void> {
@@ -528,7 +517,7 @@ export class PluginsService {
 
   private createLogger(pluginName: string): InstallLogger {
     return new InstallLogger(
-      (message) => this.io.of('/logs').emit(`stdout/${pluginName}`, message),
+      (message) => inject('socketService').io.of('/logs').emit(`stdout/${pluginName}`, message),
       () => getTerminalCols(pluginName),
     );
   }

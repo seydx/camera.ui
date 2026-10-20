@@ -18,8 +18,8 @@ import { join, relative } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import qs from 'qs';
 import { networkInterfaceDefault, networkInterfaces } from 'systeminformation';
-import { container } from 'tsyringe';
 
+import { inject, provide, tryInject } from '../container.js';
 import { PROXY_SERVICE_URL, SHARE_SERVICE_URL } from '../services/config/constants.js';
 import { ConfigService } from '../services/config/index.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
@@ -157,12 +157,12 @@ export class Server {
   private readonly connections = new Set<Socket>();
 
   constructor() {
-    container.registerInstance('server', this);
+    provide('server', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.api = inject('api');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
+    this.proxyServer = inject('proxy');
   }
 
   public get internalPort(): number {

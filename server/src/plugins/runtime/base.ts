@@ -2,8 +2,8 @@ import { Logger } from '@camera.ui/common/logger';
 import { API_EVENT } from '@camera.ui/sdk';
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
 import { CLOUD_SERVICE_URL } from '../../services/config/constants.js';
 import { exitInfo } from '../../utils/process-exit.js';
 import { PLUGIN_STOP_BUDGET_MS, SupervisedChild, supervisedSpawn } from '../../utils/supervised-child.js';
@@ -12,7 +12,6 @@ import type { LogEntry } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
 import type { CameraUiAPI } from '../../api.js';
 import type { ProxyServer } from '../../rpc/index.js';
-import type { SensorRegistry } from '../../sensors/registry.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { LogManager } from '../../services/logger/logManager.js';
@@ -65,12 +64,12 @@ export abstract class BasePluginRuntime extends EventEmitter {
   constructor(protected plugin: RuntimePlugin) {
     super();
 
-    this.loggerService = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logManager = container.resolve('logManager');
-    this.api = container.isRegistered('api') ? container.resolve<CameraUiAPI>('api') : undefined;
-    this.pluginManager = container.isRegistered('pluginManager') ? container.resolve<PluginManager>('pluginManager') : undefined;
+    this.loggerService = inject('logger');
+    this.configService = inject('configService');
+    this.proxyServer = inject('proxy');
+    this.logManager = inject('logManager');
+    this.api = tryInject('api');
+    this.pluginManager = tryInject('pluginManager');
 
     this.logger = this.loggerService.createPluginLogger(plugin.id, plugin.displayName, plugin.info.installedVersion);
 
@@ -164,14 +163,8 @@ export abstract class BasePluginRuntime extends EventEmitter {
       this.logger.error(`Plugin ${this.plugin.displayName} exited unexpectedly (${details})`);
     }
 
-    // Disconnect the plugin's sensors so clients receive sensor:removed —
-    // entities and their assignments stay, re-registration rebinds them.
-    // (Master-only — on a remote worker the master handles sensor cleanup.)
-    try {
-      container.resolve<SensorRegistry>('sensorRegistry').removePluginSensors(this.plugin.id);
-    } catch {
-      // registry not initialized (worker mode)
-    }
+    // clients get sensor:removed, entities and assignments stay for re-registration
+    tryInject('sensorRegistry')?.removePluginSensors(this.plugin.id);
 
     this.worker = undefined;
     this.child = undefined;

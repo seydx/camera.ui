@@ -1,8 +1,9 @@
 import { sleep } from '@camera.ui/common/utils';
 import { Severity } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
 import { CamerasService } from '../api/services/cameras.service.js';
+import { inject, tryInject } from '../container.js';
+import { emitInternalEvent } from '../internal-bus.js';
 import { SystemNotificationTypeId } from '../manager/types.js';
 import { PLUGIN_COMMAND, PLUGIN_STATUS } from '../plugins/types.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
@@ -19,7 +20,6 @@ import type { BasePlugin, Camera, DeviceStorage, PluginInterfaces } from '@camer
 import type { CameraUiAPI } from '../api.js';
 import type { SocketService } from '../api/websocket/index.js';
 import type { WorkerRuntime } from '../api/websocket/types.js';
-import type { InternalEventBus } from '../internal-bus.js';
 import type { ProcessMessage, ProcessResponse } from '../plugins/types.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type { PluginNamespaces } from '../rpc/namespaces.js';
@@ -55,9 +55,9 @@ export class PluginWorker {
   private _status: PLUGIN_STATUS = PLUGIN_STATUS.UNKNOWN;
 
   constructor(public plugin: Plugin) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.socketService = container.resolve<SocketService>('socketService');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.api = inject('api');
+    this.socketService = inject('socketService');
+    this.proxyServer = inject('proxy');
     this.camerasService = new CamerasService();
 
     this.namespaces = NamespaceManager.pluginNamespaces(this.plugin.id);

@@ -31,7 +31,7 @@ import type {
   ZoneLabel,
 } from '@camera.ui/sdk';
 import type { PlateShortfall, TrainingSuggestion } from '../../rpc/interfaces/detection.js';
-import type { TraceAttest, TraceTick } from './event-trace.js';
+import type { TraceAttest, TraceContext, TraceTick, TraceWorldConfig, WorldSignals } from './event-trace.js';
 
 const NMS_IOU_THRESHOLD = 0.45;
 const NMS_CONFIDENCE_THRESHOLD = 0.25;

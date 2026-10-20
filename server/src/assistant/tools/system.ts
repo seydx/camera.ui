@@ -1,18 +1,15 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
 import { CamerasService } from '../../api/services/cameras.service.js';
 import { FloorPlanService } from '../../api/services/floorplan.service.js';
 import { PluginsService } from '../../api/services/plugins.service.js';
 import { RoomsService } from '../../api/services/rooms.service.js';
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { createSourceName } from '../../utils/camera.js';
 import { collectSystemInfo } from '../../utils/system-info.js';
 
-import type { CameraUiAPI } from '../../api.js';
-import type { Go2RtcState } from '../../go2rtc/state.js';
-import type { WorkerManager } from '../../workers/manager.js';
 import type { AssistantToolRegistry } from '../registry.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
@@ -21,9 +18,9 @@ const getSystemStatus = toolDefinition({
   description: 'Health of the instance: version, host, plugins with run state, workers, cameras online or with stream problems. Is everything running.',
   inputSchema: zod.object({}),
 }).server<ToolContext['context']>(async (_input, ctx) => {
-  const api = container.resolve<CameraUiAPI>('api');
-  const go2rtc = container.resolve<Go2RtcState>('go2rtcState');
-  const workers = container.resolve<WorkerManager>('workerManager');
+  const api = inject('api');
+  const go2rtc = inject('go2rtcState');
+  const workers = inject('workerManager');
   const plugins = new PluginsService();
 
   const system = await collectSystemInfo(ConfigService.RUNNING_VERSION).catch(() => undefined);

@@ -1,12 +1,10 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { parseValue } from '../parseValue.js';
 
-import type { SensorRegistry } from '../../sensors/registry.js';
 import type { ActionContext } from './types.js';
 
 export async function actionSensor(ctx: ActionContext, data: Record<string, unknown>): Promise<void> {
-  const registry = container.resolve<SensorRegistry>('sensorRegistry');
+  const registry = inject('sensorRegistry');
   const sensor = registry.getSensor(data.sensorId as string, { connectedOnly: true });
   if (!sensor) throw new Error('Sensor not found');
 

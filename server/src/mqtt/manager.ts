@@ -1,7 +1,7 @@
 import { PromiseTimeout } from '@camera.ui/common/utils';
 import mqtt from 'mqtt';
-import { container } from 'tsyringe';
 
+import { inject, provide, tryInject } from '../container.js';
 import { MqttBridge } from './bridge.js';
 import { MqttBroker } from './broker.js';
 import { MqttTopics, topicMatchesFilter } from './topics.js';
@@ -9,7 +9,6 @@ import { MqttTopics, topicMatchesFilter } from './topics.js';
 import type { IClientOptions, MqttClient } from 'mqtt';
 import type { Database } from '../api/database/index.js';
 import type { DBMqtt } from '../api/database/types.js';
-import type { SocketService } from '../api/websocket/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { MqttStatus, MqttTestResult } from './types.js';
 
@@ -31,10 +30,10 @@ export class MqttManager {
   private dbs: Database;
 
   constructor() {
-    container.registerInstance('mqttManager', this);
+    provide('mqttManager', this);
 
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
 
     this.topics = new MqttTopics('cameraui');
     this.bridge = new MqttBridge(this);
@@ -284,12 +283,8 @@ export class MqttManager {
     this.status = status;
     if (!changed) return;
 
-    try {
-      const socketService = container.resolve<SocketService>('socketService');
-      socketService.io.of('/server').emit('mqtt-status', this.getStatus());
-    } catch {
-      // socket service not up yet (early boot) — UI fetches status on connect
-    }
+    // without the socket service the UI fetches the status on connect
+    tryInject('socketService')?.io.of('/server').emit('mqtt-status', this.getStatus());
   }
 }
 

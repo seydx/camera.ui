@@ -1,12 +1,12 @@
 import { isEqual } from '@camera.ui/common/utils';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { NamespaceManager } from '../../rpc/namespaces.js';
 import { DETECTION_SENSOR_TYPES } from '../../sensors/types.js';
 
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
 import type { SensorLike, SensorType } from '@camera.ui/sdk';
-import type { InternalEventBus, SensorLifecyclePayload } from '../../internal-bus.js';
+import type { SensorLifecyclePayload } from '../../internal-bus.js';
 import type { DetectionCoordinatorInterface } from '../../rpc/interfaces/detection.js';
 import type { SensorRefreshedState, SensorWriteMessage } from '../../rpc/interfaces/sensor.js';
 import type { SensorRegistry } from '../../sensors/registry.js';
@@ -23,7 +23,7 @@ export class SensorController {
     private frameWorker: FrameWorker,
     private proxy: RPCClient,
   ) {
-    this.registry = container.resolve<SensorRegistry>('sensorRegistry');
+    this.registry = inject('sensorRegistry');
   }
 
   public get detectionCoordinatorProxy(): Promisify<DetectionCoordinatorInterface> {
@@ -53,8 +53,7 @@ export class SensorController {
     });
     this.disposables.push(() => assignments.dispose());
 
-    // mirror registry lifecycle into the camera's own subjects (UI drawer, homekit)
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     const onAdded = (payload: SensorLifecyclePayload): void => {
       if (!payload.assignedCameraIds.includes(this.cameraController.id)) return;
       this.cameraController.updateSensorState(payload.sensorId, payload.sensorType as SensorType, 'added');

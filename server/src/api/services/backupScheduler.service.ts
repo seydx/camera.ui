@@ -2,7 +2,6 @@ import { Severity } from '@camera.ui/sdk';
 import { ensureDir, move, pathExists, remove } from 'fs-extra/esm';
 import { readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute, join, resolve } from 'node:path';
-import { container } from 'tsyringe';
 
 import { inject, provide, tryInject } from '../../container.js';
 import { SystemNotificationTypeId } from '../../manager/types.js';
@@ -43,12 +42,12 @@ export class BackupSchedulerService {
   private running = false;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.dbs = container.resolve<Database>('dbs');
-    this.backupService = new BackupService();
+    provide('backupScheduler', this);
 
-    container.registerInstance('backupScheduler', this);
+    this.logger = inject('logger');
+    this.configService = inject('configService');
+    this.dbs = inject('dbs');
+    this.backupService = new BackupService();
   }
 
   public get defaultDestination(): string {

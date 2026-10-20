@@ -1,14 +1,12 @@
 import { EventEmitter } from 'node:events';
-import { container } from 'tsyringe';
 
 import { CamerasService } from './api/services/cameras.service.js';
 import { PluginsService } from './api/services/plugins.service.js';
 import { CameraController } from './camera/controller.js';
+import { inject, provide, tryInject } from './container.js';
+import { emitInternalEvent } from './internal-bus.js';
 
 import type { API_EVENT, Camera, PluginAssignments } from '@camera.ui/sdk';
-import type { InternalEventBus } from './internal-bus.js';
-import type { ProxyServer } from './rpc/index.js';
-import type { LoggerService } from './services/logger/index.js';
 
 export declare interface CameraUiAPI {
   on(event: API_EVENT, listener: () => void): this;
@@ -24,7 +22,7 @@ export class CameraUiAPI extends EventEmitter {
   constructor() {
     super();
 
-    container.registerInstance('api', this);
+    provide('api', this);
   }
 
   public async configureCameras(): Promise<void> {
@@ -39,7 +37,7 @@ export class CameraUiAPI extends EventEmitter {
     let cameraController = this.cameraControllers.get(camera._id);
 
     if (!cameraController) {
-      const logger = container.resolve<LoggerService>('logger');
+      const logger = inject('logger');
       const cameraLogger = logger.createCameraLogger(camera._id, camera.name);
 
       cameraController = new CameraController(camera, cameraLogger);
@@ -47,19 +45,9 @@ export class CameraUiAPI extends EventEmitter {
 
       this.cameraControllers.set(camera._id, cameraController);
 
-      try {
-        const bus = container.resolve<InternalEventBus>('internalBus');
-        bus.emitEvent('camera:added', { cameraId: camera._id, cameraName: camera.name });
-      } catch {
-        // ignore
-      }
+      emitInternalEvent('camera:added', { cameraId: camera._id, cameraName: camera.name });
 
-      try {
-        const proxyServer = container.resolve<ProxyServer>('proxy');
-        proxyServer.discoveryManager.notifyCameraUpdated(camera._id);
-      } catch {
-        // proxy may not be ready during initial boot
-      }
+      tryInject('proxy')?.discoveryManager.notifyCameraUpdated(camera._id);
     }
 
     return cameraController;
@@ -87,7 +75,7 @@ export class CameraUiAPI extends EventEmitter {
   }
 
   public updateCamera(camera: Camera): void {
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
     const cameraController = this.cameraControllers.get(camera._id);
     cameraController?.updateCamera(camera);
 
@@ -95,7 +83,7 @@ export class CameraUiAPI extends EventEmitter {
   }
 
   public async removeCamera(camera: Camera, assignments: PluginAssignments): Promise<void> {
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
     const cameraController = this.cameraControllers.get(camera._id);
 
     if (!cameraController) {
@@ -130,15 +118,10 @@ export class CameraUiAPI extends EventEmitter {
         await proxyServer.deviceManager.requestDeviceManagerEvent(camera.pluginInfo.id, 'cameraReleased', { cameraId: camera._id });
       }
     } catch (error) {
-      const logger = container.resolve<LoggerService>('logger');
+      const logger = inject('logger');
       logger.warn(`Failed to fully tear down camera ${camera.name}, removing it anyway:`, error);
     } finally {
-      try {
-        const bus = container.resolve<InternalEventBus>('internalBus');
-        bus.emitEvent('camera:removed', { cameraId: camera._id, cameraName: camera.name });
-      } catch {
-        // ignore
-      }
+      emitInternalEvent('camera:removed', { cameraId: camera._id, cameraName: camera.name });
 
       this.cameraControllers.delete(camera._id);
       proxyServer.discoveryManager.notifyCameraDeleted(camera._id, camera.pluginInfo?.id);
@@ -150,7 +133,7 @@ export class CameraUiAPI extends EventEmitter {
       return;
     }
 
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
 
     if (!this.cameraControllers.get(camera._id)) {
       this.addCamera(camera);
@@ -166,7 +149,7 @@ export class CameraUiAPI extends EventEmitter {
       return;
     }
 
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
     if (this.pluginCanReceiveEvents(pluginId)) {
       await proxyServer.deviceManager.requestDeviceManagerEvent(pluginId, 'cameraReleased', { cameraId: camera._id });
     }

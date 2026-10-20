@@ -1,12 +1,10 @@
 import { isEqual, mergeWith } from '@camera.ui/common/utils';
 import { canCreateCameras, isHub, PluginRole, SensorType } from '@camera.ui/sdk';
-import { container, delay, registry } from 'tsyringe';
 
 import { clearSourceCodecInfos, deleteSourceCodecInfo, getSourceCodecInfo } from '../../camera/codecCache.js';
+import { inject } from '../../container.js';
 import { getMultiProviderTypes, getSingleProviderTypes, getValidSensorTypes, SENSOR_TYPE_CONFIG, VIRTUAL_SENSOR_OWNER_ID } from '../../sensors/types.js';
-import { ConfigService } from '../../services/config/index.js';
 import { createSourceName, generatedSourceUrls, go2rtcStreamUrls, normalizeCameraName } from '../../utils/camera.js';
-import { Database } from '../database/index.js';
 import { FloorPlanService } from './floorplan.service.js';
 import { PluginsService } from './plugins.service.js';
 import { RoomsService } from './rooms.service.js';
@@ -28,8 +26,9 @@ import type { CameraUiAPI } from '../../api.js';
 import type { Go2RtcApi } from '../../go2rtc/api/index.js';
 import type { Go2RtcState } from '../../go2rtc/state.js';
 import type { CreateStreamData, Go2RTCProbe } from '../../go2rtc/types.js';
-import type { SensorRegistry } from '../../sensors/registry.js';
+import type { ConfigService } from '../../services/config/index.js';
 import type { DeepPartial } from '../../types.js';
+import type { Database } from '../database/index.js';
 import type { DBCamera } from '../database/types.js';
 
 const VALID_SENSOR_TYPES: (SensorType | 'cameraController' | 'hub')[] = [...getValidSensorTypes(), 'cameraController', 'hub'];
@@ -61,12 +60,6 @@ function pluginReferences(camera: DBCamera): AssignedPlugin[] {
   return references;
 }
 
-@registry([
-  {
-    token: 'dbs',
-    useValue: delay(() => Database),
-  },
-])
 export class CamerasService {
   private configService: ConfigService;
   private api: CameraUiAPI;
@@ -78,10 +71,10 @@ export class CamerasService {
   private roomsService: RoomsService;
 
   constructor() {
-    this.configService = container.resolve<ConfigService>('configService');
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.dbs = container.resolve<Database>('dbs');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
+    this.configService = inject('configService');
+    this.api = inject('api');
+    this.dbs = inject('dbs');
+    this.go2rtcApi = inject('go2rtcApi');
 
     this.usersService = new UsersService();
     this.pluginsService = new PluginsService();
@@ -800,7 +793,7 @@ export class CamerasService {
   }
 
   private get go2rtcState(): Go2RtcState {
-    return container.resolve<Go2RtcState>('go2rtcState');
+    return inject('go2rtcState');
   }
 
   private async activateDefaultExtensions(camera: DBCamera): Promise<DBCamera | undefined> {
@@ -965,7 +958,7 @@ export class CamerasService {
     if (!assist || Array.isArray(assist)) return false;
 
     if (object && !Array.isArray(object) && object.name !== assist.name) {
-      const registry = container.resolve<SensorRegistry>('sensorRegistry');
+      const registry = inject('sensorRegistry');
       const sensor = registry.getAllSensors({ connectedOnly: true, cameraId: camera._id, pluginId: object.id }).find((s) => s.type === SensorType.Object);
       // provider not running, its frame need is unknown and the assignment stays untouched
       if (!sensor?.data.requiresFrames) return false;

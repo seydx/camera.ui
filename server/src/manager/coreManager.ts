@@ -1,5 +1,4 @@
 import { RPCMethod } from '@camera.ui/rpc';
-import { container } from 'tsyringe';
 
 import { FloorPlanService } from '../api/services/floorplan.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
@@ -7,11 +6,11 @@ import { RemoteService } from '../api/services/remote.service.js';
 import { RoomsService } from '../api/services/rooms.service.js';
 import { ServerService } from '../api/services/server.service.js';
 import { WorkersService } from '../api/services/workers.service.js';
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
-import type { PluginInterface } from '@camera.ui/sdk';
-import type { AssistantManager } from '../assistant/manager.js';
-import type { AssistantAccess, AssistantAskRequest, AssistantAskResult, AssistantPost } from '../assistant/types.js';
+import type { AssistantAccess, AssistantAskResult, PluginInterface } from '@camera.ui/sdk';
+import type { AssistantAskRequest, AssistantPost } from '../assistant/types.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type {
   CoreManagerInterface,
@@ -23,7 +22,6 @@ import type {
   TrainingIngestResult,
 } from '../rpc/interfaces/core.js';
 import type { ConfigService } from '../services/config/index.js';
-import type { TrainingCandidateManager } from './trainingCandidateManager.js';
 
 export class CoreManager implements CoreManagerInterface {
   private proxyServer: ProxyServer;
@@ -45,8 +43,8 @@ export class CoreManager implements CoreManagerInterface {
     this.roomsService = new RoomsService();
     this.floorPlanService = new FloorPlanService();
     this.workersService = new WorkersService();
-    this.configService = container.resolve<ConfigService>('configService');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.configService = inject('configService');
+    this.proxyServer = inject('proxy');
   }
 
   public async register(): Promise<void> {
@@ -90,28 +88,28 @@ export class CoreManager implements CoreManagerInterface {
 
   @RPCMethod
   public async ingestTrainingCandidate(payload: TrainingCandidateIngest): Promise<TrainingIngestResult> {
-    return container.resolve<TrainingCandidateManager>('trainingCandidateManager').ingest(payload);
+    return inject('trainingCandidateManager').ingest(payload);
   }
 
   @RPCMethod
   public async getTrainingCollectionEnabled(): Promise<boolean> {
-    return container.resolve<TrainingCandidateManager>('trainingCandidateManager').getSettings().enabled;
+    return inject('trainingCandidateManager').getSettings().enabled;
   }
 
   @RPCMethod
   public async assistantAsk(request: AssistantAskRequest): Promise<AssistantAskResult> {
-    return container.resolve<AssistantManager>('assistantManager').ask(request);
+    return inject('assistantManager').ask(request);
   }
 
   @RPCMethod
   public async assistantAccess(pluginId: string): Promise<AssistantAccess> {
-    return container.resolve<AssistantManager>('assistantManager').access(pluginId);
+    return inject('assistantManager').access(pluginId);
   }
 
   @RPCMethod
   public async assistantPost(post: AssistantPost): Promise<boolean> {
     if (!post || typeof post.userId !== 'string' || typeof post.threadId !== 'string' || typeof post.text !== 'string') return false;
-    await container.resolve<AssistantManager>('assistantManager').post(post);
+    await inject('assistantManager').post(post);
     return true;
   }
 

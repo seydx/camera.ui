@@ -3,8 +3,8 @@ import { API_EVENT } from '@camera.ui/sdk';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { stripVTControlCharacters } from 'node:util';
-import { container } from 'tsyringe';
 
+import { inject, provide, tryInject } from '../container.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
 import { exitInfo } from '../utils/process-exit.js';
@@ -13,11 +13,8 @@ import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
 import type { Interface } from 'node:readline';
 import type { CameraUiAPI } from '../api.js';
-import type { SocketService } from '../api/websocket/index.js';
 import type { ServerRuntime } from '../api/websocket/types.js';
 import type { ConfigService } from '../services/config/index.js';
-import type { LoggerService } from '../services/logger/index.js';
-import type { Go2RtcState } from './state.js';
 
 export class Go2Rtc {
   public version = 'unknown';
@@ -45,11 +42,11 @@ export class Go2Rtc {
   }
 
   constructor() {
-    container.registerInstance('go2rtc', this);
+    provide('go2rtc', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
-    const loggerService = container.resolve<LoggerService>('logger');
+    this.api = inject('api');
+    this.configService = inject('configService');
+    const loggerService = inject('logger');
 
     this.logger = loggerService.createSystemLogger('Go2RTC', 'go2rtc');
     this.logger.debugEnabled = this.configService.go2rtcLoggerOptions.debugEnabled ?? false;
@@ -104,7 +101,7 @@ export class Go2Rtc {
 
         this.setStatus(RUNTIME_STATUS.STARTED);
 
-        await container.resolve<Go2RtcState>('go2rtcState').connect();
+        await inject('go2rtcState').connect();
 
         resolve();
       });
@@ -121,7 +118,7 @@ export class Go2Rtc {
 
       this.go2rtcProcess.on('exit', async (code, signal) => {
         this.configService.removeProcessByPID(go2rtcPID);
-        container.resolve<Go2RtcState>('go2rtcState').disconnect();
+        inject('go2rtcState').disconnect();
 
         const details = exitInfo(code, signal, { pid: go2rtcPID });
 
@@ -230,13 +227,11 @@ export class Go2Rtc {
   private setStatus(status: RUNTIME_STATUS): void {
     this._status = status;
 
-    const socketService = container.resolve<SocketService>('socketService');
-
     const runtimeInfo: ServerRuntime = {
       go2rtc: { name: 'go2rtc', status: status },
     };
 
-    socketService.io?.of('/status').emit('process-status', runtimeInfo);
+    tryInject('socketService')?.io.of('/status').emit('process-status', runtimeInfo);
   }
 
   private processLogger(line: string): void {

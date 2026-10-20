@@ -1,13 +1,12 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
-import type { ProxyServer } from '../../rpc/index.js';
 import type { ActionContext } from './types.js';
 
 export async function actionNotificationControl(ctx: ActionContext, data: Record<string, unknown>): Promise<void> {
   const suppressed = data.mode !== 'enable';
   const scope = data.scope === 'user' || data.scope === 'camera' ? data.scope : 'global';
 
-  const notificationManager = container.resolve<ProxyServer>('proxy').notificationManager;
+  const notificationManager = inject('proxy').notificationManager;
 
   if (scope === 'camera') {
     const cameraId = ctx.resolve((data.cameraId as string) ?? '').trim();

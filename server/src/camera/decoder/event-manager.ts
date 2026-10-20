@@ -32,7 +32,7 @@ import type { TrainingBoxSource } from '../../api/database/types.js';
 import type { TrainingCandidateBox } from '../../rpc/interfaces/core.js';
 import type { DetectionThumbnail, ServerFaceDetection, TrainingSuggestion } from '../../rpc/interfaces/detection.js';
 import type { LineCrossingEvent } from './detection-pipeline.js';
-import type { TraceTick } from './event-trace.js';
+import type { TraceFaceRead, TraceTick } from './event-trace.js';
 import type { EventAttachments, RecordedAttribute, RecordedEvent, RecordedPersonEmbedding, RecordedSegment } from './nvr-sink.js';
 import type { PerfTracker } from './perf-tracker.js';
 import type { SceneObservation, TrainingSubject } from './training-sink.js';

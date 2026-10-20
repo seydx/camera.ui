@@ -2,8 +2,8 @@ import { Logger } from '@camera.ui/common/logger';
 import { existsSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../../container.js';
 import { paint } from '../../../utils/colors.js';
 import { setTerminalCols } from '../../utils/install-logger.js';
 
@@ -13,7 +13,6 @@ import type { CameraUiAPI } from '../../../api.js';
 import type { CameraUi } from '../../../master.js';
 import type { PluginManager } from '../../../plugins/index.js';
 import type { ConfigService } from '../../../services/config/index.js';
-import type { LogManager } from '../../../services/logger/logManager.js';
 import type { SocketNsp } from '../types.js';
 
 const MAIN_TARGET = 'main';
@@ -44,10 +43,10 @@ export class LogsNamespace {
   private pluginManager: PluginManager;
 
   constructor(io: Server) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.cameraui = container.resolve<CameraUi>('cameraui');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
+    this.api = inject('api');
+    this.cameraui = inject('cameraui');
+    this.configService = inject('configService');
+    this.pluginManager = inject('pluginManager');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {
@@ -216,10 +215,8 @@ export class LogsNamespace {
       return;
     }
 
-    let logManager: LogManager;
-    try {
-      logManager = container.resolve<LogManager>('logManager');
-    } catch {
+    const logManager = tryInject('logManager');
+    if (!logManager) {
       socket.emit(channel, paint('red', 'Live log output is not available yet.\r\n'));
       return;
     }

@@ -3,15 +3,14 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { convertSchemaToJsonSchema } from '@tanstack/ai';
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { isBrowserTool, isChatOnlyTool } from './tools/index.js';
 import { ASSISTANT_IMAGE_EVENT } from './tools/shared.js';
 
 import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ContentPart } from '@tanstack/ai';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { LoggerService } from '../services/logger/index.js';
 import type { AssistantToolRegistry } from './registry.js';
 import type { CoreTool } from './tools/shared.js';
 import type { AssistantRunContext } from './types.js';
@@ -59,7 +58,7 @@ function toContent(result: unknown, extraImages: { data: string; mimeType: strin
 }
 
 export class AssistantMcp {
-  private logger = container.resolve<LoggerService>('logger');
+  private logger = inject('logger');
 
   constructor(private registry: AssistantToolRegistry) {}
 

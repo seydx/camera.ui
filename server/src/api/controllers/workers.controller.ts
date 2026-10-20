@@ -1,12 +1,11 @@
 import { fetchViableNetworkAddresses, isLoopbackAddress } from '@camera.ui/common/network';
 import { X509Certificate } from 'node:crypto';
 
+import { inject } from '../../container.js';
 import { updatesService } from '../services/updates.service.js';
 import { WorkersService } from '../services/workers.service.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { ProxyServer } from '../../rpc/index.js';
-import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { WorkerManager } from '../../workers/manager.js';
 import type {
@@ -30,8 +29,8 @@ export class WorkersController {
   private workerManager: WorkerManager;
 
   constructor(_app: FastifyInstance) {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.workerManager = container.resolve<WorkerManager>('workerManager');
+    this.logger = inject('logger');
+    this.workerManager = inject('workerManager');
     this.workersService = new WorkersService();
   }
 
@@ -54,7 +53,7 @@ export class WorkersController {
 
   public async getConfig(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const configService = container.resolve<ConfigService>('configService');
+      const configService = inject('configService');
       const workers = configService.config.workers;
 
       const suggestedAddresses = fetchViableNetworkAddresses()
@@ -77,8 +76,8 @@ export class WorkersController {
 
   public async patchConfig(req: FastifyRequest<AuthLoginRequest & WorkerConfigPatchRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const configService = container.resolve<ConfigService>('configService');
-      const proxyServer = container.resolve<ProxyServer>('proxy');
+      const configService = inject('configService');
+      const proxyServer = inject('proxy');
 
       const current = configService.config.workers ?? {};
       const wasEnabled = !!current.enabled;
@@ -121,7 +120,7 @@ export class WorkersController {
 
   public async createPairing(req: FastifyRequest<AuthLoginRequest & WorkerPairingCreateRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const configService = container.resolve<ConfigService>('configService');
+      const configService = inject('configService');
       const workersConfig = configService.config.workers;
 
       if (!workersConfig?.enabled) {
@@ -152,7 +151,7 @@ export class WorkersController {
 
   public async pair(req: FastifyRequest<WorkerPairRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const configService = container.resolve<ConfigService>('configService');
+      const configService = inject('configService');
       const workersConfig = configService.config.workers;
 
       if (!workersConfig?.enabled) {
@@ -179,8 +178,7 @@ export class WorkersController {
       const credential = await this.workersService.issueCredentials(agentId, name);
       await this.workerManager.noteWorkerPaired(agentId, name);
 
-      // Bring the leaf listener up to date so the worker can connect right away.
-      const proxyServer = container.resolve<ProxyServer>('proxy');
+      const proxyServer = inject('proxy');
       await proxyServer.applyLeafNodeAuth();
 
       // Burn the code only now — a failure above must not invalidate it.

@@ -1,14 +1,13 @@
 import { Severity } from '@camera.ui/sdk';
 import { Cron } from 'croner';
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
 import { UsersService } from '../api/services/users.service.js';
+import { inject } from '../container.js';
 
 import type { Database } from '../api/database/index.js';
 import type { DBAssistantAttachment, DBAssistantSchedule, DBAssistantScheduleDelivery } from '../api/database/types.js';
 import type { CreateAssistantScheduleInput, PatchAssistantScheduleInput } from '../api/schemas/assistant.schema.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { AssistantManager } from './manager.js';
 
@@ -60,8 +59,8 @@ export class AssistantScheduler {
   private dbs: Database;
 
   constructor(private manager: AssistantManager) {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
   }
 
   public start(): void {
@@ -216,7 +215,7 @@ export class AssistantScheduler {
   }
 
   private async push(schedule: DBAssistantSchedule, text: string, image?: { data: string; mimeType: string }): Promise<void> {
-    const manager = container.resolve<ProxyServer>('proxy').notificationManager;
+    const manager = inject('proxy').notificationManager;
     const user = new UsersService().findById(schedule.userId);
     if (!user) return;
 

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
-import { container } from 'tsyringe';
 
 import { RemoteService } from '../../api/services/remote.service.js';
+import { inject, tryInject } from '../../container.js';
 
 import type { Logger } from '@camera.ui/common';
 import type { ProxyServer } from '../../rpc/index.js';
@@ -38,7 +38,7 @@ export class ProxyService extends EventEmitter {
     super();
 
     this.remoteService = new RemoteService();
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
 
     this.pushService.on('notification', (message) => {
       if (message.data?.type === 'server_deleted') {

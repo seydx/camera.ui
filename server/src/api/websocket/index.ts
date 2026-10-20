@@ -1,7 +1,7 @@
 import { API_EVENT } from '@camera.ui/sdk';
 import { Server } from 'socket.io';
-import { container } from 'tsyringe';
 
+import { inject, provide } from '../../container.js';
 import { authorize, UnauthorizedError } from '../middlewares/socketAuth.middleware.js';
 import { AuthService } from '../services/auth.service.js';
 import { updatesService } from '../services/updates.service.js';
@@ -43,11 +43,11 @@ export class SocketService {
   private api: CameraUiAPI;
 
   constructor(app: FastifyInstance, opts: Partial<ServerOptions>) {
-    container.registerInstance('socketService', this);
+    provide('socketService', this);
 
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.api = container.resolve<CameraUiAPI>('api');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
+    this.api = inject('api');
 
     this.io = new Server(app.server, opts);
 

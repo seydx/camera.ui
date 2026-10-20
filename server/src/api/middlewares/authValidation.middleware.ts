@@ -1,14 +1,13 @@
 import jwt from 'jsonwebtoken';
 import { createHmac } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { streamTokenMatches } from '../../utils/camera.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
 import { API_TOKEN_PREFIX } from '../types/index.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { ConfigService } from '../../services/config/index.js';
 import type { DBUser } from '../database/types.js';
 import type { AuthLoginRequest, AuthNewLoginRequest, CamerasStreamRequest, JwtTokenDecoded, TwoFactorPendingResponse } from '../types/index.js';
 
@@ -42,7 +41,7 @@ export function verifyUserPassword(username: string, password: string): DBUser |
 }
 
 export async function isPasswordAndUserMatch(req: FastifyRequest<AuthNewLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   req.locals = {};
 
   const service = new UsersService();
@@ -89,7 +88,7 @@ export async function isPasswordAndUserMatch(req: FastifyRequest<AuthNewLoginReq
 }
 
 export async function validJWTNeeded(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   const authService = new AuthService();
   const userService = new UsersService();
 
@@ -161,7 +160,7 @@ export async function validJWTNeeded(req: FastifyRequest<AuthLoginRequest>, repl
 }
 
 export async function validStreamTokenNeeded(req: FastifyRequest<CamerasStreamRequest>, reply: FastifyReply): Promise<FastifyReply> {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
 
   if (!streamTokenMatches(req.query.token, configService.STREAM_URL_TOKEN)) {
     return reply.code(403).send({ statusCode: 403, message: 'Forbidden' });

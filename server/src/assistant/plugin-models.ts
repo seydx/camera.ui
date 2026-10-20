@@ -1,8 +1,8 @@
 import { createRPCClient } from '@camera.ui/rpc';
 import { EventType } from '@tanstack/ai';
 import { BaseTextAdapter } from '@tanstack/ai/adapters';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
 import type { RPCClient } from '@camera.ui/rpc';
@@ -19,7 +19,6 @@ import type {
 import type { AdapterYieldChunk, ModelMessage, TextOptions } from '@tanstack/ai';
 import type { StructuredOutputOptions, StructuredOutputResult } from '@tanstack/ai/adapters';
 import type { Plugin } from '../plugins/plugin.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 
 const MODEL_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,63}$/;
@@ -48,7 +47,7 @@ export class PluginModelClient {
   private logger: LoggerService;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
+    this.logger = inject('logger');
   }
 
   public async fetchSpecs(plugin: Plugin): Promise<AssistantModelSpec[]> {
@@ -129,7 +128,7 @@ export class PluginModelClient {
   private async ensureClient(): Promise<RPCClient> {
     if (this.client) return this.client;
 
-    const proxyServer = container.resolve<ProxyServer>('proxy');
+    const proxyServer = inject('proxy');
     const client = createRPCClient({
       name: 'camera.ui-assistant-models',
       servers: proxyServer.server.endpoints.filter((endpoint) => endpoint.startsWith('nats://')),

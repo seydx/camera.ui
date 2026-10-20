@@ -1,10 +1,10 @@
 import { RPCMethod } from '@camera.ui/rpc';
 import { isDiscoveryProvider } from '@camera.ui/sdk/internal';
-import { container } from 'tsyringe';
 
 import { createCameraSchema } from '../api/schemas/cameras.schema.js';
 import { CamerasService } from '../api/services/cameras.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { TtlCache } from '../utils/ttl-cache.js';
 import { adoptedCameraInput } from './adopted-camera.js';
@@ -84,11 +84,11 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
   private closeProxy?: () => Promise<void>;
 
   constructor() {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.api = inject('api');
+    this.proxyServer = inject('proxy');
+    this.go2rtcApi = inject('go2rtcApi');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
     this.pluginsService = new PluginsService();
     this.camerasService = new CamerasService();
   }

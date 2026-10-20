@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
-import { container } from 'tsyringe';
+
+import { inject } from '../../container.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ConfigService } from '../../services/config/index.js';
@@ -9,7 +10,7 @@ export class FilesController {
   private configService: ConfigService;
 
   constructor(private app: FastifyInstance) {
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
   }
 
   public async serve(req: FastifyRequest<AuthLoginRequest & FilesParamsRequest>, reply: FastifyReply): Promise<FastifyReply | void> {

@@ -1,11 +1,10 @@
 import { fetchViableNetworkAddresses } from '@camera.ui/common/network';
 import { getResponder } from '@homebridge/ciao';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../config/index.js';
 
 import type { CiaoService, Responder } from '@homebridge/ciao';
-import type { Database } from '../../api/database/index.js';
 import type { LoggerService } from '../logger/index.js';
 
 export class MdnsService {
@@ -15,15 +14,15 @@ export class MdnsService {
   private service?: CiaoService;
 
   constructor() {
-    this.configService = container.resolve<ConfigService>('configService');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.configService = inject('configService');
+    this.logger = inject('logger');
   }
 
   public async advertise(): Promise<void> {
     if (this.configService.config.mdns === false || this.service) return;
 
     try {
-      const dbs = container.resolve<Database>('dbs');
+      const dbs = inject('dbs');
       const instanceId = dbs.settingsDB.get('settings')?.instanceId ?? '';
 
       // docker/vm bridge addresses must not end up in the announcement

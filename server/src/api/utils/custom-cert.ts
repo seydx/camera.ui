@@ -3,8 +3,8 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createSecureContext } from 'node:tls';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { CUSTOM_CERT_FILENAME, CUSTOM_CHAIN_FILENAME, CUSTOM_KEY_FILENAME } from './constants.js';
 
 import type { SecureContext } from 'node:tls';
@@ -97,7 +97,7 @@ export function inspectCertificate(certPem: string, keyPem: string, chainPem?: s
 }
 
 export function loadCustomCertificate(): LoadedCertificate | null {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   const paths = customCertificatePaths(configService);
   if (!paths) {
     cached = undefined;
@@ -110,7 +110,7 @@ export function loadCustomCertificate(): LoadedCertificate | null {
 
   if (cached?.stamp === stamp) return cached.loaded;
 
-  const logger = container.resolve<LoggerService>('logger');
+  const logger = inject('logger');
   const loaded = build(paths, logger);
   cached = { stamp, loaded };
   return loaded;
@@ -129,7 +129,7 @@ export function logCustomCertificate(advertisedAddresses: string[]): void {
   const loaded = loadCustomCertificate();
   if (!loaded) return;
 
-  const logger = container.resolve<LoggerService>('logger');
+  const logger = inject('logger');
   const { names, issuer, validTo } = loaded.info;
   logger.log(`Custom certificate by ${issuer} in use for ${names.join(', ')} (valid until ${validTo})`);
 
@@ -207,7 +207,7 @@ export interface CustomCertificateState {
 }
 
 export function customCertificateState(): CustomCertificateState {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   const paths = customCertificatePaths(configService);
   if (!paths) return { present: false };
 
@@ -228,7 +228,7 @@ export async function storeCustomCertificate(
   const result = inspectCertificate(cert, key, chain);
   if ('problem' in result) return result;
 
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   await mkdir(configService.CUSTOM_CERTS_PATH, { recursive: true });
   await writeFile(join(configService.CUSTOM_CERTS_PATH, CUSTOM_CERT_FILENAME), cert, { mode: 0o600 });
   await writeFile(join(configService.CUSTOM_CERTS_PATH, CUSTOM_KEY_FILENAME), key, { mode: 0o600 });
@@ -245,7 +245,7 @@ export async function storeCustomCertificate(
 }
 
 export async function removeCustomCertificate(): Promise<void> {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
   for (const name of [CUSTOM_CERT_FILENAME, CUSTOM_KEY_FILENAME, CUSTOM_CHAIN_FILENAME]) {
     await rm(join(configService.CUSTOM_CERTS_PATH, name), { force: true });
   }

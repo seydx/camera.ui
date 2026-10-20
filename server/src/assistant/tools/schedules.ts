@@ -1,16 +1,11 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
+import { inject } from '../../container.js';
 import { validateCron } from '../scheduler.js';
 import { approvalSchema, isoTime, toolError } from './shared.js';
 
-import type { AssistantManager } from '../manager.js';
 import type { CoreTool, ToolContext } from './shared.js';
-
-function manager(): AssistantManager {
-  return container.resolve<AssistantManager>('assistantManager');
-}
 
 const listScheduledPrompts = toolDefinition({
   name: 'list_scheduled_prompts',
@@ -18,7 +13,7 @@ const listScheduledPrompts = toolDefinition({
   description: 'List the scheduled prompts of the user, for example a daily summary at 20:00, with next run and last result.',
   inputSchema: zod.object({}),
 }).server<ToolContext['context']>((_input, ctx) => {
-  const scheduler = manager().scheduler;
+  const scheduler = inject('assistantManager').scheduler;
   return scheduler.list(ctx.context.userId).map((schedule) => ({
     id: schedule._id,
     title: schedule.title,
@@ -55,7 +50,8 @@ const saveScheduledPrompt = toolDefinition({
   if (problem) return toolError(`The schedule "${parsed.data.cron}" is not valid: ${problem}`);
 
   try {
-    const schedule = await manager().scheduler.create(ctx.context.userId, {
+    const scheduler = inject('assistantManager').scheduler;
+    const schedule = await scheduler.create(ctx.context.userId, {
       title: parsed.data.title,
       prompt: parsed.data.prompt,
       cron: parsed.data.cron,
@@ -64,7 +60,7 @@ const saveScheduledPrompt = toolDefinition({
       deliver: parsed.data.deliver ?? 'push',
       enabled: true,
     });
-    return { ok: true, id: schedule._id, title: schedule.title, nextRun: isoTime(manager().scheduler.nextRun(schedule) ?? undefined, ctx.context.timezone) };
+    return { ok: true, id: schedule._id, title: schedule.title, nextRun: isoTime(scheduler.nextRun(schedule) ?? undefined, ctx.context.timezone) };
   } catch (error: any) {
     return toolError(error.message);
   }
@@ -79,7 +75,7 @@ const deleteScheduledPrompt = toolDefinition({
 }).server<ToolContext['context']>(async (args, ctx) => {
   const raw = (args as { id?: unknown }).id;
   const id = typeof raw === 'string' ? raw : '';
-  const removed = await manager().scheduler.remove(ctx.context.userId, id);
+  const removed = await inject('assistantManager').scheduler.remove(ctx.context.userId, id);
   return removed ? { ok: true } : toolError(`No scheduled prompt with id "${id}".`);
 });
 

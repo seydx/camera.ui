@@ -6,8 +6,8 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { PluginManager } from '../../plugins/index.js';
 import { ConfigService } from '../../services/config/index.js';
 import { checkEngineCompatibility, checkProtocolCompat } from '../../utils/engines.js';
@@ -85,11 +85,11 @@ export class PluginsController {
     this.service = new PluginsService();
     this.camerasService = new CamerasService();
 
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.socketService = container.resolve<SocketService>('socketService');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
+    this.pluginManager = inject('pluginManager');
+    this.proxyServer = inject('proxy');
+    this.socketService = inject('socketService');
   }
 
   public async enableByName(req: FastifyRequest<AuthLoginRequest & PluginsParamsNameRequest>, reply: FastifyReply): Promise<FastifyReply> {

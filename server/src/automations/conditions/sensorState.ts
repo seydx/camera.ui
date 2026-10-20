@@ -1,14 +1,13 @@
 import { isEqual } from '@camera.ui/sdk/internal';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { parseValue } from '../parseValue.js';
 
-import type { SensorRegistry } from '../../sensors/registry.js';
 import type { ActionContext } from '../actions/types.js';
 import type { ConditionResult } from './types.js';
 
 export async function conditionSensorState(ctx: ActionContext, data: Record<string, unknown>): Promise<ConditionResult> {
-  const registry = container.resolve<SensorRegistry>('sensorRegistry');
+  const registry = inject('sensorRegistry');
   const sensor = registry.getSensor(data.sensorId as string, { connectedOnly: true });
   if (!sensor) return { handle: 'false' };
 

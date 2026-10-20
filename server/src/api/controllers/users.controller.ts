@@ -1,7 +1,6 @@
 import { orderBy } from '@camera.ui/common/utils';
 import { createHmac, randomBytes } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { container } from 'tsyringe';
 
 import { inject } from '../../container.js';
 import { INGRESS_DEVICE_PREFIX, INGRESS_USERNAME } from '../../services/config/constants.js';
@@ -37,10 +36,10 @@ export class UsersController {
   private socketService: SocketService;
 
   constructor(private app: FastifyInstance) {
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
     this.service = new UsersService();
     this.camerasService = new CamerasService();
-    this.socketService = container.resolve<SocketService>('socketService');
+    this.socketService = inject('socketService');
   }
 
   public async insert(req: FastifyRequest<AuthLoginRequest & UsersInsertRequest>, reply: FastifyReply): Promise<FastifyReply> {

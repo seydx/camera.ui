@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../../container.js';
 import { NamespaceManager } from '../../../rpc/namespaces.js';
 import { UsersService } from '../../services/users.service.js';
 
@@ -21,8 +20,8 @@ export class CamerasNamespace {
   private closeSubscription?: () => void;
 
   constructor(io: Server) {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.logger = inject('logger');
+    this.proxyServer = inject('proxy');
     this.usersService = new UsersService();
 
     this.nsp = io.of(this.nspName);

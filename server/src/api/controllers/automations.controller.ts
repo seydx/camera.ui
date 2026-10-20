@@ -1,13 +1,11 @@
-import { container } from 'tsyringe';
-
 import { getPluginMethodsForClient } from '../../automations/pluginMethodRegistry.js';
+import { inject } from '../../container.js';
 import { getAutomationBlueprint, getAutomationCatalog, invalidateAutomationRegistry } from '../../utils/automation-registry/index.js';
 import { isAdminRequest } from '../middlewares/authPermission.middleware.js';
 import { AutomationsService } from '../services/automations.service.js';
 import { collectBulk } from '../utils/bulk.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { AutomationEngine } from '../../automations/engine.js';
 import type { DBAutomation } from '../database/types.js';
 import type {
   AuthLoginRequest,
@@ -173,7 +171,7 @@ export class AutomationsController {
 
   public async trigger(req: FastifyRequest<AuthLoginRequest & AutomationsParamsRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const engine = container.resolve<AutomationEngine>('automationEngine');
+      const engine = inject('automationEngine');
       const output = await engine.triggerManually(req.params.id);
       return reply.code(200).send({ statusCode: 200, message: 'Automation triggered', output });
     } catch (error: any) {
@@ -199,7 +197,7 @@ export class AutomationsController {
 
   public async webhook(req: FastifyRequest<AuthLoginRequest & AutomationsParamsRequest & AutomationsParamsWebhookRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const engine = container.resolve<AutomationEngine>('automationEngine');
+      const engine = inject('automationEngine');
       const result = await engine.triggerWebhook(req.params.webhookId, req.body, req.method, req.headers as Record<string, string>);
 
       if (result.error) {
@@ -216,7 +214,7 @@ export class AutomationsController {
 
   public async location(req: FastifyRequest<AuthLoginRequest & AutomationsParamsRequest & AutomationsParamsGeofenceRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      const engine = container.resolve<AutomationEngine>('automationEngine');
+      const engine = inject('automationEngine');
       const result = await engine.triggerGeofence(req.params.geofenceId, req.body, req.headers as Record<string, string>);
 
       if (result.error) {

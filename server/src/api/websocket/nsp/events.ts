@@ -77,7 +77,7 @@ export class EventsNamespace {
   private activeDetections = new Map<string, ActiveDetection>();
 
   constructor(io: Server) {
-    this.api = container.resolve<CameraUiAPI>('api');
+    this.api = inject('api');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {
@@ -98,7 +98,7 @@ export class EventsNamespace {
       this.subscribeCamera(controller);
     }
 
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     this.onBus(bus, 'camera:added', (payload) => {
       const { cameraId } = payload as CameraEventPayload;
       const controller = this.api.getCamera(cameraId);

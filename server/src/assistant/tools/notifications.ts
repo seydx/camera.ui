@@ -1,14 +1,13 @@
 import { Severity } from '@camera.ui/sdk';
 import { toolDefinition } from '@tanstack/ai';
 import { stat } from 'node:fs/promises';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
+import { inject } from '../../container.js';
 import { takeSnapshot } from './cameras.js';
 import { eventPicture } from './plugins.js';
 import { approvalSchema, DOWNLOAD_PATH, toolError } from './shared.js';
 
-import type { ProxyServer } from '../../rpc/index.js';
 import type { AssistantToolRegistry } from '../registry.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
@@ -39,7 +38,7 @@ export function createNotificationTools(registry: AssistantToolRegistry): CoreTo
     const parsed = sendNotificationInput.safeParse(args);
     if (!parsed.success) return toolError(`Invalid arguments: ${parsed.error.issues.map((i) => i.message).join(', ')}`);
     const { title, body, severity, eventId, camera, videoUrl } = parsed.data;
-    const proxy = container.resolve<ProxyServer>('proxy');
+    const proxy = inject('proxy');
     const manager = proxy.notificationManager;
 
     const videoToken = videoUrl?.slice(videoUrl.lastIndexOf('/') + 1);

@@ -1,6 +1,6 @@
 import { orderBy } from '@camera.ui/common/utils';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { collectSystemInfo } from '../../utils/system-info.js';
 import { WorkerCapability } from '../../workers/types.js';
@@ -20,9 +20,9 @@ export class FrameWorkersController {
   private benchmarkRun?: Promise<ObjectBenchmarkRun | null>;
 
   constructor(private app: FastifyInstance) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
-    this.workerManager = container.resolve<WorkerManager>('workerManager');
+    this.api = inject('api');
+    this.pluginManager = inject('pluginManager');
+    this.workerManager = inject('workerManager');
   }
 
   public list(_req: FastifyRequest<AuthLoginRequest & PaginationRequest>, reply: FastifyReply): FastifyReply | FrameWorker[] {

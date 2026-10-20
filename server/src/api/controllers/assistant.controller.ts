@@ -2,13 +2,12 @@ import { memoryStream, resumeServerSentEventsResponse } from '@tanstack/ai';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { AssistantService } from '../services/assistant.service.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
-import type { AssistantManager } from '../../assistant/manager.js';
 import type {
   AssistantChatCancelRequest,
   AssistantChatRequest,
@@ -80,7 +79,7 @@ export class AssistantController {
 
   public async chat(req: FastifyRequest<AuthLoginRequest & AssistantChatRequest>, reply: FastifyReply): Promise<void> {
     const user = req.locals.user!;
-    const manager = container.resolve<AssistantManager>('assistantManager');
+    const manager = inject('assistantManager');
     const body = (req.body ?? {}) as Record<string, unknown>;
     const runId = typeof body.runId === 'string' && body.runId ? body.runId : randomUUID();
     const durability = memoryStream({ runId, offset: firstHeader(req.headers['last-event-id']) ?? null });
@@ -114,7 +113,7 @@ export class AssistantController {
 
   // a reload or a second tab either asks what a conversation holds (threadId) or joins a run that is still streaming (runId)
   public async chatResume(req: FastifyRequest<AuthLoginRequest & AssistantChatResumeRequest>, reply: FastifyReply): Promise<void> {
-    const manager = container.resolve<AssistantManager>('assistantManager');
+    const manager = inject('assistantManager');
     const user = req.locals.user!;
     const { runId, offset, threadId } = req.query;
     if (threadId) {
@@ -130,13 +129,13 @@ export class AssistantController {
   }
 
   public async chatCancel(req: FastifyRequest<AuthLoginRequest & AssistantChatCancelRequest>, reply: FastifyReply): Promise<FastifyReply> {
-    const manager = container.resolve<AssistantManager>('assistantManager');
+    const manager = inject('assistantManager');
     const stopped = manager.cancelRun(req.body.runId, req.locals.user!._id);
     return reply.code(stopped ? 204 : 404).send(stopped ? undefined : { statusCode: 404, message: 'Run not found' });
   }
 
   public async search(req: FastifyRequest<AuthLoginRequest & AssistantSearchRequest>, reply: FastifyReply): Promise<FastifyReply> {
-    const manager = container.resolve<AssistantManager>('assistantManager');
+    const manager = inject('assistantManager');
     try {
       return reply.code(200).send(await manager.search(req.locals.user!, req.body.text, { language: req.body.language, timezone: req.body.timezone }));
     } catch (error: any) {
@@ -145,7 +144,7 @@ export class AssistantController {
   }
 
   public async mcp(req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<void> {
-    const manager = container.resolve<AssistantManager>('assistantManager');
+    const manager = inject('assistantManager');
     if (!manager.settings().mcpEnabled) {
       reply.code(404).send({ statusCode: 404, message: 'MCP is disabled' });
       return;

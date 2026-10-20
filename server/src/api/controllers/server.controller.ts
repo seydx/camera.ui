@@ -3,8 +3,8 @@ import { APP_SERVER_NAME, isEqual } from '@camera.ui/common/utils';
 import { createReadStream, readFile, truncate } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { getVersionsAndDistTags } from '../../utils/npm/index.js';
 import { ServerService } from '../services/server.service.js';
@@ -49,11 +49,11 @@ export class ServerController {
   private service: ServerService;
 
   constructor(private app: FastifyInstance) {
-    this.configService = container.resolve<ConfigService>('configService');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
-    this.proxy = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.socketService = container.resolve<SocketService>('socketService');
+    this.configService = inject('configService');
+    this.go2rtcApi = inject('go2rtcApi');
+    this.proxy = inject('proxy');
+    this.logger = inject('logger');
+    this.socketService = inject('socketService');
 
     this.service = new ServerService();
   }

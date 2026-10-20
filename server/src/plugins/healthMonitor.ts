@@ -1,10 +1,9 @@
 import { Severity } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { SystemNotificationTypeId } from '../manager/types.js';
 
-import type { InternalEventBus, PluginEventPayload } from '../internal-bus.js';
-import type { ProxyServer } from '../rpc/index.js';
+import type { PluginEventPayload } from '../internal-bus.js';
 
 const CRASH_CONFIRM_MS = 20_000;
 const FLAP_THRESHOLD = 3;
@@ -25,13 +24,13 @@ export class PluginHealthMonitor {
   private states = new Map<string, HealthState>();
 
   constructor() {
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     bus.onEvent('plugin:crashed', (payload) => this.onCrash(payload as PluginEventPayload));
     bus.onEvent('plugin:started', (payload) => this.onStarted(payload as PluginEventPayload));
   }
 
   private get notificationManager() {
-    return container.resolve<ProxyServer>('proxy').notificationManager;
+    return inject('proxy').notificationManager;
   }
 
   private onCrash(payload: PluginEventPayload): void {

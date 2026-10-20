@@ -1,26 +1,18 @@
 import { mergeWith } from '@camera.ui/common/utils';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { container, delay, registry } from 'tsyringe';
 
 import { inject, tryInject } from '../../container.js';
 import { tokenIndex } from '../database/tokenIndex.js';
 import { API_TOKEN_PREFIX, TOKEN_LIFETIME } from '../types/index.js';
-import { SocketService } from '../websocket/index.js';
 
 import type { Database } from '../database/index.js';
 import type { ClientKind, DBToken, DBTokenDevice } from '../types/index.js';
 
-@registry([
-  {
-    token: 'socketService',
-    useValue: delay(() => SocketService),
-  },
-])
 export class AuthService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public listTokens(): DBToken[] {

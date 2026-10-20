@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../../container.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { ProxyServer } from '../../../rpc/index.js';
@@ -12,7 +12,7 @@ export class NotificationsNamespace {
   private proxyServer: ProxyServer;
 
   constructor(io: Server) {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {

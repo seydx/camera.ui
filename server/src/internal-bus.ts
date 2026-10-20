@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
-import { container } from 'tsyringe';
+
+import { provide, tryInject } from './container.js';
 
 export type SystemEvent = 'system:started' | 'system:shutdown' | 'system:notification' | 'camera:added' | 'camera:removed';
 
@@ -103,7 +104,7 @@ export class InternalEventBus extends EventEmitter {
   constructor() {
     super();
     this.setMaxListeners(100);
-    container.registerInstance('internalBus', this);
+    provide('internalBus', this);
   }
 
   public emitEvent(event: InternalEvent, payload: InternalEventPayload): boolean {
@@ -116,5 +117,13 @@ export class InternalEventBus extends EventEmitter {
 
   public offEvent(event: InternalEvent, handler: (payload: InternalEventPayload) => void): void {
     this.off(event, handler);
+  }
+}
+
+export function emitInternalEvent(event: InternalEvent, payload: InternalEventPayload): void {
+  try {
+    tryInject('internalBus')?.emitEvent(event, payload);
+  } catch {
+    // a throwing listener must not break the emitter
   }
 }

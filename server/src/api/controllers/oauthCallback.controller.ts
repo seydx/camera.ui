@@ -1,7 +1,6 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { PluginManager } from '../../plugins/index.js';
 
 interface OAuthAuthCodeFlowProxy {
   completeAuthCodeFlow(code: string, state: string): Promise<unknown>;
@@ -21,7 +20,7 @@ export class OAuthCallbackController {
       return reply.type('text/html').send(closeTabPage(false));
     }
 
-    const pluginManager = container.resolve<PluginManager>('pluginManager');
+    const pluginManager = inject('pluginManager');
     const plugin = [...pluginManager.plugins.values()].find((candidate) => candidate.id === pluginId || candidate.pluginName === pluginId);
 
     if (!plugin) {

@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin';
-import { container } from 'tsyringe';
 import { WebSocket, WebSocketServer } from 'ws';
 
+import { inject, provide, tryInject } from '../../container.js';
 import { createSourceName } from '../../utils/camera.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
@@ -237,9 +237,9 @@ class WebSocketProxy {
   private heartbeat: NodeJS.Timeout;
 
   constructor(fastify: FastifyInstance, options: ProxyOptions) {
-    this.proxy = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
+    this.proxy = inject('proxy');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
     this.authService = new AuthService();
     this.usersService = new UsersService();
     this.relays = tryInject('relayRegistry') ?? new RelayRegistry();

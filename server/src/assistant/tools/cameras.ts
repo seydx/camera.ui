@@ -1,21 +1,16 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
 import { CamerasService } from '../../api/services/cameras.service.js';
 import { RoomsService } from '../../api/services/rooms.service.js';
 import { SensorsService } from '../../api/services/sensors.service.js';
+import { inject } from '../../container.js';
 import { SENSOR_TYPE_CONFIG } from '../../sensors/types.js';
 import { toolError, withImages } from './shared.js';
 
-import type { CameraUiAPI } from '../../api.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
 const SNAPSHOT_MAX_BYTES = 6 * 1024 * 1024;
-
-function api(): CameraUiAPI {
-  return container.resolve<CameraUiAPI>('api');
-}
 
 export function resolveCameraName(name: string): { id: string; name: string } | undefined {
   const cameras = new CamerasService().list();
@@ -35,7 +30,7 @@ const listCameras = toolDefinition({
   const sensors = new SensorsService();
 
   return camerasService.list().map((camera) => {
-    const controller = api().getCamera(camera._id);
+    const controller = inject('api').getCamera(camera._id);
     const detections = sensors
       .list(camera._id)
       .filter((s) => s.connected && SENSOR_TYPE_CONFIG[s.type]?.isDetectionType)
@@ -56,7 +51,7 @@ export async function takeSnapshot(camera: string): Promise<{ name: string; data
   const resolved = resolveCameraName(camera);
   if (!resolved) return { error: `No camera named "${camera}". Call list_cameras for the available names.` };
 
-  const controller = api().getCamera(resolved.id);
+  const controller = inject('api').getCamera(resolved.id);
   if (!controller) return { error: `Camera "${resolved.name}" is not running.` };
   if (!controller.connected) return { error: `Camera "${resolved.name}" is offline right now.` };
 

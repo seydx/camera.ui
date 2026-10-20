@@ -1,9 +1,8 @@
 import { mergeWith } from '@camera.ui/common/utils';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
 import { AuthService } from './auth.service.js';
 
-import type { AssistantManager } from '../../assistant/manager.js';
 import type { Database } from '../database/index.js';
 import type { DBCamviewLayout, DBHiddenDevice, DBShortcut, DBUser, HiddenEventTypes } from '../database/types.js';
 
@@ -12,7 +11,7 @@ export class UsersService {
   private authService: AuthService;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
     this.authService = new AuthService();
   }
 

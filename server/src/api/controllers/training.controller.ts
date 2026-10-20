@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { container } from 'tsyringe';
+
+import { inject } from '../../container.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { TrainingCandidateManager } from '../../manager/trainingCandidateManager.js';
 import type {
   TrainingCandidateListQuery,
   TrainingCandidatePatchInput,
@@ -13,7 +13,7 @@ import type {
 import type { AuthLoginRequest } from '../types/index.js';
 
 export class TrainingController {
-  private manager = container.resolve<TrainingCandidateManager>('trainingCandidateManager');
+  private manager = inject('trainingCandidateManager');
 
   public list(req: FastifyRequest<AuthLoginRequest & { Querystring: TrainingCandidateListQuery }>, reply: FastifyReply): FastifyReply {
     try {

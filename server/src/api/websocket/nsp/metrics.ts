@@ -1,7 +1,7 @@
 import { cpus, loadavg, platform } from 'node:os';
 import { currentLoad, mem, processes } from 'systeminformation';
-import { container } from 'tsyringe';
 
+import { inject } from '../../../container.js';
 import { StreamRates } from '../../../go2rtc/stream-rates.js';
 import { createSourceName } from '../../../utils/camera.js';
 import { WorkerCapability } from '../../../workers/types.js';
@@ -61,12 +61,12 @@ export class MetricsNamespace {
   private collecting?: Promise<MetricsSample>;
 
   constructor(io: Server) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
-    this.go2rtc = container.resolve<Go2Rtc>('go2rtc');
-    this.go2rtcState = container.resolve<Go2RtcState>('go2rtcState');
-    this.natsServer = container.resolve<NATS>('natsServer');
-    this.workerManager = container.resolve<WorkerManager>('workerManager');
+    this.api = inject('api');
+    this.pluginManager = inject('pluginManager');
+    this.go2rtc = inject('go2rtc');
+    this.go2rtcState = inject('go2rtcState');
+    this.natsServer = inject('natsServer');
+    this.workerManager = inject('workerManager');
 
     if (platform() === 'freebsd') {
       // eslint-disable-next-line @typescript-eslint/unbound-method

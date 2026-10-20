@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../../container.js';
 import { NamespaceManager } from '../../../rpc/namespaces.js';
 import { getSensorDiscovery } from '../../../sensors/discovery.js';
 import { UsersService } from '../../services/users.service.js';
@@ -28,7 +27,7 @@ export class SensorsNamespace {
   private closeRegistrySubscription?: () => void;
 
   constructor(io: Server) {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
     this.usersService = new UsersService();
 
     this.nsp = io.of(this.nspName);

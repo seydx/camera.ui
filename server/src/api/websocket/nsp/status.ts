@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../../container.js';
 import { RUNTIME_STATUS } from '../../../services/config/types.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
@@ -21,11 +20,11 @@ export class StatusNamespace {
   private natsServer: NATS;
 
   constructor(io: Server) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.pluginManager = container.resolve<PluginManager>('pluginManager');
-    this.go2rtc = container.resolve<Go2Rtc>('go2rtc');
-    this.natsServer = container.resolve<NATS>('natsServer');
+    this.api = inject('api');
+    this.configService = inject('configService');
+    this.pluginManager = inject('pluginManager');
+    this.go2rtc = inject('go2rtc');
+    this.natsServer = inject('natsServer');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {

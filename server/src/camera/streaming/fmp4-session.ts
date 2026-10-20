@@ -11,7 +11,7 @@ import type {
   LoggerService,
   RTSPUrlOptions,
 } from '@camera.ui/sdk';
-import type { FMP4Data } from 'node-av/api';
+import type { FMP4Data, MP4Box } from 'node-av/api';
 import type { FFHWDeviceType } from 'node-av/constants';
 import type { CameraDevice } from '../index.js';
 

@@ -1,8 +1,6 @@
-import { container } from 'tsyringe';
-
 import { UsersService } from '../api/services/users.service.js';
+import { inject, tryInject } from '../container.js';
 
-import type { SocketService } from '../api/websocket/index.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 
@@ -36,8 +34,8 @@ export class CastManager {
   private sweepTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.proxyServer = inject('proxy');
+    this.logger = inject('logger');
     this.usersService = new UsersService();
   }
 
@@ -88,12 +86,8 @@ export class CastManager {
 
   private broadcast(): void {
     const payload = this.listTargets();
-    let socketService: SocketService;
-    try {
-      socketService = container.resolve<SocketService>('socketService');
-    } catch {
-      return;
-    }
+    const socketService = tryInject('socketService');
+    if (!socketService) return;
     for (const user of this.usersService.list()) {
       if (user.role !== 'admin' && user.role !== 'master') continue;
       socketService.io.of('/notifications').to(`user:${user._id}`).emit('castTargets', payload);

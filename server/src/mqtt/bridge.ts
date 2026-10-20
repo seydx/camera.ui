@@ -1,6 +1,6 @@
 import { SensorType } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { isWritableSensor } from '../sensors/types.js';
 import { ConfigService } from '../services/config/index.js';
 import { buildCameraDiscovery, buildSensorDiscovery } from './ha-discovery.js';
@@ -18,7 +18,6 @@ import type {
   SensorPropertyChangedPayload,
   SystemNotificationPayload,
 } from '../internal-bus.js';
-import type { PluginManager } from '../plugins/index.js';
 import type { StoredSensorData } from '../rpc/interfaces/sensor.js';
 import type { SensorRegistry } from '../sensors/registry.js';
 import type { MqttManager } from './manager.js';
@@ -199,7 +198,7 @@ export class MqttBridge {
   public publishFullState(): void {
     this.publishServerState();
 
-    for (const [pluginName, plugin] of this.pluginManager.plugins) {
+    for (const [pluginName, plugin] of inject('pluginManager').plugins) {
       this.manager.publish(this.manager.topics.pluginStatus(pluginName), plugin.worker.status, { retain: true });
     }
 
@@ -214,19 +213,15 @@ export class MqttBridge {
   }
 
   private get bus(): InternalEventBus {
-    return container.resolve<InternalEventBus>('internalBus');
+    return inject('internalBus');
   }
 
   private get api(): CameraUiAPI {
-    return container.resolve<CameraUiAPI>('api');
-  }
-
-  private get pluginManager(): PluginManager {
-    return container.resolve<PluginManager>('pluginManager');
+    return inject('api');
   }
 
   private get registry(): SensorRegistry {
-    return container.resolve<SensorRegistry>('sensorRegistry');
+    return inject('sensorRegistry');
   }
 
   private onBus(event: InternalEvent, handler: (payload: InternalEventPayload) => void): void {

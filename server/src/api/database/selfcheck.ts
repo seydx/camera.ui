@@ -4,8 +4,8 @@ import { constants, existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { paint } from '../../utils/colors.js';
 import { FatalBootError } from '../../utils/ipc.js';
@@ -57,8 +57,8 @@ export class SelfCheck {
   private configService: ConfigService;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
   }
 
   public async run(): Promise<void> {

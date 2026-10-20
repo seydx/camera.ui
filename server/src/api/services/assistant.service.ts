@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { PluginsService } from './plugins.service.js';
 import { UsersService } from './users.service.js';
 
 import type { AssistantManager } from '../../assistant/manager.js';
 import type { AssistantInfo, AssistantModelsResult, AssistantStatus, AssistantTestResult, AssistantThreadSummary, AssistantUsageRow } from '../../assistant/types.js';
-import type { ProxyServer } from '../../rpc/index.js';
 import type { Database } from '../database/index.js';
 import type {
   DBAssistant,
@@ -33,7 +32,7 @@ export class AssistantService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public async info(role?: DBRoles): Promise<AssistantInfo> {
@@ -58,7 +57,7 @@ export class AssistantService {
     if (removed.size && fallback) await this.manager.profiles.reassignModel(removed, fallback._id);
 
     if (patch.models || patch.plugins || patch.defaultModelId !== undefined || patch.language !== undefined) {
-      const proxy = container.resolve<ProxyServer>('proxy');
+      const proxy = inject('proxy');
       for (const pluginId of new Set([...before.plugins, ...this.manager.settings().plugins].map((row) => row.pluginId))) {
         const access = this.manager.access(pluginId);
         proxy.coreManager?.publishCoreManagerEvent('assistantModelChanged', { pluginId, configured: access.allowed && access.model !== null });
@@ -176,7 +175,7 @@ export class AssistantService {
   }
 
   private get manager(): AssistantManager {
-    return container.resolve<AssistantManager>('assistantManager');
+    return inject('assistantManager');
   }
 
   private mergeSettings(current: DBAssistant, patch: PatchAssistantInput): DBAssistant {

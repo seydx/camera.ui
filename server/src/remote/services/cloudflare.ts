@@ -3,9 +3,9 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { container } from 'tsyringe';
 
 import { RemoteService } from '../../api/services/remote.service.js';
+import { inject } from '../../container.js';
 import { isShuttingDown } from '../../shutdown-state.js';
 import { CloudflareManagedService } from './cloudflare-managed.js';
 import { cloudflaredBinaryPath, edgeProtocol, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
@@ -50,8 +50,8 @@ export class CloudflareService {
     private logger: Logger,
     private onUrlDetected?: (url: string) => void,
   ) {
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.api = inject('api');
+    this.configService = inject('configService');
     this.remoteService = new RemoteService();
     this.managed = new CloudflareManagedService(logger);
 

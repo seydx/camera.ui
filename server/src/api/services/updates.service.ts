@@ -5,6 +5,7 @@ import { APP_SERVER_NAME, IS_ELECTRON, sleep } from '@camera.ui/common/utils';
 import { pathExists, readJson, remove, writeJson } from 'fs-extra/esm';
 import { coerce, satisfies } from 'semver';
 
+import { inject, tryInject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { assertServerUpdateSpace } from '../../utils/disk-space.js';
 import { serverTarget } from '../../utils/engines.js';
@@ -153,8 +154,8 @@ export class UpdatesService {
   private lastCheckAt = 0;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
   }
 
   public async init(): Promise<void> {
@@ -439,7 +440,7 @@ export class UpdatesService {
   }
 
   private async runWorkerItem(item: UpdatesActivityItem, targetVersion: string): Promise<void> {
-    const manager = this.workerManager();
+    const manager = tryInject('workerManager');
     if (!manager) throw new Error('Worker manager not available');
 
     const agentId = item.id.slice('worker:'.length);
@@ -599,7 +600,7 @@ export class UpdatesService {
   }
 
   private emitStatus(): void {
-    const socketService = this.socketService();
+    const socketService = tryInject('socketService');
     if (!socketService) return;
 
     const publicItem = (item: UpdatesActivityItem): { kind: UpdatesItemKind; name: string; displayName?: string; status: UpdatesItemStatus } => ({
@@ -692,14 +693,6 @@ export class UpdatesService {
       }
     } catch {
       // a corrupt stamp only loses the report
-    }
-  }
-
-  private socketService(): SocketService | undefined {
-    try {
-      return container.resolve<SocketService>('socketService');
-    } catch {
-      return undefined;
     }
   }
 

@@ -1,10 +1,9 @@
 import fp from 'fastify-plugin';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { paint } from '../../utils/colors.js';
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import type { LoggerService } from '../../services/logger/index.js';
 import type { Color } from '../../utils/colors.js';
 
 declare module 'fastify' {
@@ -22,7 +21,7 @@ function getStatusColor(statusCode: number): Color {
 }
 
 export const LoggerPlugin: FastifyPluginAsync = fp(async (app: FastifyInstance) => {
-  const logger = container.resolve<LoggerService>('logger');
+  const logger = inject('logger');
 
   app.addHook('onRequest', (_req, reply, done) => {
     reply.startTime = Date.now();

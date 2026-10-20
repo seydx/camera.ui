@@ -5,7 +5,6 @@ import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile, unlink } from 'node:fs/promises';
 import semver from 'semver';
-import { container } from 'tsyringe';
 
 import { inject, provide } from '../../container.js';
 import { INGRESS_USERNAME, MIN_DATABASE_VERSION } from '../../services/config/constants.js';
@@ -154,10 +153,10 @@ export class Database {
   private logger: LoggerService;
 
   constructor(private readonly workerMode = false) {
-    container.registerInstance('dbs', this);
+    provide('dbs', this);
 
-    this.configService = container.resolve<ConfigService>('configService');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.configService = inject('configService');
+    this.logger = inject('logger');
 
     this.lowdb = open({
       path: this.configService.DATABASE_PATH,

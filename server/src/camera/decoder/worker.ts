@@ -2,8 +2,8 @@ import { Logger } from '@camera.ui/common/logger';
 import { IS_DEV, IS_ELECTRON, isEqual, sleep, Subscribed } from '@camera.ui/common/utils';
 import { Disposable } from '@camera.ui/sdk';
 import { fork } from 'node:child_process';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { isNvrPluginName, nvrRpcNamespace } from '../../plugins/nvr.js';
 import { PLUGIN_STATUS } from '../../plugins/types.js';
 import { NamespaceManager } from '../../rpc/namespaces.js';
@@ -29,7 +29,7 @@ import type {
 import type { ChildProcess } from 'node:child_process';
 import type { SocketService } from '../../api/websocket/index.js';
 import type { WorkerRuntime } from '../../api/websocket/types.js';
-import type { InternalEventBus, InternalEventPayload, PluginEventPayload } from '../../internal-bus.js';
+import type { InternalEventPayload, PluginEventPayload } from '../../internal-bus.js';
 import type { ProxyServer } from '../../rpc/index.js';
 import type { FrameWorkerChildInterface } from '../../rpc/interfaces/frameworker.js';
 import type { FrameWorkerNamespaces } from '../../rpc/namespaces.js';
@@ -38,7 +38,7 @@ import type { LogManager } from '../../services/logger/logManager.js';
 import type { PlacementInfo } from '../../workers/lifecycle/remote-placement.js';
 import type { WorkerManager } from '../../workers/manager.js';
 import type { CameraController } from '../controller.js';
-import type { CoordinatorSourceUrl, FrameWorkerPerfSnapshot, ObjectBenchmarkResult, WorkerToMainMessage } from './types.js';
+import type { CoordinatorSourceUrl, FrameWorkerPerfSnapshot, MainToWorkerMessage, ObjectBenchmarkResult, WorkerToMainMessage } from './types.js';
 
 const READY_TIMEOUT_MS = 30_000;
 
@@ -102,11 +102,11 @@ export class FrameWorker extends Subscribed {
   constructor(private readonly camera: CameraController) {
     super();
 
-    this.configService = container.resolve('configService');
-    this.socketService = container.resolve('socketService');
-    this.proxyServer = container.resolve('proxy');
-    this.logManager = container.resolve('logManager');
-    this.workerManager = container.resolve('workerManager');
+    this.configService = inject('configService');
+    this.socketService = inject('socketService');
+    this.proxyServer = inject('proxy');
+    this.logManager = inject('logManager');
+    this.workerManager = inject('workerManager');
 
     this.logger = (camera.logger as Logger).createLogger({
       prefix: 'Frame Worker',
@@ -447,7 +447,7 @@ export class FrameWorker extends Subscribed {
       }),
     );
 
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     for (const event of ['plugin:started', 'plugin:stopped', 'plugin:crashed'] as const) {
       const handler = (payload: InternalEventPayload): void => {
         if (!isNvrPluginName((payload as PluginEventPayload).pluginName)) return;

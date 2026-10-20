@@ -1,10 +1,9 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
+import { inject } from '../../container.js';
 import { toolError } from './shared.js';
 
-import type { SocketService } from '../../api/websocket/index.js';
 import type { MetricsNamespace } from '../../api/websocket/nsp/metrics.js';
 import type { ProcessInfo } from '../../api/websocket/types.js';
 import type { CoreTool, ToolContext } from './shared.js';

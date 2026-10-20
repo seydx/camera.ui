@@ -19,7 +19,7 @@ import type { PrivateChannel, RPCClient } from '@camera.ui/rpc';
 import type { CameraDetectionSettings, CameraFrameWorkerSettings, CameraUiSettings, CameraZones, PtzAutotrackSettings } from '@camera.ui/sdk';
 import type { CoreManagerNamespaces, FrameWorkerNamespaces } from '../../rpc/namespaces.js';
 import type { DetectionCoordinatorConfig } from './detection-coordinator.js';
-import type { FrameWorkerPerfSnapshot, ObjectBenchmarkResult, WorkerToMainMessage } from './types.js';
+import type { FrameWorkerPerfSnapshot, InitializeResult, MainToWorkerMessage, ObjectBenchmarkResult, WorkerToMainMessage } from './types.js';
 
 const ignorableLogMessages = [
   'vt decoder cb: output image buffer is null',

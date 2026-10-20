@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
 import type { NotifierDevice } from '@camera.ui/sdk';
 import type { NotifierDeviceWithSource, SourcesListing } from '../../manager/types.js';
@@ -16,8 +16,8 @@ export class NotificationsService {
   private proxyServer: ProxyServer;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.dbs = inject('dbs');
+    this.proxyServer = inject('proxy');
   }
 
   public async getSettings(userId: string): Promise<DBNotificationSettings> {

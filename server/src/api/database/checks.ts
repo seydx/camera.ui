@@ -3,7 +3,6 @@ import { open } from 'lmdb';
 import { constants, existsSync } from 'node:fs';
 import { access, unlink } from 'node:fs/promises';
 import { createServer } from 'node:net';
-import { container } from 'tsyringe';
 
 import { inject } from '../../container.js';
 

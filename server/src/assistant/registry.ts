@@ -1,8 +1,8 @@
 import { hasInterface, PluginInterface } from '@camera.ui/sdk';
 import { convertSchemaToJsonSchema } from '@tanstack/ai';
-import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject } from '../container.js';
 import { ApiCatalog } from './api-catalog.js';
 import { DocsIndex } from './docs.js';
 import { ExternalMcpSource } from './external.js';
@@ -51,7 +51,7 @@ export class AssistantToolRegistry {
   private onPluginStopped = (payload: InternalEventPayload) => this.handlePluginEvent(payload, 'stopped');
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
+    this.logger = inject('logger');
     this.core = coreTools(this, this.api, this.docs);
   }
 
@@ -109,7 +109,7 @@ export class AssistantToolRegistry {
   }
 
   public async start(): Promise<void> {
-    this.bus = container.resolve<InternalEventBus>('internalBus');
+    this.bus = inject('internalBus');
     this.bus.onEvent('plugin:started', this.onPluginStarted);
     this.bus.onEvent('plugin:stopped', this.onPluginStopped);
     this.bus.onEvent('plugin:error', this.onPluginStopped);

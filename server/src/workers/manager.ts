@@ -8,6 +8,7 @@ import { CamerasService } from '../api/services/cameras.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
 import { updatesService } from '../api/services/updates.service.js';
 import { WorkersService } from '../api/services/workers.service.js';
+import { inject, provide, tryInject } from '../container.js';
 import { NamespaceManager, SUBJECT_TOKEN } from '../rpc/namespaces.js';
 import { DETECTION_SENSOR_TYPES, getAssignmentKey } from '../sensors/types.js';
 import { ConfigService } from '../services/config/index.js';
@@ -45,7 +46,6 @@ import type { DBCamera, DBWorkerLastShutdown } from '../api/database/types.js';
 import type { ServerNamespace } from '../api/websocket/nsp/server.js';
 import type { WorkersNamespace } from '../api/websocket/nsp/workers.js';
 import type { ProxyServer } from '../rpc/index.js';
-import type { LogManager } from '../services/logger/logManager.js';
 import type { SystemInfo } from '../utils/system-info.js';
 import type { HostClock } from './lifecycle/grace.js';
 import type { PlacementEvent } from './lifecycle/placement.js';
@@ -209,7 +209,7 @@ export class WorkerManager {
   private active = false;
 
   constructor() {
-    container.registerInstance('workerManager', this);
+    provide('workerManager', this);
 
     this.configService = inject('configService');
     this.proxyServer = inject('proxy');
@@ -800,11 +800,9 @@ export class WorkerManager {
 
     this.forget(agentId);
 
-      const workersNsp = socketService.namespaces.get('/workers') as WorkersNamespace | undefined;
-      workersNsp?.handleWorkerRemoved(agentId);
-    } catch {
-      // SocketService may not be available yet during startup
-    }
+    const socketService = tryInject('socketService');
+    socketService?.io.of('/workers').emit('worker-removed', { agentId });
+    (socketService?.namespaces.get('/workers') as WorkersNamespace | undefined)?.handleWorkerRemoved(agentId);
 
     if (hadCredentials) {
       await this.proxyServer.applyLeafNodeAuth();
@@ -2066,12 +2064,7 @@ export class WorkerManager {
   }
 
   private handleForwardedLog(agentId: string, entry: LogEntry): void {
-    try {
-      const logManager = container.resolve<LogManager>('logManager');
-      logManager.handleChildLog(this.scopeForwardedLog(agentId, entry));
-    } catch {
-      // LogManager may not be available yet during startup
-    }
+    tryInject('logManager')?.handleChildLog(this.scopeForwardedLog(agentId, entry));
   }
 
   private scopeForwardedLog(agentId: string, entry: LogEntry): LogEntry {

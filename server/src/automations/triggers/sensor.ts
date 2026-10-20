@@ -1,11 +1,9 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { createEmptyContext } from '../context.js';
 
 import type { Disposable } from '@camera.ui/sdk';
 import type { DBAutomation, DBAutomationNode } from '../../api/database/types.js';
-import type { InternalEventBus, InternalEventPayload, SensorPropertyChangedPayload } from '../../internal-bus.js';
-import type { SensorRegistry } from '../../sensors/registry.js';
+import type { InternalEventPayload, SensorPropertyChangedPayload } from '../../internal-bus.js';
 import type { TriggerContext } from './types.js';
 
 export function subscribeSensor(ctx: TriggerContext, flow: DBAutomation, triggerNode: DBAutomationNode): void {
@@ -14,14 +12,14 @@ export function subscribeSensor(ctx: TriggerContext, flow: DBAutomation, trigger
 
   if (!sensorId) return;
 
-  const registry = container.resolve<SensorRegistry>('sensorRegistry');
+  const registry = inject('sensorRegistry');
   const record = registry.getRecord(sensorId);
   if (!record) {
     // arm anyway, the sensor entity may appear later (plugin install, import)
     ctx.logger.debug(`Automation "${flow.name}": Sensor "${sensorId}" not found, trigger arms when it appears`);
   }
 
-  const bus = container.resolve<InternalEventBus>('internalBus');
+  const bus = inject('internalBus');
   const handler = (payload: InternalEventPayload) => {
     const p = payload as SensorPropertyChangedPayload;
     if (p.sensorId !== sensorId) return;

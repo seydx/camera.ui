@@ -2,7 +2,8 @@ import { PromiseTimeout } from '@camera.ui/common/utils';
 import { Aedes } from 'aedes';
 import { timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:net';
-import { container } from 'tsyringe';
+
+import { inject } from '../container.js';
 
 import type { AuthenticateError } from 'aedes';
 import type { Server, Socket } from 'node:net';
@@ -22,7 +23,7 @@ export class MqttBroker {
   private readonly connections = new Set<Socket>();
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
+    this.logger = inject('logger');
   }
 
   public get running(): boolean {

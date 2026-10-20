@@ -1,11 +1,10 @@
 import { RPCMethod } from '@camera.ui/rpc';
 import { DoorbellProperty, LockProperty, RING_AUTO_RESET_MS, SensorType } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { VIRTUAL_SENSOR_OWNER_ID } from '../sensors/types.js';
 
-import type { ProxyServer } from '../rpc/index.js';
 import type { SensorRegistry } from './registry.js';
 
 const TARGET_STATE_MIRROR_TYPES = new Set<SensorType>([SensorType.Lock, SensorType.Garage, SensorType.SecuritySystem]);
@@ -38,7 +37,7 @@ export class VirtualSensorHost {
   ) {}
 
   public async register(): Promise<void> {
-    const proxy = container.resolve<ProxyServer>('proxy').proxy;
+    const proxy = inject('proxy').proxy;
     const rpcNamespace = NamespaceManager.sensorProviderNamespaces(VIRTUAL_SENSOR_OWNER_ID, this.sensorId).sensorRpc;
 
     this.disposers.push(await proxy.registerHandler(rpcNamespace, new VirtualSensorRpcHandler(this)));

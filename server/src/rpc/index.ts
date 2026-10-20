@@ -1,9 +1,9 @@
 import { createRPCClient } from '@camera.ui/rpc';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
 import { WorkersService } from '../api/services/workers.service.js';
+import { inject, provide } from '../container.js';
 import { CastManager } from '../manager/castManager.js';
 import { CoreManager } from '../manager/coreManager.js';
 import { DeviceManager } from '../manager/deviceManager.js';
@@ -19,7 +19,6 @@ import { generateCredentials, safeAsync } from './utils.js';
 
 import type { RPCClient } from '@camera.ui/rpc';
 import type { CameraUiAPI } from '../api.js';
-import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { ProxyAuth } from './interfaces/config.js';
 
@@ -60,7 +59,7 @@ export class ProxyServer {
     this.server = new NATS(this.auth);
 
     if (!this.workerMode) {
-      this.api = container.resolve<CameraUiAPI>('api');
+      this.api = inject('api');
       this.castManager = new CastManager();
       this.coreManager = new CoreManager();
       this.deviceManager = new DeviceManager();
@@ -76,7 +75,7 @@ export class ProxyServer {
   }
 
   public configureLeafNode(): void {
-    const configService = container.resolve<ConfigService>('configService');
+    const configService = inject('configService');
     const workersConfig = configService.config.workers;
 
     if (!this.workerMode) {

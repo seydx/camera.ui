@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
 import type { Database } from '../database/index.js';
 import type { DBDownloadEntry } from '../database/types.js';
@@ -7,7 +7,7 @@ export class DownloadsService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public list(): DBDownloadEntry[] {

@@ -1,6 +1,5 @@
-import { container } from 'tsyringe';
+import { inject } from '../../container.js';
 
-import type { MqttManager } from '../../mqtt/manager.js';
 import type { ActionContext } from './types.js';
 
 export async function actionMqtt(ctx: ActionContext, data: Record<string, unknown>): Promise<void> {
@@ -8,7 +7,7 @@ export async function actionMqtt(ctx: ActionContext, data: Record<string, unknow
   if (!topic) throw new Error('MQTT topic is required');
   if (topic.includes('+') || topic.includes('#')) throw new Error('MQTT topic must not contain wildcards');
 
-  const mqttManager = container.resolve<MqttManager>('mqttManager');
+  const mqttManager = inject('mqttManager');
   if (!mqttManager.connected) throw new Error('MQTT is not connected');
 
   const payload = ctx.resolve((data.payload as string) ?? '');

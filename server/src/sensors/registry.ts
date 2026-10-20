@@ -1,11 +1,12 @@
 import { RPCMethod } from '@camera.ui/rpc';
 import { canProvideSensorsToAnyCameras, hasInterface, PluginInterface, SensorType } from '@camera.ui/sdk';
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
 import { CamerasService } from '../api/services/cameras.service.js';
 import { FloorPlanService } from '../api/services/floorplan.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject, provide } from '../container.js';
+import { emitInternalEvent } from '../internal-bus.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { ServerSensor } from '../sensors/sensor.js';
 import {
@@ -24,10 +25,8 @@ import type { Logger } from '@camera.ui/common/logger';
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
 import type { DiscoveredSensor, ModelSpec, PluginContract, SensorLike } from '@camera.ui/sdk';
 import type { SensorJSON, SensorSourcePatch } from '@camera.ui/sdk/internal';
-import type { CameraUiAPI } from '../api.js';
 import type { Database } from '../api/database/index.js';
 import type { DBSensor, DBSensorHistoryEntry } from '../api/database/types.js';
-import type { InternalEvent, InternalEventBus, InternalEventPayload } from '../internal-bus.js';
 import type { CoordinatorSensorInfo, DetectionCoordinatorInterface } from '../rpc/interfaces/detection.js';
 import type { RegisterSensorOptions, SensorRefreshedState, SensorRegistration, StoredSensorData } from '../rpc/interfaces/sensor.js';
 import type { SensorContext } from '../sensors/sensor.js';
@@ -69,6 +68,8 @@ export class SensorRegistry {
     private readonly proxy: RPCClient,
     private readonly logger: Logger,
   ) {
+    provide('sensorRegistry', this);
+
     this.pluginsService = new PluginsService();
 
     this.context = {
@@ -87,12 +88,10 @@ export class SensorRegistry {
       persistState: (sensorId, delta) => this.persistRecord(sensorId, (record) => (record.state = { ...record.state, ...delta })),
       appendHistory: (sensorId, delta) => this.appendHistory(sensorId, delta),
     };
-
-    container.registerInstance('sensorRegistry', this);
   }
 
   private get dbs(): Database {
-    return container.resolve<Database>('dbs');
+    return inject('dbs');
   }
 
   public async init(): Promise<void> {
@@ -100,7 +99,7 @@ export class SensorRegistry {
     const closeHandler = await this.proxy.registerHandler(ns.sensorsRpc, this, { isolatedConnection: true });
     this.disposables.push(closeHandler);
 
-    const bus = container.resolve<InternalEventBus>('internalBus');
+    const bus = inject('internalBus');
     const onCameraRemoved = (payload: unknown): void => {
       const { cameraId } = payload as { cameraId?: string };
       if (cameraId) this.onCameraRemoved(cameraId);
@@ -427,7 +426,7 @@ export class SensorRegistry {
       data: { sensorId: record._id, sensorType: record.type, exposed },
     });
 
-    this.emitBus('sensor:exposed:changed', {
+    emitInternalEvent('sensor:exposed:changed', {
       sensorId: record._id,
       sensorType: String(record.type),
       sensorName: record.name,
@@ -848,7 +847,7 @@ export class SensorRegistry {
   }
 
   private hasFrameWorker(cameraId: string): boolean {
-    return container.resolve<CameraUiAPI>('api').getCamera(cameraId)?.frameWorkerConnected === true;
+    return inject('api').getCamera(cameraId)?.frameWorkerConnected === true;
   }
 
   private enqueue<T>(cameraId: string, fn: () => Promise<T>): Promise<T> {
@@ -872,7 +871,7 @@ export class SensorRegistry {
       data: { sensor: data, state: { type: data.type, properties: data.properties, capabilities: data.capabilities } },
     });
 
-    this.emitBus('sensor:added', {
+    emitInternalEvent('sensor:added', {
       sensorId: record._id,
       sensorType: String(record.type),
       sensorName: record.name,
@@ -885,7 +884,7 @@ export class SensorRegistry {
     const ns = NamespaceManager.sensorRegistryNamespaces();
     this.safePublish(ns.sensorsSubject, { type: 'sensor:deleted', data: { sensorId: record._id, sensorType: record.type } });
 
-    this.emitBus('sensor:deleted', {
+    emitInternalEvent('sensor:deleted', {
       sensorId: record._id,
       sensorType: String(record.type),
       sensorName: record.name,
@@ -900,7 +899,7 @@ export class SensorRegistry {
       data: { sensorId: record._id, sensorType: record.type, connected, assignedCameraIds: [...record.assignedCameraIds] },
     });
 
-    this.emitBus('sensor:connected:changed', {
+    emitInternalEvent('sensor:connected:changed', {
       sensorId: record._id,
       sensorType: String(record.type),
       sensorName: record.name,
@@ -916,7 +915,7 @@ export class SensorRegistry {
       data: { sensorId: record._id, sensorType: record.type, cameraId, assigned },
     });
 
-    this.emitBus('sensor:assignment:changed', {
+    emitInternalEvent('sensor:assignment:changed', {
       sensorId: record._id,
       sensorType: String(record.type),
       sensorName: record.name,

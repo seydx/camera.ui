@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline';
 import { stripVTControlCharacters } from 'node:util';
 
 import { RemoteService } from '../../api/services/remote.service.js';
+import { inject, provide, tryInject } from '../../container.js';
 import { PROXY_TUNNEL_ENDPOINT } from '../../services/config/constants.js';
 import { RUNTIME_STATUS } from '../../services/config/types.js';
 import { isShuttingDown } from '../../shutdown-state.js';
@@ -14,12 +15,9 @@ import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
 import type { Interface } from 'node:readline';
 import type { CameraUiAPI } from '../../api.js';
-import type { Server } from '../../api/index.js';
-import type { SocketService } from '../../api/websocket/index.js';
 import type { ServerRuntime } from '../../api/websocket/types.js';
 import type { ProxyServer } from '../../rpc/index.js';
 import type { ConfigService } from '../../services/config/index.js';
-import type { LoggerService } from '../../services/logger/index.js';
 import type { CloudApi } from '../api/index.js';
 
 const TUNNEL_CREDENTIALS_SUBJECT = 'tunnel.server.credentials';
@@ -75,14 +73,14 @@ export class TunnelClient {
   }
 
   constructor() {
-    container.registerInstance('tunnelClient', this);
+    provide('tunnelClient', this);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.cloudApi = container.resolve<CloudApi>('cloudApi');
+    this.api = inject('api');
+    this.configService = inject('configService');
+    this.proxyServer = inject('proxy');
+    this.cloudApi = inject('cloudApi');
 
-    const loggerService = container.resolve<LoggerService>('logger');
+    const loggerService = inject('logger');
     this.logger = loggerService.createSystemLogger('Tunnel Client', 'tunnel');
 
     this.remoteService = new RemoteService();
@@ -252,7 +250,7 @@ export class TunnelClient {
   }
 
   private getInternalPort(): number {
-    const server = container.resolve<Server>('server');
+    const server = inject('server');
     const port = server.internalPort;
     if (!port) {
       throw new Error('Tunnel Client: internal listener port not ready — server.listen() must run first');
@@ -339,13 +337,11 @@ export class TunnelClient {
   private setStatus(status: RUNTIME_STATUS): void {
     this._status = status;
 
-    const socketService = container.resolve<SocketService>('socketService');
-
     const runtimeInfo: ServerRuntime = {
       tunnelClient: { name: 'tunnelClient', status: status },
     };
 
-    socketService.io?.of('/status').emit('process-status', runtimeInfo);
+    tryInject('socketService')?.io.of('/status').emit('process-status', runtimeInfo);
   }
 
   private processLogger(line: string): void {

@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { provide } from '../../container.js';
 import { CloudCredentialStore } from './credentialStore.js';
 import { OAuthRoute } from './routes/oauth.js';
 import { ServerRoute } from './routes/server.js';
@@ -12,7 +11,7 @@ export class CloudApi {
   public readonly credentialStore: CloudCredentialStore;
 
   constructor() {
-    container.registerInstance('cloudApi', this);
+    provide('cloudApi', this);
 
     this.credentialStore = new CloudCredentialStore();
     this.oauthRoute = new OAuthRoute(this.credentialStore);

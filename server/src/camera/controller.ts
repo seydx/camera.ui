@@ -1,8 +1,9 @@
 import { isEqual, PromiseTimeout } from '@camera.ui/common/utils';
 import { RPCMethod } from '@camera.ui/rpc';
 import { API_EVENT, filter, pairwise, SensorType, Subject } from '@camera.ui/sdk';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
+import { emitInternalEvent } from '../internal-bus.js';
 import { PLUGIN_STATUS } from '../plugins/types.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { buildSnapshotUrl, buildTargetUrl, createSourceName } from '../utils/camera.js';
@@ -39,12 +40,9 @@ import type { CameraUiAPI } from '../api.js';
 import type { Go2RtcApi } from '../go2rtc/api/index.js';
 import type { Go2RtcState, Go2RtcStreamState } from '../go2rtc/state.js';
 import type { Go2RTCOfferCodec, Go2RTCOffers } from '../go2rtc/types.js';
-import type { InternalEventBus } from '../internal-bus.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { CameraDeviceInterface, CameraDeviceListenerMessagePayload, RefreshedStates, SnapshotUpdatedEvent, SnapshotWithMeta } from '../rpc/interfaces/device.js';
 import type { StoredSensorData } from '../rpc/interfaces/sensor.js';
 import type { CameraNamespaces, FrameWorkerDetectionNamespaces } from '../rpc/namespaces.js';
-import type { SensorRegistry } from '../sensors/registry.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { SourceCodecInfo } from './codecCache.js';
 import type { StoredSnapshot } from './snapshot-store.js';
@@ -89,11 +87,11 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
     this.snapshotPrivacy = new SnapshotPrivacy(logger);
     this.snapshotPrivacy.update(camera.zones);
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
-    this.go2rtcState = container.resolve<Go2RtcState>('go2rtcState');
-    this.loggerService = container.resolve<LoggerService>('logger');
-    this.proxy = container.resolve<ProxyServer>('proxy').proxy;
+    this.api = inject('api');
+    this.go2rtcApi = inject('go2rtcApi');
+    this.go2rtcState = inject('go2rtcState');
+    this.loggerService = inject('logger');
+    this.proxy = inject('proxy').proxy;
 
     this.frameWorker = new FrameWorker(this);
     this.sensorController = new SensorController(this, this.frameWorker, this.proxy);
@@ -329,14 +327,14 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
   }
 
   public async addSensor<T extends object>(sensor: Sensor<T>): Promise<void> {
-    const registry = container.resolve<SensorRegistry>('sensorRegistry');
+    const registry = inject('sensorRegistry');
     const sensorJSON = sensor.toJSON();
     sensorJSON.nativeId ??= `${this.id}:${sensor.type}:${sensor.name}`;
     registry.registerSensor(sensorJSON, sensor.pluginId ?? '', { assignCameraId: this.id });
   }
 
   public async removeSensor(sensorId: string): Promise<void> {
-    const registry = container.resolve<SensorRegistry>('sensorRegistry');
+    const registry = inject('sensorRegistry');
     registry.unregisterSensor(sensorId);
   }
 
@@ -585,12 +583,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
 
   private announceSnapshot(sourceId: string, entry: StoredSnapshot): void {
     this.triggerProxyEvent('snapshot:updated', { sourceId, snapshot: entry.data, fetchedAt: entry.fetchedAt });
-    try {
-      const bus = container.resolve<InternalEventBus>('internalBus');
-      bus.emitEvent('camera:snapshot:updated', { cameraId: this.id, cameraName: this.name });
-    } catch {
-      // ignore
-    }
+    emitInternalEvent('camera:snapshot:updated', { cameraId: this.id, cameraName: this.name });
   }
 
   private async remaskSnapshots(): Promise<void> {
@@ -620,12 +613,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
           this.reconcilePreloads();
         }
 
-        try {
-          const bus = container.resolve<InternalEventBus>('internalBus');
-          bus.emitEvent(newState ? 'camera:connected' : 'camera:disconnected', { cameraId: this.id, cameraName: this.name });
-        } catch {
-          // ignore
-        }
+        emitInternalEvent(newState ? 'camera:connected' : 'camera:disconnected', { cameraId: this.id, cameraName: this.name });
       });
   }
 
@@ -639,12 +627,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
         this.logger.log(`FrameWorker ${newState ? 'started' : 'stopped'}`);
         this.triggerProxyEvent('frameWorkerState', newState);
 
-        try {
-          const bus = container.resolve<InternalEventBus>('internalBus');
-          bus.emitEvent(newState ? 'camera:frameworker:started' : 'camera:frameworker:stopped', { cameraId: this.id, cameraName: this.name });
-        } catch {
-          // ignore
-        }
+        emitInternalEvent(newState ? 'camera:frameworker:started' : 'camera:frameworker:stopped', { cameraId: this.id, cameraName: this.name });
 
         // SensorController handles detection plugin reconciliation (false→true)
         // and cascade state reset (true→false).
@@ -702,28 +685,22 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
       .subscribe(([oldCamera, newCamera]) => {
         this.applyChange('update event', () => this.triggerProxyEvent('updated', newCamera));
 
-        try {
-          const bus = container.resolve<InternalEventBus>('internalBus');
+        const watchedProps = [
+          'name',
+          'sources',
+          'detectionSettings',
+          'ptzAutotrack',
+          'recordingSettings',
+          'notificationSettings',
+          'zones',
+          'frameWorkerSettings',
+          'interfaceSettings',
+        ] as const;
 
-          const watchedProps = [
-            'name',
-            'sources',
-            'detectionSettings',
-            'ptzAutotrack',
-            'recordingSettings',
-            'notificationSettings',
-            'zones',
-            'frameWorkerSettings',
-            'interfaceSettings',
-          ] as const;
-
-          for (const prop of watchedProps) {
-            if (!isEqual((oldCamera as any)[prop], (newCamera as any)[prop], true)) {
-              bus.emitEvent('camera:property:changed', { cameraId: this.id, cameraName: this.name, property: prop });
-            }
+        for (const prop of watchedProps) {
+          if (!isEqual((oldCamera as any)[prop], (newCamera as any)[prop], true)) {
+            emitInternalEvent('camera:property:changed', { cameraId: this.id, cameraName: this.name, property: prop });
           }
-        } catch {
-          // ignore
         }
 
         if (!isEqual(oldCamera.zones?.privacy, newCamera.zones?.privacy, true) || oldCamera.zones?.privacyFallback !== newCamera.zones?.privacyFallback) {

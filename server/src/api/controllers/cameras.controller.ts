@@ -1,8 +1,8 @@
 import { orderBy } from '@camera.ui/common/utils';
 import { createReadStream, truncate } from 'node:fs';
 import { Readable } from 'node:stream';
-import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
 import { createSourceName } from '../../utils/camera.js';
 import { withoutSourceCredentials } from '../../utils/credentials.js';
 import { isAdminRequest } from '../middlewares/authPermission.middleware.js';
@@ -53,9 +53,9 @@ export class CamerasController {
     this.service = new CamerasService();
     this.pluginsService = new PluginsService();
 
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.configService = container.resolve<ConfigService>('configService');
-    this.go2rtcApi = container.resolve<Go2RtcApi>('go2rtcApi');
+    this.api = inject('api');
+    this.configService = inject('configService');
+    this.go2rtcApi = inject('go2rtcApi');
   }
 
   public listRooms(_req: FastifyRequest, reply: FastifyReply): FastifyReply {

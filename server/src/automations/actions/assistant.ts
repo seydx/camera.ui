@@ -1,8 +1,6 @@
-import { container } from 'tsyringe';
-
 import { UsersService } from '../../api/services/users.service.js';
+import { inject } from '../../container.js';
 
-import type { AssistantManager } from '../../assistant/manager.js';
 import type { ActionContext } from './types.js';
 
 const SILENT = 'NO_REPLY';
@@ -22,7 +20,7 @@ export async function actionAssistant(ctx: ActionContext, data: Record<string, u
   const title = ctx.resolve((data.title as string) ?? '').trim() || ctx.flowName;
   const image = imageOf(ctx.resolve((data.image as string) ?? ''));
 
-  const manager = container.resolve<AssistantManager>('assistantManager');
+  const manager = inject('assistantManager');
   try {
     const profile = typeof data.profileId === 'string' && data.profileId ? manager.profiles.get(user._id, data.profileId) : undefined;
     const delivery = deliver === 'push' || deliver === 'thread' || deliver === 'both' ? deliver : undefined;

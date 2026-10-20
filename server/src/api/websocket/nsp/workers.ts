@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../../../container.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { WorkerManager } from '../../../workers/manager.js';
@@ -16,7 +16,7 @@ export class WorkersNamespace {
   private history: Record<string, WorkerInfo[]> = {};
 
   constructor(io: Server) {
-    this.workerManager = container.resolve<WorkerManager>('workerManager');
+    this.workerManager = inject('workerManager');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {

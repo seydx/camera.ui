@@ -4,9 +4,9 @@ import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { container } from 'tsyringe';
 
 import { RemoteService } from '../../api/services/remote.service.js';
+import { inject } from '../../container.js';
 import { isShuttingDown } from '../../shutdown-state.js';
 import { cloudflaredBinaryPath, edgeProtocol, isCloudflaredInstalled, removeDownloadedCloudflared } from './cloudflaredBinary.js';
 import { RestartBackoff } from './restartBackoff.js';
@@ -48,7 +48,7 @@ export class CloudflareManagedService {
   public readonly connections = new TunnelConnections();
 
   constructor(private logger: Logger) {
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
     this.remoteService = new RemoteService();
 
     this.cloudflarePath = join(this.configService.STORAGE_PATH, '.cloudflare');

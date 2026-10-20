@@ -1,6 +1,7 @@
 import { APP_SERVER_NAME, IS_ELECTRON } from '@camera.ui/common/utils';
 import { Severity } from '@camera.ui/sdk';
 
+import { inject, tryInject } from '../../../container.js';
 import { SystemNotificationTypeId } from '../../../manager/types.js';
 import { ConfigService } from '../../../services/config/index.js';
 import { serverNodeIssue } from '../../../utils/engines.js';
@@ -10,7 +11,6 @@ import { workerBehind } from '../../../workers/lifecycle/update.js';
 import { PluginsService } from '../../services/plugins.service.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
-import type { MqttManager } from '../../../mqtt/manager.js';
 import type { MqttStatus } from '../../../mqtt/types.js';
 import type { ProxyServer } from '../../../rpc/index.js';
 import type { AppUpdateAvailableMessage } from '../../../types.js';
@@ -44,9 +44,9 @@ export class ServerNamespace {
   private lastNotifiedAppVersion: string | undefined;
 
   constructor(io: Server) {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
+    this.proxyServer = inject('proxy');
     this.pluginsService = new PluginsService();
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {
@@ -117,13 +117,7 @@ export class ServerNamespace {
   }
 
   public getMqttStatus(_payload?: any, callback?: Function): MqttStatus | undefined {
-    let status: MqttStatus | undefined;
-    try {
-      status = container.resolve<MqttManager>('mqttManager').getStatus();
-    } catch {
-      // manager not constructed (worker mode)
-    }
-
+    const status = tryInject('mqttManager')?.getStatus();
     callback?.(status);
     return status;
   }

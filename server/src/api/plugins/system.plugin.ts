@@ -1,5 +1,4 @@
 import fp from 'fastify-plugin';
-import { container } from 'tsyringe';
 
 import { inject } from '../../container.js';
 
@@ -22,8 +21,8 @@ class System {
   private go2rtc: Go2Rtc;
 
   constructor(private app: FastifyInstance) {
-    this.cameraui = container.resolve<CameraUi>('cameraui');
-    this.go2rtc = container.resolve<Go2Rtc>('go2rtc');
+    this.cameraui = inject('cameraui');
+    this.go2rtc = inject('go2rtc');
   }
 
   public close(reason: ShutdownReason): void {

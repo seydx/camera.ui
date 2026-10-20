@@ -1,6 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { hostname } from 'node:os';
-import { container } from 'tsyringe';
 
 import { inject } from '../../container.js';
 import { LASTSEEN_WRITE_MS } from '../../workers/lifecycle/timing.js';
@@ -18,7 +17,7 @@ export class WorkersService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public getOrCreateAgentId(workerName: string): string {

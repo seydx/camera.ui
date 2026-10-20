@@ -1,13 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { cpus, loadavg, platform } from 'node:os';
 import { currentLoad, mem } from 'systeminformation';
-import { container } from 'tsyringe';
 
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 import { decryptPassword, encryptPassword } from '../utils/encryption.js';
 
-import type { CameraUiAPI } from '../../api.js';
-import type { PluginManager } from '../../plugins/index.js';
 import type { Database } from '../database/index.js';
 import type { DBInstance, DBInstanceCachedUser, DBInstancesConfig } from '../database/types.js';
 import type { CreateInstanceInput, UpdateInstanceInput } from '../schemas/instances.schema.js';
@@ -62,8 +60,8 @@ export class InstancesService {
   private configService: ConfigService;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.dbs = inject('dbs');
+    this.configService = inject('configService');
   }
 
   public getHomeId(): string {
@@ -278,8 +276,8 @@ export class InstancesService {
       return _localStatusCache.data;
     }
 
-    const api = container.resolve<CameraUiAPI>('api');
-    const pluginManager = container.resolve<PluginManager>('pluginManager');
+    const api = inject('api');
+    const pluginManager = inject('pluginManager');
 
     // CPU
     let cpuUsage: number;

@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
+
+import { inject, tryInject } from '../../container.js';
 
 import type { Database } from '../database/index.js';
 import type { DBLevel, DBRoom, DBRoomCatalog } from '../database/types.js';
 import type { CreateRoomInput } from '../schemas/rooms.schema.js';
-import type { SocketService } from '../websocket/index.js';
 
 const EMPTY_CATALOG: DBRoomCatalog = { version: 0, updatedAt: 0, levels: [], rooms: [] };
 
@@ -14,7 +14,7 @@ export class RoomsService {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public get(): DBRoomCatalog {
@@ -122,11 +122,7 @@ export class RoomsService {
 
     if (!catalog) return this.get();
 
-    try {
-      container.resolve<SocketService>('socketService').io.of('/camera.ui').emit('rooms-changed', catalog);
-    } catch {
-      // ignore
-    }
+    tryInject('socketService')?.io.of('/camera.ui').emit('rooms-changed', catalog);
 
     return catalog;
   }

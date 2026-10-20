@@ -1,4 +1,4 @@
-import { container } from 'tsyringe';
+import { inject } from '../container.js';
 
 import type { Database } from '../api/database/index.js';
 import type { DBAssistantUsageMonth } from '../api/database/types.js';
@@ -11,7 +11,7 @@ export class AssistantUsageStore {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public list(userId: string): DBAssistantUsageMonth[] {

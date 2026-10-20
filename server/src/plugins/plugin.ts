@@ -1,7 +1,7 @@
 import { lstatSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { ConfigService } from '../services/config/index.js';
 import { checkEngineCompatibility, checkProtocolCompat } from '../utils/engines.js';
 import { isPlatformCompatible } from '../utils/platform.js';
@@ -47,8 +47,8 @@ export class Plugin {
     contract: PluginContract,
     public readonly scope?: string,
   ) {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
 
     this.installPath = join(installPath);
     this.id = pluginId;

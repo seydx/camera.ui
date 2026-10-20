@@ -1,5 +1,4 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../../container.js';
 import { createSourceName } from '../../../utils/camera.js';
 
 import type { Namespace, Server, Socket } from 'socket.io';
@@ -45,9 +44,9 @@ export class MainNamespace {
   private lastDeltas = new Map<string, DeltaKey>();
 
   constructor(io: Server) {
-    this.cameraui = container.resolve<CameraUi>('cameraui');
-    this.api = container.resolve<CameraUiAPI>('api');
-    this.go2rtcState = container.resolve<Go2RtcState>('go2rtcState');
+    this.cameraui = inject('cameraui');
+    this.api = inject('api');
+    this.go2rtcState = inject('go2rtcState');
 
     this.nsp = io.of(this.nspName);
     this.nsp.on('connection', (socket: Socket) => {

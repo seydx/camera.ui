@@ -2,12 +2,13 @@ import { uuidv4 } from '@camera.ui/common/utils';
 import { hasCapability, PluginCapability, Severity } from '@camera.ui/sdk';
 import { copyFile, mkdir, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
 import { NotificationsService } from '../api/services/notifications.service.js';
 import { PluginsService } from '../api/services/plugins.service.js';
 import { RemoteService } from '../api/services/remote.service.js';
 import { UsersService } from '../api/services/users.service.js';
+import { inject } from '../container.js';
+import { emitInternalEvent } from '../internal-bus.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { SYSTEM_NOTIFICATION_TYPES } from './types.js';
 
@@ -15,12 +16,9 @@ import type { Promisify } from '@camera.ui/rpc';
 import type { Notification, NotifierDevice, NotifierInterface, PluginInterface } from '@camera.ui/sdk';
 import type { Database } from '../api/database/index.js';
 import type { DBRoles, StoredNotification } from '../api/database/types.js';
-import type { SocketService } from '../api/websocket/index.js';
-import type { InternalEventBus } from '../internal-bus.js';
 import type { Plugin } from '../plugins/plugin.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type { NotifyResult } from '../rpc/interfaces/notification.js';
-import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { NotificationSource, NotifierDeviceWithSource, NotifyOptions, ResolvedNotification, SourcesListing } from './types.js';
 
@@ -49,14 +47,14 @@ export class NotificationManager {
   private imagesDir: string;
 
   constructor() {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
+    this.proxyServer = inject('proxy');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
     this.notificationsService = new NotificationsService();
     this.pluginsService = new PluginsService();
     this.remoteService = new RemoteService();
     this.usersService = new UsersService();
-    this.imagesDir = join(container.resolve<ConfigService>('configService').STORAGE_PATH, 'notification-images');
+    this.imagesDir = join(inject('configService').STORAGE_PATH, 'notification-images');
   }
 
   public async register(): Promise<void> {
@@ -243,29 +241,24 @@ export class NotificationManager {
       data: { ...opts.notification.data, ...originData },
     };
 
-    try {
-      const bus = container.resolve<InternalEventBus>('internalBus');
-      if (source.kind === 'system') {
-        bus.emitEvent('system:notification', {
-          typeId: source.id,
-          title: resolved.title,
-          body: resolved.body,
-          severity: String(resolved.severity),
-        });
-      } else if (source.kind === 'plugin' && plugin) {
-        bus.emitEvent('plugin:notification', {
-          ...resolved.data,
-          pluginId: source.id,
-          pluginName: plugin.pluginName,
-          title: resolved.title,
-          subtitle: resolved.subtitle,
-          body: resolved.body,
-          severity: String(resolved.severity),
-          tag: resolved.tag,
-        });
-      }
-    } catch {
-      // bus not registered (worker mode) — ignore
+    if (source.kind === 'system') {
+      emitInternalEvent('system:notification', {
+        typeId: source.id,
+        title: resolved.title,
+        body: resolved.body,
+        severity: String(resolved.severity),
+      });
+    } else if (source.kind === 'plugin' && plugin) {
+      emitInternalEvent('plugin:notification', {
+        ...resolved.data,
+        pluginId: source.id,
+        pluginName: plugin.pluginName,
+        title: resolved.title,
+        subtitle: resolved.subtitle,
+        body: resolved.body,
+        severity: String(resolved.severity),
+        tag: resolved.tag,
+      });
     }
 
     // Per-user filtering (settings / source / quiet-hours / history) is
@@ -535,7 +528,7 @@ export class NotificationManager {
 
   private emitToUser(userId: string, event: string, payload: unknown): void {
     try {
-      const socketService = container.resolve<SocketService>('socketService');
+      const socketService = inject('socketService');
       socketService.io.of('/notifications').to(`user:${userId}`).emit(event, payload);
     } catch (err) {
       this.logger.warn(`UI broadcast failed: ${(err as Error).message}`);

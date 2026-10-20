@@ -2,9 +2,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { container } from 'tsyringe';
 
-import type { ConfigService } from '../services/config/index.js';
+import { inject } from '../container.js';
 
 const FFMPEG_TIMEOUT_MS = 60_000;
 const MAX_FRAMES = 10;
@@ -84,7 +83,7 @@ async function withTempFile<T>(data: Buffer, mimeType: string, fn: (file: string
 }
 
 function ffmpeg(args: string[], ignoreExit = false): Promise<{ stdout: Buffer; stderr: string }> {
-  const bin = container.resolve<ConfigService>('configService').go2rtcConfig.ffmpeg?.bin ?? 'ffmpeg';
+  const bin = inject('configService').go2rtcConfig.ffmpeg?.bin ?? 'ffmpeg';
   return new Promise((resolve, reject) => {
     const child = spawn(bin, ['-hide_banner', '-nostdin', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
     const out: Buffer[] = [];

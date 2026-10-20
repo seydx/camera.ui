@@ -1,13 +1,10 @@
-import { container } from 'tsyringe';
-
+import { inject, tryInject } from '../../container.js';
 import { CamerasService } from './cameras.service.js';
 import { RoomsService } from './rooms.service.js';
 
 import type { Database } from '../database/index.js';
 import type { DBFloorPlan, DBFloorPlanCamera, DBFloorPlanConnection, DBFloorPlanRoom, DBLevel, DBRoom } from '../database/types.js';
 import type { PutFloorPlanInput } from '../schemas/floorplan.schema.js';
-import type { SensorRegistry } from '../../sensors/registry.js';
-import type { SocketService } from '../websocket/index.js';
 
 const EMPTY_PLAN: DBFloorPlan = { version: 0, updatedAt: 0, north: null, rooms: [], connections: [], cameras: [], sensors: [] };
 
@@ -28,7 +25,7 @@ export class FloorPlanService {
   private roomsService: RoomsService;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
     this.roomsService = new RoomsService();
   }
 
@@ -184,11 +181,8 @@ export class FloorPlanService {
   }
 
   private sensorExists(sensorId: string): boolean {
-    try {
-      return container.resolve<SensorRegistry>('sensorRegistry').getRecord(sensorId) !== undefined;
-    } catch {
-      return true;
-    }
+    const registry = tryInject('sensorRegistry');
+    return !registry || registry.getRecord(sensorId) !== undefined;
   }
 
   private async syncCameraRooms(plan: DBFloorPlan, rooms: Map<string, DBRoom>): Promise<void> {
@@ -206,10 +200,6 @@ export class FloorPlanService {
   }
 
   private emit(plan: DBFloorPlan): void {
-    try {
-      container.resolve<SocketService>('socketService').io.of('/camera.ui').emit('floorplan-changed', plan);
-    } catch {
-      // ignore
-    }
+    tryInject('socketService')?.io.of('/camera.ui').emit('floorplan-changed', plan);
   }
 }

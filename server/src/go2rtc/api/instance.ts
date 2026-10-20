@@ -1,10 +1,9 @@
-import { container } from 'tsyringe';
 import { Agent, fetch as undiciFetch } from 'undici';
 
-import type { ConfigService } from '../../services/config/index.js';
+import { inject } from '../../container.js';
 
 export function fetchInstance(isApi = true) {
-  const configService = container.resolve<ConfigService>('configService');
+  const configService = inject('configService');
 
   const GO2RTC_URL = configService.go2rtcAddress('api');
   const GO2RTC_USERNAME = configService.go2rtcConfig.api.username;

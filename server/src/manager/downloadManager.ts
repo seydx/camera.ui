@@ -5,9 +5,9 @@ import { readFile, realpath, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
-import { container } from 'tsyringe';
 
 import { DownloadsService } from '../api/services/downloads.service.js';
+import { inject, tryInject } from '../container.js';
 import { NVR_PLUGIN_NAMES } from '../plugins/nvr.js';
 import { decodeEnvelope } from '../plugins/store/envelope.js';
 import { STORE_FILE_NAME } from '../plugins/store/pluginStoreFile.js';
@@ -17,8 +17,6 @@ import type { Promisify } from '@camera.ui/rpc';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerResponse } from 'node:http';
 import type { DownloadParamsRequest } from '../api/types/index.js';
-import type { PluginManager } from '../plugins/index.js';
-import type { RemoteAccessManager } from '../remote/index.js';
 import type { ProxyServer } from '../rpc/index.js';
 import type {
   CreateDownloadOptions,
@@ -131,9 +129,9 @@ export class DownloadManager implements DownloadManagerInterface {
   private cleanupTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.proxyServer = inject('proxy');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
     this.downloadsService = new DownloadsService();
   }
 
@@ -419,7 +417,7 @@ export class DownloadManager implements DownloadManagerInterface {
   }
 
   private buildPublicUrl(token: string): string {
-    const externalUrl = container.resolve<RemoteAccessManager>('remoteAccessManager').getStatus().externalUrl;
+    const externalUrl = inject('remoteAccessManager').getStatus().externalUrl;
     if (!externalUrl) return '';
     return `${externalUrl.replace(/\/+$/, '')}/api/download/${encodeURIComponent(token)}`;
   }
@@ -766,7 +764,7 @@ export class DownloadManager implements DownloadManagerInterface {
 
   private async zones(): Promise<Zone[]> {
     const { HOME_PATH, STORAGE_PATH, RESTORE_STAGING_PATH, TMP_PATH, PLUGINS_STORAGE_PATH } = this.configService;
-    const loaded = container.isRegistered('pluginManager') ? [...container.resolve<PluginManager>('pluginManager').plugins.values()] : [];
+    const loaded = [...(tryInject('pluginManager')?.plugins.values() ?? [])];
     const pluginFolders = [...new Set([...NVR_PLUGIN_NAMES, ...loaded.map((plugin) => plugin.pluginName)])].map((name) => join(PLUGINS_STORAGE_PATH, name));
 
     const zones = [

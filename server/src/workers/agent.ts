@@ -7,9 +7,9 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { processes } from 'systeminformation';
-import { container } from 'tsyringe';
 
 import { WorkersService } from '../api/services/workers.service.js';
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 import { MASTER_API_PORT, workerName } from '../services/config/defaults.js';
 import { ConfigService } from '../services/config/index.js';

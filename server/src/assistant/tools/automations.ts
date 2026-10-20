@@ -1,16 +1,15 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
 import { AutomationsService } from '../../api/services/automations.service.js';
 import { CamerasService } from '../../api/services/cameras.service.js';
 import { RoomsService } from '../../api/services/rooms.service.js';
 import { SensorsService } from '../../api/services/sensors.service.js';
+import { inject } from '../../container.js';
 import { AUTOMATION_CATALOG, AUTOMATION_VARIABLES, buildFlow } from '../automation-catalog.js';
 import { approvalSchema, toolError } from './shared.js';
 
 import type { CreateAutomationInput } from '../../api/schemas/automations.schema.js';
-import type { AutomationEngine } from '../../automations/engine.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
 const nodeSchema = zod.object({
@@ -147,7 +146,7 @@ const runAutomation = toolDefinition({
   const existing = service.getById(automationName) ?? service.list().find((a) => a.name.toLowerCase() === automationName.toLowerCase());
   if (!existing) return toolError(`No automation "${automationName}".`);
 
-  const output = await container.resolve<AutomationEngine>('automationEngine').triggerManually(existing._id);
+  const output = await inject('automationEngine').triggerManually(existing._id);
   return { ok: true, automation: existing.name, output: output ?? {} };
 });
 

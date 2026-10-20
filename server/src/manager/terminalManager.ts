@@ -2,8 +2,8 @@ import { IS_ELECTRON } from '@camera.ui/common/utils';
 import { RPCMethod } from '@camera.ui/rpc';
 import pty from '@scrypted/node-pty';
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
 import type { IPty } from '@scrypted/node-pty';
@@ -89,8 +89,8 @@ export class TerminalManager implements TerminalManagerInterface {
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor() {
-    this.proxyServer = container.resolve<ProxyServer>('proxy');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.proxyServer = inject('proxy');
+    this.logger = inject('logger');
   }
 
   public async register(): Promise<void> {

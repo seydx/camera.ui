@@ -7,7 +7,7 @@ import { OutputPool } from './output-pool.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { Detection, VideoFrameData, VideoInputSpec } from '@camera.ui/sdk';
-import type { HardwareContext, ScalerCrop } from 'node-av/api';
+import type { HardwareContext, ScaleOptions, ScalerCrop } from 'node-av/api';
 import type { CroppedRegion } from '../../rpc/interfaces/detection.js';
 import type { OutputLease } from './output-pool.js';
 

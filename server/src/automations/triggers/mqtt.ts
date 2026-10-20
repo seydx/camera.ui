@@ -1,10 +1,8 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { createEmptyContext } from '../context.js';
 
 import type { Disposable } from '@camera.ui/sdk';
 import type { DBAutomation, DBAutomationNode } from '../../api/database/types.js';
-import type { MqttManager } from '../../mqtt/manager.js';
 import type { TriggerContext } from './types.js';
 
 type MatchMode = 'any' | 'exact' | 'json';
@@ -18,7 +16,7 @@ export function subscribeMqtt(ctx: TriggerContext, flow: DBAutomation, triggerNo
   const jsonPath = ((triggerNode.data.jsonPath as string) ?? '').trim();
   const jsonValue = ((triggerNode.data.jsonValue as string) ?? '').trim();
 
-  const mqttManager = container.resolve<MqttManager>('mqttManager');
+  const mqttManager = inject('mqttManager');
 
   const unsubscribe = mqttManager.subscribeTrigger(topic, (messageTopic, payload) => {
     if (!payloadMatches(mode, payload, { payloadFilter, jsonPath, jsonValue })) return;

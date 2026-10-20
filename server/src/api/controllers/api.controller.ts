@@ -1,17 +1,15 @@
-import { container } from 'tsyringe';
-
+import { inject } from '../../container.js';
 import { ConfigService } from '../../services/config/index.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Database } from '../database/index.js';
 
 export class ApiController {
   constructor(private app: FastifyInstance) {}
 
   public welcome(_req: FastifyRequest, reply: FastifyReply): FastifyReply {
     const version = ConfigService.RUNNING_VERSION;
-    const installedVersion = container.resolve<ConfigService>('configService').STAGED_VERSION ?? ConfigService.VERSION;
-    const dbs = container.resolve<Database>('dbs');
+    const installedVersion = inject('configService').STAGED_VERSION ?? ConfigService.VERSION;
+    const dbs = inject('dbs');
     return reply.code(200).send({
       message: 'Welcome to camera.ui API',
       version,

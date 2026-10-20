@@ -1,10 +1,9 @@
 import { toolDefinition } from '@tanstack/ai';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
+import { inject } from '../../container.js';
 import { approvalSchema, toolError, withImages } from './shared.js';
 
-import type { Server } from '../../api/index.js';
 import type { ApiCatalog, ApiMethod } from '../api-catalog.js';
 import type { CoreTool, ToolContext } from './shared.js';
 
@@ -91,7 +90,7 @@ async function request(
   if (!endpoint) return toolError(`${method} ${path} is not an endpoint the assistant may use. Call api_search to find the right one.`);
   if (!ctx.context.authorization) return toolError('No session available for API calls.');
 
-  const app = container.resolve<Server>('server').app;
+  const app = inject('server').app;
   if (!app) return toolError('The API is not ready.');
 
   const search = new URLSearchParams();

@@ -6,8 +6,8 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { stripVTControlCharacters } from 'node:util';
-import { container } from 'tsyringe';
 
+import { inject, provide, tryInject } from '../container.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
 import { isLeafDialError, LeafConnection } from './leafConnection.js';
@@ -18,10 +18,8 @@ import { generateCredentials } from './utils.js';
 import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess, ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { Interface } from 'node:readline';
-import type { SocketService } from '../api/websocket/index.js';
 import type { ServerRuntime } from '../api/websocket/types.js';
 import type { ConfigService } from '../services/config/index.js';
-import type { LoggerService } from '../services/logger/index.js';
 import type { AuthConfig, NatsConfig, NatsUserConfig, ProxyAuth } from './interfaces/config.js';
 
 const SERVER_READY_MESSAGE = 'Server is ready';
@@ -113,9 +111,9 @@ export class NATS {
   constructor(private readonly auth: ProxyAuth) {
     provide('natsServer', this);
 
-    this.configService = container.resolve<ConfigService>('configService');
+    this.configService = inject('configService');
 
-    const loggerService = container.resolve<LoggerService>('logger');
+    const loggerService = inject('logger');
     this.logger = loggerService.createSystemLogger('Nats', 'nats');
     this.repeatedLines = new RepeatedLines((level, line) => this.logger[level](line));
 
@@ -875,13 +873,11 @@ export class NATS {
   private setStatus(status: RUNTIME_STATUS): void {
     this._status = status;
 
-    const socketService = container.resolve<SocketService>('socketService');
-
     const runtimeInfo: ServerRuntime = {
       nats: { name: 'nats', status: status },
     };
 
-    socketService.io?.of('/status').emit('process-status', runtimeInfo);
+    tryInject('socketService')?.io.of('/status').emit('process-status', runtimeInfo);
   }
 
   private processLogger(line: string): void {

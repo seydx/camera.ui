@@ -17,7 +17,6 @@ import { withSkills } from '@tanstack/ai-skills';
 import { toolCacheMiddleware } from '@tanstack/ai/middlewares';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
-import { container } from 'tsyringe';
 import * as zod from 'zod';
 
 import { CamerasService } from '../api/services/cameras.service.js';
@@ -25,6 +24,7 @@ import { PluginsService } from '../api/services/plugins.service.js';
 import { RoomsService } from '../api/services/rooms.service.js';
 import { UsersService } from '../api/services/users.service.js';
 import { decryptPassword, encryptPassword } from '../api/utils/encryption.js';
+import { inject, provide } from '../container.js';
 import { ALWAYS_EAGER, planRun, promote, toolTokens } from './budget.js';
 import { clearDiscoveryResults, estimateMessage, keepQuestion, keepSkills, PICTURE_TOKENS, trimToolResults } from './compaction.js';
 import { secretGuard } from './guard.js';
@@ -58,7 +58,6 @@ import type { AssistantAccess, AssistantAskResult, AssistantModelSpec } from '@c
 import type { ChatMiddleware, FetchWrapper, Interrupt, ModelMessage, StreamChunk, StreamDurability, UIMessage } from '@tanstack/ai';
 import type { MemoryAdapter, MemoryTurn } from '@tanstack/ai-memory';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { CameraUiAPI } from '../api.js';
 import type { Database } from '../api/database/index.js';
 import type {
   DBAssistant,
@@ -73,9 +72,6 @@ import type {
   DBRoles,
   DBUser,
 } from '../api/database/types.js';
-import type { Server } from '../api/index.js';
-import type { SocketService } from '../api/websocket/index.js';
-import type { ProxyServer } from '../rpc/index.js';
 import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 import type { PromptSections, RunPlan } from './budget.js';
@@ -193,11 +189,11 @@ export class AssistantManager {
   private configService: ConfigService;
 
   constructor() {
-    container.registerInstance('assistantManager', this);
+    provide('assistantManager', this);
 
-    this.logger = container.resolve<LoggerService>('logger');
-    this.dbs = container.resolve<Database>('dbs');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.logger = inject('logger');
+    this.dbs = inject('dbs');
+    this.configService = inject('configService');
     this.registry = new AssistantToolRegistry();
     this.threads = new AssistantThreadStore();
     this.profiles = new AssistantProfileStore();
@@ -213,7 +209,7 @@ export class AssistantManager {
   }
 
   public async start(): Promise<void> {
-    this.registry.loadApi(container.resolve<Server>('server').app?.swagger());
+    this.registry.loadApi(inject('server').app?.swagger());
     this.registry.loadDocs();
     const stale = await abortStaleRuns(this.dbs).catch(() => 0);
     if (stale) this.logger.debug(`Assistant: ${stale} runs were still marked running from before the restart`);
@@ -358,7 +354,7 @@ export class AssistantManager {
       this.signalThread(user._id, threadId, messages.length);
     }
     if (input.push) {
-      const manager = container.resolve<ProxyServer>('proxy').notificationManager;
+      const manager = inject('proxy').notificationManager;
       const devices = await manager.listAllDevices(user._id, user.role);
       const targets = devices.filter((device) => device.ownerUserId === user._id).map((device) => device.id);
       if (!targets.length) throw new Error('The user has no notification devices');
@@ -378,7 +374,7 @@ export class AssistantManager {
 
   private signalThread(userId: string, threadId: string, messageCount: number): void {
     try {
-      container.resolve<SocketService>('socketService').io.of('/notifications').to(`user:${userId}`).emit('assistant-thread', { threadId, messageCount });
+      inject('socketService').io.of('/notifications').to(`user:${userId}`).emit('assistant-thread', { threadId, messageCount });
     } catch (error: any) {
       this.logger.warn(`Assistant: could not signal the thread update: ${error.message}`);
     }
@@ -1029,7 +1025,7 @@ export class AssistantManager {
   }
 
   private promptFacts(user: DBUser) {
-    const api = container.resolve<CameraUiAPI>('api');
+    const api = inject('api');
     const rooms = new RoomsService();
     const cameras = new CamerasService().list().map((camera) => ({
       name: camera.name,

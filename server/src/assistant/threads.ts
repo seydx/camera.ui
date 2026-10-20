@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { container } from 'tsyringe';
 
+import { inject } from '../container.js';
 import { dropThreadState } from './persistence.js';
 import { isDataUpload, markerFor, partsOf } from './uploads.js';
 
@@ -22,7 +22,7 @@ export class AssistantThreadStore {
   private dbs: Database;
 
   constructor() {
-    this.dbs = container.resolve<Database>('dbs');
+    this.dbs = inject('dbs');
   }
 
   public list(userId: string): AssistantThreadSummary[] {

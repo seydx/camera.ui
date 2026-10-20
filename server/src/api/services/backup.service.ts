@@ -8,7 +8,6 @@ import { platform, tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { c, x } from 'tar';
-import { container } from 'tsyringe';
 
 import { inject, tryInject } from '../../container.js';
 import {
@@ -131,8 +130,8 @@ export class BackupService {
   private pluginsService: PluginsService;
 
   constructor() {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.configService = container.resolve<ConfigService>('configService');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
 
     this.pluginsService = new PluginsService();
   }

@@ -1,6 +1,6 @@
 import { Logger } from '@camera.ui/common/logger';
-import { container } from 'tsyringe';
 
+import { provide } from '../../container.js';
 import { LogManager } from './logManager.js';
 
 import type { LoggerOptions } from '@camera.ui/common/logger';
@@ -10,7 +10,7 @@ export class LoggerService extends Logger {
 
   constructor(options?: LoggerOptions) {
     super({ ...options, prefix: 'camera.ui', targetId: 'server', targetType: 'system' });
-    container.registerInstance('logger', this);
+    provide('logger', this);
   }
 
   public initLogManager(logsPath: string, systemLogPath: string, logLevel?: 'log' | 'debug' | 'trace'): LogManager {
@@ -20,7 +20,7 @@ export class LoggerService extends Logger {
       logLevel,
     });
 
-    container.registerInstance('logManager', this.logManager);
+    provide('logManager', this.logManager);
 
     this.onLog((entry) => {
       (this.logManager as any)?.route(entry);
