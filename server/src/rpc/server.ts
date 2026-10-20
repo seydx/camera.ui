@@ -195,6 +195,32 @@ export class NATS {
                   'rpc.plugin.*.child.rpc.nvrExportEpisode',
                   'rpc.plugin.*.child.rpc.searchEventsByText',
                   'rpc.plugin.*.child.rpc.searchEventsByTextQuery',
+
+                  'rpc.coreManager.rpc.__methods',
+                  'rpc.deviceManager.rpc.__methods',
+                  'rpc.sensors.rpc.__methods',
+                  'rpc.camera.*.controller.rpc.__methods',
+                  'rpc.plugin.*.child.rpc.__methods',
+                ],
+              },
+              subscribe: {
+                allow: [
+                  // the relay firewall pins each inbox to the connId
+                  'rpc.reply.>',
+                  'rpc.cb.>',
+                  '_rpc.cb.>',
+                  '_rpc.iterator.>',
+                  '_INBOX.>',
+                  'notifications.user.*',
+
+                  // broadcasts only, a request subject would hand a viewer its caller's reply inbox
+                  'coreManager.subscriber',
+                  'camera.*.subscriber',
+                  // still read by released nvr UI and tvOS builds
+                  'camera.*.events.subject',
+                  'sensors.subject',
+                  'sensor.*.subject',
+                  'cast.device.*',
                 ],
               },
             },

@@ -59,6 +59,25 @@ export class SocketService {
     });
   }
 
+  public disconnectTokens(tokenIds: string[]): void {
+    const revoked = new Set(tokenIds);
+    this.closeEngines((socket) => revoked.has(socket.data.tokenId));
+  }
+
+  public disconnectOrphans(userIds: string[]): void {
+    const users = new Set(userIds);
+    this.closeEngines((socket) => users.has(socket.data.userId) && !this.authService.findById(socket.data.tokenId ?? ''));
+  }
+
+  public dropAdminNamespaces(userId: string): void {
+    for (const name of this.adminNsp) {
+      const sockets = [...(this.namespaces.get(name)?.nsp.sockets.values() ?? [])];
+      for (const socket of sockets) {
+        if (socket.data.userId === userId) socket.disconnect();
+      }
+    }
+  }
+
   private async registerNamespaces(): Promise<void> {
     this.authService = new AuthService();
     this.usersService = new UsersService();
@@ -139,6 +158,24 @@ export class SocketService {
 
       return next();
     };
+  }
+
+  private closeEngines(match: (socket: Socket) => boolean): void {
+    const engines = new Set<Socket['conn']>();
+    for (const { nsp } of this.namespaces.values()) {
+      for (const socket of nsp.sockets.values()) {
+        if (match(socket)) engines.add(socket.conn);
+      }
+    }
+    for (const engine of engines) engine.close();
+  }
+
+  private countTokenSockets(nsp: Namespace, tokenId: string): number {
+    let count = 0;
+    for (const socket of nsp.sockets.values()) {
+      if (socket.data.tokenId === tokenId) count++;
+    }
+    return count;
   }
 
   private setupConnection(socket: Socket, nsp: SocketNsp): void {

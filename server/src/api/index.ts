@@ -150,6 +150,8 @@ export class Server {
   private loopback?: HttpServer;
   private loopbackPort = 0;
   private sharesCleanupTimer?: NodeJS.Timeout;
+  private tokenSweepTimer?: NodeJS.Timeout;
+  private stopCertificateWatch?: () => void;
   private mdnsService = new MdnsService();
 
   private readonly connections = new Set<Socket>();
@@ -235,7 +237,8 @@ export class Server {
     this.isRunning = true;
 
     this.startSharesCleanup();
-    this.mdnsService.advertise();
+    this.startTokenSweep();
+    if (!inject('cameraui').movedAway) this.mdnsService.advertise();
   }
 
   public async close(): Promise<void> {
@@ -243,6 +246,13 @@ export class Server {
       clearInterval(this.sharesCleanupTimer);
       this.sharesCleanupTimer = undefined;
     }
+    if (this.tokenSweepTimer) {
+      clearInterval(this.tokenSweepTimer);
+      this.tokenSweepTimer = undefined;
+    }
+
+    this.stopCertificateWatch?.();
+    this.stopCertificateWatch = undefined;
 
     await this.mdnsService.stop();
 
@@ -467,6 +477,17 @@ export class Server {
 
     run();
     this.sharesCleanupTimer = setInterval(run, SHARES_CLEANUP_INTERVAL_MS);
+  }
+
+  private startTokenSweep(): void {
+    const tokensDB = inject('dbs').tokensDB;
+    const run = () =>
+      sweepExpiredTokens(tokensDB)
+        .then((removed) => removed && this.logger.debug(`Removed ${removed} expired sessions`))
+        .catch(() => {});
+
+    run();
+    this.tokenSweepTimer = setInterval(run, TOKEN_SWEEP_INTERVAL_MS);
   }
 
   private setupListeners(): void {

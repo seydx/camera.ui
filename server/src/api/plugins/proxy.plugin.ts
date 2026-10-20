@@ -32,6 +32,19 @@ export interface ProxyOptions {
   tls?: ProxyTLSOptions;
 }
 
+type Refusal = readonly [code: number, reason: string];
+
+interface Relay {
+  tokenId: string;
+  userId: string;
+  target: ProxyOptions['target'];
+  privileged: boolean;
+  upstream: WebSocket;
+  client?: WebSocket;
+  ended?: Refusal;
+  endsAt?: number;
+}
+
 const GO2RTC_VIEWER_MESSAGES = new Set(['mse', 'mse/stop', 'mp4', 'hls', 'mjpeg', 'webcodecs', 'webrtc/offer', 'webrtc/candidate', 'talkback']);
 
 const HEARTBEAT_MS = 30_000;
@@ -92,6 +105,117 @@ function isValidCloseCode(code: number): boolean {
   return (code >= 1000 && code <= 1014 && code !== 1004 && code !== 1005 && code !== 1006) || (code >= 3000 && code <= 4999);
 }
 
+function upstreamRefusal(frame: Buffer): Refusal | undefined {
+  for (const [line, refusal] of UPSTREAM_REFUSALS) {
+    if (frame.length >= line.length && frame.compare(line, 0, line.length, 0, line.length) === 0) return refusal;
+  }
+  return undefined;
+}
+
+function bearerToken(header: string | undefined): string {
+  const [scheme, token] = header?.split(/\s+/) ?? [];
+  return scheme === 'Bearer' && token ? token : '';
+}
+
+function addTo<V>(map: Map<string, Set<V>>, key: string, value: V): void {
+  const set = map.get(key);
+  if (set) set.add(value);
+  else map.set(key, new Set([value]));
+}
+
+function removeFrom<V>(map: Map<string, Set<V>>, key: string, value: V): void {
+  const set = map.get(key);
+  if (set?.delete(value) && !set.size) map.delete(key);
+}
+
+export class RelayRegistry {
+  private byToken = new Map<string, Set<Relay>>();
+  private byUser = new Map<string, Set<Relay>>();
+  private shareEnds = new Map<string, NodeJS.Timeout>();
+
+  constructor() {
+    provide('relayRegistry', this);
+  }
+
+  public closeTokens(tokenIds: string[], why: Refusal = SESSION_REVOKED): void {
+    for (const tokenId of tokenIds) this.endAll(this.byToken.get(tokenId), why);
+  }
+
+  public closeOrphans(userIds: string[], alive: (tokenId: string) => boolean): void {
+    for (const userId of userIds) this.endAll(this.byUser.get(userId), SESSION_REVOKED, (relay) => !alive(relay.tokenId));
+  }
+
+  public dropAdmin(userId: string): void {
+    this.endAll(this.byUser.get(userId), [4401, 'unauthorized: role changed'], (relay) => relay.privileged);
+  }
+
+  public terminate(tokenId: string, match: (relay: Relay) => boolean): number {
+    let ended = 0;
+    for (const relay of [...(this.byToken.get(tokenId) ?? [])]) {
+      if (!match(relay)) continue;
+      relay.client?.terminate();
+      relay.upstream.terminate();
+      this.remove(relay);
+      ended++;
+    }
+    return ended;
+  }
+
+  public count(by: 'user' | 'token', id: string, match: (relay: Relay) => boolean): number {
+    let count = 0;
+    for (const relay of (by === 'user' ? this.byUser : this.byToken).get(id) ?? []) {
+      if (match(relay)) count++;
+    }
+    return count;
+  }
+
+  public add(relay: Relay): void {
+    addTo(this.byToken, relay.tokenId, relay);
+    addTo(this.byUser, relay.userId, relay);
+    if (relay.endsAt !== undefined && !this.shareEnds.has(relay.userId)) this.endShareAt(relay.userId, relay.endsAt);
+  }
+
+  public remove(relay: Relay): void {
+    removeFrom(this.byToken, relay.tokenId, relay);
+    removeFrom(this.byUser, relay.userId, relay);
+    if (!this.byUser.has(relay.userId) && this.shareEnds.has(relay.userId)) {
+      clearTimeout(this.shareEnds.get(relay.userId));
+      this.shareEnds.delete(relay.userId);
+    }
+  }
+
+  private endAll(relays: Set<Relay> | undefined, why: Refusal, match?: (relay: Relay) => boolean): void {
+    if (!relays) return;
+    for (const relay of [...relays]) {
+      if (match && !match(relay)) continue;
+      if (!relay.client) relay.ended = why;
+      else if (relay.client.readyState === WebSocket.OPEN) relay.client.close(...why);
+      relay.upstream.terminate();
+    }
+  }
+
+  private endShareAt(userId: string, at: number): void {
+    const timer = setTimeout(
+      () => {
+        this.shareEnds.delete(userId);
+        if (Date.now() < at) this.endShareAt(userId, at);
+        else this.endShare(userId);
+      },
+      Math.min(Math.max(at - Date.now(), 0), MAX_TIMEOUT_MS),
+    );
+    timer.unref();
+    this.shareEnds.set(userId, timer);
+  }
+
+  private endShare(userId: string): void {
+    this.endAll(this.byUser.get(userId), SHARE_ENDED);
+    // a connected WebRTC peer outlives its relay
+    tryInject('go2rtcApi')
+      ?.streamsRoute.killConsumersByTag(userId)
+      .catch(() => {});
+  }
+}
+
 class WebSocketProxy {
   private wss: WebSocketServer;
   private wssDeflate?: WebSocketServer;
@@ -118,6 +242,7 @@ class WebSocketProxy {
     this.dbs = container.resolve<Database>('dbs');
     this.authService = new AuthService();
     this.usersService = new UsersService();
+    this.relays = tryInject('relayRegistry') ?? new RelayRegistry();
 
     this.upstream = options.upstream;
     this.upstreamHost = new URL(options.upstream).host;
@@ -184,10 +309,12 @@ class WebSocketProxy {
       let firewallConnId: string | null = null;
       let firewallUserId: string | undefined;
       let go2rtcViewer = false;
+      let privileged = false;
 
       if (this.target === 'go2rtc') {
         const src = url.searchParams.get('src') ?? '';
         go2rtcViewer = this.isGo2rtcViewer(dbToken);
+        privileged = !go2rtcViewer;
         const denied = this.go2rtcSrcDenial(dbToken, src, go2rtcViewer);
         if (denied) {
           this.reject(request, socket, head, 4403, denied, token);
@@ -206,6 +333,7 @@ class WebSocketProxy {
 
         const isAdmin = this.isAdmin(dbToken.user_id);
         natsCreds = isAdmin ? this.proxy.auth.server : this.proxy.auth.viewer;
+        privileged = isAdmin;
 
         if (!isAdmin) {
           const connId = url.searchParams.get('connId') ?? '';
@@ -248,15 +376,61 @@ class WebSocketProxy {
       };
 
       const serverWs = new WebSocket(targetUrl, wsOptions);
-
-      await new Promise<void>((resolve, reject) => {
-        serverWs.once('open', resolve);
-        serverWs.once('error', reject);
+      const relay: Relay = { tokenId: dbToken.id, userId: dbToken.user_id, target: this.target, privileged, upstream: serverWs, endsAt };
+      this.relays.add(relay);
+      serverWs.once('close', () => {
+        if (!relay.client) this.relays.remove(relay);
       });
 
-      this.wss.handleUpgrade(request, socket, head, (clientWs) => {
-        this.proxyWebSockets(clientWs, serverWs, natsCreds, firewallConnId, firewallUserId, go2rtcViewer);
+      // the NATS INFO can arrive with the 101, before the await below resumes
+      const early: [RawData, boolean][] = [];
+      const hold = (data: RawData, isBinary: boolean): void => {
+        early.push([data, isBinary]);
+      };
+      serverWs.on('message', hold);
+
+      let left = false;
+      const leave = (): void => {
+        left = true;
+        serverWs.terminate();
+      };
+      socket.once('close', leave);
+      socket.once('end', leave);
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          serverWs.once('open', resolve);
+          serverWs.once('error', reject);
+        });
+      } catch (err) {
+        if (left) socket.destroy();
+        else if (relay.ended) this.reject(request, socket, head, ...relay.ended, token);
+        else this.upstreamFailed(request, socket, head, err as Error, url.searchParams.get('src') ?? '');
+        return;
+      } finally {
+        socket.off('close', leave);
+        socket.off('end', leave);
+      }
+
+      if (relay.ended) {
+        this.reject(request, socket, head, ...relay.ended, token);
+        return;
+      }
+
+      let upgraded = false;
+      const remote = this.target === 'nats' && isRemoteClient(request);
+      const wss = remote && this.wssDeflate ? this.wssDeflate : this.wss;
+      wss.handleUpgrade(request, socket, head, (clientWs) => {
+        upgraded = true;
+        relay.client = clientWs;
+        clientWs.once('close', () => this.relays.remove(relay));
+        serverWs.off('message', hold);
+        const framed = remote && wantsFrameDeflate(request, url) && !clientWs.extensions.includes('permessage-deflate');
+        this.proxyWebSockets(clientWs, serverWs, natsCreds, firewallConnId, firewallUserId, go2rtcViewer, early, framed ? new FrameDeflater() : undefined);
       });
+
+      // handleUpgrade calls back synchronously or never, never means the client left
+      if (!upgraded) serverWs.terminate();
     } catch (err) {
       this.logger.warn(`Proxy upgrade failed (500) target=${this.target}: ${(err as Error)?.message ?? err}`);
       socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');

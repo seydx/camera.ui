@@ -48,10 +48,10 @@ export class UsersService {
     const passwordChanged = userData.password !== undefined && userData.password !== existing.password;
 
     if (usernameChanged || passwordChanged) {
-      await this.authService.invalidateSessionsByUserId(existing._id);
+      await this.authService.revokeUsers([existing._id]);
     }
 
-    return this.dbs.commit(this.dbs.usersDB, existing._id, (current) => {
+    const updated = await this.dbs.commit(this.dbs.usersDB, existing._id, (current) => {
       if (!current) return undefined;
 
       mergeWith(current, userData, (source: any, target: any, key: string | number | undefined) => {
@@ -61,27 +61,35 @@ export class UsersService {
 
       return current;
     });
+
+    if (updated && isAdmin(existing.role) && !isAdmin(updated.role)) {
+      this.authService.dropAdminConnections(existing._id);
+    }
+
+    return updated;
   }
 
   public async removeByName(username: string): Promise<void> {
     const user = this.findByName(username);
     if (!user) return;
 
-    await this.authService.invalidateByUserId(user._id);
-    await this.assistant()?.forgetUser(user._id);
+    await this.authService.revokeUsers([user._id], { apiTokens: true });
+    await tryInject('assistantManager')?.forgetUser(user._id);
     await this.dbs.usersDB.remove(user._id);
   }
 
   public async removeAll(): Promise<void> {
     const tasks: Promise<unknown>[] = [];
+    const removed = new Set<string>();
     for (const { key, value } of this.dbs.usersDB.getRange()) {
       if (value.role !== 'master') {
-        tasks.push(this.assistant()?.forgetUser(key) ?? Promise.resolve());
+        removed.add(key);
+        tasks.push(tryInject('assistantManager')?.forgetUser(key) ?? Promise.resolve());
         tasks.push(this.dbs.usersDB.remove(key));
       }
     }
 
-    await this.authService.invalidateAll();
+    await this.authService.revokeUsers([...removed], { apiTokens: true });
     await Promise.all(tasks);
   }
 
@@ -399,8 +407,8 @@ export class UsersService {
       return current;
     });
   }
+}
 
-  private assistant(): AssistantManager | undefined {
-    return container.isRegistered('assistantManager') ? container.resolve<AssistantManager>('assistantManager') : undefined;
-  }
+function isAdmin(role: DBUser['role']): boolean {
+  return role === 'admin' || role === 'master';
 }

@@ -172,8 +172,9 @@ export class AuthController {
       const authorization = req.headers.authorization?.split(/\s+/);
       const accessToken = authorization?.[0] === 'Bearer' ? authorization[1] : undefined;
 
-      if (accessToken) {
-        await this.service.invalidateByAccessToken(accessToken);
+      const token = accessToken ? this.service.findByAccessToken(accessToken) : undefined;
+      if (token) {
+        await this.service.revoke([token]);
       }
 
       return reply.code(204).send();
@@ -203,7 +204,7 @@ export class AuthController {
         return reply.code(403).send({ statusCode: 403, message: 'Forbidden' });
       }
 
-      await this.service.invalidateById(target.id);
+      await this.service.revoke([target]);
       return reply.code(204).send();
     } catch (error: any) {
       return reply.code(500).send({
@@ -221,7 +222,7 @@ export class AuthController {
       const current = currentAccessToken ? this.service.findByAccessToken(currentAccessToken) : undefined;
 
       const tokens = this.service.listSessionsByUserId(requester._id).filter((t) => t.id !== current?.id);
-      await Promise.all(tokens.map((t) => this.service.invalidateById(t.id)));
+      await this.service.revoke(tokens);
 
       return reply.code(204).send();
     } catch (error: any) {
@@ -237,11 +238,8 @@ export class AuthController {
       const requester = req.locals.user!;
       const isAdmin = requester.role === 'admin' || requester.role === 'master';
 
-      if (isAdmin) {
-        await this.service.invalidateAllSessions();
-      } else {
-        await this.service.invalidateSessionsByUserId(requester._id);
-      }
+      const userIds = isAdmin ? [...this.userService.list().map((u) => u._id), ...this.service.listTokens().map((t) => t.user_id)] : [requester._id];
+      await this.service.revokeUsers(userIds);
 
       return reply.code(204).send();
     } catch (error: any) {
@@ -288,6 +286,9 @@ export class AuthController {
 
       const newAccessToken = this.signAccessToken(user, oldToken.device.id);
       const rotated = await this.service.rotate(oldToken, newAccessToken);
+      if (!rotated) {
+        return reply.code(401).send({ statusCode: 401, message: 'Invalid refresh token' });
+      }
 
       const response: JwtTokenResponse = {
         access_token: rotated.access_token,
@@ -630,7 +631,7 @@ export class AuthController {
         return reply.code(403).send({ statusCode: 403, message: 'Forbidden' });
       }
 
-      await this.service.invalidateById(target.id);
+      await this.service.revoke([target]);
       return reply.code(204).send();
     } catch (error: any) {
       return reply.code(500).send({

@@ -110,6 +110,26 @@ export class AuthService {
     await Promise.all(tokens.map((t) => this.invalidateById(t.id)));
   }
 
+  public async revoke(tokens: DBToken[]): Promise<void> {
+    await Promise.all(tokens.map((t) => this.invalidateById(t.id)));
+    const ids = tokens.map((t) => t.id);
+    tryInject('socketService')?.disconnectTokens(ids);
+    tryInject('relayRegistry')?.closeTokens(ids);
+  }
+
+  public async revokeUsers(userIds: string[], { apiTokens = false }: { apiTokens?: boolean } = {}): Promise<void> {
+    const users = new Set(userIds);
+    const tokens = this.listTokens().filter((t) => users.has(t.user_id) && (apiTokens || t.type !== 'api'));
+    await Promise.all(tokens.map((t) => this.invalidateById(t.id)));
+    tryInject('socketService')?.disconnectOrphans([...users]);
+    tryInject('relayRegistry')?.closeOrphans([...users], (id) => this.findById(id) !== undefined);
+  }
+
+  public dropAdminConnections(userId: string): void {
+    tryInject('socketService')?.dropAdminNamespaces(userId);
+    tryInject('relayRegistry')?.dropAdmin(userId);
+  }
+
   public async invalidateFamily(parentTokenId: string): Promise<number> {
     const family = this.listTokens().filter((t) => t.parent_token_id === parentTokenId || t.id === parentTokenId);
     await Promise.all(family.map((t) => this.invalidateById(t.id)));
@@ -192,16 +212,16 @@ export class AuthService {
     };
   }
 
-  public async rotate(oldToken: DBToken, newAccessToken: string): Promise<DBToken> {
+  public async rotate(oldToken: DBToken, newAccessToken: string): Promise<DBToken | undefined> {
     const now = Date.now();
     const window = oldToken.persistent ? TOKEN_LIFETIME.REFRESH_PERSISTENT_MS : TOKEN_LIFETIME.REFRESH_NON_PERSISTENT_MS;
     const refreshToken = this.generateRefreshToken();
 
     const rotated = await this.dbs.commit(this.dbs.tokensDB, oldToken.id, (current) => {
-      if (current && current.refresh_token !== oldToken.refresh_token) return undefined;
+      if (current?.refresh_token !== oldToken.refresh_token) return undefined;
 
       return {
-        ...(current ?? oldToken),
+        ...current,
         access_token: newAccessToken,
         access_token_expires_at: now + TOKEN_LIFETIME.ACCESS_SECONDS * 1000,
         refresh_token: refreshToken,
@@ -214,7 +234,7 @@ export class AuthService {
       };
     });
 
-    return rotated ?? this.dbs.tokensDB.get(oldToken.id) ?? oldToken;
+    return rotated ?? this.dbs.tokensDB.get(oldToken.id);
   }
 
   public mergeDevice(token: DBToken, patch: Partial<DBTokenDevice>): DBToken {
