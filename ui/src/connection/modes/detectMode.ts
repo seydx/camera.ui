@@ -1,3 +1,5 @@
+import { localAccessExpiry } from '@camera.ui/transport';
+
 import { homeOrigin } from '@/common/base.js';
 import { CLOUD_SERVICE_URL, PROXY_SERVICE_HOST } from '@/common/constants.js';
 
@@ -91,7 +93,7 @@ async function detectWebCloudMode(): Promise<DetectedMode> {
         proxyUrl: body.proxy_url ?? window.location.origin,
         proxyToken: body.proxy_token,
         proxyRefreshToken: body.proxy_refresh_token,
-        proxyTokenExpiresAt: body.proxy_token_expires_at,
+        proxyTokenExpiresAt: localAccessExpiry(body.proxy_token, body.proxy_token_expires_at),
         proxyRefreshTokenExpiresAt: body.proxy_refresh_token_expires_at,
         serverId: body.server_id ?? undefined,
         cloudApiBase: CLOUD_SERVICE_URL,

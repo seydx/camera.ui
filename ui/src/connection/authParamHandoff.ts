@@ -1,3 +1,5 @@
+import { localAccessExpiry } from '@camera.ui/transport';
+
 import { homeOrigin } from '@/common/base.js';
 
 import type { Endpoint, Tokens } from '@camera.ui/transport';
@@ -70,7 +72,7 @@ export async function consumeAuthParam(connection: Connection, options: ConsumeA
     const tokens: Tokens = {
       access: data.access_token,
       refresh: data.refresh_token,
-      accessExpiresAt: data.access_token_expires_at,
+      accessExpiresAt: localAccessExpiry(data.access_token, data.access_token_expires_at),
       refreshExpiresAt: data.refresh_token_expires_at,
     };
     const endpoint: Endpoint = { url: homeOrigin(), mode: 'direct-lan', priority: 0 };

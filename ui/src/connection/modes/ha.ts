@@ -1,3 +1,4 @@
+import { PromiseTimeout } from '@camera.ui/common/utils';
 import { makeProbeFailure } from '@camera.ui/transport';
 
 import { createNetworkAdapters } from '../adapters/network.js';
@@ -23,6 +24,7 @@ const TOKEN_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 const SIGN_EXPIRES_S = 2 * 60 * 60;
 const SIGN_EXPIRES_STREAM_S = 5 * 60;
 const RESOLVE_REFRESH_MS = 20 * 60_000;
+const SIGN_TIMEOUT_MS = 10_000;
 
 export function haProxyPath(entryId: string): string {
   return `/api/cameraui/auth/${entryId}`;
@@ -35,7 +37,7 @@ export function haTarget(entryId: string): ConnectionTarget {
 }
 
 async function signPath(host: HaHost, path: string, expires: number): Promise<string> {
-  const signed = await host.callWS<{ path: string }>({ type: 'auth/sign_path', path, expires });
+  const signed = await PromiseTimeout(host.callWS<{ path: string }>({ type: 'auth/sign_path', path, expires }), SIGN_TIMEOUT_MS, undefined, 'auth/sign_path timed out');
   return signed.path;
 }
 

@@ -2,6 +2,7 @@
 import { createNetworkAdapters } from '../adapters/network.js';
 import { createStorageAdapter } from '../adapters/storage.js';
 import { createVisibilitySource } from '../adapters/visibility.js';
+import { createWakeSource } from '../adapters/wake.js';
 import { createAuthApi } from '../auth/api.js';
 import { createDiscoverCloud } from '../auth/discover.js';
 import { createProbe } from '../auth/probe.js';
@@ -68,6 +69,7 @@ export function buildCloudMode(options: CloudModeOptions): CloudModeBundle {
       visibilitySource: createVisibilitySource(),
       networkSource: network.networkSource,
       networkChangeSource: network.networkChangeSource,
+      wakeSource: createWakeSource(),
     },
     callbacks: {
       discover,

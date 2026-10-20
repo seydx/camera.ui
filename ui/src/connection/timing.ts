@@ -1,0 +1,10 @@
+export const PROBE_LOCK_TIMEOUT_MS = 15_000;
+export const OFFLINE_RETRY_SCHEDULE_MS: readonly number[] = [5_000, 5_000, 10_000, 15_000];
+export const OFFLINE_RETRY_JITTER = 0.2;
+export const WAKE_FAST_RETRY_WINDOW_MS = 15_000;
+export const WAKE_FAST_RETRY_DELAY_MS = 1_500;
+export const BACKGROUND_PREFER_GRACE_MS = 1_000;
+export const UPGRADE_RETRY_DELAYS_MS: readonly number[] = [3_000, 8_000];
+export const UPGRADE_THROTTLE_MS = 30_000;
+export const PATH_SETTLE_MS = 2_000;
+export const NETWORK_CHANGE_DEBOUNCE_MS = 2_000;

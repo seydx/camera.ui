@@ -36,6 +36,8 @@ export interface DeepLinkPayload {
   path: string;
 }
 
+export type PowerResumeReason = 'resume' | 'unlock';
+
 export type UpdateStatus = 'checking' | 'available' | 'not-available' | 'error' | 'progress' | 'downloaded' | 'installing' | 'development';
 export type ServiceStatus = 'initializing' | 'ready' | 'error' | 'starting' | 'stopping' | 'restarting' | 'message';
 

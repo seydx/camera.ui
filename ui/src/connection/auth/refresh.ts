@@ -22,26 +22,21 @@ export function createRefresh(api: AuthApi): RefreshCoordinator {
   let cached: Tokens | null = null;
   let cachedEndpoint = '';
   let coordination: RefreshCoordination | null = null;
+  let rejected: string | undefined;
 
-  function stillFresh(tokens: Tokens): boolean {
-    return !!tokens.accessExpiresAt && tokens.accessExpiresAt > Date.now() + REUSE_GRACE_MS;
-  }
-
-  function invalidateIfRejected(rejectedAccess: string | undefined): void {
-    if (rejectedAccess && cached?.access === rejectedAccess) {
-      cached = null;
-    }
+  function reusable(tokens: Tokens): boolean {
+    return tokens.access !== rejected && !!tokens.accessExpiresAt && tokens.accessExpiresAt > Date.now() + REUSE_GRACE_MS;
   }
 
   async function doRefresh(endpoint: string, refreshToken: string | undefined, base: Tokens | undefined, signal?: AbortSignal): Promise<Tokens> {
-    if (cachedEndpoint === endpoint && cached && stillFresh(cached)) return cached;
+    if (cachedEndpoint === endpoint && cached && reusable(cached)) return cached;
     if (inflight) return inflight;
 
     // Inside the cross-tab lock (when wired): another tab may have rotated
     // the refresh token while we waited — refreshing with the stale one gets
     // rejected server-side (hard rotation) and forces a logout.
     const latest: Tokens | null = coordination?.getLatestTokens?.() ?? null;
-    if (latest && stillFresh(latest)) {
+    if (latest && reusable(latest)) {
       cached = latest;
       cachedEndpoint = endpoint;
       return latest;
@@ -64,8 +59,8 @@ export function createRefresh(api: AuthApi): RefreshCoordinator {
   }
 
   async function coalesced(endpoint: string, refreshToken: string | undefined, base: Tokens | undefined, signal?: AbortSignal): Promise<Tokens> {
-    // Cheap pre-checks outside the lock; the authoritative ones repeat inside.
-    if (cachedEndpoint === endpoint && cached && stillFresh(cached)) return cached;
+    // cheap pre-check, the authoritative one repeats inside the lock
+    if (cachedEndpoint === endpoint && cached && reusable(cached)) return cached;
     if (inflight) return inflight;
     const lock = coordination?.acquireLock;
     if (lock) return lock(() => doRefresh(endpoint, refreshToken, base, signal));
@@ -74,15 +69,13 @@ export function createRefresh(api: AuthApi): RefreshCoordinator {
 
   return {
     refresh: (target, reason) => {
-      if (reason === 'auth-error') invalidateIfRejected(target.tokens.access);
-      // No lock here: tokenLifecycle already holds the same navigator.locks
-      // key around this call and the lock is not reentrant.
+      if (reason === 'auth-error') rejected = target.tokens.access;
+      // no lock: tokenLifecycle already holds it and navigator.locks is not reentrant
       return doRefresh(target.endpoint.url, target.tokens.refresh, target.tokens);
     },
     getFreshTokens: ({ endpoint, refreshToken, base, signal }) => {
-      // The probe path lands here after a 401 — the access token it holds
-      // was just rejected.
-      invalidateIfRejected(base?.access);
+      // the probe lands here after a 401, its access token was just rejected
+      if (base?.access) rejected = base.access;
       return coalesced(endpoint, refreshToken, base, signal);
     },
     bindCoordination: (co) => {

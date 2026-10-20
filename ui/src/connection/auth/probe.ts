@@ -30,6 +30,10 @@ function reloadForProxyLogin(): boolean {
   return true;
 }
 
+function isLockWaitTimeout(err: unknown): boolean {
+  return err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
+
 function clearProxyReload(): void {
   try {
     sessionStorage.removeItem(PROXY_RELOAD_FLAG);
@@ -81,6 +85,7 @@ export function createProbe(api: AuthApi, refresh: RefreshCoordinator): ProbeFn 
           return { ...ctx.lastTokens, ...freshTokens };
         } catch (refreshErr) {
           if (ctx.signal.aborted) throw refreshErr;
+          if (isLockWaitTimeout(refreshErr)) throw makeProbeFailure('transient', 'refresh lock not granted in time');
           if (isCancellationError(refreshErr)) throw makeProbeFailure('aborted', 'refresh canceled');
           const refreshStatus = axios.isAxiosError(refreshErr) ? refreshErr.response?.status : undefined;
           if (refreshStatus === 401 || refreshStatus === 403) {

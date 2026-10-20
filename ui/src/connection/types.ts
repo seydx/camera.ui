@@ -30,6 +30,7 @@ export interface ConnectionAdapters {
   readonly visibilitySource: EventTarget;
   readonly networkSource: EventTarget;
   readonly networkChangeSource?: EventTarget;
+  readonly wakeSource?: EventTarget;
 }
 
 export interface RefreshCoordination {
@@ -44,6 +45,7 @@ export interface ConnectionCallbacks {
   readonly onWake?: () => void;
   readonly bindRefresh?: (co: RefreshCoordination) => void;
   readonly onConnectionReset?: () => void;
+  readonly ownsEndpoint?: (url: string) => boolean;
 }
 
 export interface TransportOptions {

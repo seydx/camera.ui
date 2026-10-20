@@ -1,5 +1,6 @@
 import { resetClientState } from '@camera.ui/browser';
 import { clearEventDataCache, resetEventStore } from '@camera.ui/nvr';
+import { localAccessExpiry } from '@camera.ui/transport';
 
 import { createInstanceFn, deleteInstanceFn, getInstancesFn, isRequires2fa, loginToRemoteFn, toggleFavoriteFn, updateInstanceFn } from '@/api/routes/instances.js';
 import InstanceTwoFactorPrompt from '@/components/CuiDialog/templates/InstanceTwoFactorPrompt/InstanceTwoFactorPrompt.vue';
@@ -46,7 +47,11 @@ function tokensFromUserData(data: UserData): Tokens {
   };
 }
 
-function serializeUserData(tokens: Tokens, user?: { _id: string; username: string; email?: string; role: string; firstLogin?: boolean; avatar?: string }): UserData {
+function withLocalExpiry(data: UserData): UserData {
+  return { ...data, access_token_expires_at: localAccessExpiry(data.access_token, data.access_token_expires_at) ?? data.access_token_expires_at };
+}
+
+function serializeUserData(tokens: Tokens, user?: { _id: string; username: string; role: string; firstLogin?: boolean; avatar?: string }): UserData {
   return {
     _id: user?._id ?? '',
     username: user?.username ?? '',
@@ -309,7 +314,7 @@ export const useInstanceStore = defineStore('instances', () => {
           }
 
           if (!isRequires2fa(result)) {
-            freshUserData = result;
+            freshUserData = withLocalExpiry(result);
             log.debug('[switch]', 'backend relay login OK');
           }
         } catch (err) {

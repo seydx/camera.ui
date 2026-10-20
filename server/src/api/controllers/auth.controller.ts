@@ -374,8 +374,8 @@ export class AuthController {
       const secret = this.twoFactorService.decryptSecret(user.twoFactor.secret);
       const isValidCode = this.twoFactorService.verifyToken(req.body.code, secret, user._id);
       if (!isValidCode) {
-        return reply.code(401).send({
-          statusCode: 401,
+        return reply.code(400).send({
+          statusCode: 400,
           message: 'Invalid code',
         });
       }
@@ -419,8 +419,8 @@ export class AuthController {
       const isValid = isValidTotp || isValidBackup;
 
       if (!isValid) {
-        return reply.code(401).send({
-          statusCode: 401,
+        return reply.code(400).send({
+          statusCode: 400,
           message: 'Invalid code',
         });
       }
@@ -457,8 +457,8 @@ export class AuthController {
       const secret = this.twoFactorService.decryptSecret(user.twoFactor.secret!);
       const isValidCode = this.twoFactorService.verifyToken(req.body.code, secret, user._id);
       if (!isValidCode) {
-        return reply.code(401).send({
-          statusCode: 401,
+        return reply.code(400).send({
+          statusCode: 400,
           message: 'Invalid code',
         });
       }

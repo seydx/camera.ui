@@ -1,3 +1,4 @@
+import { localAccessExpiry } from '@camera.ui/transport';
 import axios from 'axios';
 
 import { bearer } from '../fetchAuth.js';
@@ -224,7 +225,7 @@ function isTwoFactorPendingResponse(data: LoginRawResponse): data is TwoFactorPe
 function extractTokens(data: JwtTokenResponse): Tokens {
   return {
     access: data.access_token,
-    accessExpiresAt: data.access_token_expires_at,
+    accessExpiresAt: localAccessExpiry(data.access_token, data.access_token_expires_at),
     refresh: data.refresh_token,
     refreshExpiresAt: data.refresh_token_expires_at,
   };
@@ -251,7 +252,7 @@ function extractProxyMint(data: ProxyMintResponse): ProxyMintResult {
     proxyUrl: data.proxy_url,
     proxyToken: data.proxy_token,
     proxyRefreshToken: data.proxy_refresh_token,
-    proxyTokenExpiresAt: data.proxy_token_expires_at,
+    proxyTokenExpiresAt: localAccessExpiry(data.proxy_token, data.proxy_token_expires_at),
     proxyRefreshTokenExpiresAt: data.proxy_refresh_token_expires_at,
   };
 }

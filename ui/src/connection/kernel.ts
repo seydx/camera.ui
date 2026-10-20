@@ -1,3 +1,4 @@
+import { restartConnectedStreams } from '@camera.ui/browser';
 import {
   attachBackoff,
   attachCrossTab,
@@ -15,7 +16,22 @@ import {
 } from '@camera.ui/transport';
 import axios from 'axios';
 
+import { NETWORK_PATH_EVENT } from './adapters/network.js';
+import { UNLOCK_EVENT, WAKE_EVENT } from './adapters/wake.js';
 import { createConnectionAttemptLog } from './attempts.js';
+import { createTrailingThrottle, jitteredSchedule } from './pacing.js';
+import {
+  BACKGROUND_PREFER_GRACE_MS,
+  NETWORK_CHANGE_DEBOUNCE_MS,
+  OFFLINE_RETRY_JITTER,
+  OFFLINE_RETRY_SCHEDULE_MS,
+  PATH_SETTLE_MS,
+  PROBE_LOCK_TIMEOUT_MS,
+  UPGRADE_RETRY_DELAYS_MS,
+  UPGRADE_THROTTLE_MS,
+  WAKE_FAST_RETRY_DELAY_MS,
+  WAKE_FAST_RETRY_WINDOW_MS,
+} from './timing.js';
 import { createTransports } from './transports.js';
 
 import type { ConnectionPhase, ConnectionSignal, ConnectionTarget, Persistence, ReducerContext, TokenLifecycle } from '@camera.ui/transport';
@@ -30,6 +46,8 @@ export function createConnection(options: ConnectionOptions): Connection {
   const logger = options.logger;
   const persistKey = options.storageNamespace ? `${PERSIST_STORAGE_KEY}:${options.storageNamespace}` : PERSIST_STORAGE_KEY;
   const refreshLockKey = options.storageNamespace ? `${REFRESH_LOCK_KEY}:${options.storageNamespace}` : REFRESH_LOCK_KEY;
+
+  const ownsEndpoint = options.callbacks.ownsEndpoint;
 
   const journal = createConnectionJournal();
   const attempts = createConnectionAttemptLog();
@@ -95,7 +113,7 @@ export function createConnection(options: ConnectionOptions): Connection {
 
   const acquireRefreshLock =
     typeof navigator !== 'undefined' && 'locks' in navigator
-      ? <T>(fn: () => Promise<T>): Promise<T> => navigator.locks.request(refreshLockKey, fn) as Promise<T>
+      ? <T>(fn: () => Promise<T>, signal?: AbortSignal): Promise<T> => navigator.locks.request(refreshLockKey, signal ? { signal } : {}, fn) as Promise<T>
       : undefined;
 
   const persistence: Persistence = attachPersistence({
@@ -116,7 +134,7 @@ export function createConnection(options: ConnectionOptions): Connection {
   // uses plus a live view of the persisted tokens — the probe's 401-refresh
   // otherwise races other tabs with an already-rotated refresh token.
   options.callbacks.bindRefresh?.({
-    acquireLock: acquireRefreshLock ?? (async (fn) => fn()),
+    acquireLock: acquireRefreshLock ? (fn) => acquireRefreshLock(fn, AbortSignal.timeout(PROBE_LOCK_TIMEOUT_MS)) : async (fn) => fn(),
     getLatestTokens: () => persistence.peek()?.tokens ?? null,
   });
 
@@ -124,6 +142,7 @@ export function createConnection(options: ConnectionOptions): Connection {
     attachCrossTab({
       kernel,
       key: persistKey,
+      accept: ownsEndpoint ? (payload) => !payload.endpoint || ownsEndpoint(payload.endpoint.url) : undefined,
       absorb: (t) => persistence.absorb(t),
       onTokensReceived: () => {
         diag('cross-tab', 'tokens received from another tab');
@@ -137,6 +156,7 @@ export function createConnection(options: ConnectionOptions): Connection {
           kernel.dispatch({ type: 'BOOT', instanceId: 'default' });
         }
       },
+      onTokensIgnored: (payload) => diag('cross-tab', 'tokens of another instance ignored', payload.endpoint?.url),
       onResetReceived: () => diag('cross-tab', 'logout received from another tab'),
       onError: (op, err) => diag('cross-tab', `${op} error`, err, 'warn'),
     }),
@@ -201,8 +221,8 @@ export function createConnection(options: ConnectionOptions): Connection {
   cleanups.push(
     attachBackoff({
       kernel,
-      schedule: [5_000],
-      firstAttemptDelayMs: () => (Date.now() - lastWakeAt < 15_000 ? 1_500 : null),
+      schedule: jitteredSchedule(OFFLINE_RETRY_SCHEDULE_MS, OFFLINE_RETRY_JITTER),
+      firstAttemptDelayMs: () => (Date.now() - lastWakeAt < WAKE_FAST_RETRY_WINDOW_MS ? WAKE_FAST_RETRY_DELAY_MS : null),
       onScheduled: (attempt, delayMs) => diag('backoff', `attempt #${attempt} in ${Math.round(delayMs / 1000)}s`),
       onFire: (attempt) => diag('backoff', `firing #${attempt}`),
       onCancelled: (reason) => diag('backoff', `cancelled (${reason})`),
@@ -241,6 +261,15 @@ export function createConnection(options: ConnectionOptions): Connection {
     return kernel.phase.kind === 'offline';
   }
 
+  function anyChannelUp(): boolean {
+    return [socketio, nats].some((t) => t.health().up);
+  }
+
+  function restartLiveStreams(reason: string): void {
+    const restarted = restartConnectedStreams();
+    if (restarted > 0) diag('streams', `restarted ${restarted} (${reason})`);
+  }
+
   const backgroundProbe = createBackgroundProbe({
     kernel,
     discover: async (signal) => {
@@ -264,8 +293,8 @@ export function createConnection(options: ConnectionOptions): Connection {
     lastTarget: () => target.value ?? restoredTarget ?? persistence.peek(),
     ready: () => persistence.ready,
     prefer: (ep) => ep.mode === 'direct-lan',
-    preferGraceMs: 1_000,
-    isCurrentHealthy: () => [socketio, nats].some((t) => t.health().up),
+    preferGraceMs: BACKGROUND_PREFER_GRACE_MS,
+    isCurrentHealthy: anyChannelUp,
     onResult: (outcome, detail) => diag('probe', `background ${outcome}`, detail),
   });
   cleanups.push(() => backgroundProbe.dispose());
@@ -321,7 +350,7 @@ export function createConnection(options: ConnectionOptions): Connection {
       signal: signalHandle,
       ensureAll: ensureTransportsAlive,
       probe: () => backgroundProbe.run(),
-      isReachable: () => [socketio, nats].some((t) => t.health().up),
+      isReachable: anyChannelUp,
       onEscalate: (round) => diag('degraded-recovery', `round #${round}`),
       onOffline: (reason) => diag('degraded-recovery', reason, undefined, 'warn'),
       onHold: (reason) => diag('degraded-recovery', reason),
@@ -337,7 +366,10 @@ export function createConnection(options: ConnectionOptions): Connection {
         diag('presence', 'network online');
         wakeTokens();
         if (shouldRetryOnWake()) k.dispatch({ type: 'USER_RETRY' });
-        else if (k.phase.kind === 'online') runUpgradeProbe();
+        else if (k.phase.kind === 'online') {
+          restartLiveStreams('network online');
+          runUpgradeProbe();
+        }
       },
       onOffline: () => diag('presence', 'network offline'),
       onVisibilityVisible: (k) => {
@@ -355,13 +387,14 @@ export function createConnection(options: ConnectionOptions): Connection {
       attachNetworkChange({
         kernel,
         source: options.adapters.networkChangeSource,
-        debounceMs: 2_000,
+        debounceMs: NETWORK_CHANGE_DEBOUNCE_MS,
         onChange: (k) => {
           diag('network-change', 'connection type changed');
           wakeTokens();
           // healthy connections stay online: probe silently and swap the
           // endpoint in place if the new network opened a better path
           if (k.phase.kind === 'online') {
+            restartLiveStreams('network change');
             runUpgradeProbe();
           } else if (k.phase.kind === 'offline') {
             diag('network-change', 're-discovering');
@@ -370,6 +403,31 @@ export function createConnection(options: ConnectionOptions): Connection {
         },
       }),
     );
+    const pathSource = options.adapters.networkChangeSource;
+    pathSource.addEventListener(NETWORK_PATH_EVENT, onPathChange);
+    cleanups.push(() => pathSource.removeEventListener(NETWORK_PATH_EVENT, onPathChange));
+  }
+
+  function onSystemWake(event: Event): void {
+    const resumed = event.type === WAKE_EVENT;
+    diag('presence', resumed ? 'system wake' : 'screen unlock');
+    wakeTokens();
+    if (shouldRetryOnWake()) {
+      kernel.dispatch({ type: 'USER_RETRY' });
+      return;
+    }
+    if (kernel.phase.kind !== 'online') return;
+    // sleep can kill sockets without a close, a screen lock does not
+    if (resumed) restartLiveStreams('system wake');
+    requestUpgrade();
+  }
+
+  const wakeSource = options.adapters.wakeSource;
+  if (wakeSource) {
+    for (const type of [WAKE_EVENT, UNLOCK_EVENT]) {
+      wakeSource.addEventListener(type, onSystemWake);
+      cleanups.push(() => wakeSource.removeEventListener(type, onSystemWake));
+    }
   }
 
   const lifecycle: TokenLifecycle = attachTokenLifecycle({
