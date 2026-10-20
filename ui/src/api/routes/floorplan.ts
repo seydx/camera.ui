@@ -8,7 +8,7 @@ export async function getFloorPlan({ signal }: { signal?: AbortSignal } = {}): P
   return response.data;
 }
 
-export async function putFloorPlan(plan: PutFloorPlanInput): Promise<DBFloorPlan> {
-  const response: AxiosResponse<DBFloorPlan> = await api.put('/floorplan', plan);
+export async function putFloorPlan(plan: PutFloorPlanInput, version?: number): Promise<DBFloorPlan> {
+  const response: AxiosResponse<DBFloorPlan> = await api.put('/floorplan', plan, { params: { version } });
   return response.data;
 }

@@ -1,4 +1,4 @@
-import { CatalogConflictError, FloorPlanService } from '../services/floorplan.service.js';
+import { CatalogConflictError, FloorPlanService, PlanConflictError } from '../services/floorplan.service.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { PutFloorPlanInput } from '../schemas/floorplan.schema.js';
@@ -19,11 +19,14 @@ export class FloorPlanController {
     }
   }
 
-  public async replace(req: FastifyRequest<AuthLoginRequest & { Body: PutFloorPlanInput }>, reply: FastifyReply): Promise<FastifyReply> {
+  public async replace(
+    req: FastifyRequest<AuthLoginRequest & { Body: PutFloorPlanInput; Querystring: { version?: number } }>,
+    reply: FastifyReply,
+  ): Promise<FastifyReply> {
     try {
-      return reply.code(200).send(await this.service.replace(req.body));
+      return reply.code(200).send(await this.service.replace(req.body, req.query.version));
     } catch (error: any) {
-      if (error instanceof CatalogConflictError) {
+      if (error instanceof CatalogConflictError || error instanceof PlanConflictError) {
         return reply.code(409).send({ statusCode: 409, message: error.message });
       }
       return reply.code(500).send({ statusCode: 500, message: error.message });

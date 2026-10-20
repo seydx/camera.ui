@@ -406,7 +406,7 @@ import { SecuritySystemState } from '@camera.ui/sdk';
 
 import { extractErrorMessage, randomId } from '@/common/utils.js';
 import FloorplanLevelDialog from '@/components/CuiDialog/templates/FloorplanLevel/FloorplanLevel.vue';
-import { passageOn, sharedWall } from '@/components/CuiFloorplan/utils.js';
+import { passageOn, planRemovals, sharedWall, withoutRemovals } from '@/components/CuiFloorplan/utils.js';
 import { securityState, sensorIcon, sensorStateText, setSecurityState, toggleSensor } from '@/components/CuiSensors/display.js';
 import { SENSOR_READONLY_TYPES, SENSOR_SHORTCUTABLE_TYPES } from '@/components/CuiShortcuts/types.js';
 
@@ -438,6 +438,7 @@ const dialog = useCuiDialog();
 const toast = useCuiToast();
 const router = useRouter();
 const floorplanSocket = useFloorplanSocket();
+const camerauiSocket = useSocket('/camera.ui');
 
 const camerasQuery = new CamerasQuery();
 const { sensors: liveSensors } = useAllSensors();
@@ -469,6 +470,7 @@ const selection = ref<FloorplanSelection | null>(null);
 const showMobilePalette = ref(false);
 const loading = ref(true);
 const saving = ref(false);
+const stale = ref<'plan' | 'rooms' | null>(null);
 const savedPlan = ref('');
 
 const sheetRef = useTemplateRef<HTMLElement>('sheetRef');
@@ -494,6 +496,7 @@ let leaveConfirmed = false;
 let previewTimer: ReturnType<typeof setTimeout> | undefined;
 let sensorHideTimer: ReturnType<typeof setTimeout> | undefined;
 let sheetObserver: ResizeObserver | undefined;
+let basePlan: DBFloorPlan | null = null;
 
 const isAdmin = hasPermission(undefined, 'admin');
 
@@ -686,6 +689,8 @@ function fromPayload(payload: PutFloorPlanInput): void {
 }
 
 function applyPlan(plan: DBFloorPlan, rooms: DBRoomCatalog): void {
+  basePlan = plan;
+  stale.value = null;
   catalog.value = rooms;
   const byId = new Map(rooms.rooms.map((room) => [room.id, room]));
 
@@ -1269,16 +1274,87 @@ function clearLevel(): void {
 }
 
 async function onSave(): Promise<void> {
+  if (!stale.value) {
+    await save(basePlan?.version);
+    return;
+  }
+
+  const roomsChanged = stale.value === 'rooms';
+  dialog.openTextDialog({
+    data: {
+      title: t('views.floorplan.conflict_title'),
+      contentText: t(roomsChanged ? 'views.floorplan.conflict_rooms_message' : 'views.floorplan.conflict_message'),
+      confirmText: t(roomsChanged ? 'views.floorplan.discard' : 'views.floorplan.save_anyway'),
+    },
+    onConfirm: () => (roomsChanged ? revert() : save()),
+  });
+}
+
+async function save(version?: number): Promise<void> {
   saving.value = true;
+  let conflict = false;
   try {
-    const plan = await putFloorPlan(toPayload());
+    const plan = await putFloorPlan(toPayload(), version);
     applyPlan(plan, await getRooms());
     await refreshCameras();
     toast.add({ severity: 'success', detail: t('views.floorplan.saved'), life: 3000 });
   } catch (error: any) {
+    conflict = error?.response?.status === 409;
     toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 5000 });
   } finally {
     saving.value = false;
+  }
+  if (conflict) await resync(false);
+}
+
+function markStale(cause: 'plan' | 'rooms', notify: boolean): void {
+  if (!stale.value && notify) toast.add({ severity: 'warn', detail: t('views.floorplan.changed_elsewhere'), life: 5000 });
+  if (stale.value !== 'rooms') stale.value = cause;
+}
+
+function absorbRemote(plan: DBFloorPlan, notify: boolean): void {
+  const removed = basePlan && planRemovals(basePlan, plan);
+  if (!removed) {
+    markStale('plan', notify);
+    return;
+  }
+
+  basePlan = plan;
+  if (!removed.rooms.size && !removed.connections.size && !removed.cameras.size && !removed.sensors.size) return;
+
+  rooms.value = rooms.value.filter((room) => !removed.rooms.has(room.id));
+  connections.value = connections.value.filter((connection) => !removed.connections.has(connection.id));
+  cameras.value = cameras.value.filter((camera) => !removed.cameras.has(camera.id));
+  sensors.value = sensors.value.filter((sensor) => !removed.sensors.has(sensor.id));
+  selection.value = null;
+
+  const prune = (json: string) => JSON.stringify(withoutRemovals(JSON.parse(json) as PutFloorPlanInput, removed));
+  undoStack.value = undoStack.value.map(prune);
+  redoStack.value = redoStack.value.map(prune);
+  savedPlan.value = prune(savedPlan.value);
+}
+
+async function resync(notify = true): Promise<void> {
+  if (loading.value || saving.value) return;
+  if (!basePlan) return load();
+
+  const base = basePlan;
+  try {
+    const [plan, latest] = await Promise.all([getFloorPlan(), getRooms()]);
+    // a save or a socket update replaced the base while this was loading
+    if (saving.value || basePlan !== base) return;
+    if (plan.version === base.version && latest.version === catalog.value.version) return;
+
+    if (!hasChanges.value) {
+      applyPlan(plan, latest);
+      await refreshCameras();
+    } else if (latest.version !== catalog.value.version) {
+      markStale('rooms', notify);
+    } else {
+      absorbRemote(plan, notify);
+    }
+  } catch {
+    // offline again, the next reconnect retries
   }
 }
 
@@ -1333,10 +1409,16 @@ function onKeyDown(event: KeyboardEvent): void {
 }
 
 const offPlan = floorplanSocket.onPlan(async (plan) => {
-  if (hasChanges.value) return;
+  if (loading.value || saving.value || plan.version === basePlan?.version) return;
+  if (basePlan && hasChanges.value) {
+    await resync();
+    return;
+  }
   applyPlan(plan, await getRooms());
   await refreshCameras();
 });
+
+camerauiSocket.onReady(() => resync());
 
 function startSheetDrag(event: PointerEvent): void {
   const startY = event.clientY;

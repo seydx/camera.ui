@@ -17,6 +17,12 @@ export class CatalogConflictError extends Error {
   }
 }
 
+export class PlanConflictError extends Error {
+  constructor() {
+    super('The floor plan changed while it was open');
+  }
+}
+
 export class FloorPlanService {
   private dbs: Database;
   private roomsService: RoomsService;
@@ -30,9 +36,10 @@ export class FloorPlanService {
     return this.dbs.floorPlanDB.get('floorplan') ?? EMPTY_PLAN;
   }
 
-  public async replace(input: PutFloorPlanInput): Promise<DBFloorPlan> {
+  public async replace(input: PutFloorPlanInput, expectedVersion?: number): Promise<DBFloorPlan> {
     const before = this.roomsService.get();
     if (input.catalogVersion !== before.version) throw new CatalogConflictError();
+    if (expectedVersion !== undefined && expectedVersion !== this.get().version) throw new PlanConflictError();
 
     const levels: DBLevel[] = input.levels;
 
@@ -49,12 +56,16 @@ export class FloorPlanService {
     const catalog = await this.roomsService.apply(levels, [...rooms, ...undrawn]);
     const known = new Map(catalog.rooms.map((room) => [room.id, room]));
 
-    const plan = await this.dbs.commit(this.dbs.floorPlanDB, 'floorplan', (current) => ({
-      ...this.sanitize(input, known),
-      version: (current?.version ?? 0) + 1,
-      updatedAt: Date.now(),
-    }));
+    let conflict = false;
+    const plan = await this.dbs.commit(this.dbs.floorPlanDB, 'floorplan', (current) => {
+      if (expectedVersion !== undefined && (current?.version ?? 0) !== expectedVersion) {
+        conflict = true;
+        return undefined;
+      }
+      return { ...this.sanitize(input, known), version: (current?.version ?? 0) + 1, updatedAt: Date.now() };
+    });
 
+    if (conflict) throw new PlanConflictError();
     if (!plan) return this.get();
 
     await this.syncCameraRooms(plan, known);

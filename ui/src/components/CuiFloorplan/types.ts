@@ -81,6 +81,13 @@ export interface FloorplanSelection {
   id: string;
 }
 
+export interface FloorplanRemovals {
+  rooms: Set<string>;
+  connections: Set<string>;
+  cameras: Set<string>;
+  sensors: Set<string>;
+}
+
 export interface CuiFloorplanCanvasProps {
   mobile?: boolean;
   bottomInset?: number;

@@ -1,3 +1,5 @@
+import * as zod from 'zod';
+
 import { FloorPlanController } from '../controllers/floorplan.controller.js';
 import { onlyAdminCanDoThisAction } from '../middlewares/authPermission.middleware.js';
 import { validJWTNeeded } from '../middlewares/authValidation.middleware.js';
@@ -28,6 +30,7 @@ export const FloorPlanRoute: FastifyPluginAsync = async (app: FastifyInstance): 
     schema: {
       tags: ['Floor plan'],
       summary: 'Replace the floor plan',
+      querystring: zod.object({ version: zod.coerce.number().int().min(0).optional() }),
       body: putFloorPlanSchema,
     },
   });

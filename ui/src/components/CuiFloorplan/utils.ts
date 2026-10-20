@@ -1,6 +1,7 @@
 import { FLOORPLAN_UNITS_PER_METER } from './types.js';
 
-import type { FloorplanConnection, FloorplanRoom } from './types.js';
+import type { DBFloorPlan, PutFloorPlanInput } from '@shared/types';
+import type { FloorplanConnection, FloorplanRemovals, FloorplanRoom } from './types.js';
 
 export function toMeters(units: number): number {
   return units / FLOORPLAN_UNITS_PER_METER;
@@ -265,4 +266,41 @@ function span(from: Corner, to: Corner): number {
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+export function planRemovals(base: DBFloorPlan, next: DBFloorPlan): FloorplanRemovals | null {
+  if (base.north !== next.north) return null;
+
+  const rooms = removedKeys(base.rooms, next.rooms, (room) => room.id);
+  const connections = removedKeys(base.connections, next.connections, (connection) => connection.id);
+  const cameras = removedKeys(base.cameras, next.cameras, (camera) => camera.cameraId);
+  const sensors = removedKeys(base.sensors ?? [], next.sensors ?? [], (sensor) => sensor.sensorId);
+  if (!rooms || !connections || !cameras || !sensors) return null;
+
+  return { rooms, connections, cameras, sensors };
+}
+
+export function withoutRemovals(payload: PutFloorPlanInput, removed: FloorplanRemovals): PutFloorPlanInput {
+  return {
+    ...payload,
+    rooms: payload.rooms.filter((room) => !removed.rooms.has(room.id)),
+    connections: payload.connections.filter((connection) => !removed.connections.has(connection.id)),
+    sensors: payload.sensors.filter((sensor) => !removed.sensors.has(sensor.sensorId)),
+    cameras: payload.cameras.filter((camera) => !removed.cameras.has(camera.cameraId)),
+  };
+}
+
+function removedKeys<T extends object>(base: T[], next: T[], key: (item: T) => string): Set<string> | null {
+  const left = new Map(base.map((item) => [key(item), item]));
+  for (const item of next) {
+    const previous = left.get(key(item));
+    if (!previous || !sameEntry(previous, item)) return null;
+    left.delete(key(item));
+  }
+  return new Set(left.keys());
+}
+
+function sameEntry(a: object, b: object): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key]);
 }
