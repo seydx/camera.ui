@@ -242,7 +242,6 @@ function findPlugin(name: string): Plugin | undefined {
   );
 }
 
-// only the encoded-input methods of the automation registry, the raw-frame variants need the worker's frame format
 function methodsFor(plugin: Plugin, type: PluginMethodParamType): PluginMethodDef[] {
   const out: PluginMethodDef[] = [];
   for (const [iface, methods] of Object.entries(PLUGIN_METHOD_REGISTRY)) {

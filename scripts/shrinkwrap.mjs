@@ -24,10 +24,9 @@ function entryName(key) {
   return index === -1 ? key : key.slice(index + marker.length);
 }
 
-// An override of the form "$name" points at the package's own dependency entry,
-// so npm rejects it once that entry is gone with devDependencies.
 function danglingOverrides(pkg) {
   const dependencies = pkg.dependencies ?? {};
+  // npm rejects a "$name" override once its dependency entry is gone with the devDependencies
   return Object.entries(pkg.overrides ?? {})
     .filter(([key, value]) => {
       if (typeof value !== "string" || !value.startsWith("$")) return false;

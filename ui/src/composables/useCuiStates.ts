@@ -16,7 +16,6 @@ export function useCuiStates() {
   const navbarState = computed<NavbarState | 'minified' | undefined>(() => {
     if (!showNavbar.value) return undefined;
 
-    // navbarStayCollapsed: only 'opened' overrides, otherwise width-based
     if (uiSettings.value.interface.navbarStayCollapsed && state.navbarState !== 'opened') {
       return mdBreakpoint.value ? 'closed' : 'minified';
     }
@@ -25,7 +24,6 @@ export function useCuiStates() {
 
     if (state.navbarState === 'opened') return 'opened';
 
-    // Default: derive from screen width (closed < 768px, minified >= 768px)
     return mdBreakpoint.value ? 'closed' : 'minified';
   });
 

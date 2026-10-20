@@ -130,7 +130,7 @@ export class RemoteService {
         try {
           await this.syncServer(enabled, registrationId);
         } catch {
-          // Non-fatal.
+          // non-fatal
         }
         return { state: 'confirmed' };
       default:
@@ -227,8 +227,7 @@ export class RemoteService {
         await tunnelClient.restart();
       }
     } catch {
-      // Best-effort sync. Failure here is non-fatal — the agent will pick
-      // up the correct state on the next server restart.
+      // best-effort, the next start picks up the right state
     }
   }
 }

@@ -30,7 +30,7 @@ async function fetchUpdates(): Promise<void> {
     state.serverUpdateAvailable = data.server.updateAvailable || data.server.betaUpdateAvailable || false;
     state.workerUpdateAvailable = data.workerUpdateAvailable ?? false;
   } catch {
-    // server unreachable — reconnect path fetches again
+    // unreachable, the reconnect fetches again
   }
 }
 
@@ -40,8 +40,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/server');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and fetchUpdates() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and fetchUpdates() reads `channel`
     channel = ch;
 
     ch.on<INpmPluginState[]>('plugin-updates', (plugins) => {
@@ -72,7 +71,7 @@ export function useServerSocket() {
   }
 
   function disconnect(): void {
-    // Channel teardown is global via resetServerSocket().
+    // teardown runs in resetServerSocket()
   }
 
   return {

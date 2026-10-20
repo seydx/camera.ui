@@ -1030,8 +1030,6 @@ const STREAM_WAKE_TIMEOUT_MS = 10_000;
 const randomId = randomLetter();
 const speedOptions = [0.25, 0.5, 1, 2, 4, 8];
 
-// Stateless AI-description toggle: independent of whether an event is under the
-// playhead. When on, the overlay shows whenever `eventDescription` is set.
 const showDescription = ref(false);
 
 const streamMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('streamMenuRef');
@@ -1046,7 +1044,6 @@ const videoBoxRef = useTemplateRef<HTMLElement>('videoBoxRef');
 const speedPopoverRef = useTemplateRef<InstanceType<typeof Popover>>('speedPopoverRef');
 const morePopoverRef = useTemplateRef<InstanceType<typeof Popover>>('morePopoverRef');
 
-// Always inject regardless of nvrController prop — prop may change at runtime (e.g. PiP swap).
 const nvrMap = inject(NvrPlaybackMapKey, undefined);
 const nvrDirect = inject(NvrPlaybackKey, undefined);
 const gridSearch = inject(GridSearchKey, undefined);
@@ -1357,7 +1354,6 @@ const shortcutsAvailable = computed(() => showShortcuts.value || (fullscreenShor
 const timelineVisible = computed(
   () => timelineState.value && !showPtz.value && !liveResting.value && !gridSearchActive.value && (!cameraStream.isFullscreen.value || fullscreenTimeline.value),
 );
-// with room for it below the centered video (phones in portrait) the timeline moves to the bottom of the screen
 const timelineAtScreenBottom = computed(() => {
   if (!cameraStream.isFullscreen.value) return false;
   const videoHeight = (windowWidth.value * arParsed.value.h) / arParsed.value.w;
@@ -1405,7 +1401,6 @@ const zoomMinimapStyle = computed(() => {
   const containerHeight = playerContainer.height.value;
   if (!containerWidth || !containerHeight) return null;
 
-  // Minimap uses video content dimensions (matches pan limits from getMaxPan).
   const { width: videoWidth, height: videoHeight } = videoContentSize.value;
   if (!videoWidth || !videoHeight) return null;
 
@@ -1669,8 +1664,7 @@ function getMaxPan(zoom: number) {
   const containerRect = playerContainerRef.value.getBoundingClientRect();
   const { width: videoWidth, height: videoHeight } = videoContentSize.value;
 
-  // Pan limits based on video content size, not container size.
-  // This prevents panning into the black letterbox areas.
+  // content size, not container size, so the pan never reaches the letterbox
   const scaledVideoWidth = videoWidth * zoom;
   const scaledVideoHeight = videoHeight * zoom;
   const maxPanX = Math.max(0, (scaledVideoWidth - containerRect.width) / 2);
@@ -1699,13 +1693,13 @@ function onZoomPan(event: ZoomableEvent) {
   if (!playerContainerRef.value || isConstraining.value) return;
 
   const maxZoom = effectiveMaxZoom.value;
-  // Snap to 1 when very close — prevents zoom getting stuck at e.g. 1.0001
+  // snap to 1, zoom otherwise sticks at values like 1.0001
   let clampedZoom = Math.max(1, Math.min(event.zoom, maxZoom));
   if (clampedZoom < 1.02) clampedZoom = 1;
   const currentPan = { x: event.pan.x, y: event.pan.y };
   const previousZoom = lastZoom.value;
 
-  // Zoom was clamped — force sync back to VueZoomable to stop feedback loop
+  // sync the clamp back to VueZoomable, this stops the feedback loop
   const wasClamped = Math.abs(event.zoom - clampedZoom) > 0.001;
 
   if (clampedZoom <= 1) {
@@ -1728,7 +1722,6 @@ function onZoomPan(event: ZoomableEvent) {
 
   lastZoom.value = clampedZoom;
 
-  // Always constrain pan to video content bounds — prevents "rubber band" effect
   const constrained = constrainPan(currentPan, clampedZoom);
 
   if (wasClamped) {
@@ -1758,7 +1751,7 @@ function onDoubleClickZoom(event: MouseEvent) {
 
   event.preventDefault();
   event.stopPropagation();
-  // Reset constraining first so a fast second double-click can interrupt the previous one
+  // reset first so a fast second double-click can interrupt the previous one
   isConstraining.value = true;
 
   const isZoomedIn = zoomValue.value > 1.01;
@@ -1914,9 +1907,7 @@ async function toggleSourceRole(state?: StreamingRole) {
 
     if (availableRoles.length === 0) return;
 
-    // Cycle from what's currently *displayed* (live or NVR), not from live-only
-    // `activeResolution` — otherwise toggling in the event-dialog would skip
-    // steps because live was never active there.
+    // cycle from the displayed role, the event dialog never has live active
     const currentRole = displayResolution.value;
     const currentIndex = availableRoles.indexOf(currentRole);
     const nextIndex = (currentIndex + 1) % availableRoles.length;
@@ -2012,7 +2003,6 @@ function toggleTimeline() {
 function toggleRewind() {
   if (!nvr.value) return;
   if (nvrMode.value === 'idle') {
-    // Live mode: start playback at now - 30s
     const nowUs = Date.now() * 1000;
     nvr.value.play(nowUs - 30_000_000);
     return;
@@ -2163,7 +2153,6 @@ watch(
   { immediate: true, flush: 'post' },
 );
 
-// Sync card muted state → NVR playback (card starts muted=true)
 watch(
   [nvr, muted],
   ([controller, val]) => {
@@ -2172,10 +2161,7 @@ watch(
   { immediate: true },
 );
 
-// Stop live stream when NVR playback becomes active, restart when idle.
-// stop() closes the WebSocket to go2rtc (no wasted bandwidth during playback).
-// The canvas/worker is managed by canvasManager and survives stop() — NVR playback
-// reuses it via ensureWorker().
+// stop() keeps the canvas worker, nvr playback reuses it
 watch(
   nvrPlaybackVisible,
   (active) => {
@@ -2196,7 +2182,6 @@ watch([sourceRole, activeResolution], ([requested, resolved]) => {
   }
 });
 
-// For NVR playback: update native dimensions from canvas when first frame arrives.
 watch(
   [() => nvrPlaybackVisible.value, nvrCurrentTimestamp],
   ([visible]) => {
@@ -2496,7 +2481,6 @@ defineExpose({
   max-width: 100%;
   max-height: 100%;
   width: 100%;
-  /* aspect-ratio set via inline style */
 }
 
 #video-container[data-cui-fullscreen='fit'] {

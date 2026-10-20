@@ -126,25 +126,18 @@ const sheetStyle = computed<Record<string, string | number | undefined>>(() => {
   const isTopmostSheet = stackPosition.value === currentStackSize - 1;
   const topMeasuredHeight = topmostMeasuredHeight.value;
 
-  // Height logic:
-  // - Topmost sheet: use measured pixel height for smooth transitions
-  // - Sheets behind: match topmost sheet's height + 16px peek
   let sheetHeightValue: string;
   let maxHeightValue: string;
 
   const newMaxHeight = stackable.value ? stackableHeight.value : maxHeight.value;
 
   if (stackable.value && currentStackSize > 1 && !isTopmostSheet && topMeasuredHeight > 0) {
-    // Sheet behind: match topmost height + peek offset (with transition)
-    // Use CSS calc to include safe-area-inset-bottom for iPhone notch/home indicator
     const peekHeight = 16;
     sheetHeightValue = `calc(${topMeasuredHeight}px + ${peekHeight}px + var(--safe-area-inset-bottom))`;
     maxHeightValue = sheetHeightValue;
   } else {
-    // Topmost or single sheet
     const effectiveMaxHeight = `calc(${newMaxHeight} - ${topReserve}px)`;
 
-    // Use explicit height prop if set (not 'auto'), otherwise adapt to content
     const explicitHeight = heightProp.value !== 'auto' ? heightProp.value : undefined;
     const isFullHeight = newMaxHeight === '100%' || newMaxHeight === '100vh';
     sheetHeightValue = explicitHeight ?? (isFullHeight ? effectiveMaxHeight : 'auto');
@@ -159,7 +152,7 @@ const sheetStyle = computed<Record<string, string | number | undefined>>(() => {
     '--sheet-min-height': minHeight.value,
     '--sheet-scale-x': scaleX,
     '--sheet-brightness': brightness,
-    // Use direct transform during drag — avoids CSS variable recalc on every frame
+    // a direct transform skips the css variable recalc on every frame
     transform: dragging ? `translateX(-50%) translateY(${dragY}px) scaleX(${scaleX})` : undefined,
     '--sheet-translate-y': dragging ? undefined : `${dragY}px`,
     zIndex: getSheetZIndex(stackPosition.value),
@@ -190,7 +183,6 @@ function onBackdropClick() {
 function onTouchStart(e: TouchEvent) {
   if (!draggable.value) return;
 
-  // Only allow drag from handle area — content area should always scroll normally
   const target = e.target as HTMLElement;
   const isHandle = handleRef.value?.contains(target);
 
@@ -201,7 +193,7 @@ function onTouchStart(e: TouchEvent) {
   dragCurrentY.value = e.touches[0].clientY;
   sheetHeight.value = sheetRef.value?.offsetHeight || 0;
 
-  // Register touchmove with { passive: false } so preventDefault() works on iOS
+  // passive: false, or iOS ignores preventDefault()
   sheetRef.value?.addEventListener('touchmove', onTouchMove, { passive: false });
 }
 
@@ -213,7 +205,6 @@ function onTouchMove(e: TouchEvent) {
     e.preventDefault();
   }
 
-  // Throttle reactive updates to rAF for smooth 60fps on iOS
   if (rafId) return;
   rafId = requestAnimationFrame(() => {
     rafId = 0;
@@ -263,8 +254,7 @@ function onMouseMove(e: MouseEvent) {
   if (!isDragging.value) return;
   dragCurrentY.value = e.clientY;
 
-  // Report drag progress for interactive stacking effect (only topmost).
-  // Progress over full sheet height (not just dismissThreshold) for gradual effect.
+  // progress over the full height, not the dismiss threshold, keeps the effect gradual
   if (isTopSheet.value && sheetHeight.value > 0) {
     const progress = Math.min(1, dragOffset.value / sheetHeight.value);
     setDragProgress(progress);
@@ -336,7 +326,6 @@ onUnmounted(() => {
   inset: 0;
   background: var(--p-mask-background, rgba(0, 0, 0, 0.6));
   opacity: var(--backdrop-opacity, 1);
-  /* z-index now dynamic via style binding */
 }
 
 .cui-bottom-sheet {
@@ -363,9 +352,7 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   padding-bottom: var(--safe-area-inset-bottom);
-  /* GPU acceleration for smooth animations */
   will-change: transform;
-  /* Smooth transition for stacking effects (forward/backward movement) */
   transition:
     transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1),
@@ -373,14 +360,12 @@ onUnmounted(() => {
     max-height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Sheets stacked behind: rounded corners on all sides, no interaction */
 .cui-bottom-sheet--stacked-behind {
   border-radius: var(--border-radius-xl);
   pointer-events: none;
   filter: brightness(var(--sheet-brightness));
 }
 
-/* Sheets stacked on top: subtle shadow to show depth */
 .cui-bottom-sheet--stacked-on-top {
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
 }
@@ -475,7 +460,6 @@ onUnmounted(() => {
   background: transparent;
 }
 
-/* Footer button styles - similar to CuiDialog */
 .cui-bottom-sheet__footer :deep(.p-button) {
   flex: 1;
 }
@@ -489,7 +473,6 @@ onUnmounted(() => {
   background: var(--card-inner-background);
 }
 
-/* Transitions - fast and smooth */
 .cui-bottom-sheet-backdrop-enter-active,
 .cui-bottom-sheet-backdrop-leave-active {
   transition: opacity 0.15s ease-out;
@@ -510,7 +493,6 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(100%) scaleX(1) !important;
 }
 
-/* Mobile adjustments */
 @media (max-width: 480px) {
   .cui-bottom-sheet {
     width: 100%;

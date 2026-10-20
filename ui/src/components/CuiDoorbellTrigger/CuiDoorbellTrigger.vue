@@ -66,7 +66,6 @@ function triggerRing() {
   pointer-events: none;
 }
 
-/* Header */
 .cui-doorbell__header {
   display: flex;
   align-items: center;
@@ -148,7 +147,6 @@ function triggerRing() {
   height: 1rem;
 }
 
-/* Size variants */
 .cui-doorbell--small {
   padding: 0.5rem;
   gap: 0.375rem;

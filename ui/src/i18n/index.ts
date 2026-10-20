@@ -9,13 +9,6 @@ import type { LanguageList } from './types.js';
 export const DEFAULT_LOCALE: SupportedLanguageAbbreviatons = 'en';
 export const SUPPORTED_LOCALES: SupportedLanguageAbbreviatons[] = [...SUPPORTED_LANGUAGES];
 
-/**
- * Update this each time a new translation is added
- * This is displayed in the interface for selecting the language
- *
- * Key (e.g. "en") represents the language shortcut also added to the "languages" array
- * Value (e.g. "English (en)") represents the Text which is displayed in the interface
- */
 export const LANGUAGE_LIST: LanguageList = {
   de: 'German (de)',
   en: 'English (en)',

@@ -44,19 +44,16 @@ const { icon, activeIcon, label, description, to } = toRefs(props);
 .subnavitem-button {
   background: var(--subnavbar-item-background);
   border-color: transparent;
-  /* color: var(--p-button-text-secondary-color); */
 }
 
 .subnavitem-button:hover {
   background: var(--subnavbar-item-hover-background);
   border-color: transparent;
-  /* color: var(--p-button-text-secondary-color); */
 }
 
 .subnavitem-button:active,
 .subnavitem-button.active {
   background: var(--subnavbar-item-active-background);
   border-color: transparent;
-  /* color: var(--p-button-text-secondary-color); */
 }
 </style>

@@ -103,8 +103,7 @@ const KINDS: Record<CardKind, KindSpec> = {
         },
       ],
     }),
-    // HA strips every attribute while an entity is unavailable (camera.ui restarting): keep the last
-    // resolved identity so the card stays mounted and shows the app's own offline state
+    // HA strips attributes while unavailable, keep the last identity so the card stays mounted
     extraProps: (config, hass, memo) => {
       const attributes = cameraAttributes(hass, (config as unknown as HaCameraCardConfig).entity);
       if (attributes.camera_name) memo.attributes = attributes;

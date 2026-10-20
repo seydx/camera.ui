@@ -6,38 +6,6 @@
       </template>
     </Button>
 
-    <!-- <Button severity="secondary" text class="cui-button p-2 text-color" @click="menuRef?.toggleMenu">
-      <div class="relative w-6 h-6">
-        <div
-          class="absolute top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transform transition-all duration-100 origin-center"
-          :class="{
-            'w-4 h-[2px] rotate-45 top-1/2 -translate-y-1/2 rounded-none': menuRef?.isOpen,
-          }"
-          :style="{
-            backgroundColor: 'var(--text-color)',
-          }"
-        />
-        <div
-          class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full transition-all duration-100"
-          :class="{
-            'opacity-0 scale-0': menuRef?.isOpen,
-          }"
-          :style="{
-            backgroundColor: 'var(--text-color)',
-          }"
-        />
-        <div
-          class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transform transition-all duration-100 origin-center"
-          :class="{
-            'w-4 h-[2px] -rotate-45 bottom-1/2 translate-y-1/2 rounded-none': menuRef?.isOpen,
-          }"
-          :style="{
-            backgroundColor: 'var(--text-color)',
-          }"
-        />
-      </div>
-    </Button> -->
-
     <CuiMenu
       ref="menuRef"
       :items

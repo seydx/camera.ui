@@ -231,12 +231,7 @@ export default defineConfig(({ command }) => ({
     }),
     tailwindcss(),
     AutoImport({
-      include: [
-        /\.[tj]sx?$/, // .ts, .tsx, .js, .jsx
-        /\.vue$/,
-        /\.vue\?vue/, // .vue
-        /\.md$/, // .md
-      ],
+      include: [/\.[tj]sx?$/, /\.vue$/, /\.vue\?vue/, /\.md$/],
       vueTemplate: true,
       eslintrc: {
         enabled: true,
@@ -276,10 +271,7 @@ export default defineConfig(({ command }) => ({
           'vue-router': ['useLink', 'useRoute', 'useRouter', 'onBeforeRouteLeave', 'onBeforeRouteUpdate', 'createRouter', 'createWebHistory', 'createWebHashHistory'],
         },
         {
-          axios: [
-            // default imports
-            ['default', 'axios'], // import { default as axios } from 'axios',
-          ],
+          axios: [['default', 'axios']],
         },
         {
           from: 'vue',

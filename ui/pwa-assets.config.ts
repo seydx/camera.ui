@@ -24,7 +24,7 @@ export const generateFavIcons = (): Favicon[] => {
 export const generateIcons = (iconType: IconType | IconType[]): AssetSize[] => {
   const appleIconSizes = [120, 152, 167, 180, 1024];
   const androidIconSizes = [36, 48, 64, 72, 96, 144, 192];
-  const optionalIconSizes = [512, { width: 620, height: 300 }, { width: 1240, height: 600 }]; // eg splashscreens
+  const optionalIconSizes = [512, { width: 620, height: 300 }, { width: 1240, height: 600 }];
   const windowsIconSizes = [24, 48, 50, 88, 300];
   const maskableIconSizes = [512];
 

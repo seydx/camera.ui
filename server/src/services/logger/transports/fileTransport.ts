@@ -37,8 +37,8 @@ export class FileTransport implements LogTransport {
     this.filePath = options.filePath;
     this.maxSize = options.maxSize ?? 1000000; // ~1 MB
     this.truncateSize = options.truncateSize ?? 200000; // ~200 KB
-    this.truncateIntervalMs = options.truncateInterval ?? 1000 * 60 * 60 * 2; // 2 hours
-    this.bufferSize = options.bufferSize ?? 1; // Immediate write by default
+    this.truncateIntervalMs = options.truncateInterval ?? 1000 * 60 * 60 * 2;
+    this.bufferSize = options.bufferSize ?? 1;
     this.flushIntervalMs = options.flushInterval ?? 100;
 
     this.initStream();
@@ -129,11 +129,11 @@ export class FileTransport implements LogTransport {
     if (!this.stream?.writable) return;
 
     try {
-      // formatWithColors preserves ANSI codes for xterm.js display
+      // keeps the ANSI codes for the xterm.js view
       const text = Logger.formatWithColors(entry);
       this.stream.write(text + '\n');
     } catch {
-      // ignore write errors
+      // ignore
     }
   }
 
@@ -176,7 +176,7 @@ export class FileTransport implements LogTransport {
         await fileHandle.close();
       }
     } catch {
-      // ignore truncation errors
+      // ignore
     }
   }
 }

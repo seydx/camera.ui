@@ -63,7 +63,7 @@ const evaluateSingleCondition = (condition: SchemaCondition, config: Record<stri
     case 'eq':
       return actual === expected;
     case 'neq':
-      // Treat empty/undefined as "no value" — don't match against negation
+      // an empty value never matches neq
       if (actual === undefined || actual === null || actual === '') return false;
       return actual !== expected;
     case 'gt':
@@ -355,11 +355,9 @@ export function validateValue(value: any, schema: JsonSchemaWithoutKey): boolean
   }
 }
 
-// When `required` is used with `group`, fields are only required if at least one field in the group has a value
 export function validateConfig(config: Record<string, any>, schemas: JsonSchema[]): Record<string, string[]> {
   const errors: Record<string, string[]> = {};
 
-  // Collect groups that have values
   const groupsWithValues = new Set<string>();
   for (const schema of schemas) {
     if ('group' in schema && (schema as any).group) {
@@ -371,10 +369,8 @@ export function validateConfig(config: Record<string, any>, schemas: JsonSchema[
   }
 
   for (const schema of schemas) {
-    // Skip button and submit types
     if (isButtonType(schema) || isSubmitType(schema)) continue;
 
-    // Skip fields whose condition is not met
     if ('condition' in schema && schema.condition) {
       if (!evaluateCondition(schema.condition, config)) continue;
     }
@@ -382,17 +378,13 @@ export function validateConfig(config: Record<string, any>, schemas: JsonSchema[
     const value = getValueByKey(config, schema.key);
     const fieldErrors: string[] = [];
 
-    // Required field check - group-aware
     if ('required' in schema && schema.required && (value === undefined || value === null || value === '')) {
       const hasGroup = 'group' in schema && (schema as any).group;
-      // If field has a group, only require if that group has values
-      // If field has no group, always require
       if (!hasGroup || groupsWithValues.has((schema as any).group)) {
         fieldErrors.push('This field is required');
       }
     }
 
-    // Type-specific validation
     if (value !== undefined && value !== null) {
       if (isStringType(schema)) {
         if (typeof value !== 'string') {
@@ -566,7 +558,6 @@ const groupHasValue = (data: Record<string, any>, schemas: JsonSchema[], group: 
   });
 };
 
-// When `required` is used with `group`, fields are only required if at least one field in the group has a value
 export function generateZodSchema(schemas: JsonSchema[]): zod.ZodObject<any> {
   const zodSchemaObj: Record<string, zod.ZodType> = {};
 
@@ -579,8 +570,7 @@ export function generateZodSchema(schemas: JsonSchema[]): zod.ZodObject<any> {
 
   schemas.forEach((schema) => {
     if (!isButtonType(schema) && !isSubmitType(schema)) {
-      // Group/condition-required fields are validated in superRefine; keep them
-      // optional at the field level so the UI can hide them without blocking validation.
+      // group and condition requirements run in superRefine, optional here so the UI can hide the field
       const hasGroup = 'group' in schema && (schema as any).group;
       const hasCondition = 'condition' in schema && schema.condition;
       if ((hasGroup || hasCondition) && schema.required) {
@@ -595,17 +585,14 @@ export function generateZodSchema(schemas: JsonSchema[]): zod.ZodObject<any> {
 
   const conditionSchemas = schemas.filter((s) => 'condition' in s && s.condition && 'required' in s && s.required && !isButtonType(s) && !isSubmitType(s));
 
-  // Add group-level and condition-level required validation
   if (groups.size > 0 || conditionSchemas.length > 0) {
     zodSchema = zodSchema.superRefine((data, ctx) => {
-      // Group-level conditional required validation
       for (const group of groups) {
         if (groupHasValue(data, schemas, group)) {
           const groupSchemas = schemas.filter((s) => 'group' in s && (s as any).group === group);
 
           for (const schema of groupSchemas) {
             if ('required' in schema && schema.required) {
-              // Skip if condition is not met
               if ('condition' in schema && schema.condition && !evaluateCondition(schema.condition, data)) continue;
               const value = data[schema.key];
               if (value === undefined || value === null || value === '') {
@@ -620,7 +607,6 @@ export function generateZodSchema(schemas: JsonSchema[]): zod.ZodObject<any> {
         }
       }
 
-      // Condition-level required validation (for fields without groups)
       for (const schema of conditionSchemas) {
         if ('group' in schema && (schema as any).group) continue;
         if ('condition' in schema && schema.condition && evaluateCondition(schema.condition, data)) {

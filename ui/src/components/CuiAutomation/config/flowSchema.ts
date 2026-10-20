@@ -12,14 +12,10 @@ export interface FlowVariableValue {
 }
 
 export interface FlowVariable {
-  /** Template form, e.g. `{{sensor.value}}`. */
   template: string;
-  /** i18n key under components.automation_nodes, unset for user-named variables. */
   labelKey?: string;
-  /** Literal label for user-named variables. */
   label?: string;
   valueType: FlowValueType;
-  /** Known or configured values, used as case/operand suggestions. */
   values?: FlowVariableValue[];
   sourceNodeId: string;
   sourceType: string;

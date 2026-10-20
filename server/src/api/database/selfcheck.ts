@@ -73,10 +73,10 @@ export class SelfCheck {
     if (criticalIssues.length > 0) {
       const summary = criticalIssues.map((issue) => `  - ${issue.message}`).join('\n');
       const report = [
-        'Self-check found critical issues — camera.ui cannot start safely:',
+        'Self-check found critical issues, camera.ui cannot start safely:',
         summary,
         '',
-        `A diagnostic report was saved to ${reportPath} — please attach it when reporting this issue.`,
+        `A diagnostic report was saved to ${reportPath}. Please attach it when reporting this issue.`,
       ].join('\n');
 
       this.logger.error(report);
@@ -85,7 +85,7 @@ export class SelfCheck {
     }
 
     if (nonCriticalIssues.length > 0) {
-      this.logger.warn(`Self-check passed with non-critical warnings — see the report at ${reportPath}`);
+      this.logger.warn(`Self-check passed with non-critical warnings, see the report at ${reportPath}`);
     } else {
       this.logger.log(paint('green', 'Self-check passed successfully!'));
     }

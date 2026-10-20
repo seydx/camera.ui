@@ -124,7 +124,7 @@ type Toolchain = "go" | "rust";
 function toolchainInstallCmd(tool: Toolchain): string | null {
   const os = platform();
   if (tool === "rust") {
-    if (os === "win32") return null; // see https://rustup.rs (rustup-init.exe)
+    if (os === "win32") return null;
     return "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y";
   }
   if (os === "darwin") return commandExists("brew") ? "brew install go" : null;
@@ -195,7 +195,7 @@ function installGlobalPackages(): void {
     }).toString();
     installed = (JSON.parse(out).dependencies as Record<string, unknown>) ?? {};
   } catch {
-    // `npm ls` exits non-zero on peer-dep warnings but still prints JSON; ignore.
+    // npm ls exits non-zero on peer-dep warnings but still prints JSON
   }
 
   const missing = GLOBAL_PACKAGES.filter((pkg) => !(pkg in installed));
@@ -275,7 +275,7 @@ function linkPythonTools(): void {
 
 function buildApp(): void {
   step("Building service, server & ui");
-  // mypy (server build) lives in the virtualenv, so run builds with it on PATH.
+  // the server build runs mypy from the virtualenv
   const env = envWithVenv();
   for (const dir of APP_DIRS) {
     run("npm run build --if-present", resolve(ROOT, dir), env);
@@ -314,7 +314,6 @@ function linkPlugins(): void {
     );
     return;
   }
-  // Rebuild the target dir so removed plugins don't linger.
   rmSync(join(ROOT, PLUGINS_TARGET), { recursive: true, force: true });
   for (const { name, path } of plugins)
     ensureSymlink(realpathSync(path), join(ROOT, PLUGINS_TARGET, name));

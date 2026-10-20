@@ -205,11 +205,3 @@ defineExpose({
   show,
 });
 </script>
-
-<!-- <style>
-.p-popover-content {
-  padding: 0 !important;
-  border-radius: 12px !important;
-  overflow: hidden;
-}
-</style> -->

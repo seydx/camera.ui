@@ -8,7 +8,7 @@ export class RequestManager {
   public globalQueuedRequest<T>(operation: RequestFunction<T>): Promise<T> {
     const promise = this.globalQueue.then(() => operation());
 
-    // errors must not block future requests
+    // a failure must not block the queue
     this.globalQueue = promise.catch(() => {});
 
     return promise;
@@ -19,7 +19,7 @@ export class RequestManager {
 
     const promise = currentQueue.then(() => this.deduplicatedRequest(cacheKey, operation));
 
-    // errors must not block the queue
+    // a failure must not block the queue
     this.resourceQueues.set(
       resourceKey,
       promise.catch(() => {}),
@@ -36,7 +36,6 @@ export class RequestManager {
     const promise = operation();
     this.inFlight.set(cacheKey, promise);
 
-    // void catch prevents unhandled rejection warning; error still propagates to the original awaiter
     promise
       .catch(() => {})
       .finally(() => {

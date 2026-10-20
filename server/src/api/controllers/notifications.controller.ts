@@ -33,8 +33,7 @@ export class NotificationsController {
   public async setSettings(req: FastifyRequest<AuthLoginRequest & NotificationsSettingsRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const userId = req.locals.user!._id;
-      // Force `_id` to the authenticated user — clients can't impersonate
-      // other users by submitting a different `_id` in the body.
+      // _id goes last, a client must not pick another user
       const settings: DBNotificationSettings = { ...req.body, _id: userId };
       await this.service.setSettings(userId, settings);
       return reply.code(200).send(settings);
@@ -149,10 +148,7 @@ export class NotificationsController {
       return reply.code(201).send(device);
     } catch (error: any) {
       const message = error?.message ?? String(error);
-      // `not found`, `not running`, or "does not implement Notifier" are
-      // all runtime-state issues, not server bugs — surface 503 so the UI
-      // can render an "install/start the relevant plugin" hint instead of
-      // treating it as a generic crash.
+      // plugin state issues, a 503 lets the UI hint to install or start the plugin
       const isStateIssue = /not found|not running|does not implement/i.test(message);
       const status = isStateIssue ? 503 : 500;
       req.log.warn({ pluginName: req.body?.pluginName, err: message }, 'registerDevice failed');
@@ -163,7 +159,6 @@ export class NotificationsController {
   public async revokeDevice(req: FastifyRequest<AuthLoginRequest & NotificationsRevokeDeviceRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       await this.service.revokeDevice(req.params.id, req.locals.user!._id, req.locals.user!.role);
-      // Idempotent — return 204 even if the device didn't exist.
       return reply.code(204).send();
     } catch (error: any) {
       if (error instanceof DeviceForbiddenError) {
@@ -175,10 +170,6 @@ export class NotificationsController {
 
   public async updateDevice(req: FastifyRequest<AuthLoginRequest & NotificationsUpdateDeviceRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
-      // Whitelist updatable fields. Plugins ignore unknown keys, but
-      // filtering at the gateway keeps the wire payload tight and
-      // prevents surprises (e.g. a stray `fcmToken` key wouldn't be
-      // honored anyway, no point shipping it).
       const patch: Record<string, unknown> = {};
       if (typeof req.body?.name === 'string') patch.name = req.body.name;
       if (typeof req.body?.active === 'boolean') patch.active = req.body.active;

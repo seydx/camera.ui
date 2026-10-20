@@ -19,10 +19,7 @@ export class Win32Installer extends BasePlatform {
     await this.cli.homePathCheck();
 
     try {
-      // download nssm.exe to help create the service
       const nssmPath: string = await this.downloadNssm();
-
-      // commands to run
 
       const installCmd =
         `"${nssmPath}" install ${this.cli.serviceName} ` +
@@ -51,7 +48,6 @@ export class Win32Installer extends BasePlatform {
   public async uninstall(): Promise<void> {
     this.checkIsAdmin();
 
-    // stop existing service
     await this.stop();
 
     try {
@@ -161,7 +157,6 @@ export class Win32Installer extends BasePlatform {
 
       return nssmPath;
     } catch (error) {
-      // cleanup
       await rm(nssmPath, { recursive: true, force: true });
       this.cli.logger(`Failed to download nssm: ${error.message}`, 'fail');
       throw error;
@@ -169,18 +164,15 @@ export class Win32Installer extends BasePlatform {
   }
 
   private async configureFirewall(): Promise<void> {
-    // firewall commands
     const cleanFirewallCmd = 'netsh advfirewall firewall Delete rule name="camera.ui"';
     const openFirewallCmd = `netsh advfirewall firewall add rule name="camera.ui" dir=in action=allow program="${process.execPath}"`;
 
-    // try and remove any existing rules so there are not any duplicates
     try {
       execSync(cleanFirewallCmd);
     } catch {
-      // this is probably ok, the firewall rule may not exist to remove
+      // the rule may not exist
     }
 
-    // create a new firewall rule
     try {
       execSync(openFirewallCmd);
     } catch (e) {

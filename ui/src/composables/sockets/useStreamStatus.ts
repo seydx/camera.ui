@@ -62,8 +62,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/camera.ui');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and refresh() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and refresh() reads `channel`
     channel = ch;
 
     ch.on<CameraStreamStatus>('stream-status', (data) => {
@@ -115,7 +114,7 @@ export function useStreamStatus() {
   }
 
   function disconnect(): void {
-    // Channel teardown is global via resetStreamStatus().
+    // teardown follows the last caller's scope
   }
 
   function getCameraStatus(cameraId: string): StreamStatus {

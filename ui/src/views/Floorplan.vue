@@ -944,7 +944,6 @@ async function onSetSecurity(id: string, state: SecuritySystemState): Promise<vo
   await setSecurityState(liveSensorOf(id), state);
 }
 
-// leaving the dot must not close the card before the pointer reaches its buttons
 function keepSensorPopover(): void {
   clearTimeout(sensorHideTimer);
 }

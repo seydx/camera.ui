@@ -45,9 +45,7 @@ function buildVueQueryOptions(): VueQueryPluginOptions {
           networkMode: 'online',
           retry: (failureCount, error: unknown) => {
             const status = extractStatus(error);
-            // 401 will be retried by the HTTP transport's tokenLifecycle —
-            // tanstack shouldn't retry on its own. Other failures retry up
-            // to 2x silently, then surface.
+            // the transport's tokenLifecycle retries 401s itself
             if (status === 401) return false;
             const willRetry = failureCount < 2;
             if (willRetry) return true;

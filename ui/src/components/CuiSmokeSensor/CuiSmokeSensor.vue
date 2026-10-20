@@ -66,7 +66,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-smoke-sensor__indic
   opacity: 0.6;
 }
 
-/* Header */
 .cui-smoke-sensor__header {
   display: flex;
   align-items: center;
@@ -115,7 +114,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-smoke-sensor__indic
   color: var(--text-secondary-color);
 }
 
-/* Indicator dot */
 .cui-smoke-sensor__indicator {
   width: 0.5rem;
   height: 0.5rem;
@@ -144,7 +142,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-smoke-sensor__indic
   }
 }
 
-/* Size variants */
 .cui-smoke-sensor--small {
   padding: 0.5rem;
   gap: 0.375rem;

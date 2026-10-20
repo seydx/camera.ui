@@ -39,14 +39,10 @@ export function buildCloudMode(options: CloudModeOptions): CloudModeBundle {
     readL1AccessToken: isCapacitor ? readL1AccessTokenFromSecureStorage : undefined,
     onL1Unavailable: isCapacitor
       ? async () => {
-          // Cloud session is dead AND no L1 fallback worked (no SecureStorage
-          // AT or it got rejected). Hand control back to the cloud frontend
           await clearCapacitorCloudPreferences();
           window.location.href = '../index.html';
         }
       : async () => {
-          // Web cloud: bounce to the cloud frontend at the cloud service URL
-          // (e.g., cloud.cameraui.com) for re-auth.
           window.location.href = options.initialSession.cloudApiBase ? `${options.initialSession.cloudApiBase}/` : '/';
         },
     logger: options.logger,

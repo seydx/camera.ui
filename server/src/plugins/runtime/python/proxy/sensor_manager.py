@@ -182,7 +182,6 @@ class SensorManagerProxy:
     async def getSensorHistory(self, sensorIds: list[str], start: int, end: int) -> list[SensorHistoryEntry]:
         return await self._registry_proxy.getSensorHistory(sensorIds, start, end)
 
-    # keeps a camera-registered sensor's assignedCameraIds in sync with the global stream
     async def track_camera_sensor(self, sensor: Sensor[Any, Any, Any]) -> None:
         await self._ensure_global_subscription()
         self._external[sensor.id] = sensor
@@ -255,8 +254,7 @@ class SensorManagerProxy:
         return sensor
 
     async def _bind(self, sensor: Sensor[Any, Any, Any], record_id: str) -> None:
-        # producers need the global stream too: assignment changes must reach
-        # owned sensors, their detection fan-out reads assignedCameraIds
+        # producers need the global stream too, their detection fan-out reads assignedCameraIds
         await self._ensure_global_subscription()
 
         plugin_id = self._plugin["id"]
@@ -427,7 +425,7 @@ class SensorManagerProxy:
                     owned._setAssignedCameras(data["assignedCameraIds"])  # pyright: ignore[reportPrivateUsage]
             consumed = self._consumed.get(data["id"])
             if consumed is not None:
-                # re-announced while we already hold it: the payload is authoritative, our cache may be stale
+                # a re-announce is authoritative, our cache may be stale
                 consumed._apply_refreshed_state(added["state"])  # pyright: ignore[reportPrivateUsage]
                 return
             if not self._is_consumable(data):
@@ -477,7 +475,7 @@ class SensorManagerProxy:
             if consumed:
                 consumed._set_connected(connected["connected"])  # pyright: ignore[reportPrivateUsage]
                 if connected["connected"]:
-                    # the owner was away, whatever it published in the meantime never reached us
+                    # the owner was away, what it published meanwhile never reached us
                     self._tasks.add(self._resync_consumed(connected["sensorId"]))
 
         elif event_type == "sensor:exposed:changed":
@@ -538,7 +536,6 @@ class SensorManagerProxy:
                 if not properties:
                     return
 
-            # external detection provider: fan the write into every assigned camera's coordinator
             async def notify_coordinators() -> None:
                 for camera_id in sensor.assignedCameraIds:
                     with contextlib.suppress(Exception):

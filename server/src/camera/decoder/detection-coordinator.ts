@@ -188,13 +188,11 @@ export class DetectionCoordinator {
   private readonly classifierLabels = new Map<string, Set<string>>();
   private readonly feedingSensors = new Map<string, SensorType>();
   private readonly witnessSensors = new Set<string>();
-  // label -> when a witness last reported it, for the trace
   private readonly witnessSeen = new Map<string, number>();
   private readonly heldMoments = new Map<number, SegmentMoment>();
   private readonly dwell = new DwellManager();
   private readonly privacy: PrivacyMask;
 
-  // debugging
   private readonly perf = new PerfTracker();
   private benchmarkRunning = false;
 
@@ -308,7 +306,6 @@ export class DetectionCoordinator {
     );
     this.thumbnailer.sync(this.mainStreamSourceWanted);
 
-    // debugging
     detectionRecord.sources({
       roles: config.availableSources?.map((s) => s.role),
       mainStreamAnalysis: this.config.frameWorkerSettings.mainStreamAnalysis === true,
@@ -630,8 +627,7 @@ export class DetectionCoordinator {
     }
     if (sensorType === SensorType.LicensePlate) this.platesSeen.clear();
     if (sensorType !== undefined && this.feedingSensors.delete(sensorId)) {
-      // a sensor removed mid-segment misses the cascade-end clear, so the
-      // recognized lists must reset here or they survive the re-register
+      // a sensor removed mid-segment misses the cascade-end clear, its recognized lists reset here
       this.writeSensorProperties(sensorId, {
         detected: false,
         detections: [],
@@ -662,8 +658,7 @@ export class DetectionCoordinator {
       return;
     }
 
-    // the registry announces the plugin assigned for this type and the
-    // witnesses, everyone else reports into the void
+    // the registry announces only the assigned plugin and the witnesses, the rest is ignored
     if (!this.feedingSensors.has(sensorId)) return;
 
     // a detector reports its spec again once its models finished loading
@@ -675,8 +670,7 @@ export class DetectionCoordinator {
     if (sensorType === SensorType.Object) {
       const filtered = this.applyExternalDetectionFilters(sensorType, properties);
 
-      // presence feed keeps the autotracker's return-home timer alive even while
-      // suppression gates everything below
+      // keeps the autotracker's return-home timer alive even while suppression gates the rest
       const externalDetections = (filtered.detections as Detection[] | undefined) ?? [];
       this.ptzAutotracker.handlePresenceDetections(externalDetections);
 
@@ -711,17 +705,14 @@ export class DetectionCoordinator {
         if (!handle) return;
         try {
           const results: DetectionResults = { timestamp: Date.now() };
-          // anchors may have switched analysis to the main stream: the assist
-          // windows and secondary crops should see those native pixels
+          // anchors may have moved analysis to the main stream, assist and secondary crops should see those pixels
           const analysis = await this.acquireAnalysisFrame({ frame: handle.frame, rtp: handle.rtp });
           try {
             const objects = await this.runObjectAssist(analysis.frame, rawExternal, analysis.scaler);
             this.ingestAssistedObjects(sensorId, objects);
 
             if (objects.assisted) {
-              // real boxes: crop the object like the frame pipeline, so face and
-              // plate secondaries run on the subject instead of the whole scene
-              // (processExternal only adapts the shape, external boxes get no real tracking)
+              // crop the object like the frame pipeline, so face and plate secondaries run on the subject
               const objectDetections = this.pipeline.processExternal(objects.detections);
               const trace = externalTrace(results.timestamp, rawExternal, objectDetections);
               detectionRecord.tick({ assistProcessed: { count: objectDetections.length, bufferedObjects: this.currentDetectionState.object?.detections?.length ?? 0 } });
@@ -738,8 +729,7 @@ export class DetectionCoordinator {
               await this.attachTrainingFrame(snapshot, analysis);
               this.eventManager.processResults(snapshot);
             } else {
-              // no assist boxes: the diff's motion clusters are the only
-              // localization, still better than a full-scene card
+              // no assist boxes: the motion clusters are the only localization, still better than a full-scene card
               const anchorDetections = this.anchorMomentDetections(rawExternal);
               if (anchorDetections.length > 0) {
                 await this.captureExternalMoment(anchorDetections, analysis, results.timestamp);
@@ -821,7 +811,7 @@ export class DetectionCoordinator {
 
     this.eventManager.processResults(this.buildSnapshot());
 
-    // no loop frame to encode from, fetch async (no-op if already captured)
+    // no loop frame to encode from, a no-op if already captured
     if (action === 'activate') {
       this.thumbnailer.fetchEventThumbnailAsync();
     }
@@ -849,9 +839,7 @@ export class DetectionCoordinator {
   }
 
   private get localizerWanted(): boolean {
-    // the registry only holds frame-based providers; a smart-camera object
-    // sensor (Reolink AI, ONVIF) feeds externally and needs the anchors just
-    // as much — for assist zoom windows and for framing its moment pictures
+    // a smart-camera object sensor feeds externally and needs the anchors too, for assist windows and moment pictures
     if (this.plugins.has(SensorType.Object) || this.plugins.hasEligibleObjectAssist()) return true;
     for (const sensorType of this.feedingSensors.values()) {
       if (sensorType === SensorType.Object) return true;
@@ -896,9 +884,7 @@ export class DetectionCoordinator {
   }
 
   private externalObjectSpanActive(): boolean {
-    // the registry holds frame-based providers only; a smart-camera object
-    // sensor (Reolink AI, ONVIF) lives in the feeding set, and its dwell is
-    // what keeps the span open between its report edges
+    // a smart-camera object sensor lives in the feeding set, its dwell keeps the span open between report edges
     if (this.plugins.get(SensorType.Object)?.requiresFrames) return false;
     for (const [sensorId, sensorType] of this.feedingSensors) {
       if (sensorType === SensorType.Object && this.dwell.isActive(sensorId)) return true;
@@ -911,7 +897,7 @@ export class DetectionCoordinator {
     this.farewellBoxes = [];
     this.detectionWindow.reset();
 
-    // clear cascade-gated buffer slots, keep motion/audio
+    // cascade-gated slots only, motion and audio stay
     const cs = this.currentDetectionState;
     cs.object = undefined;
     cs.face = undefined;
@@ -1095,8 +1081,7 @@ export class DetectionCoordinator {
 
     // the zone filter and the rust merge assume a box on every detection
     const detections = ensureDetectionBoxes(raw as { box?: BoundingBox }[]);
-    // a camera that reports a label without coordinates gives no position, a
-    // zone cannot judge it and the object assist has not run yet
+    // a label without coordinates gives no position, a zone cannot judge it before the assist ran
     const positioned = detections.filter((detection) => !isFullFrameBox(detection.box));
     const boxless = detections.filter((detection) => isFullFrameBox(detection.box)) as Detection[];
 
@@ -1120,7 +1105,7 @@ export class DetectionCoordinator {
         filtered = this.pipeline.runZoneFilter(positioned as Detection[]);
         break;
       default:
-        return { ...properties, detections }; // audio etc, no zone filter
+        return { ...properties, detections };
     }
 
     const survivors = new Set<unknown>(filtered);
@@ -1163,9 +1148,7 @@ export class DetectionCoordinator {
       const motionTimeout = this.config.detectionSettings.motion.timeout;
       this.dwell.refresh(sensorId, motionTimeout);
       if (this.cascadeEnabled) {
-        // a frame-based motion sensor re-arms on every motion frame, so its
-        // short tail is fine; an external sensor fires one edge and goes
-        // quiet, that edge must arm the cascade for the whole belief window
+        // a frame-based sensor re-arms every frame, an external one fires one edge that must arm the whole window
         const framePlugin = this.plugins.get(SensorType.Motion);
         const frameBased = framePlugin?.requiresFrames === true && framePlugin.sensorId === sensorId;
         this.cascade.triggerMomentary(frameBased ? this.cascadeTimeoutSeconds : Math.max(motionTimeout, this.cascadeTimeoutSeconds));
@@ -1180,25 +1163,18 @@ export class DetectionCoordinator {
       const framePlugin = this.plugins.get(SensorType.Object);
       const frameBased = framePlugin?.requiresFrames === true && framePlugin.sensorId === sensorId;
       if (detected) {
-        // the dwell bridges single missed frames; anchored stationary tracks
-        // don't refresh it, so parked objects can't hold events open
+        // anchored stationary tracks don't refresh the dwell, so parked objects can't hold events open
         const detections = (properties.detections as TrackedDetection[] | undefined) ?? [];
         if (detections.length > 0) {
-          // frame results re-arm every tick, so 2s only bridges a dropped
-          // frame; an external report is an edge that must hold until the
-          // camera reports the end (cleared below), capped by the object
-          // timeout in case that end never arrives
+          // an external report is an edge that holds until the camera reports the end, capped by the object timeout
           const dwellSeconds = frameBased ? OBJECT_DWELL_SECONDS : Math.max(this.config.detectionSettings.object.timeout ?? 15, OBJECT_DWELL_SECONDS);
           this.dwell.refresh(sensorId, dwellSeconds);
-          // a confirmed object re-arms the cascade like motion does: a time-based
-          // motion sensor (ONVIF cool-down) must not blind detection and split
-          // the event while someone is still mid-frame
+          // re-arm like motion, a time-based motion sensor (ONVIF cool-down) must not split the event
           if (this.cascadeEnabled) {
             this.cascade.triggerMomentary(this.cascadeTimeoutSeconds);
           }
         } else {
-          // clear detected + buffer so no segment opens, the UI still gets
-          // the bboxes via the property publish below
+          // no segment opens, the UI still gets the bboxes via the publish below
           properties.detected = false;
           if (this.currentDetectionState.object) {
             this.currentDetectionState.object.detected = false;
@@ -1206,14 +1182,12 @@ export class DetectionCoordinator {
           }
         }
       } else if (!frameBased) {
-        // the camera's own end report closes the span; the segment linger
-        // still bridges flicker between two alarms
+        // the camera's end report closes the span, the segment linger bridges flicker
         this.dwell.clear(sensorId);
       }
     }
 
-    // dwell owns detected/blocked/lastTriggered for these types, a no-detection
-    // frame would overwrite the dwell-set state, so strip before publishing
+    // dwell owns detected/blocked/lastTriggered here, strip before publishing
     let publishProps = properties;
     if (sensorType === SensorType.Motion || sensorType === SensorType.Audio || sensorType === SensorType.Object) {
       const { detected: _d, blocked: _b, lastTriggered: _t, ...rest } = properties;
@@ -1279,8 +1253,7 @@ export class DetectionCoordinator {
     const current = this.plugins.get(sensorType);
     if (current?.sensorId !== sensorId) return;
 
-    // another model means other numbers, keeping the old average would mislead;
-    // load time is not part of the identity, a reload of the same model is not a change
+    // another model means other numbers, a reload of the same model is no change
     if (sensorType === SensorType.Object || sensorType === SensorType.Motion) {
       if (modelIdentity(current.modelSpec) !== modelIdentity(modelSpec)) this.perf.reset();
     }
@@ -1316,7 +1289,7 @@ export class DetectionCoordinator {
       proxy: sensorProxy,
     });
     if (!registered) {
-      // re-push from the registry: the sensor is already live, only the spec may have changed
+      // a re-push: the sensor is live, only the spec may have changed
       if (sensor.modelSpec) this.applyModelSpec(sensor.sensorId, sensor.sensorType, sensor.modelSpec);
       return;
     }
@@ -1349,16 +1322,14 @@ export class DetectionCoordinator {
       this.adHocVideoLoop = false;
     }
 
-    // needsAdHocLoop, not shouldVideoBeActive: a loop still needed by a
-    // frame-based object plugin must survive plugin hot-reloads
+    // needsAdHocLoop, not shouldVideoBeActive: a frame-based object plugin's loop must survive hot-reloads
     if (this.adHocVideoLoop && !this.plugins.needsAdHocLoop()) {
       this.adHocVideoLoop = false;
       this.logger.debug('Stopping ad-hoc video loop — last frame-based consumer removed');
       this.stopVideoLoop();
     }
 
-    // await, otherwise a rapid re-register starts a second loop while the
-    // old one is still shutting down
+    // await, or a quick re-register starts a second loop while the old one shuts down
     if (wasVideoNeeded && !this.plugins.shouldVideoBeActive() && !this.adHocVideoLoop) {
       await this.stopVideoLoop();
     }
@@ -1372,8 +1343,7 @@ export class DetectionCoordinator {
     cs.motion = undefined;
     cs.object = undefined;
 
-    // motion is garbage during ego-motion and face/lpd inference pauses, their
-    // boxes would float frozen through the pan; object keeps publishing live
+    // motion and face/lpd boxes would float frozen through the pan, object keeps publishing live
     const motionPlugin = this.plugins.get(SensorType.Motion);
     if (motionPlugin) this.writeSensorProperties(motionPlugin.sensorId, { detections: [] });
     for (const type of [SensorType.Face, SensorType.LicensePlate]) {
@@ -1388,8 +1358,7 @@ export class DetectionCoordinator {
   }
 
   private clearSecondaryBboxes(sensorId: string): void {
-    // detected must fall with the boxes: secondaries only run while objects
-    // are tracked, so nothing else ever writes the false edge
+    // secondaries only run while objects are tracked, nothing else writes the false edge
     this.writeSensorProperties(sensorId, { detected: false, detections: [] });
     this.secondaryBboxSeen.delete(sensorId);
   }
@@ -1452,10 +1421,7 @@ export class DetectionCoordinator {
 
   private stopAdHocVideoLoopIfIdle(): void {
     if (!this.adHocVideoLoop || this.plugins.shouldVideoBeActive()) return;
-    // the localizer and assist still need frames while the event runs;
-    // stopping on the cascade edge alone churned the main-stream decoder
-    // open/closed mid-event, which starves the hw device (vaapi surface sync
-    // failures) right when the next report arrives
+    // frames are needed all event, closing the decoder mid-event starves the hw device (vaapi surface sync)
     if (this.cascade.isActive || this.dwell.hasActive() || this.eventManager.hasActiveSegment()) return;
     this.adHocVideoLoop = false;
     this.logger.debug('Stopping ad-hoc video loop — idle');
@@ -1463,7 +1429,7 @@ export class DetectionCoordinator {
   }
 
   private async runDetectionLoop(): Promise<void> {
-    // the source reconnects on its own, nextFrame simply waits it out
+    // the source reconnects on its own, nextFrame waits it out
     const startedAt = Date.now();
     await this.frameSource.start();
 
@@ -1476,7 +1442,7 @@ export class DetectionCoordinator {
       const objectFramesBefore = this.perf.framesWithObjects;
       let onMainStream = false;
       const snap = await this.frameSource.nextFrame(lastFrameId);
-      if (!snap) break; // source stopped
+      if (!snap) break;
 
       if (firstFrame) {
         firstFrame = false;
@@ -1486,8 +1452,7 @@ export class DetectionCoordinator {
       lastFrameId = snap.id;
 
       if (this.benchmarkRunning) {
-        // the detector is saturated on purpose, feeding it real frames would
-        // both distort the measurement and queue up behind it
+        // the detector is saturated on purpose, real frames would distort the measurement
         snap.frame[Symbol.dispose]?.();
         await sleep(IDLE_TICK_MS);
         continue;
@@ -1504,11 +1469,9 @@ export class DetectionCoordinator {
           this.detectionWindow.reset();
         }
 
-        // motion always reads the low stream: switching its input resolution
-        // would reset the background model on every transition
+        // motion always reads the low stream, a resolution switch would reset its background model
         const analysis = await this.acquireAnalysisFrame(snap);
         onMainStream = analysis.isMainStream;
-        // debugging
         detectionRecord.setFrame(analysis.isMainStream ? 'main' : 'low', analysis.frame.width, analysis.frame.height, analysis.rtp, analysis.role);
         try {
           await this.processRawFrame(analysis, snap.frame);
@@ -1526,7 +1489,6 @@ export class DetectionCoordinator {
 
         this.updateStreamState();
       } catch (error) {
-        // the stream keeps running, a broken tick must not end the loop
         this.logger.error('Detection tick failed:', error);
       } finally {
         try {
@@ -1631,7 +1593,6 @@ export class DetectionCoordinator {
     if (results.faceTrace?.doubt?.length) trace.doubt = results.faceTrace.doubt;
     const witness = [...this.witnessSeen].filter(([, at]) => Math.abs(trace.tMs - at) <= WITNESS_WINDOW_MS).map(([label]) => label);
     if (witness.length > 0) trace.witness = witness;
-    // debugging
     detectionRecord.tick({ ...trace });
     return trace;
   }
@@ -1656,17 +1617,14 @@ export class DetectionCoordinator {
     const results: DetectionResults = { timestamp: t0 };
     let trace: TraceTick | undefined;
 
-    // while the PTZ repositions: motion and object keep running so the
-    // background model and track ids survive the pan, but nothing below
-    // reaches dwell/events until the settle window ends
+    // while the PTZ repositions motion and object keep running, nothing reaches dwell or events
     const ptzSuppressed = this.ptzAutotracker.suppressionActive;
     const ptzEnded = this.ptzWasSuppressed && !ptzSuppressed;
     if (ptzEnded) this.detectionWindow.oweLook('ptz');
     this.ptzWasSuppressed = ptzSuppressed;
     this.ptzEndPending ||= ptzEnded;
 
-    // motion runs every frame and re-arms the cascade; the cascade gates
-    // object detection, not motion
+    // the cascade gates object detection, not motion
     const motionPlugin = this.plugins.get(SensorType.Motion);
 
     if (motionPlugin?.requiresFrames) {
@@ -1689,9 +1647,7 @@ export class DetectionCoordinator {
           this.perf.motionCount++;
           if (!this.loopRunning) return;
           if (ptzSuppressed) {
-            // fed for the background model only, results discarded: frame-diff
-            // is garbage during ego-motion, but skipping frames would leave a
-            // stale background that lights up the whole scene after the move
+            // results discarded, skipping frames would leave a stale background that lights up the scene after the move
           } else if (result.detections.length > 0) {
             const filtered = this.pipeline.runMergeAndZoneFilter(ensureDetectionBoxes(result.detections));
             motionDetected = filtered.length > 0;
@@ -1731,8 +1687,7 @@ export class DetectionCoordinator {
       });
     }
 
-    // object is cascade-gated, but keeps running during PTZ suppression so
-    // the tracker holds its lock across pans
+    // cascade-gated, but runs during PTZ suppression so the tracker holds its lock across pans
     const objectPlugin = this.plugins.get(SensorType.Object);
     const shouldDetectObjects = objectPlugin?.requiresFrames === true && (ptzSuppressed || !this.cascadeEnabled || this.cascade.isActive);
 
@@ -1748,8 +1703,7 @@ export class DetectionCoordinator {
         if (detected) {
           this.trackDetectionCadence();
 
-          // run the pipeline even on empty frames so Norfair advances its
-          // Kalman state; the pose delta keeps predictions stable across pans
+          // run even on empty frames so Norfair advances its Kalman state
           const poseDelta = this.ptzAutotracker.consumePoseDelta();
           const postStart = Date.now();
           const pipelineResult = this.pipeline.process(detected, poseDelta, t0);
@@ -1759,22 +1713,18 @@ export class DetectionCoordinator {
           this.liveLabels = new Set([...pipelineResult.tracked, ...pipelineResult.staticTracks].map((t) => t.label));
           trace = { ...pipelineResult.trace, motion: trace?.motion, ...windowTrace(plan) };
           this.lastWorldTickAt = t0;
-          // the tick that opens a span analysed the low stream (the switch lands
-          // next tick), its picture work is worth a one-off HQ decode
+          // the span-opening tick analysed the low stream, its picture work gets a one-off HQ decode
           if (this.updateWorldSpans(pipelineResult) && !analysis.isMainStream) {
             this.hqUpgrade = await this.acquireOpeningHqFrame();
           }
           await this.holdSightingMoments(pipelineResult, this.hqUpgrade ?? analysis, t0);
           await this.captureMoments(pipelineResult, this.hqUpgrade ?? analysis, t0);
 
-          // open spans and a lingering segment keep the cascade armed: the
-          // world can only observe absence or a reappearance while it still
-          // receives ticks
+          // the world only sees absence or a reappearance while it still receives ticks
           if (this.cascadeEnabled && (this.worldSpans.size > 0 || this.eventManager.hasActiveSegment())) {
             this.cascade.triggerMomentary(this.cascadeTimeoutSeconds);
           }
 
-          // track id churn is invisible in the event log without this
           if (pipelineResult.created.length > 0 || pipelineResult.removed.length > 0) {
             const born = pipelineResult.created.map((id) => {
               const t = pipelineResult.tracked.find((d) => d.trackId === id);
@@ -1786,27 +1736,16 @@ export class DetectionCoordinator {
             );
           }
 
-          // extrapolated (Kalman-only) tracks smooth single-frame misses in
-          // the UI, but must not float off-frame as ghost bboxes
-          const visibleTracks = pipelineResult.tracked.filter((t) => {
-            if (!t.trackLost) return true;
-            const cx = t.box.x + t.box.width * 0.5;
-            const cy = t.box.y + t.box.height * 0.5;
-            return cx > -0.1 && cx < 1.1 && cy > -0.1 && cy < 1.1;
-          });
-          objectDetections = visibleTracks.filter((t) => !t.trackLost);
-          results.object = { detected: objectDetections.length > 0, detections: visibleTracks };
+          objectDetections = pipelineResult.tracked;
+          results.object = { detected: objectDetections.length > 0, detections: objectDetections };
           staticDetections = pipelineResult.staticTracks;
           trainingExtras = pipelineResult.trainingExtras;
           trainingSuggestions = pipelineResult.trainingSuggestions;
           if (pipelineResult.crossings.length > 0) results.lineCrossings = pipelineResult.crossings;
 
-          // incl. extrapolated tracks, they keep the target's id through a
-          // missed detector frame
           this.ptzAutotracker.handleObjectDetections(pipelineResult.tracked);
 
-          // live tracks anchor the next tick's window; a track that just died
-          // gets one farewell look at its last position
+          // a track that just died gets one farewell look at its last position
           this.trackAnchorBoxes = objectDetections.map((t) => t.box);
           for (const id of pipelineResult.removed) {
             const last = this.lastTrackedById.get(id);
@@ -1824,12 +1763,11 @@ export class DetectionCoordinator {
 
     // tracker and autotracker are fed, everything event-facing stays quiet
     if (ptzSuppressed) {
-      // object boxes stay live in the UI through the move, bbox publish only
+      // boxes stay live in the UI through the move
       if (objectPlugin && results.object) {
         this.writeSensorProperties(objectPlugin.sensorId, { detections: results.object.detections, staticDetections });
       }
-      // keep an already-running object dwell alive so a chase doesn't end its
-      // own event, but never activate it from suppressed frames
+      // a chase must not end its own event, but suppressed frames never start the dwell
       if (objectPlugin && objectDetections.length > 0 && this.dwell.isActive(objectPlugin.sensorId)) {
         this.dwell.refresh(objectPlugin.sensorId, OBJECT_DWELL_SECONDS);
       }
@@ -1867,8 +1805,7 @@ export class DetectionCoordinator {
     this.ingestResultsForAllSecondaries(results);
     this.clearStaleSecondaryBboxes();
 
-    // one flush per frame, after detectors and thumbnails, so segment-start
-    // messages already carry them
+    // one flush per frame, after detectors and thumbnails, so segment-start messages carry them
     if (!this.loopRunning) return;
     const snapshot = this.buildSnapshot(t0);
     if (staticDetections.length > 0) snapshot.staticObjects = staticDetections;
@@ -1880,8 +1817,7 @@ export class DetectionCoordinator {
     }
     if (trace) snapshot.trace = this.finishTrace(trace, analysis, results);
 
-    // pre-encode the event thumbnail when this frame starts an event, so the
-    // start message carries it inline; attaching is harmless otherwise
+    // pre-encode so the event start message carries the thumbnail inline
     const wantsEventThumb = this.eventManager.needsThumbnail() || this.snapshotWillStartEvent(snapshot);
     let hqThumbAttached = false;
     if (wantsEventThumb) {
@@ -1899,16 +1835,13 @@ export class DetectionCoordinator {
     await this.attachTrainingFrame(snapshot, this.hqUpgrade ?? analysis);
     this.eventManager.processResults(snapshot);
 
-    // a span can only close while the tracker receives ticks; if the cascade
-    // re-arm chain broke (object plugin outage, camera drop mid-event) the
-    // stale spans would pin the event open and the cascade armed forever
+    // a broken cascade re-arm chain would leave stale spans pinning the event open forever
     if (this.worldSpans.size > 0 && this.lastWorldTickAt > 0 && t0 - this.lastWorldTickAt > WORLD_TICK_STARVATION_MS) {
       this.logger.warn(`Dropping ${this.worldSpans.size} open object span(s): no tracker tick for ${Math.round((t0 - this.lastWorldTickAt) / 1000)}s`);
       this.worldSpans.clear();
     }
 
-    // spans can outlive every trigger dwell (gate case); once spans, dwells
-    // and the segment linger are all quiet the event ends here
+    // spans can outlive every trigger dwell, the event ends once spans, dwells and linger are quiet
     if (this.worldSpans.size === 0 && !this.dwell.hasActive() && !this.eventManager.hasActiveSegment()) {
       this.eventManager.forceEndActiveEvent();
     }
@@ -1955,11 +1888,9 @@ export class DetectionCoordinator {
       }
       const facePlugin = this.plugins.get(SensorType.Face);
       if (facePlugin) {
-        // the crop path reaches ingestDetectionResult directly, so the zone
-        // filter that guards the plugin path has to be applied here too
+        // the crop path skips the plugin path's zone filter, so it applies here too
         const detections = this.pipeline.runZoneFilterWithLabel(results.face.detections, 'face');
-        // no mid-segment clear: a turned-away head yields a no-face frame and
-        // would flap the list, departure is reflected when the segment ends
+        // no mid-segment clear: a turned-away head would flap the list
         for (const detection of detections) {
           if (detection.identity) this.faceIdentities.add(detection.identity);
         }
@@ -1995,7 +1926,6 @@ export class DetectionCoordinator {
             this.classifierLabels.set(plugin.sensorId, seen);
           }
           for (const detection of classifierResult.detections) {
-            // the specific answer wins (subAttribute, e.g. the bird species)
             const label = detection.subAttribute || detection.attribute || detection.label;
             if (label) seen.add(label);
           }
@@ -2027,13 +1957,11 @@ export class DetectionCoordinator {
   private async attachTrainingFrame(snapshot: ProcessedDetectionData, analysis: AnalysisFrame): Promise<void> {
     if (!this.eventManager.hasActiveEvent() && !this.snapshotWillStartEvent(snapshot)) return;
 
-    // the sink sums only the boxes the scene memory does not know yet
     const value = (label: string, confidence: number, box: BoundingBox) => trainingValue(label, confidence, this.pipeline.threshold(label), box);
     const subjects: TrainingSubject[] = snapshot.objects
       .filter((d) => isTrainingSubject(d))
       .map((d) => ({ label: d.label, box: d.box, score: value(d.label, d.confidence, d.box) }));
-    // flat bonus: faces and plates are the scarce labels; fresh only, a
-    // buffered stale result describes an older frame and must not lift this one
+    // fresh results only, a stale buffered one describes an older frame
     const now = Date.now();
     const facesFresh = snapshot.facesAt !== undefined && now - snapshot.facesAt <= SECONDARY_FRESH_MS;
     const platesFresh = snapshot.platesAt !== undefined && now - snapshot.platesAt <= SECONDARY_FRESH_MS;
@@ -2120,11 +2048,9 @@ export class DetectionCoordinator {
 
     for (const event of result.events) {
       const obj = event.object;
-      // a moment is worth a picture when a span opens or the view got better;
       // closing events report absence, there is nothing to show
       if (!MOMENT_EVENTS.has(event.eventType)) continue;
-      // and only for a track that holds a span: a tentative first sighting or a
-      // stationary recovery opens nothing, so its picture is never handed over
+      // a tentative first sighting or a stationary recovery holds no span
       if (!this.worldSpans.has(obj.trackId)) continue;
       const score = obj.confidence * Math.sqrt(obj.width * obj.height);
       if (score > bestScore) {
@@ -2136,8 +2062,7 @@ export class DetectionCoordinator {
 
     // one frame per tick, not one per object: they share the picture
     if (!subject) return;
-    // a track confirmed through a witness after its only sighting: the
-    // current frame no longer shows it, the picture held at the sighting does
+    // confirmed through a witness after its only sighting: the held picture shows it, the current frame does not
     const held = this.heldMoments.get(subject.trackId);
     this.heldMoments.delete(subject.trackId);
     if (held && trigger === 'objectEntered' && subject.lastSeenMs < at) {
@@ -2179,7 +2104,6 @@ export class DetectionCoordinator {
     if (!rendered) return;
 
     this.eventManager.offerMoment({ ...momentPictures(rendered), capturedAt: at, score: bestScore, rank: MOMENT_RANK_OBJECT, stream: 'low' });
-    // debugging
     await this.recordMoment(target, rendered, analysis, `${subject.label}-external`, bestScore, 'external', at);
   }
 
@@ -2192,16 +2116,13 @@ export class DetectionCoordinator {
 
     const stream = analysis.isMainStream ? 'main' : 'low';
     this.eventManager.offerMoment({ ...momentPictures(rendered), capturedAt: at, score, rank: MOMENT_RANK_OBJECT, stream });
-    // debugging
     await this.recordMoment(target, rendered, analysis, `${subject.label}-${subject.trackId}`, score, trigger, at);
   }
 
   private async captureAttributeMoment(results: DetectionResults, analysis: AnalysisFrame, at: number): Promise<void> {
     const candidates: AttributeMomentCandidate[] = [];
 
-    // same rule as the object rank: only a span-holding subject hands over a
-    // picture. A face or plate riding on a settled bystander (the parked car
-    // at the kerb) must not anchor the segment of an unrelated event
+    // only a span-holding subject hands over a picture, a bystander must not anchor an unrelated event
     const spanHolder = (parentTrackId?: number) => parentTrackId !== undefined && this.worldSpans.has(parentTrackId);
 
     for (const face of results.face?.detections ?? []) {
@@ -2215,16 +2136,14 @@ export class DetectionCoordinator {
       candidates.push({ label: `plate:${normalizePlateText(p.plateText)}`, box: p.box, parentBox: p.parentBox, confidence: p.confidence });
     }
 
-    // one picture per tick, never one per subject: with several faces the most
-    // legible one frames the shot, the rest stay their own attribute tiles
+    // one picture per tick, the most legible subject frames the shot
     let best: AttributeMomentCandidate | undefined;
     let bestScore = -1;
     for (const candidate of candidates) {
       const cut = results.thumbnails?.find((t) => t.label === candidate.label);
       // a subject cut off by the frame edge makes a poor card
       if (cut?.onEdge) continue;
-      // a few-pixel face or plate carries no information even at the crop's max
-      // upscale: it stays an attribute tile, the anchor keeps the object shot
+      // a few-pixel face or plate carries nothing even at max upscale, it stays an attribute tile
       const areaPx = candidate.box.width * analysis.frame.width * candidate.box.height * analysis.frame.height;
       if (areaPx < MOMENT_ATTRIBUTE_MIN_AREA) continue;
       const score = candidate.confidence * Math.sqrt(candidate.box.width * candidate.box.height);
@@ -2234,13 +2153,10 @@ export class DetectionCoordinator {
       }
     }
 
-    // ask before cutting: the same face rides along on every tick of a segment
-    // and re-encoding for a picture that loses anyway is pure cost
+    // ask before cutting, the same face rides on every tick and re-encoding a loser costs
     if (!best || !this.eventManager.wantsMoment(MOMENT_RANK_ATTRIBUTE, bestScore, analysis.isMainStream ? 'main' : 'low', at)) return;
 
-    // the card frames the whole person with the face as its center, not the
-    // bare face box: the zoomed face already exists as an attribute tile, and
-    // a misdetected "face" zoomed to card size ruins the event picture
+    // frame the whole person around the face, the zoomed face already exists as a tile
     const target: MomentTarget = {
       subject: best.box,
       base: best.parentBox ?? best.box,
@@ -2251,7 +2167,6 @@ export class DetectionCoordinator {
 
     const stream = analysis.isMainStream ? 'main' : 'low';
     this.eventManager.offerMoment({ ...momentPictures(rendered), capturedAt: at, score: bestScore, rank: MOMENT_RANK_ATTRIBUTE, stream });
-    // debugging
     await this.recordMoment(target, rendered, analysis, best.label.replace(':', '-'), bestScore, 'attributeFound', at);
   }
 
@@ -2292,7 +2207,6 @@ export class DetectionCoordinator {
     };
   }
 
-  // debugging
   private async recordMoment(
     target: MomentTarget,
     rendered: RenderedMoment,
@@ -2487,9 +2401,7 @@ export class DetectionCoordinator {
 
   private ingestAssistedObjects(sensorId: string, objects: { detections: Detection[]; assisted: boolean }): void {
     if (!objects.assisted) return;
-    // the assist returns raw detector output; the frame path dedupes via NMS
-    // before ingest, so this path must merge too or near-identical candidate
-    // boxes inflate the object count
+    // the assist returns raw detector output, merge like the frame path or near-duplicates inflate the count
     const merged = this.pipeline.runMergeAndZoneFilter(objects.detections);
     const refiltered = this.applyExternalDetectionFilters(SensorType.Object, {
       detected: merged.length > 0,
@@ -2513,8 +2425,7 @@ export class DetectionCoordinator {
 
     try {
       const inferStart = Date.now();
-      // the plugin delivers from its floor: only boxes above the user threshold
-      // may replace the camera's report
+      // the plugin delivers from its floor, only boxes above the user threshold replace the report
       const boxed = this.pipeline.aboveThreshold(await this.assistDetections(assist, frame, scaler, reported));
       this.perf.assistMs += Date.now() - inferStart;
       this.perf.assistCount++;
@@ -2533,9 +2444,7 @@ export class DetectionCoordinator {
     const inputSpec = assist.modelSpec?.input;
     const reportedBoxes = reported.map((d) => d.box).filter((box): box is BoundingBox => box !== undefined);
 
-    // a coordinate-less report still has the localizer's diff anchors: zoom
-    // the assist into the moving regions instead of letterboxing the whole
-    // frame, which shrinks the subject to nothing on a main-stream frame
+    // a coordinate-less report zooms into the diff anchors instead of letterboxing the whole frame
     const anchors = reportedBoxes.length > 0 ? reportedBoxes : [...this.anchorBoxes, ...this.farewellBoxes];
     const pad = reportedBoxes.length > 0 ? TRACK_PAD : MOTION_PAD;
 

@@ -14,18 +14,12 @@ import { STORE_FILE_NAME } from '../plugins/store/pluginStoreFile.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
 
 import type { Promisify } from '@camera.ui/rpc';
+import type { DownloadCleanup, DownloadToken } from '@camera.ui/sdk';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ServerResponse } from 'node:http';
 import type { DownloadParamsRequest } from '../api/types/index.js';
 import type { ProxyServer } from '../rpc/index.js';
-import type {
-  CreateDownloadOptions,
-  CreateStreamDownloadOptions,
-  DownloadCleanup,
-  DownloadManagerInterface,
-  DownloadToken,
-  PluginFileServeInterface,
-} from '../rpc/interfaces/download.js';
+import type { CreateDownloadOptions, CreateStreamDownloadOptions, DownloadManagerInterface, PluginFileServeInterface } from '../rpc/interfaces/download.js';
 import type { ConfigService } from '../services/config/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 
@@ -51,8 +45,8 @@ export interface ServerDownloadOptions {
 
 const REMOTE_CHUNK_SIZE = 256 * 1024;
 
-const DEFAULT_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const CLEANUP_INTERVAL_MS = 60 * 1000; // 1 minute
+const DEFAULT_TTL_MS = 10 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 60 * 1000;
 const STREAM_POLL_MS = 50;
 const STREAM_FILE_WAIT_MS = 5000;
 const STREAM_MARKER_WAIT_POLL_MS = 250;
@@ -171,8 +165,7 @@ export class DownloadManager implements DownloadManagerInterface {
     };
     this.registry.set(token, entry);
 
-    // Remote entries are session-bound to a live plugin connection — not
-    // persisted (a restart would leave a dangling file-serve subject).
+    // remote entries die with the plugin connection, after a restart the file-serve subject would dangle
     if (!entry.remotePluginId) {
       this.persistEntry(token, entry);
     }
@@ -212,8 +205,7 @@ export class DownloadManager implements DownloadManagerInterface {
     };
     this.registry.set(token, entry);
 
-    // Stream entries are always evicted on restart (see restoreFromPersistedRegistry);
-    // remote ones additionally can't outlive the plugin connection.
+    // stream entries are evicted on restart anyway, remote ones cannot outlive the plugin connection
     if (!entry.remotePluginId) {
       this.persistEntry(token, entry);
     }
@@ -498,14 +490,9 @@ export class DownloadManager implements DownloadManagerInterface {
   }
 
   private async handleRemoteStreamDownload(req: FastifyRequest<DownloadParamsRequest>, reply: FastifyReply, token: string, entry: DownloadEntry): Promise<void> {
-    // Streams a growing export file from a remote worker: poll size via
-    // statFile, pull new bytes via readFileChunk, stop when the marker is gone.
-
     const serve = this.fileServeProxy(entry.remotePluginId!);
 
-    // With a marker the writer may work for a while before the output file
-    // appears (episode exports extract per-camera clips first) — wait as long
-    // as the writer is alive and the token valid, not a fixed few seconds.
+    // with a marker the writer can take a while before the file appears, wait while it is alive
     const deadline = entry.markerPath ? entry.expiresAt : Date.now() + STREAM_FILE_WAIT_MS;
     let initial = await serve.statFile(entry.filePath).catch(() => ({ exists: false, size: 0 }));
     while (!initial.exists && Date.now() < deadline && !req.raw.destroyed) {
@@ -559,7 +546,6 @@ export class DownloadManager implements DownloadManagerInterface {
             }
           }
         } else {
-          // Marker gone → writer finished; flush any tail and stop.
           const marker = entry.markerPath ? await serve.statFile(entry.markerPath) : { exists: false, size: 0 };
           if (!marker.exists) {
             const finalStat = await serve.statFile(entry.filePath);
@@ -608,7 +594,6 @@ export class DownloadManager implements DownloadManagerInterface {
       'Cache-Control': 'no-cache',
     });
 
-    // Manage the response manually — Fastify must not touch it after this.
     reply.hijack();
 
     let fd: number | undefined;
@@ -662,7 +647,6 @@ export class DownloadManager implements DownloadManagerInterface {
             }
           }
         } else {
-          // Marker gone → writer has finished; flush any tail bytes and stop.
           if (entry.markerPath && !existsSync(entry.markerPath)) {
             const finalStat = fstatSync(fd);
             while (offset < finalStat.size && !destroyed) {
@@ -687,9 +671,7 @@ export class DownloadManager implements DownloadManagerInterface {
   }
 
   private async waitForStreamFile(req: FastifyRequest<DownloadParamsRequest>, entry: DownloadEntry): Promise<boolean> {
-    // The marker says the writer is still working: an episode export extracts
-    // per-camera clips for a while before the concat creates the output file,
-    // so a fixed few-second wait 404s every larger export.
+    // an episode export extracts clips before the output file exists, a fixed wait would 404
     if (!entry.markerPath) return this.waitForFile(entry.filePath, STREAM_FILE_WAIT_MS);
 
     while (Date.now() < entry.expiresAt && !req.raw.destroyed) {

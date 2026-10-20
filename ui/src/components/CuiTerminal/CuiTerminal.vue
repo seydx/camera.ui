@@ -78,7 +78,7 @@ function fitTerminal(): void {
   try {
     fitAddon.fit();
   } catch {
-    // Ignore fit errors
+    // ignore fit errors
   }
 }
 
@@ -109,7 +109,7 @@ function safeDispose(addon: Terminal | ITerminalAddon | null) {
     try {
       addon.dispose();
     } catch {
-      // Ignore
+      // ignore
     }
   }
 }
@@ -198,10 +198,6 @@ watch(
   { deep: true },
 );
 
-// Drive the tab indicator off the reactive isConnected ref so an internal
-// auto-reconnect (post-endpoint-swap, where useTerminal closes the old
-// session and dials a fresh one) flips the indicator back to green without
-// the parent needing to know about the swap.
 watch(isConnected, (next) => {
   if (next) {
     emit('connected');

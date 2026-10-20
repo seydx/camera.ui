@@ -86,8 +86,7 @@ export class PluginConfigStore implements PluginConfigStoreRPC {
 
   private open(): PluginStoreFile {
     if (!this.store) {
-      // An empty result here would boot the plugin with default config while
-      // its real data sits in the closed store. Fail loudly instead.
+      // returning {} would boot the plugin with defaults over its real data
       throw new Error(`store: config store for ${this.pluginId} is closed`);
     }
     return this.store;

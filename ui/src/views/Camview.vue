@@ -583,14 +583,9 @@ const cameraNameMap = computed(() => {
   return map;
 });
 
-// CamView forces `sourceRole: 'low'` across all tiles: many parallel 4K streams
-// blow past iOS Safari's memory budget (decoded YUV frames ≈ 12 MB × buffer depth
-// per tile). Scrub quality keeps decode + memory manageable at 10+ tiles.
+// 'low' for every tile, parallel 4K decodes blow past the iOS Safari memory budget
 const { master } = useMultiNvrPlayback(viewCameraIds, { sourceRole: 'low', activeIds: playbackCameraIds });
 
-// On re-open (timeline unmounts when minimized), seed CuiTimeline's scroll
-// position from the held master playback time so the playback/live gap
-// survives the remount instead of snapping back to the live edge.
 const timelineInitialTimestamp = computed(() =>
   master.mode.value !== 'idle' && master.currentTimestamp.value > 0 ? Math.floor(master.currentTimestamp.value / 1000) : undefined,
 );
@@ -841,7 +836,6 @@ async function togglePlayerSourceRole(state?: StreamingRole) {
 }
 
 async function togglePlayerStreamingMode(state?: VideoStreamingMode) {
-  // Cycle between concrete modes only (skip auto): mse -> webrtc -> webcodecs -> mse
   let currentMode = streamingMode.value;
 
   if (currentMode === 'auto') {
@@ -892,7 +886,6 @@ watch(
         const cam = cameras.value?.result.find((c) => c._id === cameraView.cameraId);
         cardsArray[cameraView.index].lastDroppedCamera = cam;
 
-        // Position overrides from localStorage — only if camera still exists
         const override = layoutOverrides?.find((o) => o.index === cameraView.index);
         if (override) {
           if (!override.cameraId || availableCameraIds.has(override.cameraId)) {
@@ -906,7 +899,6 @@ watch(
         }
       }
 
-      // Clean stale overrides (deleted cameras) from localStorage
       if (layoutDirty && key && uiSettings.value.camview.layouts?.[key]) {
         uiSettings.value.camview.layouts[key] = uiSettings.value.camview.layouts[key].filter((o) => !o.cameraId || availableCameraIds.has(o.cameraId));
       }
@@ -919,7 +911,6 @@ watch(
 </script>
 
 <style scoped>
-/* Synchronized transition for content container when timeline shows/hides */
 .camview-content-transition {
   transition:
     width 0.3s ease-out,
@@ -927,7 +918,6 @@ watch(
     padding-bottom 0.3s ease-out;
 }
 
-/* Timeline slide-in from right (lgBreakpoint) */
 .slide-left-enter-active,
 .slide-left-leave-active {
   position: absolute;
@@ -945,7 +935,6 @@ watch(
   opacity: 0;
 }
 
-/* Timeline slide-in from bottom (smaller screens) - already fixed positioned */
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition:
@@ -963,7 +952,6 @@ watch(
   border-inline-start: 1px solid #2d2d2d;
 }
 
-/* SpeedDial: only enable list clicks when open */
 :deep(.p-speeddial-open) .p-speeddial-list {
   pointer-events: auto;
 }

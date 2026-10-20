@@ -467,7 +467,8 @@ const selectedClusteredIds = computed(() => {
 });
 
 const knownSkeletonCount = computed(() => {
-  void windowWidth.value; // reactive on resize
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  windowWidth.value; // reactive on resize
   const containerWidth = knownSkeletonRef.value?.clientWidth ?? windowWidth.value;
   return Math.floor((containerWidth + KNOWN_CARD_GAP) / (KNOWN_CARD_WIDTH + KNOWN_CARD_GAP)) || 4;
 });
@@ -565,7 +566,7 @@ async function openKnownFaceDetail(face: FaceProfile) {
       unlike: img.unlike,
     }));
   } catch {
-    // No images available
+    // no images
   } finally {
     loading.value = false;
   }

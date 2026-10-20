@@ -78,8 +78,6 @@ function resolveKey(item: T): string | number {
   return candidate.id ?? candidate.key ?? JSON.stringify(item);
 }
 
-// the first cell's key keeps the cards of a row alive while the rendered range
-// shifts; keyed by index the scroller would remount them on every scroll step
 function resolveRowKey(row: unknown): string | number | undefined {
   const cells = row as T[] | undefined;
   if (!cells || cells.length === 0) return undefined;
@@ -115,8 +113,7 @@ function scrollToTop(): void {
   element?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// as CSS variables, not as style bindings: a binding sits in every row and cell
-// and would re-render every card on each frame of a window resize
+// css variables: a style binding sits in every row and would re-render every card on resize
 watchEffect(() => {
   const root = containerRef.value;
   if (!root || !cellWidth.value) return;
@@ -126,8 +123,7 @@ watchEffect(() => {
   root.style.setProperty('--cell-gap', `${props.gap}px`);
 });
 
-// rows that don't fill the viewport never produce a scroll event, so the next
-// page has to be asked for here
+// rows that don't fill the viewport never scroll, so ask for the next page here
 watch(
   [() => props.items.length, containerHeight, rowHeight, () => props.hasMore],
   () => {

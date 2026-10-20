@@ -178,7 +178,6 @@ function onToggle(open: boolean) {
   }
 }
 
-/* Size variants */
 .cui-garage-control--small {
   padding: 0.5rem;
   gap: 0.375rem;

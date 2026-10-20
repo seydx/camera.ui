@@ -212,9 +212,7 @@ async function fetchChangelog(): Promise<void> {
       }
 
       showReleaseNotes.value = true;
-    } catch {
-      //
-    }
+    } catch {}
   } else if (isServerTarget(target.value)) {
     try {
       serverQuery.toggleQueryActivator('getServerChangelogQuery', true);
@@ -225,9 +223,7 @@ async function fetchChangelog(): Promise<void> {
       }
 
       showReleaseNotes.value = true;
-    } catch {
-      //
-    }
+    } catch {}
   }
 }
 
@@ -243,9 +239,7 @@ async function fetchCompat(): Promise<void> {
     if (compatIssues.value.length || platformIncompatible.value) {
       showCompatWarning.value = true;
     }
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function shouldShowChangelog(version: string): boolean {

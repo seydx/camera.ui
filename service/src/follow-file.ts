@@ -40,8 +40,7 @@ export function followFile(path: string, onLine: (line: string) => void): () => 
   };
 
   const onChange = (current: Stats): void => {
-    // the file is truncated in place, and without this it would stay silent until it
-    // grows past the old size again
+    // truncated in place, without this it stays silent until it grows past the old size
     if (current.size < cursor) {
       cursor = 0;
       remainder = '';

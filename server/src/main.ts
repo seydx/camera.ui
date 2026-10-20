@@ -48,7 +48,7 @@ class CameraUiWorker {
     const logLevel = this.configService.config.logger?.level === 'debug' ? 'debug' : this.configService.config.logger?.level === 'trace' ? 'trace' : 'log';
     this.logger.initLogManager(this.configService.LOGS_PATH, this.configService.LOG_FILE, logLevel);
 
-    // Worker-mode database: only opens workerStateDB, skips migrations + master setup.
+    // worker mode: only workerStateDB, no migrations or master setup
     this.database = new Database(true);
   }
 

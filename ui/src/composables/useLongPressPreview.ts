@@ -30,16 +30,14 @@ export function useLongPressPreview(target: MaybeElementRef, onStart: () => void
     },
   );
 
-  // the click right after a released long-press must not open the card
   function consumesClick(): boolean {
     const consumed = suppressClick;
     suppressClick = false;
     return consumed;
   }
 
-  // browsers replay touch taps as mouseenter+click; the emulated mouseenter
-  // must not start a hover preview on top of the tap
   function blocksMouseEnter(): boolean {
+    // browsers replay a tap as mouseenter and click, the emulated mouseenter must not start a preview
     return Date.now() - lastTouchAt < EMULATED_MOUSE_WINDOW_MS;
   }
 

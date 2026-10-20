@@ -22,15 +22,10 @@ export function bootConnectionInstance(options: ConnectionOptions): Connection {
     kernel: _connection.kernel,
     hosts: () => Array.from(workerRegistry),
     listenForResyncRequests: true,
-    // workers own their NATS socket but cannot sign URLs, the main thread's resolver answers for them
     resolveServers: options.transportOptions?.nats?.resolveServers,
   });
   _workerBridge = bridge;
-  // On every connection wake (foreground / online / network-change) nudge all
-  // registered workers to revalidate their own transport. The kernel only
-  // heartbeats its own socket; this propagates the liveness check across the
-  // worker boundary so a worker that went half-open on a 5G handoff recovers
-  // without a user action. Generic — the worker decides what "revalidate" means.
+  // the kernel only heartbeats its own socket, a worker gone half-open on a 5G handoff needs this nudge
   _wakeUnsub = _connection.onWake(() => {
     _connection?.journal.record('worker-bridge', `revalidate (${workerRegistry.size} workers)`);
     bridge.revalidateWorkers();

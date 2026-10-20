@@ -13,7 +13,7 @@ async function applyNativeUrl(beta: boolean): Promise<void> {
     const { CapacitorUpdater } = await import('@capgo/capacitor-updater');
     await CapacitorUpdater.setUpdateUrl({ url: beta ? `${BASE_URL}?channel=beta` : BASE_URL });
   } catch {
-    // plugin not ready — retried on the next config change
+    // plugin not ready, the next config change retries
   }
 }
 

@@ -93,8 +93,7 @@ export class PythonPluginRuntime extends BasePluginRuntime {
         await this.py.updatePluginDependencies(requirementsPath, signal);
       }
 
-      // pluginManager only exists on the master; on a worker installPluginPython
-      // above already provisioned the interpreter.
+      // no pluginManager on a worker, installPluginPython above already provisioned the interpreter
       if (this.pluginManager && !this.pluginManager.installedPythonVersions.has(this.plugin.contract.pythonVersion ?? DEFAULT_PY_VERSION)) {
         throw new Error(`Python version ${this.plugin.contract.pythonVersion ?? DEFAULT_PY_VERSION} is not installed! Cannot start ${this.plugin.pluginName}.`);
       }

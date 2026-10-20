@@ -175,12 +175,12 @@ export async function toggleSensor(sensor: ReactiveSensor | undefined): Promise<
 
   const active = sensorState(sensor);
 
-  if (isReactiveLightControl(sensor)) return void (await sensor.setProperty(LightProperty.On, !active));
-  if (sensor.type === SensorType.Switch) return void (await sensor.setProperty(SwitchProperty.On, !active));
-  if (isReactiveSirenControl(sensor)) return void (await sensor.setProperty(SirenProperty.Active, !active));
-  if (isReactiveLockControl(sensor)) return void (await sensor.setProperty(LockProperty.TargetState, active ? 1 : 0));
-  if (isReactiveGarageControl(sensor)) return void (await sensor.setProperty(GarageProperty.TargetState, active ? 1 : 0));
-  if (isReactiveDoorbellTrigger(sensor)) return void (await sensor.setProperty(DoorbellProperty.Ring, true));
+  if (isReactiveLightControl(sensor)) return await sensor.setProperty(LightProperty.On, !active);
+  if (sensor.type === SensorType.Switch) return await sensor.setProperty(SwitchProperty.On, !active);
+  if (isReactiveSirenControl(sensor)) return await sensor.setProperty(SirenProperty.Active, !active);
+  if (isReactiveLockControl(sensor)) return await sensor.setProperty(LockProperty.TargetState, active ? 1 : 0);
+  if (isReactiveGarageControl(sensor)) return await sensor.setProperty(GarageProperty.TargetState, active ? 1 : 0);
+  if (isReactiveDoorbellTrigger(sensor)) return await sensor.setProperty(DoorbellProperty.Ring, true);
 }
 
 export async function setSecurityState(sensor: ReactiveSensor | undefined, state: SecuritySystemState): Promise<void> {

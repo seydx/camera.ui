@@ -291,8 +291,6 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
     @property
     def sources(self) -> list[CameraDeviceSource]:
         sources = deepcopy(self._camera_subject.value["sources"])
-        # Single funnel for all URL consumers - remote-hosted plugins get
-        # reachable URLs (see remote_urls.py).
         for source in sources:
             source["urls"] = rewrite_source_urls_for_remote(source["urls"])
         return [CameraDeviceSourceImpl(source, self) for source in sources]
@@ -441,11 +439,8 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             sensor_json, plugin_id, {"assignCameraId": self.id}
         )
         sensor._setAssignedCameras(registration["assignedCameraIds"])  # pyright: ignore[reportPrivateUsage]
-        set_locked = getattr(sensor, "_setAssignmentLocked", None)
-        if callable(set_locked):
-            set_locked()
+        sensor._setAssignmentLocked()  # pyright: ignore[reportPrivateUsage]
 
-        # assignment changes arrive on the global stream the sensor manager owns
         await self._sensor_manager.track_camera_sensor(sensor)
 
         sensor_namespace = NamespaceManager.sensor_provider_namespaces(plugin_id, sensor.id).sensor_rpc
@@ -463,8 +458,6 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
 
         self._owned_sensors[sensor.id] = (sensor, sensor.type)
 
-        # Subscribe to backend-initiated property changes for the owned sensor so that
-        # backend updates (e.g., motion dwell timer) sync into the local sensor state.
         sensor_event_ns = NamespaceManager.sensor_event_namespaces(sensor.id)
         # frame-fed owners skip the echo of their per-frame detection writes
         event_subject = (
@@ -699,8 +692,7 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         self, sensor_id: str, sensor_type: SensorType, properties: dict[str, Any]
     ) -> None:
         if sensor_type in DETECTION_SENSOR_TYPES:
-            # the spec belongs to the registry: it survives a frame worker that is
-            # not up yet, the coordinator receives it with the next sensor push
+            # modelSpec belongs to the registry, the coordinator gets it with the next sensor push
             model_spec = properties.get("modelSpec")
             if model_spec is not None:
                 properties = {k: v for k, v in properties.items() if k != "modelSpec"}

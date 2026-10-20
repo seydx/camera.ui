@@ -117,8 +117,6 @@ function fromWorldObject(obj: WorldObject): TrackedDetection {
   };
 }
 
-// every privacy zone blacks its pixels out of the shipped training jpeg, so a
-// box fully inside one would label nothing visible, dropDetections or not
 function privacyPolygons(zones: PrivacyZone[]): Point[][] {
   return zones.map((zone) => normalizePolygon(zone.points));
 }
@@ -233,7 +231,6 @@ export class DetectionPipeline {
     this.trainingMasks = privacyPolygons(zones.privacy);
     this.applyConfidences(settings);
     this.suppressStatic = settings.object.suppressStatic ?? true;
-    // debugging
     detectionRecord.config({ zones: rustZones, minConfidences: settings.object.confidences });
   }
 
@@ -243,7 +240,6 @@ export class DetectionPipeline {
     this.noteConfig({ zones: rustZones });
     this.whitelist = objectWhitelist(zones.object);
     this.trainingMasks = privacyPolygons(zones.privacy);
-    // debugging
     detectionRecord.config({ zones: rustZones });
   }
 
@@ -259,7 +255,6 @@ export class DetectionPipeline {
   public updateSettings(settings: CameraDetectionSettings): void {
     this.applyConfidences(settings);
     this.suppressStatic = settings.object.suppressStatic ?? true;
-    // debugging
     detectionRecord.config({ minConfidences: settings.object.confidences });
   }
 
@@ -275,8 +270,7 @@ export class DetectionPipeline {
   }
 
   public process(rawDetections: Detection[], poseDelta?: { panDelta: number; tiltDelta: number }, tMs = Date.now()): PipelineResult {
-    // the label whitelist is ours, not rust's: a zone only constrains the
-    // labels it lists, so a label no zone lists would otherwise pass anywhere
+    // the label whitelist is ours, not rust's: a zone only constrains the labels it lists
     const allowed = this.allowedByWhitelist(rawDetections);
     const flat = allowed.length === 0 ? [] : this.runNmsAndMergeFlat(allowed);
     const cameraMotion = poseDelta ? { x: -poseDelta.panDelta * PAN_TO_IMAGE_RATIO, y: poseDelta.tiltDelta * PAN_TO_IMAGE_RATIO } : undefined;
@@ -284,8 +278,7 @@ export class DetectionPipeline {
     const tracked: PresentTrackedDetection[] = (this.suppressStatic ? result.tracked.filter((t) => t.state !== 'stationary') : result.tracked).map(fromWorldObject);
     const staticTracks = this.suppressStatic ? result.tracked.filter((t) => t.state === 'stationary').map(fromWorldObject) : [];
 
-    // a standing subject is suppressed until it wakes; remember since when it
-    // stood so its wake sighting can say how long it was already there
+    // a standing subject is suppressed until it wakes, its wake sighting needs the standing time
     const seen = new Set<number>();
     for (const t of result.tracked) {
       seen.add(t.trackId);

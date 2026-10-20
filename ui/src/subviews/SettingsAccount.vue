@@ -718,9 +718,7 @@ async function refreshBiometricState(): Promise<void> {
 
 async function onToggleBiometric(next: boolean): Promise<void> {
   if (next === biometricEnabled.value) return;
-  // Enabling needs fresh credentials — we don't keep the password in memory
-  // beyond the login form. Surface that requirement instead of silently
-  // doing nothing.
+  // enabling needs fresh credentials, the password is not kept after login
   if (next) {
     toast.add({ severity: 'info', detail: t('views.settings.biometric.enable_hint'), life: 3000 });
     return;
@@ -752,7 +750,6 @@ defineExpose({
   border: 6px solid var(--ground-background);
 }
 
-/* 2FA Styles */
 .tfa-row {
   display: flex;
   align-items: center;
@@ -813,7 +810,6 @@ defineExpose({
   margin-top: 0.25rem;
 }
 
-/* Setup Flow */
 .tfa-setup {
   display: flex;
   flex-direction: column;

@@ -65,7 +65,6 @@ const valueStyle = computed(() => ({
   opacity: 0.6;
 }
 
-/* Header */
 .cui-humidity-info__header {
   display: flex;
   align-items: center;

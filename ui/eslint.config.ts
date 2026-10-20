@@ -29,9 +29,6 @@ export default defineConfigWithVueTs(
   }),
   {
     rules: {
-      // TypeScript specific rules
-      // '@typescript-eslint/consistent-type-imports': 'error',
-      // '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -55,7 +52,6 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/no-namespace': 'off',
       '@stylistic/generator-star-spacing': ['error', { before: true, after: false }],
 
-      // Stylistic specific rules
       '@stylistic/max-len': ['error', { code: 200, tabWidth: 2, ignorePattern: 'class="[^"]*"|url\\([^)]*\\)' }],
       '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
       '@stylistic/operator-linebreak': 'off',
@@ -79,7 +75,6 @@ export default defineConfigWithVueTs(
       'vue/no-v-html': 'off',
 
       semi: [1, 'always'],
-      // quotes: ['error', 'single'],
       'comma-dangle': ['error', 'only-multiline'],
       'no-multiple-empty-lines': ['warn', { max: 1, maxEOF: 0 }],
       'eol-last': ['error', 'always'],

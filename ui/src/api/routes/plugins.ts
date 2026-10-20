@@ -518,7 +518,6 @@ export class PluginsQuery {
       mutationFn: setPluginConfigFn,
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['plugins', variables.pluginname, variables.configData] });
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.action_executed'), life: 3000 });
       },
     });
   }
@@ -528,7 +527,6 @@ export class PluginsQuery {
       mutationFn: submitPluginConfigFn,
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['plugins', variables.pluginname, variables.configData] });
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.action_executed'), life: 3000 });
       },
     });
   }

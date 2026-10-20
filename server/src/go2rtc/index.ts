@@ -27,7 +27,7 @@ export class Go2Rtc {
   private configService: ConfigService;
 
   private started = false;
-  private hasEverStarted = false; // True after first successful start, never resets
+  private hasEverStarted = false;
   private restarting = false;
   private manuallyKilled = false;
   private shuttingDown = false;
@@ -289,7 +289,7 @@ export class Go2Rtc {
         if (!this.hasEverStarted) {
           this.hasEverStarted = true;
         } else {
-          // Restart detected (via go2rtc UI, camera.ui, or manual kill) — refresh config + logger
+          // a restart, also from the go2rtc UI or a manual kill
           this.handleRestart();
         }
 
@@ -317,7 +317,7 @@ export class Go2Rtc {
         this.logger.log(`go2rtc v${this.version} (${this.os}) is listening on ${go2rtcAdress} (${go2rtcModule})`);
 
         if (go2rtcModule === 'api') {
-          // srtp is not logged through go2rtc, log manually
+          // go2rtc does not log the srtp listener
           this.logger.log(`go2rtc v${this.version} (${this.os}) is listening on ${this.configService.go2rtcConfig.srtp.listen} (srtp)`);
         }
       }
@@ -344,7 +344,7 @@ export class Go2Rtc {
 
   private isTraceableString(line: string): boolean {
     switch (true) {
-      case line.includes('Error opening input files: Server returned 404 Not Found'): // no audio (+h265?)
+      case line.includes('Error opening input files: Server returned 404 Not Found'): // no audio
       case line.includes('Error opening input: Server returned 404 Not Found'): // no audio
       case line.includes('Error opening input file') && decodeURIComponent(line).includes('#cameraui'):
       case line.includes('can\'t add track error="webrtc: can\'t get track"'):

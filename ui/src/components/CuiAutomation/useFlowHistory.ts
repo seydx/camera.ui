@@ -8,7 +8,7 @@ export interface FlowSnapshot {
 const MAX_HISTORY = 50;
 
 export function useFlowHistory() {
-  // Store as serialized strings to avoid deep Vue Flow type recursion with ref<>
+  // serialized strings, ref<> of vue flow types recurses too deep
   const undoStack = shallowRef<string[]>([]);
   const redoStack = shallowRef<string[]>([]);
 

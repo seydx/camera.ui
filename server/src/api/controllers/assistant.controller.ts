@@ -111,7 +111,6 @@ export class AssistantController {
     await pipeResponse(reply, response);
   }
 
-  // a reload or a second tab either asks what a conversation holds (threadId) or joins a run that is still streaming (runId)
   public async chatResume(req: FastifyRequest<AuthLoginRequest & AssistantChatResumeRequest>, reply: FastifyReply): Promise<void> {
     const manager = inject('assistantManager');
     const user = req.locals.user!;
@@ -383,7 +382,7 @@ async function pipeResponse(reply: FastifyReply, response: Response): Promise<vo
   try {
     await pipeline(Readable.fromWeb(response.body as NodeReadableStream<Uint8Array>), reply.raw);
   } catch {
-    // client went away or the run aborted, nothing left to tell it
+    // client went away or the run aborted
     if (!reply.raw.writableEnded) reply.raw.end();
   }
 }

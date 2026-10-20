@@ -71,7 +71,7 @@ async function refetchStatus(pluginName: string): Promise<void> {
     const data = await channel.request<PluginRuntimeInfo>('get-plugin-status', pluginName);
     applyStatus(pluginName, data);
   } catch {
-    // server unreachable — next reconnect will retry via 'connect' handler
+    // unreachable, the next reconnect retries
   }
 }
 
@@ -80,7 +80,7 @@ async function refetchManageQueue(): Promise<void> {
   try {
     manageQueue.value = await channel.request<PluginsProgress[]>('get-manage-queue');
   } catch {
-    // server unreachable — next reconnect will retry via 'connect' handler
+    // unreachable, the next reconnect retries
   }
 }
 
@@ -90,8 +90,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/plugins');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and refetchStatus() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and refetchStatus() reads `channel`
     channel = ch;
 
     ch.on<PluginsProgress[]>('manage-queue', (entries) => {
@@ -99,8 +98,7 @@ function ensureChannel(): SocketChannel {
     });
 
     ch.onReady(() => {
-      // Re-fetch status for every tracked plugin — covers reconnect after
-      // outage AND endpoint swap (channel internal rebind).
+      // covers a reconnect after an outage and an endpoint swap
       for (const name of pluginStates.keys()) {
         refetchStatus(name);
       }

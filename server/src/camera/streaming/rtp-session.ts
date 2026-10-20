@@ -253,7 +253,6 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
           try {
             const input = this.#rtpStream?.getInput();
             const rtp = RtpPacket.deSerialize(buffer);
-            // Fire-and-forget send via RTSP backchannel.
             if (input && this.#backchannelTrackIndex !== undefined) {
               input
                 .getFormatContext()
@@ -290,7 +289,6 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
     this.#backchannelTask ??= this.#runBackchannel();
 
     try {
-      // Send to local UDP port; Demuxer receives and decodes.
       this.#backchannelRtpInput.sendPacket(rtp);
     } catch {
       // ignore
@@ -362,9 +360,7 @@ export class RtpSession extends SubscribedPublic implements RtpSessionInterface 
   }
 
   async #cleanupBackchannel(): Promise<void> {
-    // Guard on resource existence (not the active flag): a backchannel that
-    // failed to fully start, or whose processing loop already ended, still
-    // holds an input/decoder/encoder/muxer that must be released.
+    // guard on the resources, not the active flag: a half-started backchannel still holds them
     const input = this.#backchannelRtpInput;
     if (!input) {
       return;

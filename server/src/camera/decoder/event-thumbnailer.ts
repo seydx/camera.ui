@@ -116,7 +116,7 @@ export class EventThumbnailer {
   }
 
   public fetchEventThumbnailAsync(): void {
-    void (async () => {
+    (async () => {
       try {
         const sharpJpeg = await this.sharpJpeg();
         if (sharpJpeg) {
@@ -142,7 +142,7 @@ export class EventThumbnailer {
     if (!source?.isRunning || !source.hasBuffer || this.upgradeInflight) return;
 
     this.upgradeInflight = true;
-    void (async () => {
+    (async () => {
       try {
         const jpeg = await this.sharpJpeg();
         if (jpeg && this.deps.eventManager.hasActiveEvent()) {

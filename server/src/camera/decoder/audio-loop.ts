@@ -25,7 +25,6 @@ function calculateDBFS(data: Buffer, format: 'pcm16' | 'float32'): number {
     sampleCount = floatView.length;
     for (let i = 0; i < sampleCount; i++) sumSquares += floatView[i] * floatView[i];
   } else {
-    // PCM16: normalize [-32768, 32767] → [-1.0, 1.0]
     const int16View = new Int16Array(data.buffer, data.byteOffset, data.byteLength / 2);
     sampleCount = int16View.length;
     for (let i = 0; i < sampleCount; i++) {
@@ -108,7 +107,7 @@ export class AudioDetectionLoop {
       samplesPerFrame,
     };
 
-    // the source reconnects on its own, nextFrame simply waits it out
+    // the source reconnects on its own, nextFrame waits it out
     this.source = new AudioSource(audioConfig, this.logger);
     await this.source.start();
 
@@ -116,7 +115,7 @@ export class AudioDetectionLoop {
 
     while (this.running) {
       const snap = await this.source.nextFrame(lastAudioFrameId);
-      if (!snap) break; // source stopped
+      if (!snap) break;
       lastAudioFrameId = snap.id;
       const rawFrame = snap.frame;
 

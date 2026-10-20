@@ -13,7 +13,6 @@ import type { PatchUserInput } from '@/schemas/users.schema.js';
 export interface PersistedUser {
   _id: string;
   username: string;
-  email?: string;
   role: string;
   firstLogin?: boolean;
   avatar?: string;
@@ -50,7 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = {
       _id: data._id,
       username: data.username,
-      email: data.email,
       role: data.role,
       firstLogin: data.firstLogin,
       avatar: data.avatar,
@@ -133,15 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // External user → null (e.g. cross-tab logout via localStorage) triggers
-  // local logout. Identity changes (different user) are NOT handled here —
-  // instance switching is a legitimate identity change; spurious tokens would
-  // hit 401 → needs-auth on the next request anyway.
-  //
-  // LOCAL teardown only, no API logout: the initiating tab already revoked
-  // the session server-side. Revoking again from here would destroy FRESH
-  // tokens when the trigger was a spurious needs-auth in another tab
-  // (refresh-rotation race) — logging every tab out in a cascade.
+  // local teardown only, revoking again here would log every tab out in a cascade
   watch(user, (next, prev) => {
     if (loginLoading.value || logoutLoading.value) return;
     if (next === null && prev !== null) {

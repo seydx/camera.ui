@@ -146,7 +146,6 @@ const [collect, drag] = useDrag(() => ({
   end: (item, monitor) => {
     const { id: droppedId, originalIndex } = item as DragItem;
     const didDrop = monitor.didDrop();
-    // If dropped outside valid target, revert to original position
     if (!didDrop) {
       props.moveCard(droppedId, originalIndex);
     }
@@ -160,7 +159,6 @@ const [, drop] = useDrop(() => ({
     if (draggedId !== camera.value._id) {
       const now = Date.now();
 
-      // Prevent rapid back-and-forth swapping
       if (lastSwapTarget === camera.value._id && now - lastSwapTime < SWAP_COOLDOWN) {
         return;
       }
@@ -168,7 +166,6 @@ const [, drop] = useDrop(() => ({
       const { index: overIndex } = props.findCard(camera.value._id);
       const { index: draggedIndex } = props.findCard(draggedId);
 
-      // Only swap if positions are actually different
       if (draggedIndex !== overIndex) {
         lastSwapTarget = camera.value._id;
         lastSwapTime = now;

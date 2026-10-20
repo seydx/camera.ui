@@ -105,7 +105,6 @@ export interface FaceOutcome {
   epoch?: number;
 }
 
-// the vote behind a face's name after its latest read
 export interface FaceTally {
   leader?: string;
   votes: number;

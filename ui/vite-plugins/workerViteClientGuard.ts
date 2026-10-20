@@ -1,19 +1,7 @@
 import type { Plugin } from 'vite';
 
-// In dev, Vite injects `/@vite/client` into every served module — including
-// workers. The client opens a WebSocket to the dev server and applies CSS
-// HMR pushes via `document.createElement(...)`, which crashes the worker
-// (no DOM). `worker.plugins` only runs at production bundle time, so we
-// patch `/@vite/client` itself.
-//
-// The prologue:
-//  1. Installs a no-op `document` stub if missing — silences CSS HMR pushes.
-//  2. Wraps `WebSocket` to stub connections that target the dev server's
-//     HMR endpoint (port + root path). NATS WS (`/api/proxy/...`) and any
-//     other URL goes through untouched.
-//
-// In main thread `document` exists and the guard is a no-op end-to-end.
 function buildPrologue(uiPort: number): string {
+  // vite's dev client crashes workers: css HMR goes through document and it dials the HMR socket
   return `if (typeof document === 'undefined') {
   const __cui_noop = () => {};
   const __cui_fakeEl = { setAttribute: __cui_noop, textContent: '', insertAdjacentElement: __cui_noop };

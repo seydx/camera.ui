@@ -64,9 +64,7 @@ export class UrlReadinessGate {
       return;
     }
 
-    // A fresh tunnel hostname must exist at the public resolvers BEFORE clients
-    // learn the URL — a too-early lookup poisons their negative DNS cache for
-    // minutes and they can't reconnect even once the record goes live.
+    // a too early lookup poisons the clients' negative DNS cache for minutes
     const startedAt = Date.now();
     let interval = CHECK_INTERVAL_MIN_MS;
     let warned = false;
@@ -75,10 +73,7 @@ export class UrlReadinessGate {
       const dns = await publicDnsAnswer(hostname);
       if (handle.cancelled) return;
 
-      // public DNS answering IS the gate: the point is that clients must not
-      // look the name up too early. Reaching the URL from here is a different
-      // question and fails on setups where the host cannot route to itself.
-      // 'unknown' = DoH itself unreachable, then the probe is all we have.
+      // public DNS is the gate, the probe only counts when DoH itself is unreachable
       if (dns === 'yes' || (dns === 'unknown' && (await probeHealth(url)))) {
         if (handle.cancelled) return;
         this.readyUrls.add(url);
@@ -117,7 +112,7 @@ export async function publicDnsAnswer(hostname: string): Promise<DnsAnswer> {
     if (a === undefined) continue;
     if (a === 'yes' || a === 'no') return a;
 
-    // NOERROR without A records — the host may be IPv6-only.
+    // NOERROR without A records, the host may be IPv6-only
     const aaaa = await dohLookup(endpoint, hostname, 'AAAA');
     if (aaaa === undefined) continue;
     return aaaa === 'yes' ? 'yes' : 'no';

@@ -132,7 +132,7 @@ const dialog = useCuiDialog();
 const { t } = useI18n();
 const preview = inject(EventHoverPreviewKey, undefined);
 
-// Live edge threshold — events starting within this window open as live stream.
+// events that started within this window open live
 const LIVE_EDGE_MS = 10_000;
 
 const previewCanvasRef = useTemplateRef('previewCanvasRef');
@@ -209,7 +209,6 @@ const formatTime = computed(() => {
 const anchorTime = computed(() => props.segment?.firstSeen ?? eventAnchorTime(props.event));
 
 const isActive = computed(() => (props.segment ? props.live === true : props.event.state === 'active'));
-// a running span gets its picture later, a failed load shows the icon until the retry
 const thumbnailState = computed(() => {
   if (primary.value?.url) return 'loaded';
   return pictureState.value === 'loading' || isActive.value ? 'loading' : 'empty';
@@ -278,8 +277,6 @@ function openCameraEvent(): void {
   if (longPress.consumesClick()) return;
   if (props.clickDisabled || !props.camera) return;
 
-  // Active events near live edge → open live (no eventTimestamp)
-  // Active events further in the past → open at event start (scrub)
   const isNearLive = isActive.value && Date.now() - props.event.startTime < LIVE_EDGE_MS;
 
   const desc = description.value;

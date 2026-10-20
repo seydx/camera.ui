@@ -234,7 +234,6 @@ interface FaceSlot {
 export class DetectionEventManager {
   private static readonly MAX_PLATE_THUMBNAILS = 16;
   private static readonly SEGMENT_LINGER_MS = 10_000;
-  // a vector can be ready before the snapshot of its own frame has opened the segment
   private static readonly VECTOR_PARK_MS = 2_000;
   private static readonly CLOSE_RECHECK_MS = 200;
   private static readonly CLOSE_WAIT_MAX_MS = 8_000;
@@ -316,15 +315,12 @@ export class DetectionEventManager {
   }
 
   public offerMoment(moment: SegmentMoment): void {
-    // the tick cuts the moment before it opens the segment, so the very picture
-    // that opens a span would be the one dropped; hold it for that opening
+    // the tick cuts the moment before it opens the segment, hold it for the opening
     if (!this.activeSegment) {
-      // a tick can offer the object shot and then the face shot; within the tick
-      // they compete by rank, a newer tick always displaces the older pending one
+      // within a tick the shots compete by rank, a newer tick always displaces the pending one
       if (this.beatsMoment(moment.rank, moment.score, moment.stream, this.incumbentMoment(moment.capturedAt))) {
         this.pendingMoment = moment;
       }
-      // debugging
       this.recordMomentVerdict(moment, 'pending');
       return;
     }
@@ -356,7 +352,7 @@ export class DetectionEventManager {
 
     if (data.trace) this.trace.add(data.trace);
 
-    // publish immediately, the UI shouldn't wait for the next throttled update
+    // publish now, not with the next throttled update
     if (data.eventThumbnail && this.needsEventThumbnail) {
       this.eventThumbnail = data.eventThumbnail;
       this.eventThumbnailAt = now;
@@ -368,12 +364,11 @@ export class DetectionEventManager {
 
     if (triggers.length > 0) {
       this.enrichTriggers(triggers, now);
-      // a trigger joining mid-event (doorbell press during a motion event)
-      // must stamp its type right away, not wait for the next segment update
+      // a trigger joining mid-event stamps its type now, not with the next segment update
       this.updateTypes();
       this.activeEvent.lastUpdate = now;
       this.activeEvent.expectedEndTime = data.expectedEndTime;
-      // keep-alive for the UI; with an active segment, segment-update carries this
+      // keep-alive for the UI, with an active segment segment-update carries it
       if (!this.activeSegment) {
         this.publishUpdateThrottled();
       }
@@ -397,9 +392,7 @@ export class DetectionEventManager {
         this.publishSegmentThrottled('segment-update');
       }
     } else if (this.activeSegment && this.segmentClosePendingSince === null) {
-      // all spans closed: linger before deciding, a reopening span continues
-      // this segment (detector flicker is not a new visit); lastSeen stays on
-      // the last real detection, timer-driven so tickless cameras close too
+      // linger before closing: a reopening span continues this segment, timer-driven so tickless cameras close too
       this.segmentClosePendingSince = now;
       this.lingerTimer = setTimeout(() => this.closeLingeredSegment(Date.now()), DetectionEventManager.SEGMENT_LINGER_MS);
     }
@@ -551,8 +544,7 @@ export class DetectionEventManager {
 
     this.updateTypes();
 
-    // a pre-captured scene ships with the start message, otherwise the next
-    // coordinator tick delivers it via update
+    // without a pre-captured scene the next coordinator tick delivers it via update
     if (this.eventThumbnail) {
       this.activeEvent.thumbnailAt = this.eventThumbnailAt || undefined;
     }
@@ -618,8 +610,7 @@ export class DetectionEventManager {
     this.segmentTrackPaths = new Map();
     this.enrichSegment(data, now);
 
-    // the tick cuts its moment before it opens the segment, and both carry the
-    // tick's stamp, so an older one belongs to a tick that opened nothing
+    // both carry the tick's stamp, an older pending moment belongs to a tick that opened nothing
     const pending = this.pendingMoment;
     this.pendingMoment = undefined;
     if (pending?.capturedAt === now) {
@@ -813,10 +804,7 @@ export class DetectionEventManager {
         if (path) d.path = path;
       }
 
-      // boxes and polygons are both normalized 0-1, direct overlap test.
-      // Per-label hits matter on their own: an alert zone gates pushes per
-      // label, so "the car was in the driveway" must not vouch for the person
-      // on the road.
+      // per label: an alert zone gates pushes per label, a car in the driveway must not vouch for the person on the road
       if (data.detectionZones && data.detectionZones.length > 0) {
         const labelZones = new Map<string, Set<string>>();
         for (const detection of this.activeSegment.detections) {
@@ -862,7 +850,7 @@ export class DetectionEventManager {
       if (!plate.plateText) continue;
 
       if (!this.plateVotingActive) {
-        // external provider: the camera already vetted the read, keep it as-is
+        // the camera already vetted an external read, keep it as is
         const label = normalizePlateText(plate.plateText) || plate.plateText;
         const existing = this.activeSegment.attributes.find((a) => a.type === 'license_plate' && a.label === label);
         if (existing) {
@@ -873,12 +861,10 @@ export class DetectionEventManager {
         continue;
       }
 
-      // illegible reads never become candidates; old plugins without ocrConfidence pass
+      // illegible reads never become candidates, plugins without ocrConfidence pass
       if (plate.ocrConfidence !== undefined && plate.ocrConfidence < (data.plateMinConfidence ?? 0)) continue;
 
-      // vote per vehicle so flickering OCR reads converge on one plate instead of
-      // surfacing every misread; untracked reads share one bucket but may yield
-      // several winners (multiple untracked vehicles)
+      // vote per vehicle so flickering OCR converges on one plate, the untracked bucket may yield several
       const bucketKey = plate.parentTrackId !== undefined ? `t${plate.parentTrackId}` : 'untracked';
       let votes = this.eventPlateVotes.get(bucketKey);
       if (!votes) {
@@ -932,11 +918,7 @@ export class DetectionEventManager {
     if (!this.activeSegment || face.confidence < this.faceMinConfidence) return;
     if (!face.identity && !face.embedding?.length) return;
 
-    // one face per track, named or not: two people the recognizer gave the same
-    // name stay two faces, each correctable on its own. Without a track there
-    // is nothing to tell faces apart by, so they share one slot per name (a busy
-    // scene spreads such faces over many image cells), and a name a tracked
-    // face already carries is that person
+    // one face per track; untracked faces share a slot per name, and a name a tracked face carries is that person
     const tracked = face.parentTrackId !== undefined;
     const note = faceNote(face);
     const shared = note?.shared;
@@ -1013,9 +995,7 @@ export class DetectionEventManager {
   }
 
   private betterFace(face: TrackedFaceDetection, existing: RecordedAttribute, held: HeldAttribute | undefined): boolean {
-    // picture, vector and points travel as one sighting: the picture shows a face
-    // read as the name the slot carries, a face without a vector never replaces one
-    // that has it, and the sharpest face wins, not the one the detector was surest about
+    // picture, vector and points travel as one sighting, the sharpest face fitting the name wins
     const fits = (matched?: string) => (matched ?? 'unknown') === existing.label;
     if (fits(face.matched) !== fits(held?.matched)) return fits(face.matched);
     const hasVector = Boolean(face.embedding?.length);
@@ -1116,7 +1096,7 @@ export class DetectionEventManager {
     if (data.motion?.detected) {
       triggers.push({ type: 'motion', firstSeen: now, lastSeen: now });
     } else if (data.cascadeTriggered && !data.motion && (!data.sensorTriggers || data.sensorTriggers.length === 0)) {
-      // external motion, backward compatible: no specific sensor trigger
+      // external motion without a specific sensor trigger
       triggers.push({ type: 'motion', firstSeen: now, lastSeen: now });
     }
 
@@ -1160,8 +1140,7 @@ export class DetectionEventManager {
     const types = new Set<string>(this.activeEvent.types);
 
     for (const t of this.activeEvent.triggers) types.add(t.type);
-    // activeEvent.segments is only filled during publishSegment, include the
-    // current activeSegment for up-to-date types
+    // segments only fill in publishSegment, the active one carries the current types
     const segs = this.activeSegment ? [this.activeSegment] : this.activeEvent.segments;
     for (const seg of segs) {
       for (const d of seg.detections) types.add(d.label);
@@ -1191,7 +1170,7 @@ export class DetectionEventManager {
   private updateThumbnails(thumbnails: DetectionThumbnail[]): void {
     for (const thumb of thumbnails) {
       const label = thumb.label;
-      // faces hold their own picture per track (attachFace)
+      // faces hold their own picture per track
       if (!label.startsWith('plate:') && !label.startsWith('class:')) continue;
       this.updateBestCandidate(this.attributeThumbnails, label, thumb);
       // a moving vehicle produces a distinct plate crop almost every frame, cap retention
@@ -1259,8 +1238,7 @@ export class DetectionEventManager {
         landmarks.push(undefined);
       }
 
-      // embeddings are write-only into the face and clip indexes, and the
-      // recorder reads them once when the segment closes
+      // the face and clip indexes read the embeddings once, when the segment closes
       if (withEmbeddings && held) {
         if (held.embedding) {
           attribute.embedding = held.embedding;
@@ -1298,11 +1276,9 @@ export class DetectionEventManager {
 
   private takeMoment(moment: SegmentMoment): void {
     if (!this.beatsMoment(moment.rank, moment.score, moment.stream, this.segmentMoment)) {
-      // debugging
       this.recordMomentVerdict(moment, 'rejected');
       return;
     }
-    // debugging
     this.recordMomentVerdict(moment, 'kept');
     this.segmentMoment = moment;
   }
@@ -1321,13 +1297,11 @@ export class DetectionEventManager {
   private beatsMoment(rank: number, score: number, stream: AnalysisStream, held?: SegmentMoment): boolean {
     if (!held) return true;
     if (rank !== held.rank) return rank > held.rank;
-    // the score is normalized, so it cannot see that a main-stream crop is the
-    // same framing with several times the pixels: that one only has to tie
+    // the score is normalized, a main-stream crop of the same framing only has to tie
     if (stream === 'main' && held.stream === 'low') return score > held.score;
     return score > held.score * MOMENT_IMPROVEMENT;
   }
 
-  // debugging
   private recordMomentVerdict(moment: SegmentMoment, verdict: 'kept' | 'rejected' | 'pending'): void {
     if (!detectionRecord.active) return;
     detectionRecord.momentVerdict({
@@ -1371,11 +1345,9 @@ export class DetectionEventManager {
     add(data.objects, 'object');
     if (data.facesAt !== undefined && capturedAt - data.facesAt <= SECONDARY_FRESH_MS) add(data.faces, 'face', 'face');
     if (data.platesAt !== undefined && capturedAt - data.platesAt <= SECONDARY_FRESH_MS) add(data.plates, 'plate', 'license_plate');
-    // an unlabeled parked object in a training image teaches "background",
-    // so suppressed static tracks ride along as pre-annotations
+    // static tracks ride along, an unlabeled parked object would teach "background"
     add(data.staticObjects ?? [], 'static');
-    // same reason for sightings the event pipeline dropped (zones, label
-    // selection, track birth): visible in the picture all the same
+    // so do sightings the event pipeline dropped, they are in the picture all the same
     add(data.trainingExtras ?? [], 'extra');
     add(data.trainingSuggestions ?? [], 'suggestion');
     this.training.consider(this.activeEvent.id, scene, boxes, capturedAt, data.trainingSubjects ?? [], data.trainingDetector);
@@ -1410,12 +1382,10 @@ export class DetectionEventManager {
     const message: DetectionEventMessage = { type, data: leanEvent(this.activeEvent) };
     this.proxy.publish(this.eventSubject, message);
     this.nvr.send(type, this.activeEvent, attachments);
-    // debugging
     this.recordMessage(type, attachments);
     this.lastPublishTime = Date.now();
   }
 
-  // debugging
   private recordMessage(type: DetectionEventType, attachments?: EventAttachments): void {
     if (!detectionRecord.active || !this.activeEvent) return;
 
@@ -1460,8 +1430,7 @@ export class DetectionEventManager {
     }
 
     const attachments = this.segmentAttachments(type === 'segment-end');
-    // ticks ride every segment message: they reach the store while the
-    // segment runs, and a crash costs a second of trace, not the segment
+    // ticks ride every segment message, a crash costs a second of trace, not the segment
     if (type !== 'segment-start') attachments.trace = this.trace.take();
     this.publish(type, attachments);
   }
@@ -1489,8 +1458,7 @@ export class DetectionEventManager {
     const now = Date.now();
     if (now - this.lastPublishTime >= UPDATE_THROTTLE_MS) {
       this.activeEvent!.segments = [];
-      // outside a segment the ticks ride the keep-alive, or an event without
-      // segments would store its trace only once it ends
+      // outside a segment the ticks ride the keep-alive, or a segmentless event stores its trace only at the end
       const trace = this.trace.take();
       this.publish('update', trace ? { trace } : undefined);
     }
@@ -1506,7 +1474,6 @@ export class DetectionEventManager {
       parts.push(`duration=${seg.lastSeen - seg.firstSeen}ms`);
     }
 
-    // "person(0.92,x2) vehicle(0.78,x1)"
     if (seg.detections.length > 0) {
       const dets = seg.detections.map((d) => `${d.label}(${d.score.toFixed(2)},x${d.maxCount})`).join(' ');
       parts.push(`det=[${dets}]`);

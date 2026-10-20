@@ -142,7 +142,6 @@ export class AutomationsService {
   }
 
   public async importBlueprint(input: ImportBlueprintInput): Promise<DBAutomation> {
-    // Remap node/edge IDs to avoid collisions
     const idMap = new Map<string, string>();
     const nodes = input.nodes.map((node) => {
       const newId = randomBytes(6).toString('hex');

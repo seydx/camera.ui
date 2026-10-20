@@ -305,8 +305,6 @@ export const routes: RouteRecordRaw[] = [
       },
       ui: {
         containerSettings: {
-          // padding: computed<boolean>(() => !mdBreakpoint.value),
-          // disableScroll: computed<boolean>(() => smBreakpoint.value),
           disableScroll: true,
           flushBottom: computed(() => smBreakpoint.value),
         },
@@ -1367,7 +1365,6 @@ function getTransitionInfo(path: string): { group: string; key: string; ignore?:
   if (p === '/home') return { group: 'main', key: 'home', ignore: 'camview' };
   if (p === '/camview') return { group: 'main', key: 'camview', ignore: 'home' };
   if (p.startsWith('/cameras/')) return { group: 'main', key: 'cameras' };
-  // Menu group: menu is depth 0, sub-pages are depth 1
   if (p === '/menu') return { group: 'menu', key: 'menu', depth: 0 };
   if (p === '/sensors') return { group: 'menu', key: 'sensors', depth: 1 };
   if (p === '/floorplan') return { group: 'menu', key: 'floorplan', depth: 1 };
@@ -1451,7 +1448,6 @@ const router = createRouter({
   scrollBehavior: async (to, from, savedPosition) => {
     if (activeMorphs || isPageHeld()) return false;
 
-    // Use browser's saved position if available
     if (savedPosition) {
       return savedPosition;
     }
@@ -1462,10 +1458,8 @@ const router = createRouter({
 
     await sleep(10);
 
-    // Use our saved position for view transitions
     const saved = scrollPositions.get(to.path);
     if (saved !== undefined) {
-      // Clear the saved position after using it (one-time restore)
       scrollPositions.delete(to.path);
       return { top: saved, left: 0 };
     }
@@ -1551,7 +1545,7 @@ router.beforeResolve(async (to, from) => {
 
   if (fromInfo.group === 'menu' && fromInfo.depth !== undefined && toInfo.depth !== undefined) {
     if (window.innerWidth > 640) return; // desktop: no slide
-    if (fromInfo.depth === toInfo.depth) return; // same depth (e.g. /faces → /plugins): no slide
+    if (fromInfo.depth === toInfo.depth) return;
 
     const direction = toInfo.depth > fromInfo.depth ? 'forward' : 'back';
     document.documentElement.dataset.menuDirection = direction;

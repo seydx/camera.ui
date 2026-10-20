@@ -45,11 +45,9 @@ def is_submit_type(schema: JsonSchema) -> TypeGuard[JsonSchemaSubmit]:
 
 
 def generate_default_value(schema: JsonSchema) -> SchemaDefaultValue:
-    # Return explicit default if provided
     if "defaultValue" in schema:
         return cast(SchemaDefaultValue, schema["defaultValue"])
 
-    # Generate default based on type
     match schema["type"]:
         case "string":
             if "enum" in schema:
@@ -72,7 +70,6 @@ def generate_config_from_schemas(schemas: list[JsonSchema]) -> dict[str, SchemaD
     config: dict[str, SchemaDefaultValue] = {}
 
     for schema in schemas:
-        # Skip button and submit types as they don't have values
         if is_button_type(schema) or is_submit_type(schema):
             continue
 
@@ -87,17 +84,14 @@ def get_value_by_key(
     if config is None:
         config = {}
 
-    # For simple keys without nesting
     if "." not in key and "[" not in key:
         return config.get(key)
 
-    # For nested keys or array access
     keys: list[str] = []
     for part in key.split("."):
         if "[" in part:
             parts = part.split("[")
             keys.append(parts[0])
-            # Handle potential multiple array indices like a[0][1]
             for index_part in parts[1:]:
                 keys.append(index_part.rstrip("]"))
         else:

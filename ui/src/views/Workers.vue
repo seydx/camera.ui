@@ -605,7 +605,7 @@ const workerHeaders = computed<TableHeader[]>(() => [
 const workerChartData = computed<Record<string, ChartData<'bar'>>>(() => {
   const history = workerHistory.value;
 
-  // History is keyed by agentId; CuiChartTable looks charts up by item.name.
+  // history is keyed by agentId, CuiChartTable looks charts up by item.name
   return workers.value.reduce((acc: Record<string, ChartData<'bar'>>, worker) => {
     for (const valueKey of ['cpuLoad', 'memLoad'] as const) {
       const entries = history[worker.agentId] ?? [];
@@ -1072,13 +1072,12 @@ async function handleCreatePairing() {
   try {
     pairing.value = await createPairing(replacesDraft.value ?? undefined);
   } catch {
-    // surfaced via the spinner clearing
+    // handled in the mutation's onError
   }
 }
 
 async function handleToggle(enabled: boolean) {
   if (enabled && !addressDraft.value) {
-    // Prefill a sensible default before enabling.
     addressDraft.value = workersConfig.value?.suggestedAddresses?.[0] ?? '';
     if (!addressDraft.value) {
       dialog.openTextDialog({
@@ -1115,7 +1114,7 @@ function handleRemoveWorker(worker: WorkerInfo) {
       contentText: t('views.workers.remove_worker_confirm', { name: worker.name }),
       confirmButtonProps: { severity: 'danger' },
     },
-    // width:auto would stretch the dialog to the text length (up to 1000px)
+    // width:auto would stretch the dialog to the text, up to 1000px
     dialogSize: {
       desktop: {
         width: 'auto',
@@ -1126,7 +1125,6 @@ function handleRemoveWorker(worker: WorkerInfo) {
     onConfirm: async () => {
       workersRemoving.value.push(worker.agentId);
       try {
-        // Cameras assigned to it fall back to local; credentials are revoked.
         await removeWorkerMutation(worker.agentId);
       } finally {
         workersRemoving.value = workersRemoving.value.filter((id) => id !== worker.agentId);

@@ -318,7 +318,6 @@ defineExpose({
   height: 100%;
 }
 
-/* Corner Positions */
 .corner-lines.tl {
   top: 0;
   left: 0;

@@ -94,9 +94,6 @@ const items = computed<MenuItem[]>(() => {
           label: t('components.instance_switcher.go_back'),
           icon: GoBackIcon,
           position: 'footer',
-          // If we landed here via cross-origin URL handoff (`redirectInfo`
-          // set), "home" lives on a different Origin → full-page nav back.
-          // Otherwise an in-SPA switch to the local home suffices.
           onClick: () => {
             const source = redirectOrigin(instanceStore.redirectInfo?.sourceUrl);
             if (source) {

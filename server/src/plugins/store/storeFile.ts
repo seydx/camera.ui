@@ -7,8 +7,7 @@ import { StoreCorruptError, decodeEnvelope, encodeEnvelope } from './envelope.js
 
 import type { Logger } from '@camera.ui/common';
 
-// Windows AV scanners / the search indexer transiently hold the rename target
-// open; EPERM/EACCES there is retryable within a small budget (~0.5s total).
+// windows AV and the search indexer briefly hold the rename target, ~0.5 s of retries
 const RENAME_RETRY_DELAYS_MS = [10, 25, 60, 150, 300];
 
 async function renameWithRetry(tmpPath: string, path: string): Promise<void> {
@@ -48,8 +47,7 @@ export async function writeStoreFile(path: string, payload: Record<string, any>)
   const tmpPath = `${path}.tmp-${process.pid}`;
 
   try {
-    // the volume can be pulled away under a running plugin (backup restore,
-    // manual cleanup), writing again must recreate it
+    // a restore or cleanup can remove the volume under a running plugin, recreate it
     const handle = await open(tmpPath, 'w').catch(async (error) => {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw error;
@@ -122,9 +120,7 @@ export async function readStoreFile(path: string): Promise<Record<string, any> |
     }
   }
 
-  // A corrupt store must never silently become an empty one — that would
-  // wipe the plugin's persisted state. Recover from the backup generation or
-  // fail the open loudly.
+  // a corrupt store must never become an empty one, recover from .bak or fail the open
   const bakPath = `${path}.bak`;
   let bakBuf: Buffer | undefined;
   try {
@@ -143,8 +139,7 @@ export async function readStoreFile(path: string): Promise<Record<string, any> |
 }
 
 export async function backupStoreFile(path: string, log?: Logger): Promise<void> {
-  // Copy to a temp sibling first — a crash mid-copy must never leave a
-  // truncated .bak, it may be the only recovery generation.
+  // copy via a temp file, a crash mid-copy must not truncate .bak, it may be the only good copy
   const tmpPath = `${path}.bak.tmp-${process.pid}`;
   try {
     await copyFile(path, tmpPath);

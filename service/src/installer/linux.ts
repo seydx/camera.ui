@@ -58,7 +58,6 @@ export class LinuxInstaller extends BasePlatform {
 
     await this.stop();
 
-    // try and disable the service
     await this.disableService();
 
     try {
@@ -72,7 +71,6 @@ export class LinuxInstaller extends BasePlatform {
         rmSync(this.runPartsPath, { recursive: true });
       }
 
-      // reload services
       await this.reloadSystemd();
 
       this.cli.logger(`Removed ${this.cli.serviceName} service`, 'succeed');
@@ -135,8 +133,7 @@ export class LinuxInstaller extends BasePlatform {
     const baseDir = resolve(__dirname, '..', '..', backPath);
 
     if ([getNpmGlobalModulesDirectory()].includes(dirname(baseDir))) {
-      // systemd has a 90-second default timeout in the pre-start jobs
-      // terminate this task after 60 seconds to be safe
+      // systemd stops pre-start jobs after 90 s by default, so exit after 60 s
       setTimeout(() => {
         process.exit(0);
       }, 60000);
@@ -276,10 +273,8 @@ export class LinuxInstaller extends BasePlatform {
 
   private async checkUser(): Promise<void> {
     try {
-      // check if user exists
       execSync(`id ${this.cli.asUser} 2> /dev/null`);
     } catch {
-      // if not create the user
       execSync(`useradd -m --system ${this.cli.asUser}`);
       this.cli.logger(`Created service user: ${this.cli.asUser}`, 'info');
       this.cli.serviceUserCreated();
@@ -290,7 +285,6 @@ export class LinuxInstaller extends BasePlatform {
     }
 
     try {
-      // try and add the user to commonly required groups if on Raspbian
       const os = await osInfo();
       if (os.distro === 'Raspbian GNU/Linux') {
         execSync(`usermod -a -G audio,bluetooth,dialout,gpio,video ${this.cli.asUser} 2> /dev/null`);
@@ -304,10 +298,9 @@ export class LinuxInstaller extends BasePlatform {
   private fixPermissions(): void {
     if (existsSync(this.systemdServicePath) && existsSync(this.systemdEnvPath)) {
       try {
-        // extract the user this process is running as
         const serviceUser = execSync(`cat "${this.systemdServicePath}" | grep "User=" | awk -F'=' '{print $2}'`).toString('utf8').trim();
 
-        // get the home/storage path (we may not know it when running the start command)
+        // the start command may not know the home path yet
         const homePath = execSync(`cat "${this.systemdEnvPath}" | grep "CAMERA_UI_HOME_PATH" | awk -F'=' '{print $2}' | sed -e 's/^"//' -e 's/"$//'`)
           .toString('utf8')
           .trim();
@@ -332,12 +325,10 @@ export class LinuxInstaller extends BasePlatform {
   }
 
   private async createFirewallRules(): Promise<void> {
-    // check ufw is present on the system (debian based linux)
     if (existsSync('/usr/sbin/ufw')) {
       return await this.createUfwRules();
     }
 
-    // check firewall-cmd is present on the system (enterprise linux)
     if (existsSync('/usr/bin/firewall-cmd')) {
       return await this.createFirewallCmdRules();
     }
@@ -345,13 +336,11 @@ export class LinuxInstaller extends BasePlatform {
 
   private async createUfwRules(): Promise<void> {
     try {
-      // check the firewall is active before doing anything
       const status = execSync('/bin/echo -n "$(ufw status)" 2> /dev/null').toString('utf8');
       if (!status.includes('Status: active')) {
         return;
       }
 
-      // add ui rule
       execSync(`ufw allow ${this.cli.uiPort}/tcp 2> /dev/null`);
       this.cli.logger(`Added firewall rule to allow inbound traffic on port ${this.cli.uiPort}/tcp`, 'info');
     } catch (error) {
@@ -361,16 +350,13 @@ export class LinuxInstaller extends BasePlatform {
 
   private async createFirewallCmdRules(): Promise<void> {
     try {
-      // check the firewall is running before doing anything
       const status = execSync('/bin/echo -n "$(firewall-cmd --state)" 2> /dev/null').toString('utf8');
       if (status !== 'running') {
         return;
       }
-      // add ui rule
       execSync(`firewall-cmd --permanent --add-port=${this.cli.uiPort}/tcp 2> /dev/null`);
       this.cli.logger(`Added firewall rule to allow inbound traffic on port ${this.cli.uiPort}/tcp`, 'info');
 
-      // reload the firewall
       execSync('firewall-cmd --reload 2> /dev/null');
       this.cli.logger('Firewall reloaded', 'info');
     } catch (error) {

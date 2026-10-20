@@ -117,12 +117,10 @@ watch(
   white-space: nowrap;
 }
 
-/* Tab-specific styling */
 .cui-topnavbar-item-tab {
   padding: 0.5rem 0.5rem;
 }
 
-/* Dropdown-specific styling */
 .cui-topnavbar-item-dropdown {
   padding-right: 0.5rem;
 }

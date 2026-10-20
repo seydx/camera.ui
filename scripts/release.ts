@@ -5,17 +5,6 @@ import { createInterface } from 'node:readline/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Bump a package's version, commit it, tag `<pkg>-v<version>` and push. The
-// release workflow (.github/workflows/release.yml) then builds and publishes it
-// to npm with OIDC + provenance.
-//
-//   service -> camera.ui          tag service-v<version>
-//   server  -> @camera.ui/server  tag server-v<version>
-//
-//   tsx scripts/release.ts server patch
-//   tsx scripts/release.ts service 1.2.0
-//   tsx scripts/release.ts server 1.2.0-beta.1 --yes
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..');
@@ -94,14 +83,13 @@ async function main(): Promise<void> {
   const pkgPath = resolve(pkgDir, 'package.json');
   if (!existsSync(pkgPath)) fail(`No ${PACKAGES[target]}/package.json found.`);
 
-  // Safety: clean tree, not behind origin.
   if (git('status --porcelain', { capture: true })) fail('Working tree not clean - commit or stash first.');
   const branch = git('rev-parse --abbrev-ref HEAD', { capture: true });
   try {
     git(`fetch -q origin ${branch}`, { capture: true });
     if (git(`rev-list HEAD..origin/${branch}`, { capture: true })) fail(`Local ${branch} is behind origin/${branch} - pull first.`);
   } catch {
-    // offline / no upstream tracking - skip the behind check
+    // offline or no upstream, skip the behind check
   }
 
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
@@ -116,7 +104,7 @@ async function main(): Promise<void> {
     git(`rev-parse ${tag}`, { capture: true });
     fail(`Tag ${tag} already exists.`);
   } catch {
-    // tag does not exist - good
+    // no such tag yet
   }
 
   console.log(chalk.cyan(`\r\nReleasing ${chalk.bold(name)}: ${current} -> ${chalk.bold(next)} (tag ${tag})\r\n`));

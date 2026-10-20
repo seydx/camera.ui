@@ -106,7 +106,7 @@ export class PluginManager {
           return contract as PluginContract;
         }
       } catch {
-        // Invalid contract file, try next location
+        // invalid contract file, try the next location
       }
     }
 

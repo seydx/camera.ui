@@ -50,15 +50,10 @@ export function createProbe(api: AuthApi, refresh: RefreshCoordinator): ProbeFn 
     try {
       await api.authCheck(endpoint, accessToken, ctx.signal);
       clearProxyReload();
-      // 200 without tokens shouldn't happen — auth/check requires Bearer.
-      // If it does, treat as needs-auth so the UI drives a fresh login.
       if (!ctx.lastTokens?.access) throw makeProbeFailure('needs-auth', 'no tokens');
       return ctx.lastTokens;
     } catch (err) {
-      // Own classifications from the try block (e.g. the 200-without-tokens
-      // needs-auth) must pass through untouched — the fallback below would
-      // relabel them as transient and trap the tab in the offline backoff
-      // loop instead of showing the login page.
+      // own failures pass through, the fallback would relabel them transient and trap the tab offline
       if (isProbeFailure(err)) throw err;
       if (ctx.signal.aborted) throw err;
       if (isCancellationError(err)) throw makeProbeFailure('aborted', 'request canceled');
@@ -69,11 +64,7 @@ export function createProbe(api: AuthApi, refresh: RefreshCoordinator): ProbeFn 
         throw makeProbeFailure('transient', 'login proxy redirect, reloading');
       }
 
-      // No tokens path: we hit the server purely to confirm reachability +
-      // surface the fastest-responding endpoint to the probeLoop race. Any
-      // HTTP response (server's 401 "Unauthorized" for the empty Bearer) =
-      // reachable → needs-auth. Network failures stay transient so the
-      // dead endpoints lose the race.
+      // any HTTP answer means reachable, network failures stay transient so dead endpoints lose the race
       if (!ctx.lastTokens?.access) {
         if (typeof status === 'number') throw makeProbeFailure('needs-auth', 'no tokens');
         throw makeProbeFailure('transient', err instanceof Error ? err.message : 'auth/check failed');

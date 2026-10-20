@@ -109,7 +109,7 @@
         <i-mdi:alert-circle class="w-5 h-5 shrink-0 text-orange-400 mt-0.5" />
         <div class="flex flex-col gap-1 min-w-0">
           <span class="text-sm font-semibold text-orange-400">
-            {{ $t('components.plugin_search.incompatible_system') }}<span v-if="platformRequirement"> — {{ platformRequirement }}</span>
+            {{ $t('components.plugin_search.incompatible_system') }}<span v-if="platformRequirement">: {{ platformRequirement }}</span>
           </span>
           <span class="text-xs text-orange-600 dark:text-orange-300">{{ $t('components.plugin_search.incompatible_worker_hint') }}</span>
         </div>

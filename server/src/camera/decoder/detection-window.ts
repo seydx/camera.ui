@@ -3,6 +3,7 @@ import type { BoundingBox, Detection } from '@camera.ui/sdk';
 export const WINDOW_CAP = 3;
 export const MOTION_PAD = 1.5;
 export const TRACK_PAD = 1.25;
+
 const SHRINK_PATIENCE = 5;
 const FULL_FRAME_FRACTION = 0.98;
 const LOOKS_BEFORE_FULL = 2;
@@ -90,10 +91,7 @@ export function mergeWindowDetections(detections: Detection[]): Detection[] {
     const duplicate = kept.some((other) => {
       if (other.label !== detection.label || other.box === undefined || detection.box === undefined) return false;
       if (iou(other.box, detection.box) >= 0.5) return true;
-      // containment dedups the same object across window seams, where both
-      // boxes are alike in size; a small object inside a huge same-label box
-      // (a passing car in front of a parked column read as one vehicle) is a
-      // distinct object, not a duplicate
+      // containment only dedups boxes alike in size, a small object inside a huge same-label box is distinct
       const areaA = other.box.width * other.box.height;
       const areaB = detection.box.width * detection.box.height;
       const sizeAlike = Math.min(areaA, areaB) >= Math.max(areaA, areaB) * 0.25;
@@ -168,8 +166,6 @@ export class DetectionWindow {
   private paid?: Debt;
   private last?: PlanRecord;
 
-  // null = analyse the full frame (no anchors, a cover swallowed the frame, or
-  // the periodic sweep against motion under-reporters)
   public plan(motionAnchors: BoundingBox[], trackAnchors: BoundingBox[], frameWidth: number, frameHeight: number, minSidePx: number): BoundingBox[] | null {
     this.last = undefined;
     this.paid = undefined;

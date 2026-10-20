@@ -11,7 +11,6 @@ const log = useLogger('AuthApi');
 
 interface LoginResponse extends JwtTokenResponse {
   username?: string;
-  email?: string;
   _id?: string;
   role?: string;
   firstLogin?: boolean;
@@ -235,7 +234,6 @@ function extractUser(data: LoginResponse): LoginResult['user'] {
   return {
     _id: data._id,
     username: data.username,
-    email: data.email,
     role: data.role,
     firstLogin: data.firstLogin,
     avatar: data.avatar,

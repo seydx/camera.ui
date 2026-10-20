@@ -96,8 +96,7 @@ export function createCloudSessionLifecycle(options: CloudSessionLifecycleOption
     if (proxyTokenLooksValid(session)) return;
     const ac = new AbortController();
     ensureFresh(ac.signal).catch(() => {
-      // Proactive refresh failed; the reactive path (next discover / 401 retry)
-      // will surface the error to the user. Don't propagate here.
+      // the next discover or 401 retry surfaces the error
     });
   }
 

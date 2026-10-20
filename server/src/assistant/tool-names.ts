@@ -29,7 +29,6 @@ export function withToolNameRepair(adapter: AssistantAdapter, onRepair: (from: s
   return wrapChatStream(adapter, chatStream);
 }
 
-// small models drop or double an underscore: nvr_query_events, __lazy_tool__discovery__
 function sameLetters(known: string[], called: string): string | undefined {
   const matches = known.filter((name) => letters(name) === letters(called));
   return matches.length === 1 ? matches[0] : undefined;

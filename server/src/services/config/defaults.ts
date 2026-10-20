@@ -9,7 +9,6 @@ export const ELECTRON_PORT_OFFSET = IS_ELECTRON ? DESKTOP_PORT_OFFSET : 0;
 const withOffset = (base: number): number => base + ELECTRON_PORT_OFFSET;
 const listenWithOffset = (host: string, base: number): string => `${host}:${withOffset(base)}`;
 
-// server
 export const DEFAULT_CONFIG_PORT = withOffset(3443);
 export const MASTER_API_PORT = 3443;
 export const DEFAULT_CONFIG_HOST = '0.0.0.0';
@@ -22,7 +21,6 @@ export const DEFAULT_CONFIG_PLUGINS: PluginsSettings = {
   betaVersions: false,
 };
 
-// go2rtc
 export const DEFAULT_GO2RTC_CONFIG_LOGGER: Partial<Log> = {
   level: 'debug',
   format: 'text',

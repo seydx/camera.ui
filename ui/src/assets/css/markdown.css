@@ -69,7 +69,6 @@
   font-weight: 600;
   padding-bottom: 0.3em;
   font-size: 1.5em;
-  /* border-bottom: 1px solid var(--border-color); */
 }
 
 .markdown-body mark {
@@ -283,7 +282,6 @@
   font-weight: 600;
   padding-bottom: 0.3em;
   font-size: 1.3em;
-  /* border-bottom: 1px solid var(--border-color); */
 }
 
 .markdown-body h3 {
@@ -400,14 +398,6 @@
 .markdown-body .flex-items-center {
   align-items: center !important;
 }
-
-/* .markdown-body .mb-1 {
-  margin-bottom: var(--base-size-4, 4px) !important;
-}
-
-.markdown-body .text-semibold {
-  font-weight: var(--base-text-weight-medium, 500) !important;
-} */
 
 .markdown-body .d-inline-flex {
   display: inline-flex !important;
@@ -1112,7 +1102,6 @@
   display: table-row;
   vertical-align: inherit;
   border-color: inherit;
-  /* background-color: var(--bgColor-default, var(--color-canvas-default)); */
   border-top: 1px solid var(--border-color);
 }
 

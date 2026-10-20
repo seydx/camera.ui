@@ -73,7 +73,6 @@ export class NatsSubFirewall {
     const trimmed = line.trim();
 
     if (trimmed.length === 0) {
-      // Bare CRLF / keep-alive — forward untouched.
       this.hooks.forward(lineBuffer);
       return;
     }
@@ -99,8 +98,7 @@ export class NatsSubFirewall {
         this.hooks.forward(lineBuffer);
         return;
       default:
-        // Client->server protocol has no other verbs; anything else is either a
-        // malformed frame or an attempt to confuse the parser.
+        // the client protocol has no other verbs
         this.fail(`unexpected NATS verb: ${verb}`);
     }
   }
@@ -132,8 +130,7 @@ export class NatsSubFirewall {
   }
 
   private handlePub(verb: string, rest: string, lineBuffer: Buffer): void {
-    // PUB  <subject> [reply-to] <#payload-bytes>
-    // HPUB <subject> [reply-to] <#header-bytes> <#total-bytes>
+    // the last token is the payload size for PUB and the total size for HPUB
     const tokens = rest.split(/\s+/).filter((token) => token.length > 0);
     const byteToken = tokens[tokens.length - 1];
     const declaredBytes = Number(byteToken);
@@ -144,7 +141,6 @@ export class NatsSubFirewall {
     }
 
     this.hooks.forward(lineBuffer);
-    // Opaque region on the wire is the declared bytes plus the trailing CRLF.
     this.payloadRemaining = declaredBytes + CRLF.length;
   }
 

@@ -59,8 +59,7 @@ export function usePushRegistration() {
 
       await writeRegistration(serverId, { deviceId: device.id, enabledAt: Date.now() });
     } catch (err) {
-      // rethrow so the settings view can toast: a register that dies on a
-      // stalled connection used to fail silently after the 30s http timeout
+      // rethrow so the settings view can toast
       log.warn('failed to enable push for server:', err);
       throw err;
     } finally {
@@ -130,7 +129,7 @@ async function writeRegistrations(regs: PushRegistrations): Promise<void> {
     const { Preferences } = await import('@capacitor/preferences');
     await Preferences.set({ key: PREF_KEY_REGISTRATIONS, value: JSON.stringify(regs) });
   } catch {
-    // Best-effort
+    // best-effort
   }
 }
 
@@ -199,7 +198,7 @@ async function detectDeviceName(): Promise<string> {
     const info = await Device.getInfo();
     model = info.name || info.model || '';
   } catch {
-    // ignore — we'll fall through to the platform-name default below
+    // falls through to the platform name below
   }
 
   if (!model) {

@@ -1,4 +1,4 @@
-import type { Camera, DiscoveredSensor, ModelSpec, SensorSourceState, SensorType } from '@camera.ui/sdk';
+import type { Camera, DiscoveredSensor, ModelSpec, SensorHistoryEntry, SensorSourceState, SensorType } from '@camera.ui/sdk';
 import type { PropertyChangedEvent, SensorJSON, SensorSourcePatch } from '@camera.ui/sdk/internal';
 
 export interface DiscoveredSensorListItem extends DiscoveredSensor {
@@ -57,13 +57,6 @@ export interface SensorRegistration {
 
 export interface RegisterSensorOptions {
   assignCameraId?: string;
-}
-
-export interface SensorHistoryEntry {
-  sensorId: string;
-  property: string;
-  value: string | number | boolean | null;
-  timestamp: number;
 }
 
 export interface SensorRegistryInterface {

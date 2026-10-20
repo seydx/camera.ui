@@ -41,7 +41,7 @@ export async function actionPlugin(ctx: ActionContext, data: Record<string, unkn
   const config = (data.config as Record<string, unknown>) ?? {};
   resolvedParams.config = Object.keys(config).length > 0 ? config : {};
 
-  // Make context variables available for frame metadata resolution (image.width, image.height, etc.)
+  // frame metadata resolution reads the context variables (image.width, image.height)
   for (const [key, value] of ctx.variables) {
     if (!(key in resolvedParams)) {
       resolvedParams[key] = value;

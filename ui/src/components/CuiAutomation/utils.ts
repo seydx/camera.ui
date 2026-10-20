@@ -12,7 +12,6 @@ export function inheritFieldsFromSource(sourceData: AutomationNodeData | undefin
   const tgt = targetData as unknown as Record<string, unknown>;
 
   for (const field of INHERITABLE_FIELDS) {
-    // Only inherit if source has a value and target field exists but is empty
     if (src[field] && field in tgt && !tgt[field]) {
       updates[field] = src[field];
     }

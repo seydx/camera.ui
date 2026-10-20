@@ -47,7 +47,6 @@ export abstract class BasePluginRuntime extends EventEmitter {
   protected configService: ConfigService;
   protected proxyServer: ProxyServer;
 
-  // Master-only; absent when the runtime is hosted on a remote worker.
   protected api?: CameraUiAPI;
   protected pluginManager?: PluginManager;
 
@@ -246,7 +245,6 @@ export abstract class BasePluginRuntime extends EventEmitter {
     }
 
     const entry: LogEntry = Logger.parseChildLog(trimmed) ?? {
-      // Raw output (e.g., Python output, errors) - create a raw entry
       timestamp: Date.now(),
       level: 'raw',
       prefix: '',

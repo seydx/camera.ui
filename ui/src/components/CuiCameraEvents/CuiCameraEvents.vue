@@ -69,7 +69,6 @@ import type { CuiCameraEventsProps } from './types.js';
 
 const props = defineProps<CuiCameraEventsProps>();
 
-// Provide shared hover preview instance (hover on desktop, long-press on touch)
 if (typeof VideoDecoder !== 'undefined') {
   const hoverPreview = useEventHoverPreview({ cacheSize: 20 });
   provide(EventHoverPreviewKey, hoverPreview);

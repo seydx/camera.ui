@@ -141,9 +141,6 @@ const currentDescription = computed<EventDescription | undefined>(() => {
   return cuiTimelineRef.value?.currentEventDescription;
 });
 const hasCurrentEvent = computed(() => Boolean(cuiTimelineRef.value?.currentEvent));
-// Live mode has no event under the playhead worth acting on — and the live
-// edge drifting in/out of a recent event's range would otherwise make the
-// header buttons flicker. Default to `true` until the timeline reports.
 const isLive = computed(() => cuiTimelineRef.value?.isLive ?? true);
 function openTrace(): void {
   const current = cuiTimelineRef.value?.currentEvent;
@@ -287,7 +284,6 @@ defineExpose({
   position: relative;
   display: flex;
   flex: 1 1 auto;
-  /* min-height: 0; */
   min-width: 0;
 }
 

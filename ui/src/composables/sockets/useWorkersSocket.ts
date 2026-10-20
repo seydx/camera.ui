@@ -60,8 +60,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/workers');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and loadAll() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and loadAll() reads `channel`
     channel = ch;
 
     ch.on<WorkerInfo>('worker-update', (worker) => applyWorkerUpdate(worker));
@@ -87,7 +86,7 @@ export function useWorkersSocket() {
   }
 
   function disconnect(): void {
-    // Channel teardown is global via resetWorkersSocket().
+    // teardown runs in resetWorkersSocket()
   }
 
   return {

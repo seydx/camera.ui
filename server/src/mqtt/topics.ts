@@ -1,23 +1,3 @@
-// MQTT topic layout, all rooted at the configurable prefix:
-//
-//   <p>/status                                    online|offline (retained, LWT)
-//   <p>/server/state                              JSON (retained)
-//   <p>/server/event                              JSON { type, timestamp }
-//   <p>/server/notification                       JSON (system notifications only)
-//   <p>/plugin/<name>/status                      started|stopped|error|crashed (retained)
-//   <p>/camera/<id>/status                        online|offline (retained)
-//   <p>/camera/<id>/frameworker                   online|offline (retained)
-//   <p>/camera/<id>/meta                          JSON (retained)
-//   <p>/camera/<id>/event                         JSON detection event lifecycle
-//   <p>/camera/<id>/motion                        ON|OFF (retained)
-//   <p>/camera/<id>/detection/<label>             ON|OFF (retained)
-//   <p>/camera/<id>/snapshot                      JPEG (retained)
-//   <p>/sensor/<id>/meta                          JSON (retained)
-//   <p>/sensor/<id>/<property>                    JSON value (retained)
-//   <p>/sensor/<id>/<property>/set                inbound command
-//
-// States are retained, events are not. Sensors are standalone entities keyed
-// by their persistent id, they live outside the camera tree.
 export class MqttTopics {
   constructor(public readonly prefix: string) {}
 

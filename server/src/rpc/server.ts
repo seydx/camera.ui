@@ -119,13 +119,6 @@ export class NATS {
 
     this.tmpDir = mkdtempSync(join(this.configService.TMP_PATH, 'nats-'));
 
-    // const tlsConfig: NatsTLSConfig = {
-    //   cert_file: this.configService.HOST_CERT_FILE,
-    //   key_file: this.configService.HOST_KEY_FILE,
-    //   ca_file: this.configService.config.ssl.caFile,
-    //   timeout: 5,
-    // };
-
     this.config = {
       host: '127.0.0.1',
       port: 0,
@@ -140,29 +133,25 @@ export class NATS {
             permissions: {
               publish: {
                 allow: [
-                  // RPC client-library control frames (callback/stream/iterator).
                   'rpc.cb.>',
                   'stream.rpc.>',
                   '_rpc.iterator.>',
 
-                  // coreManager: plugin metadata reads only, everything else on it is a write or server-internal
+                  // plugin metadata reads only, everything else on coreManager writes or is server-internal
                   'rpc.coreManager.rpc.getPlugin',
                   'rpc.coreManager.rpc.getPluginsByInterface',
 
-                  // deviceManager — sanitized camera lookup
                   'rpc.deviceManager.rpc.getCamera',
 
-                  // sensors: list and states only, the registry writes share this namespace
+                  // list and states only, the registry writes share this namespace
                   'rpc.sensors.rpc.getSensors',
                   'rpc.sensors.rpc.getSensorStates',
 
-                  // Camera controller — view/playback reads only
                   'rpc.camera.*.controller.rpc.snapshot',
                   'rpc.camera.*.controller.rpc.snapshotWithMeta',
                   'rpc.camera.*.controller.rpc.probeStream',
                   'rpc.camera.*.controller.rpc.refreshStates',
 
-                  // NVR specific — read-only access
                   'rpc.plugin.*.child.rpc.getInstanceId',
                   'rpc.plugin.*.child.rpc.getEvents',
                   'rpc.plugin.*.child.rpc.getCameraEvents',
@@ -234,13 +223,11 @@ export class NATS {
           },
         ],
       },
-      // max_pending: 6 * 1024 * 1024, // 6MB
-      // 4MB: keeps snapshots/thumbnail batches out of the chunking path.
+      // 4 MB keeps snapshot and thumbnail batches out of the chunking path
       max_payload: 4 * 1024 * 1024,
-      max_control_line: 4096, // 4KB — fits any subject + headers + reply-to
-      // Explicit (matches the NATS default): bounds a dead browser socket.
+      max_control_line: 4096, // fits any subject, headers and reply-to
+      // the nats default, bounds a dead browser socket
       write_deadline: '10s',
-      // no_fast_producer_stall: false,
     };
 
     if (this.clusterAmount > 0) {
@@ -253,7 +240,6 @@ export class NATS {
           timeout: 5,
           ...this.auth.cluster,
         },
-        // tls: tlsConfig,
       };
     }
   }
@@ -332,6 +318,7 @@ export class NATS {
     const config: NatsConfig = {
       ...this.config,
       port: this._serverPort,
+      // TLS ends at the /api/proxy relay, and nats ignores no_tls while a tls block exists
       websocket: {
         host: '127.0.0.1',
         port: this.wsPort,
@@ -359,7 +346,6 @@ export class NATS {
       config.http = await loopbackPort();
     }
 
-    // Worker mode: connect outwards to the master, pinned to its CA.
     if (this.leafNodeRemotes?.length) {
       (config as any).leafnodes = {
         // rejected workers retry this fast until the agent pauses the remote, not on Windows
@@ -397,7 +383,7 @@ export class NATS {
       host: '127.0.0.1',
       port: this._leafAcceptorPort,
       server_name: 'camera.ui-leaf-acceptor',
-      // leafnodes users take no permissions, so leaf links log in here and only worker users may open one
+      // leafnodes users take no permissions, leaf links log in here and only worker users may open one
       authorization: {
         timeout: this.config.authorization.timeout,
         users: [
@@ -785,10 +771,7 @@ export class NATS {
           lines.push(this.stringifyConfig(value, pad + '  '));
           lines.push(`${pad}}`);
         } else {
-          // Escape backslashes BEFORE quotes: NATS treats `\` as an escape char
-          // in a quoted string, so a Windows path (C:\Users\…) written verbatim
-          // makes it choke on `\U` ("Invalid escape character") and crash. Order
-          // matters — escaping quotes first would double the backslash we add.
+          // backslashes before quotes: nats reads \ as an escape, a raw Windows path like C:\Users crashes it
           const escapedValue = typeof value === 'string' ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : value;
           if (!Array.isArray(config)) {
             lines.push(`${pad}${key}: ${escapedValue}`);

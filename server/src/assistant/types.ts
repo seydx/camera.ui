@@ -74,17 +74,6 @@ export interface AssistantAskRequest {
   timeoutMs?: number;
 }
 
-export type AssistantAskResult =
-  | { ok: true; text: string; json?: unknown; usage: { promptTokens: number; completionTokens: number } }
-  | { ok: false; reason: 'not_allowed' | 'unconfigured' | 'timeout' | 'error'; message: string };
-
-export interface AssistantAccess {
-  allowed: boolean;
-  model: string | null;
-  vision: boolean | null;
-  language: string | null;
-}
-
 export interface AssistantStatus {
   state: AssistantState;
   provider: DBAssistantProvider;

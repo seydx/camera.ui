@@ -427,9 +427,7 @@ async function testSource(url: string): Promise<void> {
         hideConfirmButton: true,
       },
     });
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 defineExpose({

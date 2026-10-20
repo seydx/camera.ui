@@ -51,8 +51,6 @@ export const useThemeStore = defineStore('theme', () => {
     onBeforeChange() {
       if (!themeChanged.value) {
         return false;
-      } else {
-        // window.scrollTo(0, 0);
       }
     },
     onChanged(value) {
@@ -88,8 +86,7 @@ export const useThemeStore = defineStore('theme', () => {
   function setAppTheme(t: SupportedThemes): void {
     for (const el of themeRoots) applyThemeClasses(el, t);
     if (isHaCards()) {
-      // PrimeVue tokens on :root reference semantic vars, and var() resolves on the declaring element: the dark
-      // values must sit on <html> or descendants inherit the resolved light color. No data-mode or background here.
+      // dark values must sit on <html>, var() resolves on the declaring element
       document.documentElement.classList.toggle('dark-mode', t === 'dark');
       document.documentElement.classList.toggle('light-mode', t === 'light');
       return;

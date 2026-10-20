@@ -1,11 +1,6 @@
-export type DownloadCleanup = 'never' | 'on-expiry' | 'on-download';
+import type { CreateDownloadOptions as PluginDownloadOptions, DownloadToken } from '@camera.ui/sdk';
 
-export interface CreateDownloadOptions {
-  filePath: string;
-  filename?: string;
-  mimeType?: string;
-  ttlMs?: number;
-  cleanup?: DownloadCleanup;
+export interface CreateDownloadOptions extends PluginDownloadOptions {
   remotePluginId?: string;
 }
 
@@ -18,13 +13,6 @@ export interface PluginFileServeInterface {
   statFile(filePath: string): Promise<FileServeStat>;
   readFileChunk(filePath: string, offset: number, length: number): Promise<Uint8Array>;
   deleteFile(filePath: string): Promise<void>;
-}
-
-export interface DownloadToken {
-  token: string;
-  url: string;
-  publicUrl: string;
-  expiresAt: number;
 }
 
 export interface CreateStreamDownloadOptions extends CreateDownloadOptions {

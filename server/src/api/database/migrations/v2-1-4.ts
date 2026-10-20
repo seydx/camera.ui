@@ -10,13 +10,11 @@ async function migrateFrameWorkerSettings(ctx: MigrationContext): Promise<void> 
       const hadHq = settings.hqSnapshots !== undefined;
       if (!hadFps && !hadHq) continue;
 
-      // the switch now decides which stream is analysed, not just where event
-      // thumbnails come from, so the old value carries over unchanged
+      // the old switch picked the thumbnail stream, its value carries over unchanged
       if (hadHq) {
         settings.mainStreamAnalysis = settings.hqSnapshots === true;
         delete settings.hqSnapshots;
       }
-      // the detection rate is derived from the pipeline state now
       delete settings.fps;
 
       ctx.db.camerasDB.put(key, camera);

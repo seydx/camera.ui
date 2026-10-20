@@ -26,7 +26,6 @@ export class CameraUiAPI extends EventEmitter {
   }
 
   public async configureCameras(): Promise<void> {
-    // Clean up cameras that reference non-existent plugins (e.g., renamed/removed plugins)
     await this.camerasService.cleanupNonExistentPlugins();
 
     const cameras = this.camerasService.listTransformed();
@@ -111,7 +110,7 @@ export class CameraUiAPI extends EventEmitter {
         }
       }
 
-      // deselectCamera skips owner plugins, so notify the owner directly below
+      // deselectCamera skips owner plugins, the owner is notified below
       await Promise.allSettled(Array.from(pluginIds).map((pluginId) => this.deselectCamera(pluginId, camera)));
 
       if (camera.pluginInfo?.id && this.pluginCanReceiveEvents(camera.pluginInfo.id)) {

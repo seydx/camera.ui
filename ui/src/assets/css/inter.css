@@ -21,19 +21,19 @@
     cv11: 11;
     cv12: 12;
     cv13: 13;
-    alt-1: 1; /* Alternate one */
-    alt-3: 9; /* Flat-top three */
-    open-4: 2; /* Open four */
-    open-6: 3; /* Open six */
-    open-9: 4; /* Open nine */
-    lc-l-with-tail: 5; /* Lower-case L with tail */
-    simplified-u: 6; /* Simplified u */
-    alt-double-s: 7; /* Alternate German double s */
-    uc-i-with-serif: 8; /* Upper-case i with serif */
-    uc-g-with-spur: 10; /* Capital G with spur */
-    single-story-a: 11; /* Single-story a */
-    compact-lc-f: 12; /* Compact f */
-    compact-lc-t: 13; /* Compact t */
+    alt-1: 1;
+    alt-3: 9;
+    open-4: 2;
+    open-6: 3;
+    open-9: 4;
+    lc-l-with-tail: 5;
+    simplified-u: 6;
+    alt-double-s: 7;
+    uc-i-with-serif: 8;
+    uc-g-with-spur: 10;
+    single-story-a: 11;
+    compact-lc-f: 12;
+    compact-lc-t: 13;
   }
   @styleset {
     ss01: 1;
@@ -44,13 +44,13 @@
     ss06: 6;
     ss07: 7;
     ss08: 8;
-    open-digits: 1; /* Open digits */
-    disambiguation: 2; /* Disambiguation (with zero) */
-    disambiguation-except-zero: 4; /* Disambiguation (no zero) */
-    round-quotes-and-commas: 3; /* Round quotes &amp; commas */
-    square-punctuation: 7; /* Square punctuation */
-    square-quotes: 8; /* Square quotes */
-    circled-characters: 5; /* Circled characters */
-    squared-characters: 6; /* Squared characters */
+    open-digits: 1;
+    disambiguation: 2;
+    disambiguation-except-zero: 4;
+    round-quotes-and-commas: 3;
+    square-punctuation: 7;
+    square-quotes: 8;
+    circled-characters: 5;
+    squared-characters: 6;
   }
 }

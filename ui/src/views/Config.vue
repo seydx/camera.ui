@@ -219,7 +219,6 @@ const isLoading = computed(
     restartGo2RtcLoading.value,
 );
 
-// https://github.com/ajaxorg/ace/wiki/Configuring-Ace/
 const options = computed<Partial<Ace.EditorOptions>>(() => {
   return {
     fontSize: uiSettings.value.config.zoom,

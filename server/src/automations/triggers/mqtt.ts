@@ -48,7 +48,6 @@ function payloadMatches(mode: MatchMode, payload: string, opts: { payloadFilter:
 
       const value = resolveJsonPath(parsed, opts.jsonPath);
       if (value === undefined) return false;
-      // No expected value = match on presence of the path.
       if (!opts.jsonValue) return true;
 
       const scalar = scalarToString(value);

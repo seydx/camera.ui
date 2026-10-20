@@ -77,7 +77,7 @@ export class ProxyService extends EventEmitter {
       this.logger.log('Stopping cloud tunnel agent...');
       await this.proxyServer.proxy.request<{}, CloudBaseResponse>(SHUTDOWN_SUBJECT, {}, CLOUD_RETRY_OPTIONS);
     } catch {
-      // ignore — agent may already be down
+      // the agent may already be down
     }
   }
 

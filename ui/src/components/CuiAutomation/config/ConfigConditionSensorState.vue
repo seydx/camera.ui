@@ -148,7 +148,6 @@ function clearModeOverrides() {
 function updateCondition(idx: number, field: 'property' | 'expectedValue', value: string) {
   const current = [...conditions.value];
   current[idx] = { ...current[idx], [field]: value };
-  // switching the property changes the input kind — reset to a matching default
   if (field === 'property') {
     current[idx].expectedValue = getSensorPropertyDefaultValue(String(props.data.sensorType ?? ''), value);
   }

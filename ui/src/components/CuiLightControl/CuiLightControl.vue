@@ -98,7 +98,6 @@ function flushBrightness() {
   pointer-events: none;
 }
 
-/* Header */
 .cui-light-control__header {
   display: flex;
   align-items: center;
@@ -137,7 +136,6 @@ function flushBrightness() {
   margin-left: auto;
 }
 
-/* Brightness */
 .cui-light-control__brightness {
   display: flex;
   flex-direction: column;
@@ -167,7 +165,6 @@ function flushBrightness() {
   width: 100%;
 }
 
-/* Size variants */
 .cui-light-control--small {
   padding: 0.75rem;
   gap: 0.5rem;

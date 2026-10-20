@@ -116,13 +116,13 @@ class StorageController:
     async def createStorage(
         self,
         type_: Literal["sensor"],
-        device_id: str,  # plugin_id
+        device_id: str,
         sensor_id: str = ...,
     ) -> DeviceStorage: ...
     async def createStorage(
         self,
         type_: Literal["camera", "plugin", "sensor"],
-        device_id: str | None = None,  # camera_id or plugin_id
+        device_id: str | None = None,
         sensor_id: str | None = None,
     ) -> DeviceStorage:
         storage: DeviceStorage | None = None
@@ -148,7 +148,6 @@ class StorageController:
         if device_storage:
             await device_storage.unregister_storage()
 
-    # Internal method to close all storages
     async def close(self) -> None:
         storages = list(self.__storages.values())
         # saves share one config document and run in order, the handler drains overlap

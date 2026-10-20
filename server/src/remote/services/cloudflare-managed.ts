@@ -215,7 +215,7 @@ export class CloudflareManagedService {
     this._state = 'creating_tunnel';
     const name = `camera.ui-${hostname.replace(/[^a-z0-9-]/gi, '-')}`;
 
-    // Wipe any prior tunnel with the same name — `create` errors out otherwise.
+    // a prior tunnel with the same name makes `create` fail
     await this.runOnce(['tunnel', 'cleanup', name]).catch(() => {});
     await this.runOnce(['tunnel', 'delete', name]).catch(() => {});
 
@@ -230,8 +230,6 @@ export class CloudflareManagedService {
     const tunnelId: string = json.TunnelID;
     if (!tunnelId) throw new Error('TunnelID missing in credentials json');
 
-    // Move credentials into our managed dir if cloudflared wrote them elsewhere
-    // (default is $HOME/.cloudflared/<id>.json).
     const target = this.credentialsPath(tunnelId);
     if (generatedPath !== target) {
       await writeFile(target, raw, { mode: 0o600 });

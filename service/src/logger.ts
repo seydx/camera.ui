@@ -27,7 +27,6 @@ export class CLILogger {
   public init(): void {
     this.fileStream = createWriteStream(this.logPath, { flags: 'a' });
 
-    // Forward logger events to file stream
     this.logger.onLog((entry) => {
       if (this.fileStream?.writable) {
         const text = Logger.formatAsText(entry);
@@ -41,12 +40,8 @@ export class CLILogger {
 
   public log(msg: string, level: 'info' | 'succeed' | 'fail' | 'warn' | 'debug' | 'raw' = 'info', write?: boolean): void {
     if (this.action === 'run' || write) {
-      // For 'raw' level (typically server output), pass through directly without re-formatting
-      // Server already outputs formatted logs, so we just need to display them
-      // Note: We don't write to file here because the server's FileTransport already
-      // writes structured logs to the same file. Writing here would create duplicates.
       if (level === 'raw') {
-        // Write to console only (server FileTransport handles file writing)
+        // server output, its FileTransport already writes it to the same file
         console.log(msg);
       } else {
         const loggingLevel = this.getLoggingLevel(level);
@@ -68,8 +63,8 @@ export class CLILogger {
       return;
     }
 
-    const maxSize = 1000000; // ~1 MB
-    const truncateSize = 200000; // ~0.2 MB
+    const maxSize = 1000000;
+    const truncateSize = 200000;
 
     try {
       const logStats = await stat(this.logPath);

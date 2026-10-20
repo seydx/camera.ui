@@ -429,7 +429,7 @@ export class UpdatesService {
       } catch (error: any) {
         item.status = 'error';
         item.error = error?.message ?? String(error);
-        this.logger.warn(`Update run: ${item.name} failed — ${item.error}`);
+        this.logger.warn(`Update run: ${item.name} failed: ${item.error}`);
       }
       this.emitStatus();
     }
@@ -625,7 +625,7 @@ export class UpdatesService {
     try {
       return new PluginsService().listPlugins().find((plugin) => plugin.info.pluginName === pluginName)?.info.displayName;
     } catch {
-      // a plugin being installed for the first time is not in the registry yet
+      // a first install is not in the registry yet
       return undefined;
     }
   }
@@ -634,8 +634,7 @@ export class UpdatesService {
     const serverNsp = this.serverNamespace();
     if (!serverNsp) return;
     try {
-      // force the push: after a run the clients must see the fresh state even
-      // when the pending count happens to land on the same number
+      // forced, the pending count may land on the same number after a run
       await serverNsp.checkPlugins(true);
       await serverNsp.checkServer(true);
       serverNsp.refreshWorkerUpdateAvailable();

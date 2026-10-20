@@ -52,9 +52,7 @@ async function fetchThumbnail(ctx: ActionContext, data: Record<string, unknown>)
       return new Uint8Array(await res.arrayBuffer());
     }
 
-    // Inline payload — strip a `data:image/...;base64,` prefix when present,
-    // otherwise treat the value as raw base64 (the convention used by
-    // action-image-input and action-snapshot when they store under variables).
+    // a data: URL or raw base64, as action-image-input and action-snapshot store it
     const comma = raw.startsWith('data:') ? raw.indexOf(',') : -1;
     const b64 = comma >= 0 ? raw.slice(comma + 1) : raw;
     const buf = Buffer.from(b64, 'base64');

@@ -106,7 +106,7 @@ async function onConfirm(): Promise<null> {
   } else if (state.value.status === 'connected') {
     await disconnect();
   }
-  // Always keep the dialog open — progress is reflected via the shared poll.
+  // keep the dialog open, the shared poll shows the progress
   return null;
 }
 

@@ -40,8 +40,6 @@ export function getSensorPropertyInput(sensorType: string, property: string): Se
   }
 }
 
-// Initial value when a property gets enabled — booleans default to the
-// "do something" state, enums to their first option.
 export function getSensorPropertyDefaultValue(sensorType: string, property: string): string {
   const meta = getSensorPropertyInput(sensorType, property);
   if (meta.kind === 'boolean') return 'true';

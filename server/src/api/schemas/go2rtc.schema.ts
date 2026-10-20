@@ -48,8 +48,7 @@ export const apiSchema = zod
     username: zod.string().trim().optional(),
     password: zod.string().trim().optional(),
     origin: zod.string().trim().default(DEFAULT_GO2RTC_CONFIG_API.origin),
-    // base_path: zod.string().trim(),   // dont allow to change these
-    // static_dir: zod.string().trim(),  // dont allow to change these
+    // base_path and static_dir stay fixed
     tls_listen: zod.string().trim().default(DEFAULT_GO2RTC_CONFIG_API.tls_listen),
     tls_cert: zod.string().trim(),
     tls_key: zod.string().trim(),

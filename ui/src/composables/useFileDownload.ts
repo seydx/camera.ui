@@ -110,7 +110,7 @@ function assertOk(response: Response): void {
 function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
-  // iOS Safari predates display-mode and exposes this legacy flag instead.
+  // iOS Safari predates display-mode and exposes this legacy flag instead
   return Boolean((window.navigator as { standalone?: boolean }).standalone);
 }
 

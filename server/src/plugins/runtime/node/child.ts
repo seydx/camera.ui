@@ -71,11 +71,6 @@ export class PluginChild {
         user: process.env.PROXY_USER!,
         password: process.env.PROXY_PASSWORD!,
       },
-      // tls: {
-      //   cert: process.env.PROXY_CERT!,
-      //   key: process.env.PROXY_KEY!,
-      //   ca: process.env.PROXY_CA!,
-      // },
     });
 
     delete process.env.PROXY_USER;
@@ -144,8 +139,7 @@ export class PluginChild {
   private async startPlugin(data: ProcessLoadMessage, runId: string | undefined): Promise<void> {
     this.phase = 'starting';
     try {
-      // Host-local writable dir — on a remote worker the master's path from
-      // the START message would point at the wrong machine.
+      // on a worker the master's storage path from START points at the wrong machine
       const storagePath = process.env.PLUGIN_STORAGE_PATH ?? data.storage.storagePath;
       const pluginInfo = data.plugin;
       const cameras = data.cameras;
@@ -164,8 +158,6 @@ export class PluginChild {
       const namespaces = NamespaceManager.pluginNamespaces(pluginInfo.id);
       this.closeProxy = await this.proxy.registerHandler(namespaces.pluginChildRpc, this.plugin, { withoutDecorators: true });
 
-      // Remote-hosted: serve this worker's files so the master can stream
-      // downloads/exports of them.
       if (process.env.PLUGIN_REMOTE_MODE) {
         this.fileServer = new PluginFileServer(this.proxy, pluginInfo.id);
         await this.fileServer.register();
@@ -394,8 +386,7 @@ export class PluginChild {
   }
 
   private async configurePluginDB(storagePath: string, pluginId: string): Promise<PluginConfigDb> {
-    // Remote-hosted: config lives on the master (re-homing safe) — persist
-    // through its config store instead of a worker-local file.
+    // config lives on the master so it survives a move to another worker
     if (process.env.PLUGIN_CONFIG_STORE_RPC) {
       const namespace = NamespaceManager.pluginNamespaces(pluginId).pluginConfigStoreRpc;
       const remoteDb = new RemotePluginConfigDb(
@@ -451,7 +442,7 @@ export class PluginChild {
       return;
     }
 
-    // Detach before invoking so once-wrappers cannot fire a second time.
+    // detach first so once-wrappers can't fire twice
     const listeners = this.api.rawListeners(API_EVENT.SHUTDOWN) as ((...args: unknown[]) => unknown)[];
     this.api.removeAllListeners(API_EVENT.SHUTDOWN);
 

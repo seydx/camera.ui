@@ -11,7 +11,6 @@ interface AuthParamPayload {
   _reset?: boolean;
   _id?: string;
   username?: string;
-  email?: string;
   role?: string;
   firstLogin?: boolean;
   avatar?: string;
@@ -81,7 +80,6 @@ export async function consumeAuthParam(connection: Connection, options: ConsumeA
     options.onUser?.({
       _id: data._id,
       username: data.username,
-      email: data.email,
       role: data.role,
       firstLogin: data.firstLogin,
       avatar: data.avatar,

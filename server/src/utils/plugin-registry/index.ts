@@ -65,7 +65,7 @@ export async function getCatalog(): Promise<Record<string, CatalogEntry>> {
       return data;
     }
   } catch {
-    // fail-open: fall through to last-good
+    // fail open to the last good copy
   }
 
   return lastGoodCatalog;
@@ -86,7 +86,7 @@ export async function getVerified(): Promise<Record<string, VerifiedEntry>> {
       return plugins;
     }
   } catch {
-    // fail-open: fall through to last-good
+    // fail open to the last good copy
   }
 
   return lastGoodVerified;
@@ -107,7 +107,7 @@ export async function getBlocklist(): Promise<Record<string, BlocklistEntry>> {
       return plugins;
     }
   } catch {
-    // fail-open: fall through to last-good
+    // fail open to the last good copy
   }
 
   return lastGoodBlocklist;
@@ -161,7 +161,7 @@ export async function getWeeklyDownloads(names: string[]): Promise<Record<string
           result[name] = data.downloads;
         }
       } catch {
-        // ignore: omit downloads for this name
+        // no download count for this name
       }
     }),
   );

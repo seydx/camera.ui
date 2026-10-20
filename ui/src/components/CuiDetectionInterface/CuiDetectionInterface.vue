@@ -297,7 +297,6 @@ function onDrop(e: DragEvent): void {
       dragoverError.value = true;
     } else {
       const file = e.dataTransfer.files[0];
-      // empty acceptedTypes means allow all
       const isTypeAccepted = acceptedTypes.value.length === 0 || acceptedTypes.value.includes(file.type);
 
       if (isTypeAccepted && file.size <= maxFileSize.value) {

@@ -73,7 +73,6 @@ const statusText = computed(() => {
   opacity: 0.6;
 }
 
-/* Header */
 .cui-detection__header {
   display: flex;
   align-items: center;
@@ -122,7 +121,6 @@ const statusText = computed(() => {
   color: rgb(34, 197, 94);
 }
 
-/* Indicator dot */
 .cui-detection__indicator {
   width: 0.5rem;
   height: 0.5rem;
@@ -148,7 +146,6 @@ const statusText = computed(() => {
   }
 }
 
-/* Detections tags */
 .cui-detection__detections {
   display: flex;
   flex-wrap: wrap;
@@ -168,7 +165,6 @@ const statusText = computed(() => {
   text-transform: capitalize;
 }
 
-/* Size variants */
 .cui-detection--small {
   padding: 0.5rem;
   gap: 0.375rem;

@@ -145,7 +145,6 @@ const statusText = computed(() => {
   }
 }
 
-/* Size variants */
 .cui-detection-info--small {
   padding: 0.5rem;
   gap: 0.375rem;

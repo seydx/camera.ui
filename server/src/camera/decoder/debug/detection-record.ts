@@ -9,7 +9,6 @@ import type { TraceFaceRead } from '../event-trace.js';
 import type { CropWindow, MomentFormatName } from '../moment-crop.js';
 import type { AnalysisStream } from '../types.js';
 
-// one global debug root for all diagnostic outputs, one subdirectory per concern
 function recordDir(): string | undefined {
   const dir = process.env.CAMERA_UI_DEBUG_DIR;
   if (!dir) return undefined;

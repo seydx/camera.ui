@@ -36,8 +36,6 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
   'action-image-input': ['source'],
 };
 
-// families whose members are dynamic (http.<jsonKey>, webhook.<bodyKey>, ...): any
-// member passes as long as the family itself is produced upstream
 const DYNAMIC_FAMILIES = new Set(['http', 'mqtt', 'webhook', 'sensor', 'system', 'repeat', 'previous', 'plugin', 'camera', 'geo', 'event']);
 const GLOBAL_VARIABLES = new Set(['time.now', 'flow.startMs', 'snapshot', 'snapshot.base64', 'output']);
 

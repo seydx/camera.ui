@@ -415,7 +415,6 @@ function onNodeSelect(nodeId: string | null) {
   store.selectedNodeId = nodeId;
 
   if (smBreakpoint.value && nodeId) {
-    // sync draft with canvas before opening the dialog so edges/nodes are current
     syncDraftFromCanvas();
 
     const node = draft.value?.nodes.find((n) => n.id === nodeId);
@@ -477,7 +476,6 @@ async function onRun() {
 
 function onExportBlueprint() {
   if (!draft.value) return;
-  // save first so the blueprint is up to date
   onSave();
   const blueprint = {
     version: 1,

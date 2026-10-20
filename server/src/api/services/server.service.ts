@@ -36,8 +36,7 @@ export class ServerService {
       .filter((addr) => (selectedAddresses.length === 0 ? addr.isPrivate : selectedAddresses.includes(addr.address)))
       .map((addr) => buildHttpsUrl(addr.address, port));
 
-    // one more local candidate, never a go2rtc filter entry: those compare against
-    // IP literals, a hostname there would gather no candidate at all
+    // a local candidate only, go2rtc filters compare IP literals and a hostname gathers nothing
     const localUrl = this.info().localUrl?.trim();
     if (localUrl) internalAddresses.unshift(localUrl);
 
@@ -119,7 +118,7 @@ export class ServerService {
       }
       log.flush();
 
-      log.success(`${APP_SERVER_NAME}@${version} updated — restart to apply`);
+      log.success(`${APP_SERVER_NAME}@${version} updated, restart to apply`);
       updatesService().notifyServerInstall('success', { version, source });
     } catch (error: any) {
       log.error(`Update of ${APP_SERVER_NAME}@${version} failed: ${error.message}`);

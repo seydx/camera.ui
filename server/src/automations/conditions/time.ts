@@ -22,7 +22,7 @@ export function conditionTime(_ctx: ActionContext, data: Record<string, unknown>
   if (startMinutes <= endMinutes) {
     inRange = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   } else {
-    // Overnight range: e.g. 22:00 - 06:00
+    // overnight range, e.g. 22:00 to 06:00
     inRange = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
   }
 

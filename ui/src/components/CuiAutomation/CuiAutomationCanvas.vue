@@ -138,7 +138,6 @@ function isValidConnection(connection: Connection): boolean {
 
   if (connection.source === connection.target) return false;
 
-  // Triggers have no input
   if (targetNode.type?.startsWith('trigger-')) return false;
 
   return true;
@@ -153,7 +152,7 @@ function onConnect(connection: Connection) {
   const targetNode = nodes.value.find((n) => n.id === connection.target);
   const isCondition = targetNode?.type?.startsWith('condition-');
 
-  // Conditions have max 1 input — replace existing incoming edge
+  // a condition takes one input per handle
   if (isCondition) {
     const existingIncoming = edges.value.find((e) => e.target === connection.target && (e.targetHandle ?? undefined) === targetHandle);
     if (existingIncoming) {
@@ -170,7 +169,6 @@ function onConnect(connection: Connection) {
   };
   edges.value.push(edge);
 
-  // Inherit matching fields from source — only fills empty target fields
   const sourceNode = nodes.value.find((n) => n.id === connection.source);
   const updates = inheritFieldsFromSource(sourceNode?.data, targetNode?.data);
   if (updates && targetNode?.data) {
@@ -225,7 +223,6 @@ function addNodeAtCenter(nodeType: AutomationNodeType): AutomationNode | undefin
   const centerX = (-vpX + width / 2) / zoom;
   const centerY = (-vpY + height / 2) / zoom;
 
-  // Random offset prevents nodes stacking exactly
   const offset = () => (Math.random() - 0.5) * 80;
 
   const node: AutomationNode = {
@@ -268,8 +265,7 @@ function updateNodeData(nodeId: string, data: Record<string, unknown>) {
 
   node.data = data as unknown as AutomationNode['data'];
 
-  // a removed case takes its handle with it, and vue flow only stops drawing the
-  // orphaned edge, it would still save and still route
+  // vue flow only stops drawing the edge of a removed case, it would still save and route
   if (node.type === 'condition-switch' && Array.isArray(data.cases)) {
     const live = new Set((data.cases as string[]).map(caseHandleId));
     edges.value = edges.value.filter((e) => e.source !== nodeId || !e.sourceHandle?.startsWith('case-') || live.has(e.sourceHandle));
@@ -290,7 +286,6 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-// Sync from store → canvas only on flow identity change, not deep
 watch(
   () => props.flow._id,
   () => {

@@ -188,8 +188,7 @@ function resetSearch() {
 }
 
 function refreshPlugins() {
-  // Force a TTL-bypassing refetch on the server (fresh lists/downloads), then clear
-  // the flag so subsequent refetches use the caches again.
+  // one refetch past the server caches, later ones use them again
   forceRefresh.value = true;
   Promise.all([refetchPlugins(), refetchPluginsProgress()]).finally(() => {
     forceRefresh.value = false;

@@ -67,8 +67,7 @@ export class VirtualSensorHost {
       return;
     }
 
-    // no hardware to report back — mirror targetState into currentState,
-    // otherwise the UI would show "locking..." / "opening..." forever
+    // no hardware reports back, so currentState mirrors targetState or the UI waits forever
     if (TARGET_STATE_MIRROR_TYPES.has(this.type) && (property as LockProperty) === LockProperty.TargetState) {
       this.write({ [LockProperty.TargetState]: value, [LockProperty.CurrentState]: value });
       return;

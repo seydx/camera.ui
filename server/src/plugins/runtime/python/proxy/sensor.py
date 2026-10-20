@@ -180,7 +180,7 @@ class SensorProxy(SensorLike):
 
     async def _subscribe_to_events(self) -> None:
         if self._event_subscription is not None:
-            return  # Already subscribed
+            return
 
         namespace = NamespaceManager.sensor_event_namespaces(self._id)
         self._event_subscription = await self._proxy.subscribe(

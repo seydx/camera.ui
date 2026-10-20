@@ -77,7 +77,6 @@ const [DefineTemplate, ReuseTemplate] = createReusableTemplate<{ isExactActive?:
 function handleClick(event: MouseEvent) {
   if (disabled.value) return;
 
-  // Don't fire when the click originated from an interactive element inside prepend/append slots
   const target = event.target as HTMLElement;
   if (target.closest('[data-cui-slot-interactive]')) return;
 
@@ -86,27 +85,6 @@ function handleClick(event: MouseEvent) {
 </script>
 
 <style scoped>
-/*
-.listitem-button {
-  background: var(--button-contrast-background);
-  border-color: transparent;
-  color: var(--p-button-text-secondary-color);
-}
-
-.listitem-button:hover:not(.disabled),
-.listitem-button.active:not(.disabled) {
-  background: var(--button-contrast-hover-background);
-  border-color: transparent;
-  color: var(--p-button-text-secondary-color);
-}
-
-.listitem-button:active:not(.disabled) {
-  background: var(--button-contrast-active-background);
-  border-color: transparent;
-  color: var(--p-button-text-secondary-color);
-}
-  */
-
 .divider {
   background: var(--divider-color);
 }

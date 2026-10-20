@@ -17,7 +17,7 @@ export async function getDeviceId(): Promise<string> {
       _cachedId = info.identifier;
       return _cachedId;
     } catch {
-      // Fall through to localStorage fallback
+      // fall back to localStorage
     }
   }
 

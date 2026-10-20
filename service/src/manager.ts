@@ -53,7 +53,6 @@ interface StoppingMessage {
 
 type ServerMessage = UpdateMessage | ErrorMessage | ServerStartedMessage | ServerHealthyMessage | StoppingMessage;
 
-// CLI to Server communication
 interface UpdateStartedMessage {
   type: 'UPDATE_STARTED';
   version: string;
@@ -212,7 +211,7 @@ export class ServerManager {
         await this.finalizeStagedInstall();
 
         if (!this.isServerHealthy()) {
-          throw new Error('Server install verification failed — files incomplete after install');
+          throw new Error('Server install verification failed, files incomplete after install');
         }
       }
     } catch (error) {
@@ -365,7 +364,7 @@ export class ServerManager {
         version: version,
       });
 
-      this.cli.logger('Server update staged — applied on restart', 'succeed');
+      this.cli.logger('Server update staged, applied on restart', 'succeed');
     } catch (error) {
       this.send({
         type: 'UPDATE_FAILED',
@@ -604,7 +603,7 @@ export class ServerManager {
         await this.npmInstallWithRetry(stagingPath, version, stdout, !seeded);
 
         if (!this.isStagedInstallComplete()) {
-          throw new Error('Server install verification failed — staged files incomplete');
+          throw new Error('Server install verification failed, staged files incomplete');
         }
 
         await this.cli.chownPath(stagedModules);
@@ -633,7 +632,6 @@ export class ServerManager {
         if (holder !== undefined) {
           throw new Error(`Another update is already in progress (pid ${holder})`);
         }
-        // stale lock of a dead process
         rmSync(this.updateLockPath, { force: true });
       }
     }
@@ -718,7 +716,7 @@ export class ServerManager {
       this.writeState();
       this.cli.logger('Staged server update applied', 'info');
     } catch (error) {
-      // Keep the staging dir — the swap is retried on the next start.
+      // keep the staging dir, the swap is retried on the next start
       this.cli.logger(`Could not apply staged server update: ${error.message}`, 'warn');
       if (from) {
         await this.writeUpdateState({ target, from, result: 'swap-failed', reason: error.message, at: Date.now() });
@@ -816,8 +814,7 @@ export class ServerManager {
         ...npmCli.args,
         'install',
         `${APP_SERVER_NAME}@${version}`,
-        // bypass only when the manifest declares no allowScripts policy
-        // (older npm treats the flag as unknown config and just warns)
+        // only without an allowScripts policy, older npm just warns about the unknown flag
         ...(allowAllScripts ? ['--dangerously-allow-all-scripts'] : []),
         '--prefix',
         prefix,

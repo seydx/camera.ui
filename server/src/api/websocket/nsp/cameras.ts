@@ -121,7 +121,6 @@ export class CamerasNamespace {
 
       const isSubscribed = (socket as Socket & { camerasSubscribed?: boolean }).camerasSubscribed;
 
-      // device updates (discovered/list) go only to subscribed sockets
       if (eventType === 'cameras:discovered') {
         if (!isSubscribed) continue;
       }

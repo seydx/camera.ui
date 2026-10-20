@@ -48,7 +48,6 @@ import type { SourceCodecInfo } from './codecCache.js';
 import type { StoredSnapshot } from './snapshot-store.js';
 
 const PRELOAD_KINDS: ProbeConfig = { video: true, audio: true, microphone: true };
-// covers a battery camera waking up: bridge handshake plus the wait for its parameter sets
 const COLD_PROBE_TIMEOUT_MS = 30_000;
 const SOURCE_CODEC_KEYS: (keyof SourceCodecInfo)[] = ['videoCodec', 'audioCodecs', 'backchannelAudioCodec'];
 const SNAPSHOT_CONCURRENCY = 16;
@@ -435,7 +434,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
         const sourceName = createSourceName(this.name, source.name);
         await this.go2rtcApi.streamsRoute.addPreloadStream({ src: sourceName }, PRELOAD_KINDS);
       } catch {
-        // go2rtc might not be ready yet, ignore
+        // go2rtc may not be ready yet
       }
     }
   }
@@ -484,7 +483,7 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
           await this.go2rtcApi.streamsRoute.deletePreloadStream({ src });
         }
       } catch {
-        //
+        // ignore
       }
     }
   }
@@ -629,8 +628,6 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
 
         emitInternalEvent(newState ? 'camera:frameworker:started' : 'camera:frameworker:stopped', { cameraId: this.id, cameraName: this.name });
 
-        // SensorController handles detection plugin reconciliation (false→true)
-        // and cascade state reset (true→false).
         this.sensorController.onFrameWorkerStateChanged(oldState, newState);
       });
   }
@@ -726,7 +723,6 @@ export class CameraController extends CameraDevice implements CameraDeviceInterf
           this.applyChange('preloads', () => this.reconcilePreloads());
         }
 
-        // Snooze only affects FrameWorker/detections.
         if (oldCamera.detectionSettings?.snooze !== newCamera.detectionSettings?.snooze) {
           const snoozed = newCamera.detectionSettings?.snooze;
           this.applyChange(snoozed ? 'snooze' : 'unsnooze', () => (snoozed ? this.onSnoozed() : this.onUnsnoozed()));

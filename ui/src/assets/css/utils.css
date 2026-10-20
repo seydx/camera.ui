@@ -1,6 +1,5 @@
 @reference "./tailwind.css";
 
-/* ===== Electron ===== */
 .draggable-region {
   app-region: drag;
   -webkit-app-region: drag;
@@ -15,7 +14,6 @@
   -webkit-app-region: no-drag;
 }
 
-/* ===== Text ===== */
 .page-title {
   @apply text-lg block font-semibold text-color mb-3;
   font-variation-settings: 'wght' 600;
@@ -32,14 +30,11 @@
   color: var(--text-muted-color);
 }
 
-/* section-title as a pill, for panels with enough sections that a muted line stops separating them */
 .section-chip {
   @apply self-start text-[0.7rem] font-semibold uppercase tracking-wider select-none rounded-full px-2.5 py-1;
   background: var(--border-color-inner);
   color: var(--text-color);
 }
-
-/* ===== UTILITIES ===== */
 
 .flipped-h {
   transform: scaleX(-1);
@@ -53,7 +48,6 @@
   @apply rounded-xl;
 }
 
-/* Default Field*/
 .field-gap {
   @apply gap-1;
 }
@@ -82,7 +76,6 @@
   font-variation-settings: 'wght' 500;
 }
 
-/* Checkbox Field*/
 .field-checkbox-gap {
   @apply gap-1;
 }
@@ -130,7 +123,6 @@
   background-color: var(--toggle-switch-background);
 }
 
-/* Cards */
 .cui-card {
   @apply w-full h-full shadow-xs relative rounded-xl overflow-hidden;
   border: 1px solid var(--border-color);
@@ -140,7 +132,6 @@
   background: var(--progress-track-background);
 }
 
-/* Banners */
 .cui-banner {
   @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm;
 }
@@ -156,8 +147,6 @@
 .cui-banner-error {
   @apply bg-red-500/10 text-red-400;
 }
-
-/* ===== BUTTONS/ICONS ===== */
 
 .cui-icon-xs {
   @apply w-5 h-5 p-1;
@@ -224,7 +213,6 @@
   @apply h-[48px] text-base;
 }
 
-/* ===== LIST ===== */
 .cui-list-item {
   border-bottom: 1px solid var(--border-color);
   padding: 0.25rem 0;
@@ -234,8 +222,6 @@
   border-bottom: none;
   padding-bottom: 0;
 }
-
-/* ===== BACKGROUNDS ===== */
 
 .bg-color {
   background-color: var(--text-color);
@@ -289,7 +275,6 @@
   background-color: var(--text-muted-color);
 }
 
-/* Surface backgrounds */
 .bg-surface-0 {
   background-color: var(--surface-0);
 }
@@ -338,7 +323,6 @@
   background-color: var(--surface-950);
 }
 
-/* Primary backgrounds */
 .bg-primary-50 {
   background-color: var(--primary-50);
 }
@@ -383,7 +367,6 @@
   background-color: var(--primary-950);
 }
 
-/* Secondary backgrounds */
 .bg-secondary-50 {
   background-color: var(--secondary-50);
 }
@@ -428,7 +411,6 @@
   background-color: var(--secondary-950);
 }
 
-/* Action backgrounds */
 .bg-success {
   background-color: var(--success-color);
 }
@@ -461,7 +443,6 @@
   background-color: var(--danger-light);
 }
 
-/* ===== TEXT COLORS ===== */
 .text-color {
   color: var(--text-color);
 }
@@ -510,7 +491,6 @@
   color: var(--text-danger-color);
 }
 
-/* Surface text colors */
 .text-surface-0 {
   color: var(--surface-0);
 }
@@ -559,7 +539,6 @@
   color: var(--surface-950);
 }
 
-/* Primary text color variations */
 .text-primary-50 {
   color: var(--primary-50);
 }
@@ -604,7 +583,6 @@
   color: var(--primary-950);
 }
 
-/* Secondary text color variations */
 .text-secondary-50 {
   color: var(--secondary-50);
 }
@@ -649,7 +627,6 @@
   color: var(--secondary-950);
 }
 
-/* ===== BORDERS ===== */
 .card-border {
   border: 1px solid var(--border-color);
 }
@@ -706,7 +683,6 @@
   border-color: var(--danger-color);
 }
 
-/* ===== TEXT EFFECTS ===== */
 .text-shadow {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 1);
 }
@@ -719,7 +695,6 @@
   text-shadow: none;
 }
 
-/* ===== TRANSITIONS ===== */
 .transition-default {
   transition: all var(--transition-duration) ease-in-out;
 }
@@ -732,7 +707,6 @@
   transition: all calc(var(--transition-duration) * 2) ease-in-out;
 }
 
-/* ===== SCROLLBAR UTILITIES ===== */
 .disable-overflow-scroll {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: none;
@@ -771,8 +745,6 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--surface-500);
 }
-
-/* ===== FILES ===== */
 
 .file-upload-box {
   @apply flex rounded-xl items-center justify-center transition-all min-h-[200px];

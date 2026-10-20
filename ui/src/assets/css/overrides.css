@@ -27,12 +27,6 @@
   gap: unset;
 }
 
-/* .active-button:not(:disabled) {
-  background: var(--p-button-text-contrast-active-background);
-  border-color: transparent;
-  color: var(--p-button-text-contrast-color);
-} */
-
 .p-progressspinner-circle {
   stroke: var(--primary-500) !important;
 }
@@ -41,19 +35,10 @@
   display: none !important;
 }
 
-/* .ace-twilight,
-.ace_scroller {
-  background-color: var(--ground-background) !important;
-} */
-
 .p-datatable.p-datatable-striped .p-datatable-tbody > tr.p-row-odd {
   background-color: var(--table-row-odd-background);
 }
 
-/* :not(.p-inputgroup) > .p-inputtext,
-:not(.p-inputgroup) > .p-select,
-:not(.p-inputgroup) > .p-multiselect,
-:not(.p-inputgroup) > .p-autocomplete, */
 .p-inputgroup:not(:has(.p-inputgroupaddon)) > .p-inputtext,
 .p-inputgroup:not(:has(.p-inputgroupaddon)) > .p-select,
 .p-inputgroup:not(:has(.p-inputgroupaddon)) > .p-multiselect,
@@ -115,10 +100,6 @@
 .p-autocomplete.p-invalid .p-autocomplete-input-multiple {
   border-color: #ff1c20;
 }
-
-/* .p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider {
-  background-color: var(--p-green-500);
-} */
 
 .p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-handle {
   background-color: #fff;

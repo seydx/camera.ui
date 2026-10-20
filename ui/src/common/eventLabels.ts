@@ -32,7 +32,7 @@ export const SENSOR_EVENT_LABELS: Record<string, string> = {
   'line-crossing': 'views.recordings.sensor_line_crossing',
 };
 
-/** Sensor triggers a camera can push for. Motion and audio are covered by the detection labels. */
+// motion and audio come with the detection labels
 export const NOTIFY_SENSOR_TYPES = [
   'doorbell',
   'contact',

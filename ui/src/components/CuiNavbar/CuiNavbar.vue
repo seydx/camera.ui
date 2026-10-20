@@ -512,9 +512,7 @@ async function initElectronUpdater() {
   try {
     const response: { isUpdateAvailable: boolean; version?: string } = await electron!.invoke('get-update-available');
     serverUpdateAvailable.value = response.isUpdateAvailable;
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function scrollActiveItemIntoView() {

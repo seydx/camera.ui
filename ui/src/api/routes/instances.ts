@@ -149,7 +149,7 @@ export class InstancesQuery {
     return useMutation({
       mutationFn: async (id: string) => {
         await deleteInstanceFn(id);
-        // Immediately remove the status query for the deleted instance to prevent 404 errors
+        // the status query would 404 for the deleted instance
         await this._queryClient.cancelQueries({ queryKey: ['instances', id, 'status'] });
         this._queryClient.removeQueries({ queryKey: ['instances', id, 'status'] });
       },
@@ -189,7 +189,7 @@ export class InstancesQuery {
     return useMutation({
       mutationFn: (id: string) => loginToRemoteFn(id),
       onError: () => {
-        // Error handled by caller
+        // handled by the caller
       },
     });
   }

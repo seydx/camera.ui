@@ -13,11 +13,11 @@ export interface ReasoningOptions {
 
 const ANTHROPIC_BUDGET: Record<Level, number> = { off: 0, low: 2048, high: 12_000 };
 const GEMINI_BUDGET: Record<Level, number> = { off: 0, low: 1024, high: 8192 };
-// the claude 4.0, 4.1 and 4.5 generation and everything before it only knows a thinking budget, newer ones think adaptively
+// these claude models only know a thinking budget, newer ones think adaptively
 const ANTHROPIC_BUDGET_ONLY = /^claude-(?:opus-4(?:-[015])?|sonnet-4(?:-5)?|haiku-4-5)(?:-\d{8})?$|^claude-3-/;
 const INTERLEAVED_THINKING_BETA = 'interleaved-thinking-2025-05-14';
 const OLLAMA_THINKERS = /qwen3|deepseek-r1|gpt-oss|magistral|qwq|cogito|smollm3|glm|nemotron|phi4-reasoning|granite3\.[3-9]|granite4/i;
-// system prompt, tool list and the answer sit outside the compaction budget
+// system prompt, tool list and answer sit outside the compaction budget
 const OLLAMA_CONTEXT_HEADROOM = 16_384;
 
 export function reasoningFor(settings: Pick<AssistantSettings, 'provider' | 'model' | 'reasoning' | 'contextTokens'>): ReasoningOptions {
@@ -104,7 +104,7 @@ function openai(model: string, level: Level): Record<string, unknown> | undefine
 }
 
 function openaiReasons(model: string): boolean {
-  // the o-series and the gpt-5 family reason, the chat variants and everything older reject the parameter
+  // the o-series and gpt-5 reason, chat variants and older models reject the parameter
   if (/^o\d/.test(model)) return true;
   return model.startsWith('gpt-5') && !model.endsWith('-chat-latest');
 }

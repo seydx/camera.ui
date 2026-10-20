@@ -208,8 +208,8 @@ function scrollFocusedIntoView(): void {
   }, 250);
 }
 
-// a dropdown closes as soon as anything behind it scrolls, so it moves above the keyboard instead
 function liftOverlay(overlay: HTMLElement): void {
+  // scrolling would close the dropdown, so it moves above the keyboard instead
   const box = overlay.getBoundingClientRect();
   const limit = window.innerHeight - keyboardInset.value - 8;
   const lift = Math.min(box.bottom - limit, box.top - safeAreaTop() - 8);

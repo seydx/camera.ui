@@ -335,8 +335,6 @@ function onCardClick(instance: InstanceInfo) {
   }
   if (instance.active || instance.status === 'offline') return;
   if (instance.pending2fa) {
-    // The instance has no completed session yet — finish the 2FA challenge
-    // instead of attempting a switch that would prompt for it anyway.
     instanceStore.complete2FALogin(instance.id, instance.name);
     return;
   }
@@ -362,7 +360,7 @@ function openAddDialog() {
       try {
         const created = await createInstance({ name: result.name, url: result.url, credentials: result.credentials });
         if (created.requires2fa) {
-          // Cancelled prompt is fine — the card shows the pending-2FA state.
+          // a cancelled prompt is fine, the card shows the pending state
           await instanceStore.complete2FALogin(created.id, created.name);
         }
       } catch (error: any) {
@@ -427,9 +425,7 @@ watch(
   instancesData,
   (data) => {
     if (!data) return;
-    // App.vue also calls fetchInstances() on login — guard against re-assigning
-    // structurally-identical data, which would otherwise re-trigger the
-    // reachability watcher and double-probe on every page mount.
+    // identical data would re-trigger the reachability watcher and probe twice
     if (!isEqual(instanceStore.serverInstances, data.instances)) {
       instanceStore.serverInstances = data.instances;
     }

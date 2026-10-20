@@ -50,7 +50,6 @@ const iconGlowStyle = computed(() => ({
   pointer-events: none;
 }
 
-/* Header */
 .cui-switch-control__header {
   display: flex;
   align-items: center;
@@ -84,7 +83,6 @@ const iconGlowStyle = computed(() => ({
   margin-left: auto;
 }
 
-/* Size variants */
 .cui-switch-control--small {
   padding: 0.75rem;
   gap: 0.5rem;

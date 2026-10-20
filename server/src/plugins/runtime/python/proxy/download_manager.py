@@ -18,8 +18,6 @@ class DownloadManagerProxy(DownloadManager):
     def __init__(self, proxy: RPCClient) -> None:
         self.__proxy = proxy
         self.__namespaces = NamespaceManager.download_manager_namespaces()
-        # Remote-hosted plugins tag downloads so the master pulls the file back
-        # from this worker over PluginFileServe instead of serving it locally.
         self.__remote_plugin_id = (
             os.environ.get("PLUGIN_ID") if os.environ.get("PLUGIN_REMOTE_MODE") else None
         )

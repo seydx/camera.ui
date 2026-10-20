@@ -130,9 +130,7 @@ export function createConnection(options: ConnectionOptions): Connection {
   });
   cleanups.push(persistence.detach);
 
-  // Give the refresh coordinator the same cross-tab lock the token lifecycle
-  // uses plus a live view of the persisted tokens — the probe's 401-refresh
-  // otherwise races other tabs with an already-rotated refresh token.
+  // same cross-tab lock, otherwise the probe's 401 refresh races other tabs
   options.callbacks.bindRefresh?.({
     acquireLock: acquireRefreshLock ? (fn) => acquireRefreshLock(fn, AbortSignal.timeout(PROBE_LOCK_TIMEOUT_MS)) : async (fn) => fn(),
     getLatestTokens: () => persistence.peek()?.tokens ?? null,
@@ -146,9 +144,7 @@ export function createConnection(options: ConnectionOptions): Connection {
       absorb: (t) => persistence.absorb(t),
       onTokensReceived: () => {
         diag('cross-tab', 'tokens received from another tab');
-        // Another tab just logged in / switched instance while we sit in a
-        // dead-end phase — the fresh tokens are in persistence (absorb), so
-        // a retry gets this tab back online without a manual reload.
+        // another tab logged in while this one sat in a dead end, a retry picks up its tokens
         const k = kernel.phase.kind;
         if (k === 'needs-auth' || k === 'offline') {
           kernel.dispatch({ type: 'USER_RETRY' });
@@ -391,8 +387,7 @@ export function createConnection(options: ConnectionOptions): Connection {
         onChange: (k) => {
           diag('network-change', 'connection type changed');
           wakeTokens();
-          // healthy connections stay online: probe silently and swap the
-          // endpoint in place if the new network opened a better path
+          // healthy connections stay online and swap the endpoint in place if a better path opened
           if (k.phase.kind === 'online') {
             restartLiveStreams('network change');
             runUpgradeProbe();
@@ -508,11 +503,7 @@ export function createConnection(options: ConnectionOptions): Connection {
         captureRetryAfter(err);
         const msg = err instanceof Error ? err.message : String(err);
         const kind = err instanceof Error && 'kind' in err ? (err as { kind: string }).kind : 'unknown';
-        // `needs-auth` from probe.ts now means the host actually answered
-        // (401 / Bearer rejected) — it's a reachability signal. `fatal` is
-        // also a successful round-trip (server-confirmed dead-end). Capture
-        // those as known-good hosts; only ignore `transient` / `aborted`
-        // failures, which mean the network never got there.
+        // needs-auth and fatal both mean the host answered, only transient and aborted never got there
         if (kind === 'needs-auth' || kind === 'fatal') {
           lastReachableEndpoint.value = ep.url;
         }
@@ -540,10 +531,7 @@ export function createConnection(options: ConnectionOptions): Connection {
 
   async function seedAndRetry(seedTarget: ConnectionTarget, instanceId = 'default'): Promise<void> {
     await persistence.seed(seedTarget);
-    // The boot-time `restoredTarget` may still hold stale tokens (e.g. the
-    // ones that just got us into needs-auth). Drop it so probe-loop's
-    // `lastTarget` chain falls through to `persistence.peek()` and reads the
-    // freshly seeded target.
+    // restoredTarget may hold the stale tokens, the probe loop has to read the seeded target
     restoredTarget = null;
     const kind = kernel.phase.kind;
     if (kind === 'idle' || kind === 'offline' || kind === 'needs-auth') {
@@ -553,8 +541,7 @@ export function createConnection(options: ConnectionOptions): Connection {
         kernel.dispatch({ type: 'USER_RETRY' });
       }
     } else if (kind === 'online') {
-      // Without this the seeded tokens only reach persistence — the live
-      // target and transports keep the old ones until the next refresh.
+      // otherwise only persistence gets the seeded tokens, not the live target
       kernel.dispatch({ type: 'TOKENS_REFRESHED', tokens: seedTarget.tokens });
     }
   }

@@ -4,7 +4,6 @@ export interface EnvironmentInfo {
   development: boolean;
   docker: boolean;
   electron: boolean;
-  // homeassistant: boolean;
 }
 
 export interface Secrets {
@@ -75,7 +74,6 @@ export interface Logger {
   level: LoggingLevel;
 }
 
-// go2rtc config
 export interface Go2RtcConfig {
   log: Partial<Log>;
   api: API;
@@ -118,9 +116,6 @@ export interface API {
   listen: string;
   username?: string;
   password?: string;
-  // base_path: string;
-  // static_dir: string;
-  // origin: string;
   tls_listen: string;
   tls_cert: string;
   tls_key: string;

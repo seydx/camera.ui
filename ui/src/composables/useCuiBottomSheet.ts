@@ -13,10 +13,10 @@ const BASE_BACKDROP_Z_INDEX = 1000;
 const BASE_SHEET_Z_INDEX = 1001;
 const Z_INDEX_INCREMENT = 10;
 
-const STACK_TOP_PADDING = 8; // Minimum distance from viewport top for sheet behind
-const STACK_PEEK_HEIGHT = 16; // How much the sheet behind peeks above current
-const STACK_SCALE_X = 0.96; // Width of sheet behind (slightly narrower)
-const STACK_BRIGHTNESS = 0.92; // Brightness of sheet behind (slightly darker)
+const STACK_TOP_PADDING = 8; // px
+const STACK_PEEK_HEIGHT = 16; // px
+const STACK_SCALE_X = 0.96;
+const STACK_BRIGHTNESS = 0.92;
 
 export function useCuiBottomSheet() {
   const register = (id: string, closeCallback: () => void, height: string): number => {
@@ -72,7 +72,6 @@ export function useCuiBottomSheet() {
   };
 
   const closeAll = (): void => {
-    // Close from top to bottom to ensure proper cleanup
     const stack = [...sheetStack.value].reverse();
     for (const sheet of stack) {
       sheet.close();
@@ -97,25 +96,21 @@ export function useCuiBottomSheet() {
     const totalSheets = sheetStack.value.length;
     const isTopmost = stackPosition === totalSheets - 1;
     const isDirectlyBehind = stackPosition === totalSheets - 2 && totalSheets > 1;
-    const progress = dragProgress.value; // 0 = no drag, 1 = fully dragged
+    const progress = dragProgress.value;
 
-    // Current/topmost sheet: more distance from top (sheet behind peeks above)
     if (isTopmost) {
       return {
-        topReserve: STACK_TOP_PADDING + STACK_PEEK_HEIGHT, // 24px
+        topReserve: STACK_TOP_PADDING + STACK_PEEK_HEIGHT,
         scaleX: 1,
         brightness: 1,
         visible: true,
       };
     }
 
-    // Sheet directly behind: animate toward front position based on drag progress
-    // At progress 0: behind position (8px, 0.96, 0.92)
-    // At progress 1: front position (24px, 1, 1)
     if (isDirectlyBehind) {
-      const topReserve = STACK_TOP_PADDING + STACK_PEEK_HEIGHT * progress; // 8 → 24
-      const scaleX = STACK_SCALE_X + (1 - STACK_SCALE_X) * progress; // 0.96 → 1
-      const brightness = STACK_BRIGHTNESS + (1 - STACK_BRIGHTNESS) * progress; // 0.92 → 1
+      const topReserve = STACK_TOP_PADDING + STACK_PEEK_HEIGHT * progress;
+      const scaleX = STACK_SCALE_X + (1 - STACK_SCALE_X) * progress;
+      const brightness = STACK_BRIGHTNESS + (1 - STACK_BRIGHTNESS) * progress;
 
       return {
         topReserve,
@@ -125,9 +120,8 @@ export function useCuiBottomSheet() {
       };
     }
 
-    // Older sheets: keep the "behind" styling, they're covered by sheets in front
     return {
-      topReserve: STACK_TOP_PADDING, // Same as behind position
+      topReserve: STACK_TOP_PADDING,
       scaleX: STACK_SCALE_X,
       brightness: STACK_BRIGHTNESS,
       visible: true,

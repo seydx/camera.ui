@@ -17,7 +17,7 @@ export interface Go2RtcModel {
   handshakeTimeout?: number;
 }
 
-// Protocols whose payload is a query string; go2rtc expects a leading "?".
+// go2rtc expects a leading "?" for these
 const QUERY_PREFIX_PROTOCOLS: SourcePrefixes[] = ['nest:', 'ring:', 'yandex:', 'webtorrent:'];
 
 export function detectProtocol(url: string): SourcePrefixes | undefined {

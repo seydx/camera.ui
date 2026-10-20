@@ -120,7 +120,6 @@ class DeviceManagerProxy(DeviceManager):
         self.__tasks.add(self.__refresh_all_devices())
 
     async def close(self) -> None:
-        """Internal method to close the device manager proxy and cleanup resources."""
         self.__initialized = False
         self.__tasks.remove_all()
         if self.__close_request:
@@ -155,17 +154,14 @@ class DeviceManagerProxy(DeviceManager):
             camera_device = await self.__get_camera_device(camera)
 
             if camera_device:
-                # Call plugin lifecycle callback
                 await self.__plugin_instance.onCameraAdded(camera_device)
 
         elif event_type == "cameraReleased":
             camera_id: str = data.get("cameraId")
             self.__configured.discard(camera_id)
 
-            # Call plugin lifecycle callback
             await self.__plugin_instance.onCameraReleased(camera_id)
 
-            # Cleanup
             camera_device = self.__devices.get(camera_id)
             if camera_device:
                 await camera_device.cleanup()

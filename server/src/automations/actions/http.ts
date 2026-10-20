@@ -37,11 +37,11 @@ export async function actionHttp(ctx: ActionContext, data: Record<string, unknow
           }
         }
       } catch {
-        // Not JSON
+        // not json
       }
     }
   } else {
-    // Still consume the response body to prevent memory leaks
+    // consume the body anyway, an unread body leaks
     await response.arrayBuffer();
   }
 }

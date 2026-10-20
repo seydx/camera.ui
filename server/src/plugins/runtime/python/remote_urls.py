@@ -25,7 +25,6 @@ def _walk(value: Any, master: str, user: str | None, password: str | None) -> An
 
 
 def rewrite_source_urls_for_remote(urls: Any) -> Any:
-    """No-op unless running remote-hosted with a known master address."""
     master = os.environ.get("CAMERAUI_MASTER_ADDRESS")
     if not os.environ.get("PLUGIN_REMOTE_MODE") or not master:
         return urls

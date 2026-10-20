@@ -11,7 +11,7 @@ export class ApplicationRoute {
   public async close(data: ExitData): Promise<void> {
     try {
       const params = new URLSearchParams(data as any);
-      // no deduplication - we want to close every time
+      // not deduplicated, every exit request goes out
       await fetchInstance()(`/exit?${params}`, {
         method: 'POST',
       });
@@ -34,7 +34,7 @@ export class ApplicationRoute {
 
   public async restart(): Promise<void> {
     try {
-      // no deduplication - we want to restart every time
+      // not deduplicated, every restart request goes out
       await fetchInstance()('/restart', { method: 'POST' });
       await sleep(250);
     } catch {

@@ -23,7 +23,6 @@ export class NotificationsService {
   public async getSettings(userId: string): Promise<DBNotificationSettings> {
     const stored = this.dbs.notificationsDB.get(userId);
     if (stored) return stored;
-    // default = opt-out master toggle; user enables notifications from settings UI.
     return {
       _id: userId,
       enabled: false,
@@ -32,7 +31,7 @@ export class NotificationsService {
 
   public async setSettings(userId: string, settings: DBNotificationSettings): Promise<void> {
     if (settings._id !== userId) {
-      // RPC surface is reachable from plugins, so guard defensively
+      // plugins reach this over RPC
       throw new Error(`settings._id "${settings._id}" does not match userId "${userId}"`);
     }
     await this.dbs.notificationsDB.put(userId, settings);

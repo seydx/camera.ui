@@ -8,8 +8,6 @@ import type { Camera, SensorSemantics } from '@camera.ui/sdk';
 import type { StoredSensorData } from '../rpc/interfaces/sensor.js';
 import type { MqttTopics } from './topics.js';
 
-// Home Assistant MQTT discovery (https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery):
-
 export interface DiscoveryMessage {
   topic: string;
   payload: string;
@@ -74,7 +72,6 @@ export function buildCameraDiscovery(topics: MqttTopics, haPrefix: string, camer
   return messages;
 }
 
-// HA sends these actions on the alarm command topic; map them onto our states
 const ALARM_ACTIONS: Record<string, string> = {
   ARM_HOME: 'armed_home',
   ARM_AWAY: 'armed_away',
@@ -129,8 +126,7 @@ export function buildSensorDiscovery(topics: MqttTopics, haPrefix: string, senso
 
   const messages = [{ topic: configTopic(haPrefix, DOMAIN_COMPONENT[semantics.domain], `sensor_${sensor.id}`, 'state'), payload: JSON.stringify(config) }];
 
-  // HA's siren carries volume inside the on/off command payload, which the
-  // per-property topics can't express, so volume ships as its own number entity
+  // HA's siren carries volume in the on/off payload, so volume ships as its own number entity
   if (semantics.volume) {
     messages.push({
       topic: configTopic(haPrefix, 'number', `sensor_${sensor.id}`, 'volume'),

@@ -25,7 +25,7 @@ async function load() {
     if (!result?.points?.length) return;
     render(canvas, result.points);
   } catch {
-    // silently ignore (camera offline, NVR not running, etc.)
+    // camera offline or nvr not running
   }
 }
 
@@ -38,7 +38,6 @@ function render(canvas: HTMLCanvasElement, points: { x: number; y: number; w?: n
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  // Draw each point as a radial gradient dot
   const radius = 8;
   for (const pt of points) {
     const px = pt.x * W;
@@ -51,7 +50,6 @@ function render(canvas: HTMLCanvasElement, points: { x: number; y: number; w?: n
     ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
   }
 
-  // Read density and apply color gradient
   const imageData = ctx.getImageData(0, 0, W, H);
   const data = imageData.data;
 

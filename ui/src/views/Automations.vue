@@ -262,7 +262,7 @@ function openStore() {
 }
 
 function openImportWizard(blueprint: AutomationStoreBlueprint) {
-  // Loose generic: DeepMaybeRef over the blueprint's VueFlow node type is too deep to instantiate.
+  // loose generic, DeepMaybeRef over the vue flow node type is too deep to instantiate
   dialog.openComponentDialog<Record<string, unknown>>(AutomationImportDialog, {
     data: {
       title: t('components.automation_import.title'),

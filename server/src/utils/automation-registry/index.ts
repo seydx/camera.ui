@@ -49,14 +49,14 @@ export async function getAutomationCatalog(): Promise<Record<string, AutomationC
       return data;
     }
   } catch {
-    // fail-open: fall through to last-good
+    // fail open to the last good copy
   }
 
   return lastGoodCatalog;
 }
 
 export async function getAutomationBlueprint(file: string): Promise<unknown | undefined> {
-  // guard against path traversal: only a bare basename is allowed, never a nested path
+  // path traversal guard, a bare basename only
   if (!file || file.includes('/') || file.includes('..')) {
     return undefined;
   }
@@ -73,7 +73,7 @@ export async function getAutomationBlueprint(file: string): Promise<unknown | un
       return data;
     }
   } catch {
-    // fail-open: undefined signals unreachable / missing blueprint
+    // fail open, undefined means unreachable or missing
   }
 
   return undefined;

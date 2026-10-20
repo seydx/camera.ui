@@ -894,9 +894,7 @@ async function onUpdateServerName() {
   if (!name) return;
   try {
     await updateName(name);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function openUnregisterServerDialog() {
@@ -910,9 +908,7 @@ function openUnregisterServerDialog() {
     onConfirm: async () => {
       try {
         await unregisterServer();
-      } catch {
-        //
-      }
+      } catch {}
     },
   });
 }
@@ -990,7 +986,7 @@ async function runPoll() {
     schedulePoll();
   } catch (err: any) {
     if (!pairCode.value || pairCode.value !== code) return;
-    // Network blip — keep trying; cloud-side TTL governs hard expiry.
+    // keep polling, the cloud side's TTL decides the expiry
     log.error('pair poll failed:', err);
     schedulePoll();
   }
@@ -1004,7 +1000,7 @@ async function onStartPairing() {
       try {
         await updateName(desiredName);
       } catch {
-        // Non-fatal — the cloud side still gets the name via pollPairing.
+        // the cloud still gets the name via pollPairing
       }
     }
     const result = await pairInit(desiredName || undefined);
@@ -1027,18 +1023,14 @@ async function onCopyPairCode() {
   if (!pairCode.value) return;
   try {
     await copyToClipboard(pairCode.value);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onCopyPairUrl() {
   if (!pairUrl.value) return;
   try {
     await copyToClipboard(pairUrl.value);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function onOpenPairUrl() {
@@ -1101,41 +1093,31 @@ async function onManagedConnect() {
   try {
     await patchRemote({ directMode: 'cloudflare', cloudflare: { mode: 'managed', hostname } });
     await managedConnect(hostname);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onManagedCancel() {
   try {
     await managedCancel();
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onManagedDisconnect() {
   try {
     await managedDisconnect();
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onManagedLogout() {
   try {
     await managedLogout();
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onCopyManagedUrl(url: string) {
   try {
     await copyToClipboard(url);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function onOpenManagedUrl(url: string) {
@@ -1180,17 +1162,13 @@ async function onPatchRemote(values: PatchRemoteInput) {
   }
   try {
     await patchRemote(patch);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 async function onPatchServer(values: PatchServerInput) {
   try {
     await patchServer(values);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 watch(

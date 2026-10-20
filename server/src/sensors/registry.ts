@@ -162,7 +162,7 @@ export class SensorRegistry {
     if (sensor.address !== undefined) record.address = sensor.address;
     if (sensor.sourceState !== undefined) record.sourceState = sensor.sourceState;
 
-    // camera.addSensor re-registration re-binds (also backfills migrated records)
+    // a camera.addSensor re-registration re-binds, also for migrated records
     if (options?.assignCameraId) {
       record.boundCameraId = options.assignCameraId;
       // camera-bound means assigned to its camera, restore an assignment a plugin toggle removed
@@ -546,7 +546,6 @@ export class SensorRegistry {
 
   @RPCMethod
   public getSensors(pluginId?: string): StoredSensorData[] {
-    // disconnected entities included, the connected flag tells consumers apart
     return this.getAllSensors({ connectedOnly: false })
       .filter((s) => this.canPluginAccessSensor(s.data, pluginId))
       .map((s) => s.data);
@@ -720,8 +719,7 @@ export class SensorRegistry {
       }
     }
 
-    // replay sustained cascade triggers that are currently in trigger-state,
-    // otherwise a contact sensor open during the crash stays silently lost
+    // replay triggers still in trigger state, a contact open during the crash would be lost
     const settings = this.context.cameraDetectionSettings(cameraId);
     for (const sensorId of settings?.triggers ?? []) {
       const record = this.records.get(sensorId);
@@ -783,7 +781,7 @@ export class SensorRegistry {
   }
 
   private async pushSensorToCoordinator(record: DBSensor, cameraId: string): Promise<void> {
-    // no worker, no listener: the call would burn seconds in no-responder retries, reconcileCamera replays on start
+    // no worker: the call would sit in no-responder retries, reconcileCamera replays on start
     if (!this.hasFrameWorker(cameraId)) return;
 
     try {
@@ -981,7 +979,7 @@ export class SensorRegistry {
 
   public getHistory(sensorId: string, limit = 200): { property: string; value: unknown; timestamp: number }[] {
     const entries: { property: string; value: unknown; timestamp: number }[] = [];
-    // reverse ranges iterate from `start` downwards, so start is the HIGH bound
+    // a reverse range starts at `start`, so start is the high bound
     for (const { value } of this.dbs.sensorHistoryDB.getRange({ start: `${sensorId};`, end: `${sensorId}:`, reverse: true, limit })) {
       entries.push({ property: value.property, value: value.value, timestamp: value.timestamp });
     }

@@ -25,7 +25,6 @@ const PICK_PROMPT =
   'You choose the tools an assistant of a camera system needs for one question. The assistant answers afterwards, you only choose. ' +
   'Pick only the tools the question needs, the most important first, at most three. Pick nothing when none of them fits.';
 
-// a small model names what a question needs but cannot map that onto fifty tool names: the ranking narrows them down, the model picks among a few
 export async function routeTools(
   adapter: AssistantAdapter,
   question: string,

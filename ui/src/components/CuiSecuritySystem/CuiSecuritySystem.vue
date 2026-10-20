@@ -171,7 +171,6 @@ function resetAlarm() {
   pointer-events: none;
 }
 
-/* Header */
 .cui-security-system__header {
   display: flex;
   align-items: center;
@@ -261,7 +260,6 @@ function resetAlarm() {
   }
 }
 
-/* Alarm Banner */
 .cui-security-system__alarm {
   display: flex;
   align-items: center;
@@ -285,7 +283,6 @@ function resetAlarm() {
   margin-left: auto;
 }
 
-/* Mode Buttons */
 .cui-security-system__modes {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -328,7 +325,6 @@ function resetAlarm() {
   height: 1.125rem;
 }
 
-/* Size variants */
 .cui-security-system--small {
   padding: 0.5rem;
   gap: 0.375rem;

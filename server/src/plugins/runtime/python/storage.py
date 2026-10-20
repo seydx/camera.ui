@@ -58,8 +58,6 @@ def merge2(
 
 
 class DeviceStorage(DeviceStorageInterface):
-    # Strong refs to detached onSet tasks: the event loop only holds weak
-    # references, so an unreferenced task could be garbage-collected mid-flight.
     __detached_tasks: ClassVar[set[asyncio.Task[None]]] = set()
 
     def __init__(
@@ -260,8 +258,7 @@ class DeviceStorage(DeviceStorageInterface):
         was_storable = self.__contains_storable_schema(self.schemas[index])
         self.schemas[index] = cast(JsonSchema, new_schema)
 
-        # Storable-ness flipped: the next write must persist even if the
-        # value compares unchanged, otherwise the flip never becomes durable.
+        # storability flipped, the next write must persist even an unchanged value
         if self.__contains_storable_schema(self.schemas[index]) != was_storable:
             self.__dirty = True
 
@@ -377,7 +374,7 @@ class DeviceStorage(DeviceStorageInterface):
                 cast(Any, self.__api).logger.error(f'onSet handler for "{key}" failed: {error}')
 
         task = asyncio.create_task(_run())
-        self.__detached_tasks.add(task)
+        self.__detached_tasks.add(task)  # the event loop holds tasks only weakly
         task.add_done_callback(self.__detached_tasks.discard)
 
     def __apply_internal_value(self, key: str, value: Any) -> bool:
@@ -417,8 +414,7 @@ class DeviceStorage(DeviceStorageInterface):
                 config_value = get_value_by_key(self.values, schema["key"])
                 ObjectPath.set(result, schema["key"], config_value)
 
-        # Keys without any schema are internal values and always persist;
-        # schema-covered keys persist only via their store flag above.
+        # keys without a schema are internal values and always persist
         for key, value in self.values.items():
             if not any(schema["key"] == key or schema["key"].startswith(f"{key}.") for schema in schemas):
                 result[key] = value

@@ -225,8 +225,7 @@ class PluginChild:
     async def start_plugin(self, data: ProcessLoadMessage, run_id: str | None) -> None:
         self._phase = "starting"
         try:
-            # Host-local writable dir — on a remote worker the master's path from
-            # the START message would point at the wrong machine.
+            # on a worker the master's storage path from START points at the wrong machine
             storage_path = os.environ.get("PLUGIN_STORAGE_PATH") or data["storage"]["storagePath"]
             plugin_info = data["plugin"]
             cameras = data["cameras"]
@@ -253,8 +252,6 @@ class PluginChild:
                 namespaces.plugin_child_rpc, self.plugin, without_decorators=True
             )
 
-            # Remote-hosted: serve this worker's files so the master can stream
-            # downloads/exports of them.
             if os.environ.get("PLUGIN_REMOTE_MODE"):
                 self.file_server = PluginFileServer(self.proxy, plugin_info["id"])
                 await self.file_server.register()
@@ -498,8 +495,7 @@ class PluginChild:
                 pass
 
     async def configure_plugin_db(self, storage_path: str, plugin_id: str) -> PluginConfigDb:
-        # Remote-hosted: config lives on the master (re-homing safe) — persist
-        # through its config store instead of a worker-local file.
+        # config lives on the master so it survives a move to another worker
         if os.environ.get("PLUGIN_CONFIG_STORE_RPC"):
             namespace = NamespaceManager.plugin_namespaces(plugin_id).plugin_config_store_rpc
             remote_db = RemotePluginConfigDb(

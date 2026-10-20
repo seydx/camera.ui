@@ -250,7 +250,6 @@ export type AutomationNodeData =
   | ActionImageInputData
   | ActionOutputData;
 
-// All node data types may have an optional alias for scoped variable output
 export type AliasedNodeData = AutomationNodeData & { alias?: string };
 
 export type AutomationNode = Node<AutomationNodeData, Record<string, never>, AutomationNodeType>;
@@ -441,7 +440,7 @@ export interface CameraControlPropertyDefinition {
   max?: number;
   step?: number;
   options?: Array<{ labelKey: string; value: string }>;
-  // multiselect values are stored JSON-encoded, the action decodes them again
+  // multiselect values are JSON-encoded
   defaultValue: string;
 }
 

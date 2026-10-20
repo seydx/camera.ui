@@ -114,8 +114,7 @@ export function buildHaMode(host: HaHost, entryId: string, logger?: Logger): Con
         },
       },
       socketio: {
-        // HA validates the exact query list: engine.io appends EIO/transport after opts.query and socket.io
-        // requests the path with a trailing slash, so sign precisely that shape
+        // HA checks the exact query: engine.io appends EIO/transport and socket.io adds a trailing slash
         resolveQuery: async ({ target, path, query }) => {
           const base = new URL(target.endpoint.url);
           const params = new URLSearchParams({ ...query, EIO: '4', transport: 'websocket' });

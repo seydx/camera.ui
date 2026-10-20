@@ -56,8 +56,6 @@ export class PerfTracker {
   public zoomTicks = 0;
   public zoomWindows = 0;
 
-  // stamped by the plugin itself, per sensor type: the wall-clock counters above
-  // still hold the whole round trip
   public readonly detectors = new Map<string, DetectorTiming>();
   public readonly frameBytes = new Map<string, number>();
 

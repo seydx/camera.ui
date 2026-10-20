@@ -11,7 +11,6 @@ export function useCuiFileDialog(): {
   const files = ref<File[]>([]);
 
   const openDialog = (opts?: Partial<PickOptions>) => {
-    // skip if the input wasn't mounted yet or was removed
     if (!inputRef.value) {
       files.value = [];
       return;

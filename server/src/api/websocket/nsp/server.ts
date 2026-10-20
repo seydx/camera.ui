@@ -17,6 +17,8 @@ import type { AppUpdateAvailableMessage } from '../../../types.js';
 import type { EngineIssue, INpmPluginState } from '../../types/index.js';
 import type { SocketNsp } from '../types.js';
 
+const UPDATE_CHECK_MS = 10 * 60 * 1000; // the desktop app's updater pace, every check hits the npm registry
+
 export class ServerNamespace {
   public nsp: Namespace;
   public nspName: SocketNsp = '/server';
@@ -145,7 +147,7 @@ export class ServerNamespace {
         });
       }
 
-      this.restartPluginInterval(10 * 60 * 1000);
+      this.restartPluginInterval();
     } else {
       if (pluginUpdatesSize > 0) {
         this.nsp.emit('plugin-updates', this.pluginUpdates);
@@ -184,7 +186,7 @@ export class ServerNamespace {
         });
       }
 
-      this.restartServerInterval(10 * 60 * 1000);
+      this.restartServerInterval();
     } else {
       if (hadUpdate) {
         this.nsp.emit('server-updates', this.serverUpdate);
@@ -196,16 +198,14 @@ export class ServerNamespace {
     }
   }
 
-  // 10 min everywhere, matching the desktop app's updater cadence; these hit
-  // the npm registry, and the updates page has a manual re-check
-  public restartPluginInterval(timer = 10 * 60 * 1000): void {
+  public restartPluginInterval(timer = UPDATE_CHECK_MS): void {
     clearInterval(this.checkPluginUpdateInterval);
     this.checkPluginUpdateInterval = setInterval(() => {
       this.checkPlugins(true);
     }, timer);
   }
 
-  public restartServerInterval(timer = 10 * 60 * 1000): void {
+  public restartServerInterval(timer = UPDATE_CHECK_MS): void {
     clearInterval(this.checkServerUpdateInterval);
     this.checkServerUpdateInterval = setInterval(() => {
       this.checkServer(true);
@@ -220,8 +220,7 @@ export class ServerNamespace {
         return;
       }
 
-      // the update badge feeds off serverUpdate; on desktop the app update IS
-      // the server update
+      // on desktop the app update is the server update
       if (!this.serverUpdate.updateAvailable || this.serverUpdate.latestVersion !== message.version) {
         this.serverUpdate = { ...this.serverUpdate, updateAvailable: true, latestVersion: message.version };
         this.nsp.emit('server-updates', this.serverUpdate);
@@ -253,7 +252,7 @@ export class ServerNamespace {
       this.serverEngineIssue = hasUpdate && state.latestVersion ? await serverNodeIssue(state.latestVersion) : undefined;
       this.serverUpdate = state;
     } catch {
-      // ignore — keep the last known state
+      // keep the last known state
     }
   }
 

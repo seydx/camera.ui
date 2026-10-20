@@ -35,7 +35,7 @@ export function keepSkills(strategy: CompactionStrategy): CompactionStrategy {
     const next = await strategy(messages, ctx);
     if (!next) return next;
 
-    // a second load_skill only answers "already loaded", a procedure that left the history is gone for the run
+    // a second load_skill only answers "already loaded", an evicted procedure would be gone for the run
     const loaded = callIds(messages, SKILL_TOOL);
     const original = new Map(messages.filter((message) => loaded.has(message.toolCallId ?? '')).map((message) => [message.toolCallId, message]));
     const restored = next.map((message) => (message.role === 'tool' ? (original.get(message.toolCallId) ?? message) : message));
@@ -52,7 +52,6 @@ export function trimToolResults(options: { maxTokens: number }): CompactionStrat
     const next = [...messages];
     let excess = next.reduce((sum, message) => sum + ctx.estimate(message), 0) - ctx.maxTokens + MARGIN_TOKENS;
 
-    // the largest result gives way first and only as far as needed
     for (const { index, tokens } of largestResults(next, options.maxTokens)) {
       if (excess <= 0) break;
       const content = next[index].content as string;
@@ -74,7 +73,7 @@ export function keepQuestion(strategy: CompactionStrategy): CompactionStrategy {
     const question = messages.findLast((message) => message.role === 'user' && !isPicturesMessage(message));
     if (!next || !question || next.includes(question)) return next;
 
-    // eviction starts at the oldest message, in a run of one question that is the question
+    // eviction starts at the oldest message, in a one-question run that is the question
     return [next[0], question, ...next.slice(1)];
   };
 }

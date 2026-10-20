@@ -513,7 +513,6 @@ export class CamerasService {
             arr.push(pluginInfo);
           }
         } else if (VALID_SENSOR_TYPES.includes(assignmentType)) {
-          // only assign if not already assigned to another plugin
           const assigned = (current.assignments as Record<string, unknown>)[assignmentType] as AssignedPlugin | undefined;
           if (!assigned?.name) {
             (current.assignments as Record<string, unknown>)[assignmentType] = pluginInfo;
@@ -560,7 +559,6 @@ export class CamerasService {
     const transformedCamera = this.transformCamera(camera);
     this.api.updateCamera(transformedCamera);
 
-    // backend filters which sensors are shown based on assignments
     await this.api.selectCamera(plugin.id, transformedCamera);
 
     return camera;
@@ -960,7 +958,7 @@ export class CamerasService {
     if (object && !Array.isArray(object) && object.name !== assist.name) {
       const registry = inject('sensorRegistry');
       const sensor = registry.getAllSensors({ connectedOnly: true, cameraId: camera._id, pluginId: object.id }).find((s) => s.type === SensorType.Object);
-      // provider not running, its frame need is unknown and the assignment stays untouched
+      // provider not running, its frame need is unknown
       if (!sensor?.data.requiresFrames) return false;
     }
 

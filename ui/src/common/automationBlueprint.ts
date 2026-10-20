@@ -144,8 +144,7 @@ function matchInputKey(value: string): string | undefined {
 function substituteManifest(nodes: AutomationNode[], inputs: WizardInput[], bindings: Record<string, BindingValue>): AutomationNode[] {
   const byKey = new Map(inputs.map((input) => [input.key, input]));
 
-  // Sensor inputs fill two sibling fields, so they can't be expressed as a single scalar
-  // token replacement — resolve them first, then generic-replace the remaining tokens.
+  // sensor inputs fill two sibling fields, so they resolve before the generic token replace
   const clones = nodes.map((node) => ({ ...node, data: { ...nodeData(node) } }));
 
   for (const input of inputs) {

@@ -144,7 +144,6 @@ export class Fmp4Session extends SubscribedPublic implements Fmp4SessionInterfac
           this.onStarted.next();
         }
 
-        // Only send fragments (moof+mdat), not init boxes (ftyp/moov)
         const isFragment = initSegment && info.boxes.some((box) => box.type === 'moof');
         if (isFragment) {
           this.#trackVideo(info.boxes);

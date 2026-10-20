@@ -405,7 +405,6 @@ export class UsersController {
     reply: FastifyReply,
   ): Promise<FastifyReply> {
     try {
-      // cameras that no longer exist would pile up in the preference forever
       const hidden = Object.fromEntries(Object.entries(req.body).filter(([cameraId]) => this.camerasService.findById(cameraId)));
       const saved = await this.service.setHiddenEventTypes(req.params.username, hidden);
 

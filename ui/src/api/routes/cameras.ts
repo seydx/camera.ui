@@ -479,8 +479,6 @@ export class CamerasQuery {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['cameras', 'extensions', variables.cameraname], type: 'active' });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_config_updated'), life: 3000 });
       },
     });
   }
@@ -492,8 +490,6 @@ export class CamerasQuery {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['cameras', 'extensions', variables.cameraname], type: 'active' });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_config_submitted'), life: 3000 });
       },
     });
   }
@@ -505,8 +501,6 @@ export class CamerasQuery {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['cameras', 'extensions', variables.cameraname], type: 'active' });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_config_submitted'), life: 3000 });
       },
     });
   }
@@ -529,7 +523,6 @@ export class CamerasQuery {
       enabled: () => {
         const pluginnameValue = unref(pluginname);
         const sensorIdValue = unref(sensorId);
-        // Don't fire if parameters are empty
         if (!pluginnameValue || !sensorIdValue) return false;
         return this.queryActivator.value.some((query) => query.name === 'getSensorConfigQuery' && query.enabled);
       },
@@ -580,8 +573,6 @@ export class CamerasQuery {
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_enabled'), life: 3000 });
       },
     });
   }
@@ -592,8 +583,6 @@ export class CamerasQuery {
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_disabled'), life: 3000 });
       },
     });
   }
@@ -644,7 +633,6 @@ export class CamerasQuery {
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['cameras', variables.cameraname], exact: true });
         await this._queryClient.refetchQueries({ queryKey: ['camerasExtensions', variables.cameraname] });
-        // this.toast.add({ severity: 'success',  detail: this.t('components.toast.plugin_removed'), life: 3000 });
       },
     });
   }

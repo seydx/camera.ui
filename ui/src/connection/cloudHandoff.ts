@@ -9,7 +9,7 @@ export function getCurrentServerId(): string | null {
   try {
     return getBootResult().cloudSession?.state.value?.serverId ?? null;
   } catch {
-    // boot not done yet — caller probably ran too early
+    // boot not done yet
     return null;
   }
 }
@@ -28,7 +28,7 @@ export async function clearCapacitorCloudPreferences(): Promise<void> {
       SecureStorage.remove('proxyRefreshToken'),
     ]);
   } catch {
-    // ignore — bounce + reload proceeds regardless
+    // the bounce and reload go ahead anyway
   }
 }
 
@@ -36,7 +36,7 @@ export async function clearCloudHandoff(): Promise<void> {
   try {
     getBootResult().cloudSession?.clear();
   } catch {
-    // boot not done — nothing to clear in memory yet
+    // boot not done, nothing in memory yet
   }
   await clearCapacitorCloudPreferences();
 }

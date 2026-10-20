@@ -9,7 +9,6 @@ export interface DragItem {
   type: string;
 }
 
-// gridstack-compatible layout item
 export interface GsLayoutItem {
   x: number;
   y: number;
@@ -93,15 +92,12 @@ export const CUI_CAMERA_VIEW_DND_DEFAULTS: InferDefaults<CuiCameraViewDnDProps> 
   viewSize: 1,
 };
 
-// Grid info per viewSize
 export interface ViewGridInfo {
   cols: number;
   rows: number;
 }
 
-// Scale factor for finer resize granularity. Base layouts are multiplied by this — e.g. GRID_SCALE=2
-// means half-cell resize steps. Minimum scale to support exact aspect ratios:
-// 16:9 → w:h = 1:1, 8:3 → 3:2, 4:3 → 3:4, 1:1 → 9:16
+// smallest scale that keeps 16:9, 8:3, 4:3 and 1:1 cells exact
 export const GRID_SCALE = 16;
 
 const BASE_GRID_INFO: Record<number, ViewGridInfo> = {

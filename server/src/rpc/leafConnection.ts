@@ -18,6 +18,7 @@ export class LeafConnection {
   }
 
   public observe(line: string): void {
+    // logged before TLS and auth, only a hint that a heartbeat may get through
     if (line.includes('Leafnode connection created')) {
       this.onCreated?.();
       return;

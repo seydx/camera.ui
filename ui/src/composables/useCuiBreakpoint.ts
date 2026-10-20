@@ -5,10 +5,8 @@ export function useCuiBreakpoint() {
   const atLeastXl = useMediaQuery('(min-width: 80rem)');
   const atLeast2xl = useMediaQuery('(min-width: 96rem)');
 
-  // <= 360px
   const xxsBreakpoint = useMediaQuery('(max-width: 360px)');
 
-  // <= 450px
   const xsBreakpoint = useMediaQuery('(max-width: 450px)');
 
   // < 640px

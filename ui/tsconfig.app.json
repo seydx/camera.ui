@@ -25,10 +25,10 @@
       ]
     },
     "noUncheckedIndexedAccess": false,
-    // Match server tsconfig settings for shared imports
+    // matches the server tsconfig for shared imports
     "useUnknownInCatchVariables": false,
     "skipLibCheck": true,
-    // Required for server imports that use legacy decorators
+    // server imports use legacy decorators
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   }

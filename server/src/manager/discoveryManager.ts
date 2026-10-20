@@ -36,7 +36,6 @@ interface ConnectionState {
 }
 
 interface SourceCacheEntry {
-  // 'go2rtc', 'database', or 'plugin-{pluginId}'
   sourceId: string;
   cameras: DiscoveredCameraInternal[];
   lastScannedAt: number;
@@ -182,13 +181,12 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     this.broadcastScanningStatus(true);
 
     try {
-      // Send DB cameras first so the user sees existing cameras while scans run.
+      // db cameras first, so the user sees them while the scans run
       const dbDevices = this.fetchDbCameras();
       if (dbDevices.length > 0) {
         this.broadcastDiscovered(dbDevices, 'database');
       }
 
-      // Track manual-camera addresses so go2rtc duplicates can be filtered out.
       const manualCameraAddresses = this.collectManualCameraAddresses();
 
       const discoveryPlugins = this.getDiscoveryPlugins();
@@ -230,7 +228,7 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
             }
           } catch (error) {
             this.logger.debug(`[Discovery] Scan failed for ${sourceId}:`, error);
-            // Preserve last-known cameras on error so we don't drop entries from the UI.
+            // keep the last known cameras, a failed scan must not empty the list
             this.updateSourceCache(sourceId, this.sourceCache.get(sourceId)?.cameras ?? [], error instanceof Error ? error.message : 'Unknown error');
           }
         }),
@@ -368,7 +366,6 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     return this.adoptCamera(discoveredId, credentials);
   }
 
-  // Plugin entry point for asynchronously discovered cameras (e.g., after cloud login).
   @RPCMethod
   public async pushDiscoveredCameras(pluginId: string, cameras: DiscoveredCamera[]): Promise<void> {
     const plugin = this.pluginsService.getPluginById(pluginId);
@@ -607,13 +604,11 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     return sources.map((source) => {
       const { address } = this.parseUrl(source.url);
 
-      // go2rtc ONVIF: name=IP, info="DeviceName Hardware" (may be duplicated like "C210 C210").
-      // go2rtc HomeKit: name=actual name, info=model. Prefer info-derived name over IP.
+      // go2rtc onvif puts the IP in name and the device name, often doubled, in info
       let displayName = source.name ?? address;
       let model = source.info ?? '';
 
       if (source.info && source.name && this.looksLikeAddress(source.name)) {
-        // Deduplicate repeated words (e.g. "C210 C210" → "C210").
         const words = source.info.trim().split(/\s+/);
         const uniqueWords = [...new Set(words)];
         displayName = uniqueWords.join(' ') || source.name;
@@ -707,7 +702,7 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     } else if (type === 'homekit') {
       schema.push({ key: 'pin', type: 'string', title: 'PIN', description: 'HomeKit pairing PIN (e.g., 123-45-678)', required: true });
     }
-    // hass and gopro require no credentials → empty schema.
+    // hass and gopro need no credentials
 
     return schema;
   }
@@ -798,14 +793,11 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     const onvifSnapshot = profiles.find(isSnapshot);
     const streams = profiles.filter((p) => !isSnapshot(p));
 
-    // go2rtc encodes profile names as "DeviceName stream1"; strip the suffix.
-    // A stripped-to-empty name ('' after trim) must fall back, so || is intended over ??.
+    // go2rtc names profiles "DeviceName stream1", an empty rest must fall back, so || over ??
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const cameraName = streams[0]?.name?.replace(/\s+stream\d+$/i, '').trim() || 'ONVIF Camera';
 
-    // MJPEG is unfit for continuous decode (motion detection consumes the lowest
-    // role): the RTP/JPEG stream drops/corrupts frames and floods the decoder.
-    // Keep only H.264/H.265 for the decodable roles, ordered by real resolution.
+    // mjpeg over rtp drops frames and floods the decoder, the decodable roles take h264/h265 only
     const mjpegStreams = streams.filter(isMjpeg).sort((a, b) => area(b) - area(a));
     let videoStreams = streams.filter((p) => !isMjpeg(p)).sort((a, b) => area(b) - area(a));
 
@@ -820,7 +812,6 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
 
     const sources: { name: string; role: string; urls: string[]; useForSnapshot?: boolean; hotMode?: boolean; preload?: boolean }[] = [];
 
-    // Role mapping: 1 stream → high; 2 streams → high+low; 3+ streams → high+mid+low (max 3).
     videoStreams.slice(0, 3).forEach((profile, index) => {
       let role: string;
 
@@ -836,7 +827,7 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
 
       const eagerSafe = this.onvifEagerConnectSafe(profile.url);
       sources.push({
-        // Use simple names; go2rtc profile.name usually duplicates the camera name in the path.
+        // profile.name repeats the camera name
         name: `Stream ${index + 1}`,
         role,
         urls: [profile.url],
@@ -887,8 +878,7 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
     ];
 
     return {
-      // go2rtc doesn't return an accessory name; fall through to the discovered
-      // camera name (prepareGo2rtcCamera keeps cached.name when this is empty).
+      // go2rtc returns no accessory name, prepareGo2rtcCamera keeps the cached one when empty
       name: pairResult.source.name ?? '',
       sources,
     };
@@ -901,7 +891,6 @@ export class DiscoveryManager implements DiscoveryManagerInterface {
   ): Promise<{ name: string; sources: { name: string; role: string; urls: string[]; useForSnapshot?: boolean; hotMode?: boolean; preload?: boolean }[] }> {
     const { username, password } = settings as { username: string; password: string };
 
-    // Format: dvrip://username:password@host?channel=0&subtype=0
     const url = new URL(originalUrl);
     url.username = encodeURIComponent(username);
     url.password = encodeURIComponent(password);

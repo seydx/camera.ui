@@ -99,12 +99,11 @@ export function useResizableZoom(options: ResizableZoomOptions) {
     };
   });
 
-  // the container only grows on the next frame, so its height for a zoom level comes from the model, not the DOM
   function heightAt(level: number): number {
+    // the container grows a frame later, so the height comes from the model, not the DOM
     return Math.min(baseHeight.value * level, maxHeight.value);
   }
 
-  // limits come from the unscaled picture, so panning never reaches the letterbox
   function constrain(value: { x: number; y: number }, level: number) {
     const width = containerWidth.value;
     if (!width || !baseHeight.value || level <= 1) return { x: 0, y: 0 };

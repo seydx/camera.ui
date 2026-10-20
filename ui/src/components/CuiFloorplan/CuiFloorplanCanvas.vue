@@ -1256,8 +1256,7 @@ defineExpose({ fit });
 @import '@vue-flow/core/dist/style.css';
 @import '@vue-flow/core/dist/theme-default.css';
 
-/* vue flow hides a node until it has a measured size, and the scene draws
-   outside its own box on purpose */
+/* vue flow hides unmeasured nodes, and the scene draws outside its box on purpose */
 .floorplan-canvas .vue-flow__node-scene {
   width: 1px;
   height: 1px;

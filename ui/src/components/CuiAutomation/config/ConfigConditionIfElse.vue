@@ -92,7 +92,6 @@ const sourceLabel = computed(() => {
   return def ? t(def.labelKey) : sourceNode.value.type;
 });
 
-// values the left operand's variable is known to produce
 const suggestedValues = computed(() => {
   const variable = findFlowVariable(store.draft as AutomationFlow | null, props.nodeId, props.data.leftOperand);
   return flowValueOptions(variable, t).filter((option) => option.value !== props.data.rightOperand);

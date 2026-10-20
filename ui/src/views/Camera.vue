@@ -467,9 +467,7 @@ function cycleTrimTimelapse() {
 function onTimelineScroll(scrolling: boolean) {
   try {
     cameraCardRef.value?.timelineScroll(scrolling);
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 function onSplitStart(e: PointerEvent): void {
@@ -658,9 +656,7 @@ watch(
         nextTick(() => {
           try {
             cameraCardRef.value?.toggleTimeline();
-          } catch {
-            //
-          }
+          } catch {}
         });
       });
     }

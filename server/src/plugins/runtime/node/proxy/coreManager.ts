@@ -109,8 +109,7 @@ export class CoreManagerProxy implements CoreManager {
   }
 
   public async getFFmpegPath(): Promise<string> {
-    // Remote-hosted: the master's path points at the wrong machine — the
-    // worker injects its own bundled ffmpeg at spawn time.
+    // on a worker the master's ffmpeg path is wrong, the worker injects its own
     if (process.env.CAMERAUI_FFMPEG_PATH) {
       return process.env.CAMERAUI_FFMPEG_PATH;
     }
@@ -145,7 +144,6 @@ export class CoreManagerProxy implements CoreManager {
     return await this.#coreManagerProxy.assistantAccess(this.#plugin.id);
   }
 
-  /** Internal method to close the core manager proxy */
   public async close(): Promise<void> {
     this.#initialized = false;
     this.#eventSubject.complete();

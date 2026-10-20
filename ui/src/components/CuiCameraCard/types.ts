@@ -23,10 +23,8 @@ export interface CuiCameraCardEmits {
 }
 
 export interface CuiCameraCardProps {
-  // Camera Data
   cameraInfo: DBCamera | string;
 
-  // Card Configuration
   backButton?: boolean;
   doubleClickZoom?: boolean;
   expandableCard?: boolean;
@@ -41,7 +39,6 @@ export interface CuiCameraCardProps {
   cardBackgroundColor?: string;
   timelineContainerId?: string;
 
-  // Control Configuration
   control?: boolean;
   controlFastForwardButton?: boolean;
   controlFsButton?: boolean;
@@ -51,16 +48,13 @@ export interface CuiCameraCardProps {
   controlRewindButton?: boolean;
   controlSpeakerButton?: boolean;
 
-  // Fullscreen Configuration
   fullscreenShortcuts?: boolean;
   fullscreenTimeline?: boolean;
   embeddedTimeline?: boolean;
 
-  // Subcontrol Configuration
   subcontrol?: boolean;
   subcontrolPtzButton?: boolean;
 
-  // Overlay Configuration
   cameraNameOverlay?: boolean;
   liveIndicatorOverlay?: boolean;
   modeOverlay?: boolean;
@@ -70,7 +64,6 @@ export interface CuiCameraCardProps {
   privacyOverlay?: boolean;
   showShortcuts?: boolean;
 
-  // Toolbar Configuration
   toolbar?: boolean;
   toolbarClass?: HTMLAttributes['class'];
   toolbarDetectionButton?: boolean;
@@ -90,7 +83,6 @@ export interface CuiCameraCardProps {
   onOpenTrace?: () => void;
   onSearchSimilar?: (request: SimilarSearchRequest) => void;
 
-  // PiP Configuration
   pipSourceRole?: StreamingRole;
   pipCamera?: string;
   pipToggleButton?: boolean;

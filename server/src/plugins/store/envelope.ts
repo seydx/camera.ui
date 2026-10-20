@@ -1,9 +1,7 @@
 import { Packr } from 'msgpackr';
 import { crc32 } from 'node:zlib';
 
-// Standard msgpack only — records/string bundles are msgpackr-proprietary and
-// unreadable by the Go/Python sides; int64AsType keeps foreign integers in
-// the float64 number domain instead of surfacing as BigInt.
+// plain msgpack the go and python sides can read, int64 stays a number instead of BigInt
 const packr = new Packr({ useRecords: false, bundleStrings: false, int64AsType: 'number' });
 
 const MAGIC = Buffer.from('CUI1');

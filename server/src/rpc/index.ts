@@ -68,9 +68,6 @@ export class ProxyServer {
       this.notificationManager = new NotificationManager();
       this.terminalManager = new TerminalManager();
       this.trainingCandidateManager = new TrainingCandidateManager();
-
-      // this.api.setMaxListeners(this.api.getMaxListeners() + 1);
-      // this.api.once(API_EVENT.SHUTDOWN, this.close.bind(this));
     }
   }
 
@@ -172,7 +169,7 @@ export class ProxyServer {
       await safeAsync(this.trainingCandidateManager.destroy());
     }
     await safeAsync(this.server.stop());
-    // proxy is unset when startup failed before initialize() (e.g. pairing)
+    // no proxy when startup failed before initialize(), e.g. during pairing
     if (this.proxy) {
       await safeAsync(this.proxy.disconnect());
     }

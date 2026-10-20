@@ -180,8 +180,7 @@ function ensureChannels(): void {
   scope.run(() => {
     const m = useSocket('/metrics');
     const s = useSocket('/status');
-    // Assign before onReady: onReady fires synchronously when a socket is
-    // already connected, and isBothConnected()/loadAll() read these module vars.
+    // assign before onReady: it fires synchronously on a connected socket, and loadAll() reads these
     metricsChannel = m;
     statusChannel = s;
 
@@ -240,7 +239,7 @@ export function useMetricsSocket() {
   }
 
   function disconnect(): void {
-    // Channel teardown is global via resetMetricsSocket().
+    // teardown follows the last caller's scope
   }
 
   tryOnScopeDispose(() => {

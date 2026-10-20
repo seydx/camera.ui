@@ -518,7 +518,7 @@ class WebSocketProxy {
               return;
             }
           } catch {
-            // Not a parseable CONNECT — forward as-is
+            // not a parseable CONNECT, forward as-is
           }
         }
 
@@ -889,7 +889,7 @@ class WebSocketProxy {
   private applyNatsCreds(connectData: Record<string, unknown>, natsCreds: AuthConfig): Record<string, unknown> {
     connectData.user = natsCreds.user;
     connectData.pass = natsCreds.password;
-    // TLS handled at transport layer, not in CONNECT message
+    // tls lives in the transport, not in CONNECT
     delete connectData.tls;
     return connectData;
   }

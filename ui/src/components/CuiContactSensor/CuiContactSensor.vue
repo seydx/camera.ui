@@ -67,7 +67,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-contact-sensor__ind
   opacity: 0.6;
 }
 
-/* Header */
 .cui-contact-sensor__header {
   display: flex;
   align-items: center;
@@ -116,7 +115,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-contact-sensor__ind
   color: rgb(251, 146, 60);
 }
 
-/* Indicator dot */
 .cui-contact-sensor__indicator {
   width: 0.5rem;
   height: 0.5rem;
@@ -146,7 +144,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-contact-sensor__ind
   }
 }
 
-/* Size variants */
 .cui-contact-sensor--small {
   padding: 0.5rem;
   gap: 0.375rem;

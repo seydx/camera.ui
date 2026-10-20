@@ -42,7 +42,6 @@ const edgePath = computed(() => pathResult.value[0]);
 const labelX = computed(() => pathResult.value[1]);
 const labelY = computed(() => pathResult.value[2]);
 
-// Measure actual SVG path length for accurate gap placement
 const measuredLength = computed(() => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   svg.setAttribute('d', edgePath.value);

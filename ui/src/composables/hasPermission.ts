@@ -15,7 +15,6 @@ export function hasPermission(route?: RouteRecordRaw | RouteLocationNormalizedLo
   const { user } = storeToRefs(useAuthStore());
   const userRole = (user.value?.role ?? 'user') as DBRoles;
 
-  // Role-only check (no route context needed)
   if (role && !route) {
     return explizit ? userRole === role : hasMinRole(userRole, role);
   }

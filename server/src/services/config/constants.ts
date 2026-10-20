@@ -20,8 +20,7 @@ import {
 import type { IceServer } from '@camera.ui/sdk/internal';
 import type { Go2RtcConfig, IConfig } from './types.js';
 
-// asar = true => app.asar.unpacked
-// asar = false => app
+// app.asar.unpacked with asar, app without
 export const ELECTRON_ASAR_UNPACKED = 'app';
 
 export const PROCESS_IDENTIFIER = '--id=camera.ui';

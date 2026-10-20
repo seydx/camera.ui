@@ -54,7 +54,6 @@ export class SensorProxy implements SensorLike {
     this.onConnectedChanged = this.#connectedChangedSubject.asObservable();
     this.onAssignmentChanged = this.#assignmentChangedSubject.asObservable();
 
-    // RPC directly to owner - for Control sensors
     this._rpcProxy = proxy.createProxy<SensorLike>(ownerNamespace);
 
     for (const [key, value] of Object.entries(data.properties)) {

@@ -123,7 +123,7 @@ async function shareNative() {
       text: `${shareResult.value.link}\n\n${t('shares.code')}: ${shareResult.value.code}`,
     });
   } catch {
-    // User cancelled or share failed — ignore
+    // cancelled or failed
   }
 }
 

@@ -94,8 +94,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/cameras');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and subscribeInternal() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and subscribeInternal() reads `channel`
     channel = ch;
 
     ch.onReady(() => {
@@ -110,7 +109,7 @@ function ensureChannel(): SocketChannel {
     });
 
     ch.on<DiscoveryManagerProxyEvents['cameras:discovered']>('cameras:discovered', (data) => {
-      // Streaming: cameras arrive as each source completes — merge instead of replace
+      // cameras arrive per source, merge instead of replace
       for (const device of data.devices) {
         const existingIndex = state.devices.findIndex((d) => d.id === device.id);
         if (existingIndex >= 0) {
@@ -122,8 +121,7 @@ function ensureChannel(): SocketChannel {
     });
 
     ch.on<DiscoveryManagerProxyEvents['cameras:scanning']>('cameras:scanning', (data) => {
-      // Don't clear devices on scanning state change — allows users to see
-      // cached devices during rescan.
+      // keep the cached devices visible during a rescan
       state.isScanning = data.isScanning;
     });
 
@@ -213,16 +211,14 @@ export function useCamerasSocket() {
 
   function connect(): void {
     ensureChannel();
-    // If the channel is already connected when we attach (subsequent caller
-    // joining an existing session), 'connect' won't refire — subscribe now.
+    // an already connected channel won't fire connect again
     if (channel?.connected.value && !isSubscribed) {
       subscribeInternal();
     }
   }
 
   function disconnect(): void {
-    // Refcount path handles teardown — direct disconnect just unsubscribes
-    // server-side but leaves the channel alive for other callers.
+    // unsubscribe only, the refcount tears the channel down
     if (isSubscribed) {
       unsubscribeInternal();
     }
@@ -327,8 +323,7 @@ export function useCamerasSocket() {
     refCount--;
     if (refCount > 0) return;
     refCount = 0;
-    // Grace period for view transitions — if a new view picks up the same
-    // socket within DISPOSAL_GRACE_MS, we skip teardown.
+    // grace period, a view transition picks the socket up again
     disposalTimer = setTimeout(() => {
       if (refCount <= 0) {
         teardown();

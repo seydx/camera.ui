@@ -178,7 +178,6 @@ onUnmounted(() => {
 <style>
 .ace_gutter {
   background: var(--subnavbar-background) !important;
-  /* border-right: 1px solid var(--border-color) !important; */
   border: none !important;
 }
 

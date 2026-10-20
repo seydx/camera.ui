@@ -103,7 +103,6 @@ export class StorageController {
     await this.#storages.get(cameraId)?.unregisterStorage();
   }
 
-  /** Internal method to close all storages */
   public async close(): Promise<void> {
     const storages = Array.from(this.#storages.values());
     // saves share one config document and run in order, the handler drains overlap

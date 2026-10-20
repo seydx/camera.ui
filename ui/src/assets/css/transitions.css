@@ -1,5 +1,3 @@
-/* View Transition API */
-
 ::view-transition-group(root) {
   z-index: 1 !important;
 }
@@ -31,7 +29,6 @@
   animation-fill-mode: both !important;
 }
 
-/* Topbar */
 ::view-transition-group(cui-topbar) {
   z-index: 2 !important;
   animation: none !important;
@@ -55,7 +52,6 @@
   height: 100% !important;
 }
 
-/* Navbar */
 ::view-transition-group(cui-navbar),
 ::view-transition-old(cui-navbar),
 ::view-transition-new(cui-navbar) {
@@ -65,7 +61,6 @@
   mix-blend-mode: normal !important;
 }
 
-/* Bottombar */
 ::view-transition-group(cui-bottombar),
 ::view-transition-old(cui-bottombar),
 ::view-transition-new(cui-bottombar) {
@@ -75,7 +70,6 @@
   mix-blend-mode: normal !important;
 }
 
-/* Fade */
 .fade-enter-active {
   transition-duration: 0.15s;
   transition-property: all;
@@ -99,7 +93,6 @@
   opacity: 1;
 }
 
-/* Fade 2 */
 .fade-2-enter-active,
 .fade-2-leave-active {
   -webkit-transition: opacity 0.1s ease;
@@ -119,7 +112,7 @@
   opacity: 1;
 }
 
-/* Safari: prevent flash on initial page load */
+/* safari: prevents a flash on the first page load */
 @supports (-webkit-touch-callout: none) {
   .fade-2-enter-active {
     -webkit-transition-delay: 0.01s;
@@ -127,7 +120,6 @@
   }
 }
 
-/* Fade Slow */
 .fade-slow-enter-active {
   transition-duration: 0.7s;
   transition-property: all;
@@ -156,7 +148,6 @@
   opacity: 1;
 }
 
-/* Fade Absolute */
 .fade-absolute-enter-active,
 .fade-absolute-leave-active {
   transition: opacity 0.15s ease;
@@ -171,7 +162,6 @@
   transition-delay: 0.35s;
 }
 
-/* Slide Up */
 .slide-up-enter-active {
   transition-duration: 0.3s;
   transition-property: all;
@@ -192,7 +182,6 @@
   opacity: 0;
 }
 
-/* Slide Down */
 .slide-down-enter-active {
   transition-duration: 0.3s;
   transition-property: all;
@@ -213,7 +202,6 @@
   opacity: 0;
 }
 
-/* Slide Left */
 .slide-left-enter-active {
   transition-duration: 0.3s;
   transition-property: all;
@@ -234,7 +222,6 @@
   opacity: 0;
 }
 
-/* Slide Right */
 .slide-right-enter-active {
   transition-duration: 0.3s;
   transition-property: all;
@@ -255,7 +242,6 @@
   opacity: 0;
 }
 
-/* Scale */
 .scale-enter-active {
   transition-duration: 0.3s;
   transition-property: all;
@@ -276,7 +262,6 @@
   opacity: 0;
 }
 
-/* Bounce */
 .bounce-enter-active {
   animation: bounce-in 0.5s;
 }
@@ -298,7 +283,6 @@
   }
 }
 
-/* Rotate */
 .rotate-enter-active {
   transition-duration: 0.5s;
   transition-property: all;
@@ -319,7 +303,6 @@
   opacity: 0;
 }
 
-/* Flip Horizontal */
 .flip-h-enter-active {
   animation: flip-horizontal 0.6s;
 }
@@ -337,7 +320,6 @@
   }
 }
 
-/* Flip Vertical */
 .flip-v-enter-active {
   animation: flip-vertical 0.6s;
 }
@@ -355,7 +337,6 @@
   }
 }
 
-/* iOS-like slide for menu navigation — include topbar in the slide */
 [data-menu-direction]::view-transition-group(cui-topbar) {
   animation: none !important;
   position: fixed !important;
@@ -387,7 +368,6 @@
   mix-blend-mode: normal !important;
 }
 
-/* iOS-like slide for menu navigation */
 [data-menu-direction='forward']::view-transition-old(root) {
   animation: menu-slide-out-left 300ms cubic-bezier(0.32, 0.72, 0, 1) both !important;
 }
@@ -440,7 +420,6 @@
   }
 }
 
-/* Fade and Scale */
 .fade-scale-enter-active {
   transition-duration: 0.3s;
   transition-property: all;

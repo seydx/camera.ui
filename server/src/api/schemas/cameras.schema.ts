@@ -208,14 +208,12 @@ export const inputRoleSchema = zod.union([zod.literal('high-resolution'), zod.li
 export const streamingSourceRole = zod.union([zod.literal('high-resolution'), zod.literal('mid-resolution'), zod.literal('low-resolution')]);
 
 export const inputProtocolSchema = zod.union([
+  // no echo:, exec: or expr:, they run arbitrary commands
   zod.literal('bubble://'),
   zod.literal('cui://'),
   zod.literal('doorbird://'),
   zod.literal('dvrip://'),
-  // zod.literal('echo:'),
   zod.literal('eseecloud://'),
-  // zod.literal('exec:'),
-  // zod.literal('expr:'),
   zod.literal('ffmpeg:'),
   zod.literal('flussonic://'),
   zod.literal('gopro://'),
@@ -244,8 +242,6 @@ export const inputProtocolSchema = zod.union([
   zod.literal('wyze://'),
 ]);
 
-// Allowlist of source protocols accepted from user input. echo:/exec:/expr: are
-// intentionally excluded above — they can execute arbitrary commands.
 export const allowedSourceProtocols = inputProtocolSchema.options.map((option) => option.value);
 const protocolRegex = new RegExp(`^(${allowedSourceProtocols.join('|')})`);
 

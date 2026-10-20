@@ -33,7 +33,6 @@ export function useLogsSocket(options: LogsSocketOptions = {}) {
   channel.on('clear-log', (source?: string) => onClearLog?.(source ?? 'all'));
 
   channel.onReady(() => {
-    // Second+ connect is a reconnect — let the caller reset its terminal.
     if (hasConnectedOnce) onReconnected?.();
     hasConnectedOnce = true;
     lastRequest?.();
@@ -44,12 +43,11 @@ export function useLogsSocket(options: LogsSocketOptions = {}) {
   });
 
   function connect(): void {
-    // The channel is alive from the moment useLogsSocket() is called
+    // the channel is live from the first call
   }
 
   function disconnect(): void {
-    // Channel teardown is tied to the caller's scope via
-    // tryOnScopeDispose inside useSocket. No imperative disconnect.
+    // teardown follows the caller's scope
   }
 
   function reportSize(cols: number): void {

@@ -317,8 +317,7 @@ export class DeviceStorage<T extends Record<string, any> = Record<string, any>> 
       }
     }
 
-    // Keys without any schema are internal values and always persist;
-    // schema-covered keys persist only via their store flag above.
+    // keys without a schema are internal values and always persist
     for (const [key, value] of Object.entries(this.values)) {
       if (!schemas.some((schema) => schema.key === key || schema.key.startsWith(`${key}.`))) {
         result[key] = value;

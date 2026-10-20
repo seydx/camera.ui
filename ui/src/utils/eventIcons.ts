@@ -38,16 +38,13 @@ import IconUser from '~icons/tabler/user';
 import IconVolume from '~icons/tabler/volume';
 
 const icons: Record<string, Component> = {
-  // Detection labels
   motion: IconActivity,
   person: IconUser,
   vehicle: IconCar,
   animal: IconDog,
   audio: IconVolume,
-  // Detection attributes
   face: IconFaceId,
   license_plate: IconLicense,
-  // Sensor trigger types
   contact: IconDoor,
   doorbell: IconBellRinging,
   switch: IconToggleLeft,
@@ -68,9 +65,7 @@ const icons: Record<string, Component> = {
   power: IconPlug,
   lock: IconLock,
   garage: IconGarage,
-  // Special filter for classifier-produced types
   other: IconPuzzle,
-  // Audio labels
   glass_break: IconGlassOff,
   speaking: IconMessage,
   gunshot: IconAlertOctagon,

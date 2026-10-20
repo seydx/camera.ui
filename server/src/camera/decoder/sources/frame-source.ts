@@ -36,7 +36,6 @@ export class FrameSource implements AnalysisSource {
   private shouldRun = false;
   private _generation = 0;
 
-  // single-slot mailbox with monotonic id
   private latest?: FrameSnap;
   private latestAt = 0;
   private nextId = 0;
@@ -113,8 +112,7 @@ export class FrameSource implements AnalysisSource {
     if (!this.shouldRun && !this.producerPromise) return;
     this.shouldRun = false;
 
-    // wake waiting consumers BEFORE awaiting the producer, otherwise they
-    // hold it up
+    // wake waiting consumers before awaiting the producer, otherwise they hold it up
     this.ended = true;
     this.wakeWaiter();
     this.reconnect.cancel();
@@ -143,7 +141,7 @@ export class FrameSource implements AnalysisSource {
     if (this.ended) return Promise.resolve(undefined);
     if (this.latest && this.latest.id !== lastId) {
       const snap = this.latest;
-      this.latest = undefined; // take ownership — producer must not dispose this frame
+      this.latest = undefined; // take ownership, the producer must not dispose it
       return Promise.resolve(snap);
     }
     return new Promise<FrameSnap | undefined>((resolve) => {
@@ -171,7 +169,7 @@ export class FrameSource implements AnalysisSource {
     }
     if (this.latest) {
       const snap = this.latest;
-      this.latest = undefined; // take ownership before handing it to the consumer
+      this.latest = undefined;
       w(snap);
     } else {
       w(undefined);

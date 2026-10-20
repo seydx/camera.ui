@@ -51,7 +51,6 @@ export interface ServerStatus {
   };
 }
 
-// Cache local status for 5 seconds
 let _localStatusCache: { data: ServerStatus; ts: number } | null = null;
 const LOCAL_STATUS_TTL = 5_000;
 
@@ -102,12 +101,10 @@ export class InstancesService {
       iv,
     };
 
-    // Try to login and cache tokens, then fetch remote homeId for self-reference detection
     let requires2fa = false;
     try {
       const outcome = await this.loginRemote(instance.url, input.credentials.username, input.credentials.password);
       if ('requires2fa' in outcome) {
-        // Tokens arrive once the caller completes the 2FA challenge via loginToRemote({code}).
         requires2fa = true;
         instance.pending2fa = Date.now();
       } else {
@@ -119,7 +116,6 @@ export class InstancesService {
           user: pickCachedUser(userData),
         };
 
-        // With a valid token, fetch the remote server's homeId
         try {
           const res = await fetch(`${instance.url}/api/instances/identity`, {
             headers: { Authorization: `Bearer ${userData.access_token}` },
@@ -132,11 +128,11 @@ export class InstancesService {
             }
           }
         } catch {
-          // Remote doesn't support identity endpoint yet — ignore
+          // older remotes have no identity endpoint
         }
       }
     } catch {
-      // Login failed — still save the instance, tokens will be fetched later
+      // still saved, tokens are fetched later
     }
 
     instances.push(instance);
@@ -182,7 +178,7 @@ export class InstancesService {
           };
         }
       } catch {
-        // Login failed — tokens will be fetched later
+        // tokens are fetched later
       }
     }
 
@@ -249,7 +245,7 @@ export class InstancesService {
         await this.cacheToken(id, tokens.access_token, tokens.refresh_token, user);
         return this.composeUserData(tokens, user, instance.credentials?.username);
       } catch {
-        // Refresh failed — fall through to credentials login
+        // fall through to the credentials login
       }
     }
 
@@ -279,7 +275,6 @@ export class InstancesService {
     const api = inject('api');
     const pluginManager = inject('pluginManager');
 
-    // CPU
     let cpuUsage: number;
     if (platform() === 'freebsd') {
       cpuUsage = (loadavg()[0] * 100) / cpus().length;
@@ -287,11 +282,9 @@ export class InstancesService {
       cpuUsage = (await currentLoad()).currentLoad;
     }
 
-    // Memory
     const memory = await mem();
     const memUsed = memory.total - memory.available;
 
-    // Disk — try NVR plugin first, fallback to 0
     let diskUsed = 0;
     let diskTotal = 0;
     let recording = 0;
@@ -305,7 +298,6 @@ export class InstancesService {
         if (storageStats) {
           diskTotal = Math.round(storageStats.diskTotalGB * 1000);
           diskUsed = Math.round(storageStats.diskUsedGB * 1000);
-          // Count recording cameras
           const cameras = storageStats.cameras;
           if (cameras) {
             recording = Object.values(cameras).filter((c) => c.isRecording).length;
@@ -316,7 +308,6 @@ export class InstancesService {
       }
     }
 
-    // Cameras
     const allCameras = api.getCameras();
     const onlineCameras = allCameras.filter((c) => c.connected).length;
 
@@ -381,8 +372,6 @@ export class InstancesService {
   private async saveInstances(instances: DBInstance[]): Promise<void> {
     const newIds = new Set(instances.map((i) => i.id));
 
-    // Single transaction: parallele Reader sehen entweder den alten oder
-    // den vollen neuen Zustand, nie ein Mid-Transaction-Mix.
     await this.dbs.instancesDB.transaction(() => {
       for (const key of this.dbs.instancesDB.getKeys()) {
         if (!newIds.has(key)) {
@@ -400,8 +389,7 @@ export class InstancesService {
     const instance = instances.find((i) => i.id === id);
     if (!instance) return;
 
-    // A cached session proves the challenge was completed — the instance is no
-    // longer an abandoned 2FA add.
+    // a cached session proves the 2FA challenge was completed
     delete instance.pending2fa;
     instance.tokenCache = { accessToken, refreshToken, cachedAt: Date.now(), user: user ?? instance.tokenCache?.user };
     await this.saveInstances(instances);
@@ -413,24 +401,21 @@ export class InstancesService {
 
     const cached = instance.tokenCache;
 
-    // Try cached token first (test with a lightweight request)
     if (cached?.accessToken) {
       const ok = await this.testToken(instance.url, cached.accessToken);
       if (ok) return cached.accessToken;
 
-      // Try refresh
       if (cached.refreshToken) {
         try {
           const tokens = await this.refreshToken(instance.url, cached.refreshToken);
           await this.cacheToken(id, tokens.access_token, tokens.refresh_token);
           return tokens.access_token;
         } catch {
-          // Refresh failed, fall through to re-login
+          // fall through to the re-login
         }
       }
     }
 
-    // Re-login with credentials
     const credentials = this.getCredentials(id);
     if (!credentials) throw new Error('No credentials configured for this instance');
 
@@ -490,7 +475,7 @@ export class InstancesService {
       throw new Error(`Remote login failed (${res.status}): ${body}`);
     }
 
-    // 2FA-enabled accounts answer 200 with a pending challenge instead of tokens.
+    // 2FA accounts answer 200 with a pending challenge instead of tokens
     const data = (await res.json()) as UserData | { requires2fa: boolean; tempToken: string };
     if ('requires2fa' in data && data.requires2fa && data.tempToken) {
       return { requires2fa: true, tempToken: data.tempToken };

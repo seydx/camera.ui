@@ -311,7 +311,6 @@ export class UsersService {
 
           let mutated = false;
 
-          // the deleted camera's own view dies with it, shortcuts included
           if (current.preferences.cameras[cameraId]) {
             delete current.preferences.cameras[cameraId];
             mutated = true;

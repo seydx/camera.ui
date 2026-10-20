@@ -33,7 +33,6 @@ const items = computed(() => {
 
   const children: VNode[] = [];
   for (const node of defaultSlot) {
-    // Flatten fragments (v-for, v-if)
     if (node.type === Fragment && Array.isArray(node.children)) {
       for (const child of node.children) {
         if (typeof child === 'object' && child !== null) {

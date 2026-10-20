@@ -70,7 +70,7 @@ export class AutomationEngine {
     const flow = this.automationsService.getById(flowId);
     this.logger.debug(`Automation flow changed: ${flowId} (enabled=${flow?.enabled}, name="${flow?.name}")`);
 
-    // Register new triggers first, then dispose old ones to avoid missing events
+    // the new triggers register before the old ones go, so no event is missed
     const oldSubs = this.subscriptions.get(flowId);
     const oldTimers = this.schedules.get(flowId);
     this.subscriptions.delete(flowId);
@@ -244,7 +244,7 @@ export class AutomationEngine {
     // persisted so a restart does not swallow the next enter/leave transition
     this.dbs.automationStateDB.put(GEOFENCE_STATE_PREFIX + stateKey, this.geofenceStates.get(stateKey));
 
-    // First report: no trigger (initialization)
+    // the first report only initializes
     if (!lastEntry) return { triggered: false };
 
     if (lastEntry.state === currentState) return { triggered: false };

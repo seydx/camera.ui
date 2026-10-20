@@ -153,7 +153,6 @@ export class LogManager extends EventEmitter {
 
     this.route(entry);
 
-    // Mirror to console so child output is visible
     const logger = new Logger();
     console.log(...logger.formatForConsole(entry));
   }
@@ -202,7 +201,6 @@ export class LogManager extends EventEmitter {
       logger.traceEnabled = this.traceEnabled;
     }
 
-    // Emit so child processes can update their levels
     this.emit('logLevelChanged', level);
   }
 
@@ -238,7 +236,7 @@ export class LogManager extends EventEmitter {
       }
     }
 
-    // Mirror camera-from-plugin logs into the plugin transport too, but skip if the plugin already handled it above
+    // camera logs from a plugin also go to the plugin's log, unless routed there above
     if (entry.pluginId && !(entry.targetType === 'plugin' && entry.targetId === entry.pluginId)) {
       const pluginKey = `plugin:${entry.pluginId}`;
       const pluginTransport = this.fileTransports.get(pluginKey);
@@ -266,7 +264,7 @@ export class LogManager extends EventEmitter {
       try {
         rmSync(filePath);
       } catch {
-        // ignore removal errors
+        // ignore
       }
     }
   }

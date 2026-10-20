@@ -200,9 +200,7 @@ export class TrainingSink {
           if (this.sentEventId !== held.eventId) this.eventSamples = 0;
           this.sentEventId = held.eventId;
           this.eventSamples += 1;
-          // positions are charged for the frame that actually ships, not for
-          // every tick; every shipped box counts, statics included, so nothing
-          // in this picture triggers again until its spot changes
+          // positions are charged for the shipped frame only, every shipped box counts, statics included
           const now = Date.now();
           for (const box of held.boxes) {
             // a suggestion is no label, its spot stays free for a confident sighting

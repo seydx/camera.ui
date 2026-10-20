@@ -207,7 +207,6 @@ export class NotificationManager {
   public async notify(opts: NotifyOptions): Promise<NotifyResult[]> {
     const { source, targets } = opts;
 
-    // Source-kind-specific permission checks.
     const plugin = source.kind === 'plugin' ? this.pluginsService.getPluginById(source.id) : undefined;
     if (source.kind === 'plugin') {
       if (!plugin) {
@@ -223,8 +222,7 @@ export class NotificationManager {
     const userIds = await this.findRecipientUserIds(source, opts.notification.adminOnly ?? false);
     if (userIds.length === 0) return [];
 
-    // Stamp the notification once — same id/createdAt go to UI and external
-    // delivery so any client-side dedup matches across channels.
+    // one id and createdAt for UI and push, so client dedup matches across channels
     const cloud = this.remoteService.getCloud();
     const originData: Record<string, string> = {};
 
@@ -261,8 +259,6 @@ export class NotificationManager {
       });
     }
 
-    // Per-user filtering (settings / source / quiet-hours / history) is
-    // genuinely per recipient; delivery is batched per notifier afterwards.
     const globalSuppressed = this.isGloballySuppressed();
     const cameraSuppressed = this.isCameraSuppressed(resolved.data?.cameraId);
     const eligibleUserIds: string[] = [];
@@ -272,19 +268,14 @@ export class NotificationManager {
       if (source.kind === 'plugin' && settings.sources?.[source.id] === false) continue;
       if (source.kind === 'system' && settings.systemTypes?.[source.id] === false) continue;
 
-      // UI broadcast happens before the suppression checks — they suppress
-      // disruption (push/sound), not the in-app history entry.
+      // before the suppression checks: they mute push and sound, not the history entry
       await this.appendHistory(userId, resolved);
 
-      // Suppress external delivery (except critical bypass): automation mute
-      // (global / per-camera / per-user, set by action-notification-control)
-      // and quiet-hours.
       if (resolved.severity !== Severity.Critical && (globalSuppressed || cameraSuppressed || settings.suppressed || this.inQuietHours(settings))) continue;
 
       eligibleUserIds.push(userId);
     }
 
-    // Explicit-targets path: deliver to the given device ids directly.
     if (targets && targets.length > 0) {
       const results = await Promise.all(targets.map((deviceId) => this.dispatchToDevice(deviceId, resolved)));
       return results;
@@ -292,7 +283,6 @@ export class NotificationManager {
 
     if (eligibleUserIds.length === 0) return [];
 
-    // Batched fan-out: one getDevices + one sendNotification per notifier.
     const eligibleSet = new Set(eligibleUserIds);
     const tasks: Promise<NotifyResult[]>[] = [];
     for (const plugin of this.getNotifierPlugins()) {
@@ -362,7 +352,7 @@ export class NotificationManager {
       try {
         device = (await proxy.getDevice(deviceId)) ?? null;
       } catch {
-        // getDevice may legitimately throw on unknown ids — try next plugin.
+        // unknown ids can throw
         continue;
       }
       if (!device) continue;
@@ -439,7 +429,7 @@ export class NotificationManager {
           return result;
         }
       } catch {
-        // getDevice may legitimately throw on unknown ids — try next plugin.
+        // unknown ids can throw
       }
     }
     return { pluginName: '', deviceId, ok: false, error: 'device not found' };
@@ -473,8 +463,7 @@ export class NotificationManager {
     try {
       this.closePublishUnsub = await this.proxyServer.proxy.subscribe<PublishEnvelope>(subject, (msg) => {
         if (!msg?.notification || !msg.pluginId) return;
-        // Synchronous handler — slow notify() must not backpressure the
-        // NATS consumer. Errors are logged inside notify().
+        // not awaited, a slow notify must not hold up the nats consumer
         this.notify({
           notification: msg.notification,
           source: { kind: 'plugin', id: msg.pluginId },
@@ -604,8 +593,6 @@ export class NotificationManager {
     return this.dbs.notificationHistoryDB.get(userId)?.items ?? [];
   }
 
-  // notifications for the same user can land at the same time, each one
-  // rewrites the whole history array
   private async commitHistory(userId: string, apply: (items: StoredNotification[]) => StoredNotification[] | undefined): Promise<StoredNotification[] | undefined> {
     const record = await this.dbs.commit(this.dbs.notificationHistoryDB, userId, (current) => {
       const items = apply(current?.items ?? []);

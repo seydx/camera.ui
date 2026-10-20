@@ -95,7 +95,7 @@ export class AudioSource {
     if (this.ended) return Promise.resolve(undefined);
     if (this.latest && this.latest.id !== lastId) {
       const snap = this.latest;
-      this.latest = undefined; // take ownership — producer must not dispose
+      this.latest = undefined; // take ownership, the producer must not dispose it
       return Promise.resolve(snap);
     }
     return new Promise<AudioFrameSnap | undefined>((resolve) => {
@@ -113,7 +113,7 @@ export class AudioSource {
     }
     if (this.latest) {
       const snap = this.latest;
-      this.latest = undefined; // take ownership before handing it to the consumer
+      this.latest = undefined;
       w(snap);
     } else {
       w(undefined);
@@ -158,7 +158,6 @@ export class AudioSource {
       exitOnError: false,
     });
 
-    // resample to plugin spec
     const sampleFmt = this.config.format === 'pcm16' ? AV_SAMPLE_FMT_S16 : AV_SAMPLE_FMT_FLT;
     const layout = this.config.channels === 1 ? 'mono' : 'stereo';
     const chain = FilterPreset.chain().aformat(sampleFmt, this.config.sampleRate, layout);

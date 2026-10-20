@@ -128,7 +128,6 @@ const barStyle = computed(() => {
   opacity: 0.6;
 }
 
-/* Header */
 .cui-battery-info__header {
   display: flex;
   align-items: center;
@@ -232,7 +231,6 @@ const barStyle = computed(() => {
   color: rgb(239, 68, 68);
 }
 
-/* Battery bar */
 .cui-battery-info__bar {
   height: 0.25rem;
   border-radius: 0.125rem;
@@ -247,7 +245,6 @@ const barStyle = computed(() => {
     background-color 0.3s ease;
 }
 
-/* Size variants */
 .cui-battery-info--small {
   padding: 0.5rem;
   gap: 0.375rem;

@@ -280,9 +280,6 @@ function mirrorSelectionForNativeCopy(text: string, event: MouseEvent): void {
   const timeoutId = setTimeout(cleanup, 15_000);
 }
 
-// Touch devices have no xterm selection at all (renderer-independent), so the
-// mobile gesture is built here: long-press anchors a line selection, dragging
-// while still holding extends it line by line, and the copy button copies it.
 function bufferRowAt(clientY: number): number | undefined {
   const el = term.value?.element;
   if (!term.value || !el) {
@@ -335,8 +332,6 @@ function setupSmoothScrolling() {
       return;
     }
 
-    // Dragging past the edges scrolls the buffer so the selection can grow
-    // beyond the visible viewport.
     const rect = element!.getBoundingClientRect();
     if (clientY < rect.top + edgeScrollZone) {
       term.value.scrollLines(-1);
@@ -408,12 +403,11 @@ function setupSmoothScrolling() {
     cancelLongPress();
 
     if (selectionAnchorRow !== undefined) {
-      // Selection stays after lifting the finger — the copy button picks it up.
+      // the selection stays, the copy button picks it up
       selectionAnchorRow = undefined;
       return;
     }
 
-    // A plain tap outside a selection dismisses it, like native text selection.
     if (!isScrolling && term.value?.hasSelection()) {
       term.value.clearSelection();
     }
@@ -453,7 +447,7 @@ function safeDispose(addon: Terminal | ITerminalAddon | null) {
     try {
       addon.dispose();
     } catch {
-      // Ignore
+      // ignore
     }
   }
 }
@@ -569,17 +563,4 @@ div :deep(.xterm-scrollable-element) .scrollbar .slider {
     margin-top: 0 !important;
   }
 }
-
-/* div :deep(.xterm-screen),
-div :deep(.xterm-rows),
-div :deep(.xterm-screen) div {
-  width: 100% !important;
-}*/
-
-/* :deep(.xterm-screen),
-:deep(.xterm-rows) {
-  height: 100% !important;
-  width: 100% !important;
-  contain: content;
-} */
 </style>

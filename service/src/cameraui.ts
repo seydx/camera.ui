@@ -205,7 +205,7 @@ export class CameraUiCLI {
 
   public async waitForApiHealth(maxWaitTime = 300000): Promise<boolean> {
     const startTime = Date.now();
-    const checkInterval = 5000; // Check every 5 seconds
+    const checkInterval = 5000;
 
     let logsCommand = 'cameraui logs';
     if (this.homePath && this.homePath !== join(this.getUserHomeDir(), '.camera.ui')) {
@@ -251,7 +251,7 @@ export class CameraUiCLI {
             return true;
           }
         } catch {
-          // UI not ready yet, continue waiting
+          // not ready yet
         }
 
         await sleep(checkInterval);
@@ -305,7 +305,6 @@ export class CameraUiCLI {
   }
 
   private cli(): void {
-    // Create the main program
     program
       .allowUnknownOption()
       .storeOptionsAsProperties(true)
@@ -322,7 +321,6 @@ export class CameraUiCLI {
       .option('--gid <number>', '', (i) => (this.gid = parseInt(i, 10)))
       .option('-v, --version', 'Output the version number', () => this.showVersion());
 
-    // Define individual commands
     program
       .command('install')
       .description('Install camera.ui as a service')
@@ -393,7 +391,6 @@ export class CameraUiCLI {
         this.action = 'before-start';
       });
 
-    // Fix for the update-server command - add explicit version parameter
     program
       .command('update-server [version]')
       .description('Update the camera.ui server to the latest version or a specific version')
@@ -437,10 +434,8 @@ export class CameraUiCLI {
         this.credentials = { username: options.username, code: options.code };
       });
 
-    // Parse arguments
     program.parse(process.argv);
 
-    // If no command was recognized, default to help
     if (!this.action) {
       program.outputHelp();
       this.programUsage();
@@ -881,18 +876,15 @@ export class CameraUiCLI {
     try {
       const uiPort = this.uiPort;
 
-      // check if port is still in use
       if (!(await isPortInUse(uiPort))) {
         return;
       }
 
-      // find the pid of the process using the port
       const pid = this.installer.getPidOfPort(uiPort);
       if (!pid) {
         return;
       }
 
-      // kill the stale camera.ui process
       this.logger(`Found stale camera.ui process running on port ${uiPort} with PID ${pid}, killing...`, 'warn');
       process.kill(parseInt(pid, 10), 'SIGKILL');
     } catch {

@@ -436,7 +436,6 @@ const {
 const selectedIndex = computed(() => frames.value.findIndex((f) => f.tick === selectedTick.value));
 const selected = computed<TraceFrame | undefined>(() => frames.value[selectedIndex.value]);
 
-// the frame box keeps the own frame's aspect, a strip keyframe of another role letterboxes
 const stageAspect = computed(() => {
   if (ownFrameSize.value) return ownFrameSize.value;
   const picture = stagePicture.value ?? selected.value?.thumb ?? frames.value.find((f) => f.thumb)?.thumb;

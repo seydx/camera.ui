@@ -95,8 +95,7 @@ export class WorkersController {
 
       configService.writeConfig({ workers: next });
 
-      // A changed address must land in the cert SANs before the acceptor
-      // restarts, so a worker can verify the new address.
+      // the cert SANs need the new address before the acceptor restarts
       if (next.enabled && next.address !== prevAddress) {
         configService.reissueSslCertificate();
       }
@@ -106,7 +105,6 @@ export class WorkersController {
       } else if (!next.enabled && wasEnabled) {
         await this.workerManager.disable();
       } else if (next.enabled) {
-        // Enabled throughout — address/port change: restart only the acceptor.
         await proxyServer.applyLeafNodeAuth();
       }
 
@@ -181,7 +179,7 @@ export class WorkersController {
       const proxyServer = inject('proxy');
       await proxyServer.applyLeafNodeAuth();
 
-      // Burn the code only now — a failure above must not invalidate it.
+      // consume the code last, a failure above must not invalidate it
       await this.workersService.consumePairingCode(code);
 
       this.logger.log(`Worker paired: ${name} (${agentId})`);

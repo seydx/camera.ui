@@ -67,7 +67,7 @@ export class PluginHealthMonitor {
       const s = this.states.get(payload.pluginId);
       if (!s) return;
       s.confirmTimer = undefined;
-      if (s.isUp) return; // recovered on its own → stay silent
+      if (s.isUp) return;
       this.fireCrash(payload.pluginId);
     }, CRASH_CONFIRM_MS);
   }
@@ -75,7 +75,7 @@ export class PluginHealthMonitor {
   private onStarted(payload: PluginEventPayload): void {
     const state = this.states.get(payload.pluginId);
     if (!state) {
-      return; // never crashed → nothing to track
+      return;
     }
 
     state.isUp = true;
@@ -100,7 +100,6 @@ export class PluginHealthMonitor {
     const { pluginName, displayName } = state;
     this.states.delete(pluginId);
 
-    // Only announce recovery if we announced the crash in the first place.
     if (wasNotified) {
       this.notificationManager
         .notify({

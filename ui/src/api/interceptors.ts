@@ -67,10 +67,7 @@ async function doRemintProxy(): Promise<string | null> {
     proxyRefreshTokenExpiresAt: minted.proxyRefreshTokenExpiresAt ?? session.proxyRefreshTokenExpiresAt,
   });
 
-  // Push the fresh session into the kernel too. The transports' request
-  // interceptors inject target.tokens.proxySession on EVERY request — with
-  // only cloudSession updated, the retry (and every request after it) would
-  // still carry the stale session and 401 again.
+  // the kernel target and its persisted copy carry the proxy session too
   const kernel = boot.connection.kernel;
   const phase = kernel.phase;
   const live = phase.kind === 'online' ? phase.target : null;
@@ -98,8 +95,6 @@ export function installApiErrorHandling(): void {
     async (error: AxiosError) => {
       const config = error.config as RetryConfig | undefined;
 
-      // Proxy session expired (cloud mode): server returns 401 with a
-      // `redirect` field. Re-mint via proxy RT or L1 AT, then retry once.
       const body = readErrorBody(error);
       const isProxySessionExpired = error.response?.status === 401 && body?.message === 'Session expired' && typeof body.redirect === 'string';
       if (isProxySessionExpired && config && !config._proxyRetry) {
@@ -114,23 +109,16 @@ export function installApiErrorHandling(): void {
         return Promise.reject(error);
       }
 
-      // Server registration deleted or revoked → cloud proxy returns 404.
-      // Nothing actionable for the user on this page; hand control back to
-      // the cloud frontend so they can re-pick.
       if (isServerGoneError(error)) {
         await bounceToCloudFrontend();
         return Promise.reject(error);
       }
 
-      // Server owner toggled remote access off → 503 everywhere. Same UX
-      // as server-gone — bounce instead of toasting on every parallel query.
       if (isRemoteDisabledError(error)) {
         await bounceToCloudFrontend();
         return Promise.reject(error);
       }
 
-      // 'Tunnel unavailable'. Retry up to MAX_TUNNEL_RETRIES with the
-      // server's Retry-After header.
       if (isTunnelPendingError(error) && config) {
         const attempts = config._tunnelRetries ?? 0;
         config._tunnelRetries = attempts + 1;

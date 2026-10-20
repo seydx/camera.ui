@@ -5,10 +5,6 @@ interface PendingFlush {
   reject: (error: unknown) => void;
 }
 
-// Serializes flushes and collapses saves arriving mid-flush into one trailing
-// flush of the latest snapshot. Snapshots are whole-document states, so the
-// newest one contains every earlier caller's write — a burst of N saves costs
-// at most 2 flushes without weakening the durability guarantee.
 export class CoalescingWriter {
   #inFlight?: Promise<void>;
   #pending?: PendingFlush;

@@ -693,7 +693,6 @@ export class BackupService {
 
       const infoPath = join(stagingPath, 'camera.ui.backup.json');
       const storagePath = join(stagingPath, 'storage');
-
       if (!(await pathExists(infoPath)) || !(await pathExists(storagePath))) {
         throw new RestoreError('The file is not a camera.ui backup archive.');
       }

@@ -32,9 +32,7 @@ export function createRefresh(api: AuthApi): RefreshCoordinator {
     if (cachedEndpoint === endpoint && cached && reusable(cached)) return cached;
     if (inflight) return inflight;
 
-    // Inside the cross-tab lock (when wired): another tab may have rotated
-    // the refresh token while we waited — refreshing with the stale one gets
-    // rejected server-side (hard rotation) and forces a logout.
+    // another tab may have rotated the refresh token while this one waited for the lock
     const latest: Tokens | null = coordination?.getLatestTokens?.() ?? null;
     if (latest && reusable(latest)) {
       cached = latest;

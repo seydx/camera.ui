@@ -24,7 +24,6 @@ export type PartialReturnType<T> = {
       : T[K];
 };
 
-// from camera.ui service
 export interface UpdateStartedMessage {
   type: 'UPDATE_STARTED';
   version: string;

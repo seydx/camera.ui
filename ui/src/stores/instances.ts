@@ -55,7 +55,6 @@ function serializeUserData(tokens: Tokens, user?: { _id: string; username: strin
   return {
     _id: user?._id ?? '',
     username: user?.username ?? '',
-    email: user?.email,
     role: user?.role ?? '',
     firstLogin: user?.firstLogin,
     avatar: user?.avatar,
@@ -136,11 +135,7 @@ export const useInstanceStore = defineStore('instances', () => {
 
   function homeEntry(): InstanceEntry {
     const slot = instanceTokens.value[HOME_SLOT];
-    // Only the live kernel target counts as "current home URL" when activeId
-    // is null — we ARE on home then. With a remote instance active, the live
-    // target is that remote, NOT home, so we MUST fall back to the saved
-    // __home__ slot URL (populated by `saveCurrentTokens` whenever we were
-    // last on home) and only then to window.location.origin.
+    // with a remote instance active the live target is that remote, so home comes from the saved slot
     const url = activeId.value === null ? (getConnection().target.value?.endpoint.url ?? slot?.url ?? window.location.origin) : (slot?.url ?? window.location.origin);
     return {
       id: 'home',
@@ -277,8 +272,7 @@ export const useInstanceStore = defineStore('instances', () => {
     log.debug('[switch]', `target resolved — name="${target.name}" url=${target.url} hasCreds=${target.hasCredentials}`);
 
     try {
-      // 1. Browser-side reachability probe — backend may reach a LAN URL the
-      //    browser cannot. Without this we'd disconnect from current and hang.
+      // the backend may reach a LAN url the browser cannot, check before disconnecting
       if (targetId !== null) {
         const reachable = await probeInstanceReachability(target.url);
         if (generation !== _switchGeneration) {
@@ -292,14 +286,13 @@ export const useInstanceStore = defineStore('instances', () => {
         }
       }
 
-      // 2. Get fresh tokens from the server-side relay if possible.
       let freshUserData: UserData | null = null;
       if (targetId !== null && target.hasCredentials) {
         try {
           let result = await loginToRemoteFn(targetId);
 
           if (isRequires2fa(result)) {
-            // Release the switching overlay so the code dialog is visible.
+            // release the switching overlay so the code dialog shows
             log.debug('[switch]', 'remote requires 2FA — prompting for code');
             isSwitching.value = false;
             const userData = await run2FALogin(targetId, target.name);
@@ -326,24 +319,19 @@ export const useInstanceStore = defineStore('instances', () => {
         return;
       }
 
-      // 3. Snapshot current connection's tokens before tearing it down.
       saveCurrentTokens();
 
-      // 4. Resolve final tokens (fresh > cached).
       const slot = targetId ?? HOME_SLOT;
       const tokens = freshUserData ? tokensFromUserData(freshUserData) : await slotTokens(slot);
       log.debug('[switch]', `tokens source: ${freshUserData ? 'fresh' : tokens ? 'cached' : 'none'} (slot=${slot})`);
 
-      // 5. Mixed-content + cross-localhost cases need a full-page URL handoff.
       if (targetId !== null && needsUrlHandoff(target.url)) {
         log.debug('[switch]', 'URL handoff required — leaving SPA');
         await urlHandoff(target, freshUserData);
         return;
       }
 
-      // 6. Disconnect kernel — RESET clears persistence + browser/nvr caches
-      //    via plugin subscribers. Without it, switching to a different
-      //    server reuses old NATS subscriptions for a few ms.
+      // RESET clears the caches, otherwise the next server reuses old NATS subscriptions for a few ms
       const connection = getConnection();
       connection.reset();
       log.debug('[switch]', 'kernel RESET');
@@ -351,10 +339,7 @@ export const useInstanceStore = defineStore('instances', () => {
       resetEventStore();
       clearEventDataCache();
 
-      // Drop every vue-query cache entry. Without this, the new instance's
-      // route components remount (via `switchKey`) but `useQuery` hands them
-      // back the previous instance's cached data (queryKey doesn't include
-      // the instance, and `staleTime: 10s` defers a refetch).
+      // query keys don't include the instance, the remounted views would get the old data
       queryClient.clear();
       log.debug('[switch]', 'vue-query cleared');
 
@@ -362,7 +347,6 @@ export const useInstanceStore = defineStore('instances', () => {
       instanceOverride.value = targetId === null ? null : target.url;
       log.debug('[switch]', `activeId=${targetId} instanceOverride=${instanceOverride.value ?? 'null'}`);
 
-      // 7. Cache the resolved tokens + user identity.
       if (tokens && freshUserData) {
         writeSlot(slot, {
           userData: freshUserData,
@@ -378,7 +362,6 @@ export const useInstanceStore = defineStore('instances', () => {
         };
       }
 
-      // 8. Seed the kernel and let the probe loop drive online.
       if (tokens) {
         const endpoint: Endpoint = { url: target.url, mode: 'direct-lan', priority: 0 };
         log.debug('[switch]', `seedAndRetry → ${endpoint.url}`);
@@ -387,7 +370,6 @@ export const useInstanceStore = defineStore('instances', () => {
           new Promise<void>((_, reject) => setTimeout(() => reject(new Error('switch_timeout')), SWITCH_TIMEOUT_MS)),
         ]);
       } else {
-        // No tokens — kernel goes offline + needs-auth, login form shows.
         log.warn('[switch]', 'no tokens — boot + route to login');
         connection.boot(targetId ?? 'home');
         authStore.user = null;
@@ -400,11 +382,7 @@ export const useInstanceStore = defineStore('instances', () => {
         return;
       }
 
-      // 9. Bump key so route components fully remount with new context.
-      // `fetchInstances` is NOT called here — App.vue's `[isLoggedIn, isOnline]`
-      // watcher fires it once the kernel reaches online with the new target.
-      // Calling here would race the probe (transport still has no target during
-      // `discovering`) and produce a spurious "no target" cancellation.
+      // no fetchInstances here, App.vue runs it once online, earlier it races the probe
       switchKey.value++;
       const landing = resolveLandingPage();
       log.debug('[switch]', `DONE gen=${generation} → ${landing}`);
@@ -476,7 +454,6 @@ export const useInstanceStore = defineStore('instances', () => {
     });
   }
 
-  // Re-prompts on a wrong code until the user cancels; null = cancelled.
   async function run2FALogin(id: string, name: string): Promise<UserData | null> {
     for (;;) {
       const code = await prompt2FACode(name);
@@ -497,7 +474,6 @@ export const useInstanceStore = defineStore('instances', () => {
     if (!userData) return false;
 
     toast.add({ severity: 'success', detail: t('instances.two_factor_completed', { name }), life: 3000 });
-    // The server cleared the instance's pending flag — refresh so the UI drops it.
     await fetchInstances().catch(() => {});
     return true;
   }

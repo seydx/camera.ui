@@ -412,9 +412,7 @@ async function initElectronUpdater() {
     if (response.isUpdateAvailable) {
       notificationsSocket.addLocalNotification(buildElectronUpdateNotification());
     }
-  } catch {
-    //
-  }
+  } catch {}
 }
 
 watch(

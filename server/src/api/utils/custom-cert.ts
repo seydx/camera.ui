@@ -138,8 +138,6 @@ export function logCustomCertificate(advertisedAddresses: string[]): void {
     logger.warn(`Custom certificate expires in ${days} day(s)`);
   }
 
-  // an app that pinned this name to the instance CA before the certificate
-  // appeared rejects it; newer apps fall back to the system store
   const internal = advertisedAddresses.filter((address) => loaded.certificate.checkHost(address));
   if (internal.length > 0) {
     const hint = 'apps older than the system-trust fallback cannot connect over that name';
@@ -167,8 +165,7 @@ function build(paths: CustomCertificatePaths, logger: LoggerService): LoadedCert
     return null;
   }
 
-  // the chain travels with the leaf, a separate file is appended for issuers
-  // that ship them apart
+  // some issuers ship the chain as a separate file
   const cert = chainPem ? `${certPem.trimEnd()}\n${chainPem.trimStart()}` : certPem;
 
   try {

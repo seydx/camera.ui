@@ -1,6 +1,5 @@
 import { SensorType } from '@camera.ui/sdk';
 
-// read-only state widget for detection sensors: detected + current labels
 export const DETECTION_INFO_TYPES: ReadonlySet<SensorType> = new Set([
   SensorType.Motion,
   SensorType.Object,
@@ -10,7 +9,6 @@ export const DETECTION_INFO_TYPES: ReadonlySet<SensorType> = new Set([
   SensorType.Classifier,
 ]);
 
-// binary state sensors without a dedicated widget: rendered by CuiBinarySensor
 export const BINARY_SENSOR_TYPES: ReadonlySet<SensorType> = new Set([
   SensorType.Gas,
   SensorType.CarbonMonoxide,
@@ -22,7 +20,6 @@ export const BINARY_SENSOR_TYPES: ReadonlySet<SensorType> = new Set([
   SensorType.Power,
 ]);
 
-// measurement sensors rendered by CuiMeasurementInfo, value suffixed with the unit
 export const MEASUREMENT_UNITS: ReadonlyMap<SensorType, string> = new Map([
   [SensorType.Illuminance, 'lx'],
   [SensorType.CarbonDioxide, 'ppm'],

@@ -66,7 +66,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-occupancy-sensor__i
   opacity: 0.6;
 }
 
-/* Header */
 .cui-occupancy-sensor__header {
   display: flex;
   align-items: center;
@@ -115,7 +114,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-occupancy-sensor__i
   color: var(--text-secondary-color);
 }
 
-/* Indicator dot */
 .cui-occupancy-sensor__indicator {
   width: 0.5rem;
   height: 0.5rem;
@@ -132,7 +130,6 @@ const indicatorClass = computed(() => (detected.value ? 'cui-occupancy-sensor__i
   background-color: var(--text-secondary-color);
 }
 
-/* Size variants */
 .cui-occupancy-sensor--small {
   padding: 0.5rem;
   gap: 0.375rem;

@@ -26,7 +26,7 @@ export class ConfigRoute {
 
     const config = dump(data, { lineWidth: -1, noRefs: true });
 
-    // global queue keeps all config writes sequential, no dedup
+    // not deduplicated, every config write goes out in order
     const response = await this.requestManager.globalQueuedRequest(() =>
       fetchInstance()('/config', {
         method: 'POST',
@@ -44,7 +44,7 @@ export class ConfigRoute {
 
     const config = dump(data, { lineWidth: -1, noRefs: true });
 
-    // global queue keeps all config writes sequential, no dedup
+    // not deduplicated, every config write goes out in order
     const response = await this.requestManager.globalQueuedRequest(() =>
       fetchInstance()('/config', {
         method: 'PATCH',

@@ -204,7 +204,7 @@ async function consumePendingIntent(): Promise<void> {
   try {
     await router.push(intent.deepLink);
   } catch {
-    // navigation guard rejection — ignore
+    // rejected by a navigation guard
   }
 }
 

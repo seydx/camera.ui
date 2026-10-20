@@ -135,7 +135,7 @@ export class AutomationsController {
       if (!blueprint) {
         return reply.code(404).send({ statusCode: 404, message: 'Automation not found' });
       }
-      // a blueprint is shareable, so secrets are always stripped regardless of role
+      // a blueprint gets shared, strip secrets for every role
       return reply.code(200).send(maskAutomation(blueprint));
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
@@ -159,7 +159,6 @@ export class AutomationsController {
       return reply.code(404).send({ statusCode: 404, message: 'Automation not found in store' });
     }
 
-    // the catalog stores the blueprint path as `blueprints/<file>`; only the basename is fetched
     const file = entry.blueprint.split('/').pop() ?? '';
     const blueprint = await getAutomationBlueprint(file);
     if (!blueprint) {

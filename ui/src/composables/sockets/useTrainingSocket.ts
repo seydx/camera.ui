@@ -91,6 +91,7 @@ function ensureChannel(): SocketChannel {
 
     ch.on<TrainingCandidatesChanged>('candidates-changed', (change) => queueChange(change ?? {}));
 
+    // every progress step follows a candidates-changed, which already refreshes the list
     ch.on<TrainingSubmitProgress>('submit-progress', (progress) => {
       state.progress = progress;
     });

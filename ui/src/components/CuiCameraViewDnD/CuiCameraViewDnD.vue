@@ -168,7 +168,6 @@ const droppedCameras = computed<DBCamera[]>(() => {
 
 function getWidgetPos(idx: number): GsLayoutItem {
   const card = cards.value[idx];
-  // Mobile: single column, use stored y-position or stack default
   if (smBreakpoint.value) {
     return { x: 0, y: card?.y ?? idx, w: 1, h: 1 };
   }
@@ -256,7 +255,7 @@ function initGrid(): void {
     resizingIdx.value = undefined;
   });
 
-  // Enable animation after first paint so items don't slide on initial load
+  // after the first paint, or the items slide in on load
   requestAnimationFrame(() => gsInstance?.setAnimation(true));
 }
 
@@ -331,7 +330,6 @@ function fitAspectRatios(): void {
   if (!info) return;
   const totalCols = info.cols;
 
-  // 1. Collect card info with cell aspect ratios
   type CardEntry = { idx: number; el: HTMLElement; cellRatio: number };
   const entries: CardEntry[] = [];
 
@@ -342,13 +340,11 @@ function fitAspectRatios(): void {
     const camera = cards.value[idx]?.lastDroppedCamera;
     const aspectStr = camera?.interfaceSettings?.aspectRatio || '16:9';
     const [rw, rh] = aspectStr.split(':').map(Number);
-    // w/h ratio in grid cells for this aspect ratio
     entries.push({ idx, el, cellRatio: (rw / rh) * (9 / 16) });
   }
 
   if (!entries.length) return;
 
-  // 2. Justified-rows fit that respects BOTH width and height.
   const totalRows = info.rows;
 
   type PackedRow = { row: CardEntry[]; ratioSum: number; rowH: number; filled: boolean };
@@ -391,14 +387,13 @@ function fitAspectRatios(): void {
   }
   const { rows } = pack(best);
 
-  // 3. Lay out
   const naturalSum = rows.reduce((a, r) => a + r.rowH, 0) || 1;
   const vScale = naturalSum > totalRows ? totalRows / naturalSum : 1;
   const rowHeights = rows.map((r) => r.rowH * vScale);
   const scaledSum = rowHeights.reduce((a, b) => a + b, 0);
 
   const positions = new Map<number, { x: number; y: number; w: number; h: number }>();
-  let prevY = Math.max(0, Math.round((totalRows - scaledSum) / 2)); // center the mosaic vertically
+  let prevY = Math.max(0, Math.round((totalRows - scaledSum) / 2));
   let yFloat = prevY;
   for (let r = 0; r < rows.length; r++) {
     yFloat += rowHeights[r];
@@ -407,7 +402,6 @@ function fitAspectRatios(): void {
     const { row, ratioSum, filled } = rows[r];
 
     if (filled) {
-      // Justified to the full width; last card takes the remaining cols.
       let x = 0;
       for (let j = 0; j < row.length; j++) {
         const w = j === row.length - 1 ? Math.max(1, totalCols - x) : Math.max(1, Math.round((row[j].cellRatio / ratioSum) * totalCols));
@@ -415,8 +409,6 @@ function fitAspectRatios(): void {
         x += w;
       }
     } else {
-      // Partial trailing row: cards at their natural width (aspect × height),
-      // centered horizontally rather than stretched across the whole width.
       const widths = row.map((c) => Math.max(1, Math.round(c.cellRatio * rowH)));
       const rowWidth = widths.reduce((a, b) => a + b, 0);
       let x = Math.max(0, Math.round((totalCols - rowWidth) / 2));
@@ -428,7 +420,6 @@ function fitAspectRatios(): void {
     prevY = yEnd;
   }
 
-  // 4. Apply all positions at once
   gsInstance.batchUpdate();
   for (const [idx, pos] of positions) {
     const entry = entries.find((e) => e.idx === idx);
@@ -447,7 +438,6 @@ watch(
   { immediate: false },
 );
 
-// Toggle static mode and margin when mode changes
 watch(currentMode, (mode) => {
   if (!gsInstance) return;
   const isRearrange = mode === 'rearrange';

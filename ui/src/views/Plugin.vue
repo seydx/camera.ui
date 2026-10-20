@@ -268,8 +268,6 @@ const showSettingsTab = computed(() => {
   return pluginConfigLoading.value;
 });
 
-// If true, this specific camera was created by the plugin and the toggle should be hidden
-// (can't disable plugin for cameras it created).
 function isCameraCreatedByPlugin(camera: PluginContractCamera, pluginName: string): boolean {
   return camera.pluginInfo?.name === pluginName;
 }
@@ -479,8 +477,6 @@ watch(
     }
 
     if (contract.value?.cameras.length) {
-      // Check camera.plugins to determine if plugin is enabled for camera
-      // (consistent with the camera drawer's "More" tab behavior).
       enabledCameras.value = contract.value.cameras.filter((camera) => camera.plugins?.some((p) => p.name === resolvedPluginName.value)).map((camera) => camera.name);
     }
 

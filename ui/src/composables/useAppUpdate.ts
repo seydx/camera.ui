@@ -57,8 +57,7 @@ async function runApply(): Promise<void> {
     log.error('apply failed', err);
     isApplying.value = false;
   }
-  // Don't reset isApplying on success — the page is about to reload, the
-  // spinner stays until the navigation kicks in.
+  // isApplying stays set on success, the page reloads
 }
 
 export function useAppUpdate() {
@@ -147,8 +146,7 @@ function setupServiceWorkerUpdates(): void {
     updateAvailable.value = true;
   });
 
-  // After a reload that we initiated, confirm to the user it landed. Wait for
-  // the toaster element to mount (it's behind the loading screen on first paint).
+  // confirm the reload once the toaster mounts, it sits behind the loading screen at first
   if (sessionStorage.getItem(SW_RELOADED_FLAG)) {
     sessionStorage.removeItem(SW_RELOADED_FLAG);
     const observer = new MutationObserver(() => {

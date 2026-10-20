@@ -181,9 +181,7 @@ export class ServerSensor implements SensorLike {
       if (this.writeProperty(property, value)) changed[property] = value;
     }
 
-    // recognized lists (face identities, plate texts, classifier labels) get
-    // their own rows the moment they grow — recognition trails the detected
-    // flip, so the flip entry alone would never carry the names
+    // recognition trails the detected flip, so grown name lists get rows of their own
     const listEntry: Record<string, unknown> = {};
     for (const property of ['identities', 'plates', 'labels']) {
       const value = changed[property];
@@ -232,7 +230,6 @@ export class ServerSensor implements SensorLike {
     return true;
   }
 
-  // fan out to every assigned camera that opted this sensor into its cascade
   private maybeReportCascadeTrigger(properties: Record<string, unknown>): void {
     const config = SENSOR_TYPE_CONFIG[this.type]?.cascadeTrigger;
     if (!config || !(config.property in properties)) return;

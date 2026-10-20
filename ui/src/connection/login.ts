@@ -40,11 +40,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginOutcome
     if (!boot.cloudSession) throw new Error('login(): cloud mode but cloudSession missing');
     return loginCloud(boot.connection, boot.api, boot.cloudSession, credentials);
   }
-  // If the user is currently active on a remote instance (cold-boot after
-  // CTRL+R with `activeId` set, or any time instanceOverride is live), the
-  // login form is authenticating against THAT instance — not the home origin
-  // that hosts the SPA bundle. Falling back to window.location.origin would
-  // mint home tokens and silently switch the user back to home.
+  // log in against the active instance, the home origin would silently switch the user back home
   const endpointUrl = instanceOverride.value ?? homeOrigin();
   return loginDirect(boot.connection, boot.api, endpointUrl, credentials);
 }
@@ -87,8 +83,7 @@ export async function logout(connection: Connection, api: AuthApi): Promise<void
     }
   }
 
-  // Read BEFORE reset() — dispatch is synchronous, afterwards the phase is
-  // always 'idle' and the instanceId would be lost.
+  // read before reset(), the phase is idle right after
   const phase = connection.phase.value;
   const instanceId = (phase.kind === 'idle' ? null : phase.instanceId) ?? 'default';
 
@@ -119,7 +114,7 @@ async function resolveCloudEndpoint(api: AuthApi, cloudSession: CloudSessionHold
       const winner = await raceFirst(candidates);
       resolvedUrl = winner.endpoint.url;
     } catch {
-      // All candidates unreachable — fall through to last-resort below.
+      // all candidates unreachable
     }
   }
 

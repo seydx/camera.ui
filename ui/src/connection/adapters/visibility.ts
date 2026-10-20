@@ -13,7 +13,7 @@ function createCapacitorVisibilitySource(): VisibilitySource {
   const target = new EventTarget() as VisibilitySource;
   (target as { visibilityState: DocumentVisibilityState }).visibilityState = 'visible';
 
-  void (async () => {
+  (async () => {
     const { App } = await import('@capacitor/app');
     App.addListener('appStateChange', ({ isActive }) => {
       (target as { visibilityState: DocumentVisibilityState }).visibilityState = isActive ? 'visible' : 'hidden';

@@ -130,7 +130,6 @@ function flushVolume() {
   margin-left: auto;
 }
 
-/* Volume */
 .cui-siren-control__volume {
   display: flex;
   flex-direction: column;

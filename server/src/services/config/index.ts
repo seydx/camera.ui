@@ -68,7 +68,6 @@ export class ConfigService {
       development: IS_DEV,
       docker: IS_DOCKER,
       electron: IS_ELECTRON,
-      // homeassistant: IS_HA,
     };
   }
 
@@ -394,7 +393,6 @@ export class ConfigService {
 
     const db = tryInject('dbs');
 
-    // Sync stream URL changes from go2rtc to DB, then push DB camera settings (ffmpeg URLs, preload, etc.) back to go2rtc
     await db?.updateCameras();
     db?.syncCamerasToGo2RtcConfig();
   }
@@ -784,7 +782,7 @@ export class ConfigService {
           return createSecrets();
         }
 
-        // Add missing 2FA secrets for existing installations
+        // older installations lack the 2FA secrets
         let needsUpdate = false;
         if (!secrets.jwt2faKey) {
           secrets.jwt2faKey = randomBytes(32).toString('hex');

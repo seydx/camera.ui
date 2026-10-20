@@ -81,9 +81,7 @@ import type { MemoryChange } from './memory.js';
 import type { AssistantAdapter } from './providers.js';
 import type { CoreTool, ToolImage } from './tools/shared.js';
 import type {
-  AssistantAccess,
   AssistantAskRequest,
-  AssistantAskResult,
   AssistantHydration,
   AssistantInfo,
   AssistantModelsResult,
@@ -126,15 +124,14 @@ const CACHED_TOOLS = [
 ];
 
 const USAGE_EVENT = 'assistant.usage';
-// what a model without a declared window is assumed to hold on top of the history budget
+// for a model without a declared window
 const ASSUMED_HEADROOM_TOKENS = 16_384;
 const MIN_CONTEXT_TOKENS = 2_000;
-// a single tool result never takes more than this share of the history budget
+// a tool result gets at most a third of the history budget
 const TOOL_RESULT_SHARE = 3;
 const MIN_TOOL_RESULT_TOKENS = 600;
 const SKILL_TOOLS_SHARE = 0.25;
 const SKILL_TOOLS_TOKENS = 1_200;
-// discovery costs a round of its own, so a plan that hides tools gets its rounds back
 const DISCOVERY_ITERATIONS = 4;
 const MODEL_REFRESH_MS = 5_000;
 const ASK_TIMEOUT_MS = 45_000;
@@ -143,7 +140,7 @@ const ASK_CONCURRENCY = 4;
 const EMPTY_TURN_LOG = 'Assistant: the model ended a turn without text or tool call, asking once more';
 const EXTRACT_TIMEOUT_MS = 30_000;
 const EXTRACT_MAX_CHARS = 1500;
-// a small model stores the questions themselves as facts and they crowd its window, only remembering on request stays
+// smaller models store the questions themselves as facts and crowd their window
 const EXTRACT_MIN_CONTEXT_TOKENS = 16_000;
 
 // prettier-ignore
@@ -282,7 +279,6 @@ export class AssistantManager {
     };
   }
 
-  // the settings page asks for this on every open, the plugins answer from their own state
   public async refreshModelProviders(): Promise<void> {
     if (Date.now() - this.modelProvidersCheckedAt < MODEL_REFRESH_MS) return;
     this.modelProvidersCheckedAt = Date.now();
@@ -627,10 +623,10 @@ export class AssistantManager {
     const stats = newStats();
     const picks = !resume.length && this.routesTools(entry) ? await this.route(model, entry, params.messages, available, plan, stats) : null;
     const routed = picks !== null;
-    // a routed run has no catalog, so what follows a search has to be there from the start
+    // a routed run has no catalog, what follows a search must be there from the start
     if (routed) promote(plan, available, [...ROUTED_TOOLS, ...picks]);
     const planned = applyPlan(available, plan);
-    // a routed model gets the few tools that matter and no catalog: it calls what it sees and never opened one
+    // a routed model never opens the catalog, it only calls what it sees
     const offered = routed ? planned.filter((tool) => !tool.lazy) : planned;
     const hiddenTools = planned.filter((tool) => tool.lazy).map((tool) => ({ ...tool, lazy: false }));
     // a resumed run executes the interrupted calls before any discovery, their tools must be listed
@@ -898,7 +894,7 @@ export class AssistantManager {
         return { providerMessages: withNextSteps(providerMessages, offered), tools: leanTools([...config.tools, ...named] as CoreTool[]) };
       },
       onBeforeToolCall: (ctx, hook) => {
-        // small models repeat the same call many times in one answer, every copy of the result would fill the window
+        // small models repeat the same call in one answer, each copy of the result would fill the window
         const key = `${ctx.iteration}:${hook.toolName}:${JSON.stringify(hook.args ?? {})}`;
         if (calls.has(key)) return { type: 'skip', result: DUPLICATE_CALL_RESULT };
         calls.add(key);
@@ -998,7 +994,7 @@ export class AssistantManager {
         } else if (chunk.type === EventType.CUSTOM && chunk.name === ASSISTANT_CARD_EVENT) carded = true;
 
         if (chunk.type === EventType.RUN_FINISHED && finishReasonOf(chunk) !== 'tool_calls') {
-          // many models answer a recap with a text list although the procedure asks for the card, the episodes are there to build it
+          // many models answer a recap with a text list instead of the card, so it is built here
           if (summary && !carded) {
             const event: StreamChunk = {
               type: EventType.CUSTOM,
@@ -1149,7 +1145,6 @@ export class AssistantManager {
     return entry.contextTokens ?? settings.contextTokens + ASSUMED_HEADROOM_TOKENS;
   }
 
-  // a plugin is asked for its models once when it starts, an answer from a bad moment must not outlive the next question
   private async ensureModel(entry: Pick<DBAssistantModel, 'provider' | 'model'> | undefined): Promise<void> {
     if (!entry || !pluginOfProvider(entry.provider) || this.modelSpec(entry.provider, entry.model)) return;
     await this.refreshModelProviders();

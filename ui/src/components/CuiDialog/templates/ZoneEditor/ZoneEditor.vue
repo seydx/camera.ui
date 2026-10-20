@@ -694,7 +694,6 @@ const polygons = computed(() => polygonsFor(activeTab.value)) as ComputedRef<Edi
 
 const tabHasLabels = computed(() => activeTab.value === 'object' || activeTab.value === 'alert');
 
-// an alert zone can only fire for types the object zones let through
 const undetectedAlertLabels = computed(() => {
   if (activeTab.value !== 'alert' || selectedZone.value < 0) return [];
 
@@ -896,7 +895,7 @@ function updateCoordinatesFromZones() {
   coords.value = polygons.value.flatMap((zone, zoneIndex) => {
     return zone.points.map((point: Point, pointIndex: number) => {
       return {
-        // Index-based id keeps draggies stable when the user renames a zone.
+        // index-based, stays stable when a zone is renamed
         _id: `z${zoneIndex}-p${pointIndex}`,
         zoneIndex,
         pointIndex,
@@ -930,7 +929,7 @@ function startDragPolygon(e: MouseEvent | TouchEvent, zoneIndex: number) {
   const cw = contentWidth.value;
   const ch = contentHeight.value;
 
-  // Subtract 10px padding to get position relative to content area
+  // 10px content padding
   dragStart.x = ((x - rect.left - 10) / cw) * 100;
   dragStart.y = ((y - rect.top - 10) / ch) * 100;
 }
@@ -1389,36 +1388,29 @@ function lineSvgEditor(line: DetectionLine) {
   const ch = contentHeight.value;
   const pad = 10;
 
-  // Convert handle points to pixel space first
   const h1px = (line.points[0][0] / 100) * cw + pad;
   const h1py = (line.points[0][1] / 100) * ch + pad;
   const h2px = (line.points[1][0] / 100) * cw + pad;
   const h2py = (line.points[1][1] / 100) * ch + pad;
 
-  // Midpoint in pixel space
   const mx = (h1px + h2px) / 2;
   const my = (h1py + h2py) / 2;
 
-  // Handle vector in pixel space
   const hdx = h2px - h1px;
   const hdy = h2py - h1py;
   const hLen = Math.sqrt(hdx * hdx + hdy * hdy) || 1;
 
-  // Perpendicular in pixel space (90° rotation) — same length as handle segment
   const perpX = -hdy;
   const perpY = hdx;
 
-  // Crossing line endpoints
   const rawAx = mx - perpX / 2;
   const rawAy = my - perpY / 2;
   const rawBx = mx + perpX / 2;
   const rawBy = my + perpY / 2;
 
-  // Unit vector along crossing line (A→B) in pixel space
   const ux = perpX / hLen;
   const uy = perpY / hLen;
 
-  // Visible area bounds
   const minX = pad;
   const maxX = pad + cw;
   const minY = pad;
@@ -1426,7 +1418,6 @@ function lineSvgEditor(line: DetectionLine) {
   const labelHalf = 9; // half of 18px rect
   const gap = 6; // gap between arrow tip and label
 
-  // 1. Clamp labels first (they define the outermost positions)
   const clamp = (x: number, y: number) => ({
     x: Math.max(minX + labelHalf, Math.min(maxX - labelHalf, x)),
     y: Math.max(minY + labelHalf, Math.min(maxY - labelHalf, y)),
@@ -1435,7 +1426,6 @@ function lineSvgEditor(line: DetectionLine) {
   const labelA = clamp(rawAx - ux * outset, rawAy - uy * outset);
   const labelB = clamp(rawBx + ux * outset, rawBy + uy * outset);
 
-  // 2. Derive crossing line endpoints from labels (inward by gap + label half)
   const lineInset = labelHalf + gap;
   const ax = labelA.x + ux * lineInset;
   const ay = labelA.y + uy * lineInset;

@@ -40,7 +40,6 @@ export class FreeBSDInstaller extends BasePlatform {
 
     await this.stop();
 
-    // try and disable the service
     await this.disableService();
 
     try {
@@ -179,7 +178,6 @@ export class FreeBSDInstaller extends BasePlatform {
 
   private async checkUser(): Promise<void> {
     try {
-      // check if user exists
       execSync(`id ${this.cli.asUser} 2> /dev/null`);
     } catch {
       execSync(`pw useradd -q -n ${this.cli.asUser} -m -s /usr/sbin/nologin 2> /dev/null`);

@@ -30,8 +30,7 @@ function ensureChannel(): SocketChannel {
   scope = effectScope(true);
   scope.run(() => {
     const ch = useSocket('/notifications');
-    // Assign before onReady: onReady fires synchronously when the socket is
-    // already connected, and fetchNotifications() reads the module-level `channel`.
+    // assign before onReady: it fires synchronously on a connected socket, and fetchNotifications() reads `channel`
     channel = ch;
 
     ch.on<StoredNotification>('notification', (n) => {
@@ -71,9 +70,9 @@ function takeServerList(list: StoredNotification[]): void {
   applyBadge();
 }
 
-// the iOS extension counts pushes up on its own, so every server list resets the badge even when the unread count did not change
 function applyBadge(): void {
   if (!badgeReady) return;
+  // the iOS extension counts pushes up itself, so the badge is set even when the count did not change
   const count = state.notifications.filter((n) => n.seenAt == null).length;
   setNativeBadge(count);
   setFaviconBadge(count > 0);
@@ -126,7 +125,7 @@ async function fetchNotifications(): Promise<void> {
   try {
     takeServerList(await channel.request<StoredNotification[]>('get-notifications'));
   } catch {
-    // server unreachable — silent; reconnect path will re-fetch
+    // unreachable, the reconnect fetches again
   }
 }
 
@@ -136,7 +135,7 @@ export function useNotificationsSocket() {
   }
 
   function disconnect(): void {
-    // Channel teardown is global via resetNotificationsSocket().
+    // teardown runs in resetNotificationsSocket()
   }
 
   function removeNotification(notification: StoredNotification): void {

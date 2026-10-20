@@ -19,7 +19,7 @@ function markUnlocked(): void {
   try {
     sessionStorage.setItem(UNLOCKED_FLAG, '1');
   } catch {
-    // sessionStorage unavailable — degrade gracefully.
+    // sessionStorage unavailable
   }
 }
 
@@ -85,8 +85,7 @@ async function initOnce(): Promise<void> {
 
   _isAvailable.value = await checkAvailability();
 
-  // Edge: pref says lock-on but biometric is no longer configured (user
-  // disabled Face ID after enabling lock). Don't trap them in a lock loop.
+  // biometrics gone since the lock was enabled, don't trap the user in a lock loop
   if (!_isAvailable.value) return;
 
   const { App } = await import('@capacitor/app');
@@ -103,9 +102,7 @@ async function initOnce(): Promise<void> {
       return;
     }
 
-    // Resumed: re-lock if backgrounded long enough. Clearing the unlocked
-    // flag ensures a subsequent bundle-switch (e.g. via "Switch Server")
-    // sees the lock state too.
+    // clear the unlocked flag too, so a later bundle switch sees the lock
     if (_bgTimestamp && Date.now() - _bgTimestamp > LOCK_AFTER_BG_MS) {
       _isLocked.value = true;
       clearUnlocked();

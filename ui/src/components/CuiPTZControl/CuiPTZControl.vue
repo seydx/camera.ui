@@ -81,10 +81,10 @@ const { cameraDevice, size } = toRefs(props);
 const log = useLogger();
 const { sensor: ptzSensor, hasZoom, hasPanTilt } = useCameraPtz(cameraDevice);
 
-const commandDebounceTime = 100; // ms - adjust based on expected network latency
-const significantChangeThreshold = 0.05; // Minimum change required to send a new command
-const panTiltSpeedFactor = 0.05; // How quickly pan/tilt accumulates per frame
-const zoomSpeedFactor = 0.03; // How quickly zoom accumulates per frame
+const commandDebounceTime = 100; // ms
+const significantChangeThreshold = 0.05;
+const panTiltSpeedFactor = 0.05;
+const zoomSpeedFactor = 0.03;
 
 const panTiltRef = useTemplateRef('panTiltRef');
 const zoomRef = useTemplateRef('zoomRef');
@@ -167,21 +167,18 @@ async function executeStop(): Promise<void> {
 
 function continuousMovementLoop(): void {
   const now = Date.now();
-  const deltaTime = (now - lastUpdateTime.value) / 1000; // Convert to seconds
+  const deltaTime = (now - lastUpdateTime.value) / 1000; // seconds
   lastUpdateTime.value = now;
 
   let needsUpdate = false;
 
-  // Only update if there's an active control and we have a direction
   if (
     isPanTiltActive.value &&
     (Math.abs(currentPanDirection.value) >= significantChangeThreshold || Math.abs(currentTiltDirection.value) >= significantChangeThreshold)
   ) {
-    // Apply pan/tilt increments based on current direction and time elapsed
     const panIncrement = currentPanDirection.value * panTiltSpeedFactor * deltaTime * 5;
     const tiltIncrement = currentTiltDirection.value * panTiltSpeedFactor * deltaTime * 5;
 
-    // Update accumulated values, keeping them within -1 to 1 range
     accumulatedPan.value = Math.max(-1, Math.min(1, accumulatedPan.value + panIncrement));
     accumulatedTilt.value = Math.max(-1, Math.min(1, accumulatedTilt.value + tiltIncrement));
 
@@ -213,7 +210,6 @@ function continuousMovementLoop(): void {
     }
   }
 
-  // Send periodic PTZ commands if direction hasn't changed but we're still moving
   if (needsUpdate && isControlActive.value) {
     const nowInner = Date.now();
     if (nowInner - lastCommandTime.value >= commandDebounceTime * 2) {
@@ -224,17 +220,15 @@ function continuousMovementLoop(): void {
         const panValue = roundToTwoDecimals(currentPanDirection.value);
         const tiltValue = roundToTwoDecimals(currentTiltDirection.value);
 
-        // For cameras that can only move on one axis at a time
         if (activeAxis.value === 'pan') {
           executeContinuousMove({ panSpeed: panValue, tiltSpeed: 0, zoomSpeed: 0 });
         } else if (activeAxis.value === 'tilt') {
           executeContinuousMove({ panSpeed: 0, tiltSpeed: tiltValue, zoomSpeed: 0 });
         } else {
-          // Diagonal movement
           executeContinuousMove({ panSpeed: panValue, tiltSpeed: tiltValue, zoomSpeed: 0 });
         }
       } else if (isZoomActive.value && Math.abs(currentZoomDirection.value) >= significantChangeThreshold) {
-        // Zoom direction value for speed control (still uses 0-1 range for ONVIF)
+        // ONVIF zoom speed stays in 0-1
         const zoomDirection = normalizeZoomValue(Math.abs(currentZoomDirection.value));
         const isZoomingIn = currentZoomDirection.value > 0;
         executeContinuousMove({ panSpeed: 0, tiltSpeed: 0, zoomSpeed: isZoomingIn ? zoomDirection : -zoomDirection });
@@ -263,7 +257,7 @@ function stopContinuousMovement(): void {
 }
 
 async function stopMovement(): Promise<void> {
-  // Small delay to prevent immediate stop when user is just trying to adjust
+  // 50 ms grace, a quick adjust should not stop the move
   await new Promise((resolve) => setTimeout(resolve, 50));
 
   if (
@@ -301,17 +295,15 @@ async function updateZoomPosition(clientY: number): Promise<void> {
 
   zoomUIPosition.value = offset;
 
-  // Map offset to zoom direction/intensity (-1 to 1). Negative because pulling down should zoom out.
+  // negative: pulling down zooms out
   const zoomDirection = -offset / maxOffset;
   currentZoomDirection.value = zoomDirection;
 
   const roundedZoomDirection = roundToTwoDecimals(zoomDirection);
 
-  // Only send command if direction is significant AND different from last sent value
   if (Math.abs(roundedZoomDirection) >= significantChangeThreshold && Math.abs(roundedZoomDirection - lastSentZoomSpeed.value) >= significantChangeThreshold) {
     lastSentZoomSpeed.value = roundedZoomDirection;
 
-    // Determine direction (positive for in, negative for out) but keep value in 0-1 range
     const isZoomingIn = roundedZoomDirection > 0;
     const zoomSpeed = normalizeZoomValue(Math.abs(roundedZoomDirection));
 
@@ -327,7 +319,6 @@ function activateZoom(e: MouseEvent | TouchEvent): void {
   isZoomActive.value = true;
   lastUpdateTime.value = Date.now();
 
-  // Sync the accumulated zoom with the current zoom value before starting movement
   accumulatedZoom.value = zoomValue.value;
 
   startContinuousMovement();
@@ -363,10 +354,10 @@ async function updatePanTiltPosition(clientX: number, clientY: number): Promise<
   panTiltUIPosition.y = uiY;
 
   const panDirection = uiX / radius;
-  // Negative because y-axis is inverted in screen coordinates
+  // screen y grows downwards
   const tiltDirection = -uiY / radius;
 
-  // Determine dominant axis for cameras that can only move on one axis at a time
+  // single-axis cameras move along the dominant axis only
   const panAbs = Math.abs(panDirection);
   const tiltAbs = Math.abs(tiltDirection);
 
@@ -386,7 +377,6 @@ async function updatePanTiltPosition(clientX: number, clientY: number): Promise<
     currentTiltDirection.value = 0;
   }
 
-  // Remember last significant direction for release behavior
   if (panAbs > significantChangeThreshold || tiltAbs > significantChangeThreshold) {
     lastPanTiltValues.x = currentPanDirection.value;
     lastPanTiltValues.y = currentTiltDirection.value;

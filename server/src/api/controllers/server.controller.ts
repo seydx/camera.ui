@@ -174,8 +174,6 @@ export class ServerController {
         await this.configService.updateGo2RtcWebRtcFilter(serverInfo.serverAddresses, oldServer.serverAddresses, true);
       }
 
-      // the host certificate has to cover every address a client may dial,
-      // so a changed list re-issues it for the next start
       if (serverAddressesChanged || oldServer.localUrl !== serverInfo.localUrl) {
         this.configService.refreshHostCertificate();
       }
@@ -234,7 +232,6 @@ export class ServerController {
   public async natsInfo(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const nats: NatsInfo = {
-        // servers: this.proxy.server.endpoints.filter((endpoint) => endpoint.startsWith('nats://')),
         auth: this.proxy.auth.server,
       };
 

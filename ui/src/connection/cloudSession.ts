@@ -10,8 +10,6 @@ export function createCloudSession(initial?: CloudSession | null): CloudSessionH
   function patch(partial: Partial<CloudSession>): void {
     const current = state.value;
     if (!current) {
-      // patch without an existing session is meaningless — proxyUrl + proxyToken
-      // are required; caller should use set() for the first write.
       return;
     }
     state.value = { ...current, ...partial };

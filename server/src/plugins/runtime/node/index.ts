@@ -55,8 +55,7 @@ export class NodePluginRuntime extends BasePluginRuntime {
   private createNodePath(): string {
     const paths: string[] = [];
 
-    // Resolve @camera.ui/sdk to locate the server's node_modules regardless of
-    // install method (npm, Electron, service, etc.).
+    // the sdk path finds the server's node_modules for every install method
     try {
       const typesPath = require.resolve('@camera.ui/sdk');
       const nodeModulesMatch = /^(.+[/\\]node_modules)[/\\]@camera\.ui/.exec(typesPath);
@@ -64,7 +63,6 @@ export class NodePluginRuntime extends BasePluginRuntime {
         paths.push(nodeModulesMatch[1]);
       }
     } catch {
-      // Fallback: use relative path from __dirname (less reliable)
       const serverRoot = resolve(__dirname, '..', '..', '..', '..');
       paths.push(join(serverRoot, 'node_modules'));
     }

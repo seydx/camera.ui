@@ -193,12 +193,7 @@ export function installDependencies(packageDir: string, allowScripts: boolean, o
       bundledNpmCli = undefined;
     }
 
-    // Explicit either way so behavior is deterministic across npm versions:
-    // older npm runs dependency scripts by default, npm v12+ blocks them by
-    // default. A plugin that declares its own allowScripts policy gets npm's
-    // enforcement (no flag); otherwise the dangerously flag keeps the
-    // pre-v12 behavior the user consented to (--allow-scripts itself is
-    // rejected in project-scoped installs).
+    // explicit, npm 12 blocks dependency scripts by default and rejects --allow-scripts in project installs
     const scriptsFlag = allowScripts ? (declaresAllowScripts(packageDir) ? undefined : '--dangerously-allow-all-scripts') : '--ignore-scripts';
 
     const npm = bundledNpmCli ? { command: process.execPath, args: [bundledNpmCli] } : npmCommand();

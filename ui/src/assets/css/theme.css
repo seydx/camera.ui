@@ -8,10 +8,8 @@
   --twsa-safe-area-inset-bottom: var(--safe-area-inset-bottom);
   --twsa-safe-area-inset-left: var(--safe-area-inset-left);
 
-  /* Base text colors */
   --text-primary-color: var(--p-primary-color);
 
-  /* Surface colors */
   --surface-0: var(--p-surface-0);
   --surface-50: var(--p-surface-50);
   --surface-100: var(--p-surface-100);
@@ -25,7 +23,6 @@
   --surface-900: var(--p-surface-900);
   --surface-950: var(--p-surface-950);
 
-  /* Primary color variants */
   --primary-50: var(--p-primary-50);
   --primary-100: var(--p-primary-100);
   --primary-200: var(--p-primary-200);
@@ -38,7 +35,6 @@
   --primary-900: var(--p-primary-900);
   --primary-950: var(--p-primary-950);
 
-  /* Secondary color variants (using slate) */
   --secondary-50: var(--p-slate-50);
   --secondary-100: var(--p-slate-100);
   --secondary-200: var(--p-slate-200);
@@ -51,13 +47,11 @@
   --secondary-900: var(--p-slate-900);
   --secondary-950: var(--p-slate-950);
 
-  /* Action colors */
   --success-color: var(--p-green-500);
   --info-color: var(--p-blue-500);
   --warning-color: var(--p-amber-500);
   --danger-color: var(--p-red-500);
 
-  /* Action color variants */
   --success-light: var(--p-green-100);
   --info-light: var(--p-blue-100);
   --warning-light: var(--p-amber-100);
@@ -67,7 +61,6 @@
   --warning-dark: var(--p-amber-700);
   --danger-dark: var(--p-red-700);
 
-  /* Border radius */
   --border-radius-none: var(--p-border-radius-none);
   --border-radius-xs: var(--p-border-radius-xs);
   --border-radius-sm: var(--p-border-radius-sm);
@@ -76,10 +69,8 @@
   --border-radius-xl: var(--p-border-radius-xl);
   --border-base-color: #232323;
 
-  /* Transition */
   --transition-duration: var(--p-transition-duration);
 
-  /* PrimeVue Overrides */
   --p-iconfield-icon-color: var(--p-form-field-icon-color);
   --p-inputtext-background: var(--p-form-field-background);
   --p-inputtext-disabled-background: var(--p-form-field-disabled-background);
@@ -268,10 +259,8 @@
   --p-datatable-border-color: var(--p-content-border-color);
 }
 
-/* light */
 [data-mode='light'],
 .ligh-mode {
-  /* Layout backgrounds */
   --divider-color: var(--p-surface-200);
   --border-color: var(--p-surface-200);
   --border-color-inner: var(--p-surface-300);
@@ -301,15 +290,12 @@
   --subnavbar-gradient: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.03) 100%);
   --mask-background: rgba(0, 0, 0, 0.1);
 
-  /* Progress track */
   --progress-track-background: var(--p-surface-200);
 
-  /* Chip backgrounds */
   --chip-background: var(--p-surface-100);
   --chip-background-active: var(--p-surface-300);
   --chip-background-hover: var(--p-surface-200);
 
-  /* Text colors */
   --text-color: var(--p-surface-700);
   --text-color-faded: var(--p-surface-500);
   --text-muted-color: var(--p-surface-500);
@@ -324,7 +310,6 @@
   --text-warning-color: var(--p-amber-600);
   --text-danger-color: var(--p-red-600);
 
-  /* Button backgrounds */
   --button-primary-background: var(--p-primary-500);
   --button-primary-hover-background: var(--p-primary-600);
   --button-primary-active-background: var(--p-primary-700);
@@ -337,16 +322,13 @@
   --button-contrast-hover-background: var(--p-slate-100);
   --button-contrast-active-background: var(--p-slate-200);
 
-  /* Table background */
   --table-row-odd-background: var(--p-surface-50);
 
-  /* Shadow */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 
-  /* PrimeVue overrides */
   --p-button-danger-background: var(--p-red-600);
   --p-button-danger-border-color: var(--p-red-600);
   --p-button-danger-hover-background: var(--p-red-700);
@@ -361,7 +343,6 @@
   --p-button-success-active-background: var(--p-green-800);
   --p-button-success-active-border-color: var(--p-green-800);
 
-  /* Timeline */
   --timeline-overlay-rgb: 255, 255, 255;
   --timeline-scale-background: var(--p-surface-400);
   --timeline-track-background: #f8f8f8;
@@ -372,7 +353,6 @@
   --timeline-event-thumb-border: var(--p-surface-200);
   --timeline-event-thumb-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1);
 
-  /* Timeline System Events */
   --timeline-sys-info-bg: rgba(59, 130, 246, 0.1);
   --timeline-sys-info-border: rgb(59, 130, 246);
   --timeline-sys-success-bg: rgba(34, 197, 94, 0.1);
@@ -384,7 +364,6 @@
   --timeline-sys-degraded-bg: rgba(139, 92, 246, 0.1);
   --timeline-sys-degraded-border: rgb(139, 92, 246);
 
-  /* TopNavbar Item */
   --cui-topnavbar-item-bg: transparent;
   --cui-topnavbar-item-color: #64748b;
   --cui-topnavbar-item-hover-bg: #eff2f6;
@@ -392,10 +371,8 @@
   --cui-topnavbar-item-active-color: #334155;
 }
 
-/* dark */
 [data-mode='dark'],
 .dark-mode {
-  /* Layout backgrounds */
   --divider-color: #282828;
   --border-color: var(--p-surface-800);
   --border-color-inner: var(--p-surface-700);
@@ -425,15 +402,12 @@
   --editor-background: #121212;
   --mask-background: rgba(0, 0, 0, 0.5);
 
-  /* Progress track */
   --progress-track-background: var(--p-surface-800);
 
-  /* Chip backgrounds */
   --chip-background: var(--p-surface-700);
   --chip-background-active: var(--p-surface-500);
   --chip-background-hover: var(--p-surface-600);
 
-  /* Text colors */
   --text-color: var(--p-surface-0);
   --text-color-faded: var(--p-surface-200);
   --text-muted-color: var(--p-surface-400);
@@ -448,7 +422,6 @@
   --text-warning-color: var(--p-amber-400);
   --text-danger-color: var(--p-red-400);
 
-  /* Button backgrounds */
   --button-primary-background: var(--p-primary-500);
   --button-primary-hover-background: var(--p-primary-600);
   --button-primary-active-background: var(--p-primary-700);
@@ -461,16 +434,13 @@
   --button-contrast-hover-background: var(--p-surface-800);
   --button-contrast-active-background: var(--p-surface-700);
 
-  /* Table background */
   --table-row-odd-background: var(--p-surface-850);
 
-  /* Shadow - adjusted for dark mode */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
 
-  /* PrimeVue overrides */
   --p-button-danger-background: var(--p-red-500);
   --p-button-danger-border-color: var(--p-red-500);
   --p-button-danger-hover-background: var(--p-red-400);
@@ -485,7 +455,6 @@
   --p-button-success-active-background: var(--p-green-300);
   --p-button-success-active-border-color: var(--p-green-300);
 
-  /* Timeline */
   --timeline-overlay-rgb: 20, 20, 20;
   --timeline-scale-background: var(--p-surface-500);
   --timeline-track-background: #161616;
@@ -496,7 +465,6 @@
   --timeline-event-thumb-border: var(--p-surface-700);
   --timeline-event-thumb-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.4);
 
-  /* Timeline System Events */
   --timeline-sys-info-bg: rgba(59, 130, 246, 0.1);
   --timeline-sys-info-border: rgb(59, 130, 246);
   --timeline-sys-success-bg: rgba(34, 197, 94, 0.1);
@@ -508,7 +476,6 @@
   --timeline-sys-degraded-bg: rgba(139, 92, 246, 0.1);
   --timeline-sys-degraded-border: rgb(139, 92, 246);
 
-  /* TopNavbar Item */
   --cui-topnavbar-item-bg: transparent;
   --cui-topnavbar-item-color: #595959;
   --cui-topnavbar-item-hover-bg: rgba(255, 255, 255, 0.05);

@@ -216,8 +216,7 @@ export class Server {
     try {
       await this.app.listen({ host, port });
     } catch (error) {
-      // Only the default dual-stack bind (::) auto-falls back to IPv4 when IPv6
-      // is disabled (EAFNOSUPPORT); an explicitly configured host is respected.
+      // only the default dual-stack bind falls back to IPv4, a configured host is respected
       const code = (error as NodeJS.ErrnoException).code;
       if (host !== '::' || (code !== 'EAFNOSUPPORT' && code !== 'EADDRNOTAVAIL')) {
         throw error;
@@ -655,7 +654,6 @@ export class Server {
           styleSrcElem: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
           scriptSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'data:'],
           childSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'blob:', 'https:'],
-          // fontSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:'],
           frameSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'"],
           connectSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'ws:', 'wss:', 'https:', 'blob:', 'data:', 'file:', 'filesystem:', 'mediastream:'],
           imgSrc: ["'unsafe-eval'", "'unsafe-inline'", "'self'", 'data:', 'blob:', 'https:'],
@@ -672,14 +670,6 @@ export class Server {
       },
     };
   }
-
-  // private get rateLimitOptions(): RateLimitPluginOptions {
-  //   return {
-  //     max: 300,
-  //     timeWindow: 30 * 1000,
-  //     hook: 'preHandler',
-  //   };
-  // }
 
   private get serverOptions(): FastifyHttp2SecureOptions<Http2SecureServer, FastifyBaseLogger> {
     return {

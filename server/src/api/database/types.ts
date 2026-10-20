@@ -51,11 +51,11 @@ export interface DBBackupSchedulerSettings {
   interval: 'daily' | 'weekly' | 'monthly';
   // "HH:mm" local time
   time: string;
-  // 0 (Sunday) – 6, used when interval is 'weekly'
+  // 0 (Sunday) to 6
   weekday: number;
-  // 1–28, used when interval is 'monthly'
+  // 1 to 28
   dayOfMonth: number;
-  // keep the newest N archives in the destination
+  // archive count
   retention: number;
   // empty = <storage>/backups
   destinationPath: string;
@@ -605,9 +605,7 @@ export interface DBInstance {
   favorite?: boolean;
   addedAt: number;
   addedBy: string;
-  // Set (timestamp) when the remote account requires 2FA and the challenge
-  // hasn't been completed yet — the UI surfaces this state and offers to
-  // finish it. Cleared by any successfully cached session.
+  // timestamp of a 2FA challenge not completed yet
   pending2fa?: number;
 }
 
@@ -754,8 +752,7 @@ export interface DBWorkerConnection {
 export interface DBNotificationSettings {
   readonly _id: string;
   enabled: boolean;
-  // automation-driven mute for this user, independent of `enabled` (the user's
-  // own toggle) — set by action-notification-control, cleared when it re-enables
+  // automation mute, separate from the user's own enabled toggle
   suppressed?: boolean;
   sources?: Record<string, boolean>;
   systemTypes?: Record<string, boolean>;

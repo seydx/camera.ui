@@ -109,14 +109,7 @@ export async function logoutFn(): Promise<LogoutResponse> {
 }
 
 export async function refreshFn({ refresh_token, signal }: { refresh_token: string; signal?: AbortSignal }): Promise<JwtTokenResponse> {
-  // Explicit 10s timeout + abort signal — without it, a refresh launched
-  // against a stale endpoint (network mode changed, Cloudflare URL rotated,
-  // server restarted) hangs for ~60-75s on iOS WebKit's TCP timeout. While
-  // it hangs the session-store's `_refreshInFlight` lock blocks ALL retry
-  // attempts, including axios's own 401-Token-expired retry path. The
-  // session-store abort is the fast recovery path (orchestrator triggers
-  // it on endpoint-swap, ~50ms); the timeout is the safety net (10s) for
-  // cases where no swap happens to clear the lock.
+  // without the timeout a refresh on a stale endpoint hangs 60-75 s in WebKit and holds the refresh lock
   const response: AxiosResponse<JwtTokenResponse> = await api.post('/auth/refresh', { refresh_token: refresh_token }, { timeout: 10_000, signal });
 
   return response.data;
@@ -183,9 +176,8 @@ export class AuthQuery {
   public loginQuery() {
     return useMutation({
       mutationFn: loginFn,
-      // Override global onError to prevent logout/reload on failed login
       onError: () => {
-        // Error handling is done in Login.vue
+        // the global handler would log out, Login.vue shows the error
       },
     });
   }
@@ -252,9 +244,8 @@ export class AuthQuery {
   public verify2FAQuery() {
     return useMutation({
       mutationFn: verify2FAFn,
-      // Override global onError to prevent logout on 401 during 2FA verification
       onError: () => {
-        // Error handling is done in Login.vue
+        // the global handler would log out on a 2FA 401, Login.vue shows the error
       },
     });
   }

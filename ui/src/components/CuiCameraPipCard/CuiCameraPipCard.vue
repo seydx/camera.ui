@@ -113,9 +113,6 @@ const cameraName = computed(() => {
 
 const { camera: cameraDevice } = useCameraById(cameraName);
 
-// Use sourceRole directly (not cardARef.activeResolution) to avoid dependency on
-// Card A's reactive state. cardARef.activeResolution changes during PiP swap when
-// nvrController changes, causing hasPipSource to flicker → follower stop/restart → visual revert.
 const mainSource = computed(() => {
   const mainRole = sourceRole.value ?? 'high-resolution';
   return cameraDevice.value?.camera.value?.sources.find((s) => s.role === mainRole);
@@ -127,18 +124,12 @@ const { camera: pipCameraDevice } = useCameraById(() => pipCameraRef.value ?? ''
 const pipCameraId = computed(() => (pipCameraRef.value ? pipCameraDevice.value?.id : undefined));
 const pipCameraName = computed(() => (pipCameraRef.value ? pipCameraDevice.value?.camera.value?.name : undefined));
 
-// Card B needs its own NVR controller to avoid hijacking Card A's canvas.
-// The follower mirrors the main controller's scrub/play/pause/seek calls.
-// In CamView (multi-camera), NvrPlaybackMapKey provides per-camera controllers.
-// We need the per-camera controller for follower sync, NOT the master controller.
-// In single-camera mode, NvrPlaybackKey provides the controller directly.
 const nvrMap = inject(NvrPlaybackMapKey, undefined);
 const nvrDirect = inject(NvrPlaybackKey, undefined);
 const hasNvr = Boolean(nvrMap || nvrDirect);
 const cameraId = computed(() => cameraDevice.value?.id ?? '');
 const pipNvrCameraId = computed(() => pipCameraId.value ?? cameraId.value);
 
-// Reactive — in CamView the map populates after mount.
 const mainNvr = computed<NvrPlayback | undefined>(() => {
   if (nvrMap?.value) {
     const ctrl = cameraId.value ? nvrMap.value.get(cameraId.value) : undefined;
@@ -148,15 +139,12 @@ const mainNvr = computed<NvrPlayback | undefined>(() => {
 });
 const pipNvrController = createNvrPlayback(pipNvrCameraId, { managed: true, sourceRole: 'scrub' });
 
-// Sync follower with main controller — only when PiP is visible and has a source.
-// Without this guard, the follower creates duplicate backend sessions (scrub + play)
-// for the same camera, causing double JB RESETs, frame interleaving, and decoder errors.
 if (hasNvr) {
   watch(
     () => mainNvr.value?.mode.value,
     (mainMode, oldMode) => {
       if (!showPip.value || !hasPipSource.value) {
-        // PiP hidden — ensure follower is stopped
+        // a hidden follower would open duplicate backend sessions for the camera
         if (pipNvrController.mode.value !== 'idle') {
           pipNvrController.stop();
         }
@@ -168,7 +156,7 @@ if (hasNvr) {
         pipNvrController.stop();
       } else if (mainMode === 'play' && oldMode !== 'play') {
         pipNvrController.speed.value = nvr.speed.value;
-        pipNvrController.muted.value = true; // PiP always muted
+        pipNvrController.muted.value = true;
         pipNvrController.play(nvr.currentTimestamp.value, true);
       } else if (mainMode === 'pause' && oldMode === 'play') {
         pipNvrController.pause();
@@ -189,10 +177,7 @@ if (hasNvr) {
     },
   );
 
-  // Detect a fresh play() call on the main controller (e.g. clicking a recording
-  // while already in play mode). The mode-watcher above doesn't fire on play→play,
-  // so we watch playbackAnchor.targetMs which is *only* set inside play() and gets
-  // cleared once the first frame arrives — making it a clean "fresh seek" signal.
+  // targetMs is only set by play() and cleared on the first frame, so it marks a fresh seek
   watch(
     () => mainNvr.value?.playbackAnchor.value?.targetMs,
     (targetMs) => {
@@ -238,8 +223,6 @@ const pipSourceRoleResolved = computed<StreamingRole | undefined>(() => {
 
 const hasPipSource = computed(() => Boolean(pipSourceRoleResolved.value));
 
-// When PiP becomes visible during active playback/scrub, sync follower immediately.
-// When PiP is hidden, stop the follower to avoid duplicate backend sessions.
 if (hasNvr) {
   watch([showPip, hasPipSource], ([pip, has]) => {
     const nvr = mainNvr.value;
@@ -259,14 +242,6 @@ if (hasNvr) {
   });
 }
 
-// Main controller's sourceRole is owned by the master CuiCameraCard (which
-// binds it to camera.streamingSource / user quality choice). The PiP overlay
-// runs its own `pipNvrController` with a fixed `'scrub'` role, so we don't
-// need to touch the main controller's role here — that would stomp on the
-// user's quality selection. Previous versions did that as a DualPipeline-era
-// bandwidth-saving trick with magic values ("recording"/"scrub") that no
-// longer match the multi-tier role set (high/mid/low/scrub).
-
 const mainControlVisible = computed(() => {
   const mainCard = swapped.value ? cardBRef.value : cardARef.value;
   return mainCard?.showControl ?? false;
@@ -274,10 +249,8 @@ const mainControlVisible = computed(() => {
 
 const mainTimelineOverVideo = computed(() => activeCard.value?.timelineOverVideo ?? false);
 const mainFullscreen = computed(() => activeCard.value?.isFullscreen ?? false);
-// fullscreen only takes the main card's video area, the overlay has to move in there to stay visible
 const overlayInFullscreen = computed(() => mainFullscreen.value && showPip.value);
 
-// toolbar height (60px + border) + 8px base, raised further when player controls or the timeline are visible
 const pipBottomOffset = computed(() => {
   const base = toolbar.value && !mainFullscreen.value ? 68 : 8; // 60px toolbar + 8px gap, or just 8px
   const raised = mainControlVisible.value ? 48 : 0; // control bar ~48px
@@ -285,16 +258,6 @@ const pipBottomOffset = computed(() => {
   return `${base + raised + timeline}px`;
 });
 
-// Controllers stay fixed on their cards — Card A always uses mainNvr, Card B always uses pipNvrController.
-// Only visual props (overlay chrome vs full UI) swap based on position.
-// This ensures swap actually moves the content: Card A's canvas (mainNvr/4K) moves to overlay,
-// Card B's canvas (pipNvr/sub-stream) moves to main.
-// If we also swapped controllers, the content would follow the visual position and cancel out the CSS swap.
-//
-// In CamView (nvrMap available), Card A must NOT receive nvrController — it resolves
-// the per-camera controller from the map itself. Passing the master controller would
-// short-circuit the map lookup and bind the master's (unused) canvas instead.
-// In CamView (nvrMap), PiP overlay makes no sense — cameras are already side-by-side.
 const pipEnabled = computed(() => !nvrMap && hasPipSource.value);
 
 const propsA = computed(() => {

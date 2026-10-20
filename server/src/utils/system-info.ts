@@ -1,5 +1,5 @@
 import { PromiseTimeout } from '@camera.ui/common/utils';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import * as si from 'systeminformation';
 
 export interface SystemInfo {

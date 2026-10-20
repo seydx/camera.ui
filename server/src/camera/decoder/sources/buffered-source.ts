@@ -206,8 +206,7 @@ export class BufferedSource implements AnalysisSource {
     while (this.shouldRun && !this.paused) {
       if (this.hasBuffer && this.nextSerial - 1 > lastId) {
         const decoded = await this.decodeNewest(0);
-        // decoder delay can leave the cursor behind the newest packet, waiting
-        // for the next one beats handing back a frame the caller already had
+        // decoder delay can leave the cursor behind the newest packet, wait for the next one
         if (decoded && this.decodedThrough > lastId) {
           return { frame: decoded.frame, id: this.decodedThrough, rtp: decoded.rtp };
         }
@@ -308,8 +307,7 @@ export class BufferedSource implements AnalysisSource {
 
     const { input, videoStream, hardwareContext, fps } = await openVideoInput(this.config.url, this.logger, {
       decoder: this.config.decoder,
-      // go2rtc is local and answers the RTSP keepalive every 55s, so only a
-      // dead go2rtc trips this; a stalled camera is the plugin's call
+      // go2rtc answers the RTSP keepalive every 55 s, so only a dead go2rtc trips this
       timeoutUs: 60_000_000,
       hardwareContext: this.hwContext,
       signal: this.reconnect.signal,
@@ -439,8 +437,7 @@ export class BufferedSource implements AnalysisSource {
       last = undefined;
       return result;
     } catch (error) {
-      // drop the warm decoder and reset the cursor, the next call re-feeds
-      // from the buffered keyframe
+      // drop the warm decoder, the next call re-feeds from the buffered keyframe
       this.logger.debug('Buffered source warm decoder reset:', error);
       this.disposeDecoder();
       return this.freshCachedFrame();

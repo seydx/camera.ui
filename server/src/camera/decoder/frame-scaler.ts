@@ -375,8 +375,7 @@ export class FrameScaler {
     return {
       frame: { id: `crop:${detection.label}:${t.key}`, data: padded, width: t.width, height: t.height, format: t.format },
       detection,
-      // a virtual crop covering the box plus the fill bars, so boxes found in
-      // the padded picture map back to the frame linearly
+      // a virtual crop over box and bars, so boxes in the padded picture map back linearly
       offset: { x: crop.x - (padX / innerWidth) * crop.width, y: crop.y - (padY / innerHeight) * crop.height },
       cropSize: { width: (t.width / innerWidth) * crop.width, height: (t.height / innerHeight) * crop.height },
       originalSize: { width: frame.width, height: frame.height },

@@ -295,7 +295,6 @@ function openDialog(type: 'restart' | 'reset' | 'versions') {
           try {
             await resetServer();
           } catch {
-            //
           } finally {
             authStore.logout();
           }

@@ -113,7 +113,6 @@ export class DeviceManagerProxy implements DeviceManager {
     await run;
   }
 
-  /** Internal method to close the device manager and clean up resources */
   public async close(): Promise<void> {
     this.#initialized = false;
     this.#stopReconnectWatch?.();

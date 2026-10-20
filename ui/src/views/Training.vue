@@ -387,8 +387,6 @@ const { selectionMode, selectedIds, allSelected, bulkBusy, enterSelectionMode, e
 
 const selectedVerifiedIds = computed(() => [...selectedIds.value].filter((id) => candidates.data.value?.find((c) => c.id === id)?.status === 'verified'));
 
-// the status filter is a lens on the list, not a scope for the submit button:
-// verified frames stay submittable while the user works through the new ones
 const readyIds = computed(() => byCamera.value.filter((c) => c.status === 'verified' && !isLocked(c)).map((c) => c.id));
 
 function cameraName(cameraId: string): string {

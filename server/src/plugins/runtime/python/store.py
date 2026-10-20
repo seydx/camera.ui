@@ -69,9 +69,7 @@ def _replace_with_retry(tmp_path: str, path: str) -> None:
             os.replace(tmp_path, path)
             return
         except PermissionError:
-            # Windows AV scanners / the search indexer transiently hold the
-            # rename target open; the error is retryable there within a small
-            # budget (~0.5s total), nowhere else.
+            # windows AV and the search indexer briefly hold the rename target, retry only there
             if not _IS_WINDOWS or attempt >= len(_RENAME_RETRY_DELAYS_MS) - 1:
                 raise
             time.sleep(delay_ms / 1000)
@@ -83,8 +81,7 @@ def _write_store_file_sync(path: str, buf: bytes) -> None:
         try:
             fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         except FileNotFoundError:
-            # the volume can be pulled away under a running plugin (backup
-            # restore, manual cleanup), writing again must recreate it
+            # a restore or cleanup can remove the volume under a running plugin, recreate it
             os.makedirs(os.path.dirname(path), exist_ok=True)
             fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         try:
@@ -142,22 +139,18 @@ async def read_store_file(path: str, log: StoreLogger | None = None) -> dict[str
             if log:
                 log.error(f"store: backup {bak_path} is corrupt too ({error})")
         else:
-            # Self-heal: replace the corrupt file immediately, otherwise the
-            # next backup refresh would clobber the only good copy.
+            # replace the corrupt file now, the next backup refresh would overwrite the only good copy
             await asyncio.to_thread(_write_store_file_sync, path, bak_buf)
             if log:
                 log.warn(f"store: recovered {path} from backup ({len(bak_buf)} bytes)")
             return payload
 
-    # A corrupt store must never silently become an empty one - that would
-    # wipe the plugin's persisted state. Recover from the backup generation or
-    # fail the open loudly.
+    # a corrupt store must never become an empty one, recover from .bak or fail the open
     raise StoreCorruptError(f"{path} unreadable and no usable backup")
 
 
 def _backup_store_file_sync(path: str) -> None:
-    # Copy to a temp sibling first - a crash mid-copy must never leave a
-    # truncated .bak, it may be the only recovery generation.
+    # copy via a temp file, a crash mid-copy must not truncate .bak, it may be the only good copy
     tmp_path = f"{path}.bak.tmp-{os.getpid()}"
     try:
         shutil.copyfile(path, tmp_path)
@@ -187,10 +180,6 @@ class _PendingFlush:
         self.future = future
 
 
-# Serializes flushes and collapses saves arriving mid-flush into one trailing
-# flush of the latest snapshot. Snapshots are whole-document states, so the
-# newest one contains every earlier caller's write - a burst of N saves costs
-# at most 2 flushes without weakening the durability guarantee.
 class CoalescingWriter:
     def __init__(
         self,
@@ -219,8 +208,7 @@ class CoalescingWriter:
             try:
                 await in_flight
             except asyncio.CancelledError:
-                # Re-raise only our own cancellation; a cancelled flush task
-                # must not abort the drain loop.
+                # re-raise only our own cancellation, a cancelled flush must not abort the drain
                 if not in_flight.cancelled():
                     raise
             except Exception:
@@ -242,9 +230,6 @@ class CoalescingWriter:
 
 
 def _settler(future: asyncio.Future[None]) -> Callable[[asyncio.Task[None]], None]:
-    # Every handed-out awaitable must settle no matter how the trailing flush
-    # ends (success, error, or cancellation) - a pending future here would
-    # hang its awaiting caller forever.
     def settle(task: asyncio.Task[None]) -> None:
         if future.done():
             return
@@ -319,7 +304,7 @@ def _prune_if_empty(parent: dict[str, Any], key: str) -> None:
 
 
 _LAYOUT_VERSION_KEY = "__v"
-# v2: sensors keyed by persistent sensor id, pre-entity camera-keyed trees are unmappable
+# v2 keys sensors by persistent sensor id, older camera-keyed trees can't be mapped
 _LAYOUT_VERSION = 2
 
 
@@ -333,8 +318,6 @@ def upgrade_layout(payload: dict[str, Any]) -> dict[str, Any]:
     return upgraded
 
 
-# Values must round-trip identically through all three runtimes' msgpack
-# codecs - anything outside the shared domain is refused up front.
 def validate_store_value(key: str, value: Any) -> None:
     _walk_value(value, key, 0)
 
@@ -343,13 +326,12 @@ _MAX_VALUE_DEPTH = 64
 
 
 def _walk_value(value: Any, path: str, depth: int) -> None:
-    # Depth cap: rejects circular references (and absurd nesting) with a clear
-    # error instead of a RecursionError.
+    # catches circular references before a RecursionError
     if depth > _MAX_VALUE_DEPTH:
         raise ValueError(
             f"store: value at '{path}' exceeds {_MAX_VALUE_DEPTH} nesting levels — circular reference?"
         )
-    # bool is an int subclass, so it must be accepted before the int check.
+    # bool is an int subclass, check it before int
     if value is None or isinstance(value, bool | str):
         return
 

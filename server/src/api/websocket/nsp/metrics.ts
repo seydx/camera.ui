@@ -261,8 +261,6 @@ export class MetricsNamespace {
     };
   }
 
-  // a workload on a remote worker has no local process: cpu/memory come from
-  // the agent's heartbeat, and the row stays even before the first sample
   private remoteProcessInfo(capability: WorkerCapability, id: string, name: string, type: ProcessType, timestamp: number): ProcessInfo | undefined {
     const remote = this.workerManager.getRemoteProcess(capability, id);
     if (!remote) return undefined;

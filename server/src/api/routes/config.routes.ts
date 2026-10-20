@@ -41,7 +41,7 @@ export const ConfigRoute: FastifyPluginAsync = async (app: FastifyInstance): Pro
   });
 
   app.route({
-    url: '/donwload',
+    url: '/download',
     method: 'GET',
     preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
     handler: configController.downloadConfig.bind(configController),
@@ -52,7 +52,7 @@ export const ConfigRoute: FastifyPluginAsync = async (app: FastifyInstance): Pro
   });
 
   app.route({
-    url: '/donwload/go2rtc',
+    url: '/download/go2rtc',
     method: 'GET',
     preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
     handler: configController.downloadGo2RtcConfig.bind(configController),

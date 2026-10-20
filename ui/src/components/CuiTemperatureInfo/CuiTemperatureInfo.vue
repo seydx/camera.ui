@@ -67,7 +67,6 @@ const valueStyle = computed(() => ({
   opacity: 0.6;
 }
 
-/* Header */
 .cui-temperature-info__header {
   display: flex;
   align-items: center;
@@ -109,7 +108,6 @@ const valueStyle = computed(() => ({
   transition: color 0.2s ease;
 }
 
-/* Value display (replaces indicator dot) */
 .cui-temperature-info__value {
   font-weight: 600;
   font-size: 0.875rem;
@@ -117,7 +115,6 @@ const valueStyle = computed(() => ({
   transition: color 0.2s ease;
 }
 
-/* Size variants */
 .cui-temperature-info--small {
   padding: 0.5rem;
   gap: 0.375rem;

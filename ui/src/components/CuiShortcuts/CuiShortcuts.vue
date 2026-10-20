@@ -367,7 +367,6 @@ const { mutate: patchShortcut, isPending: patchShortcutLoading } = usersQuery.pa
 const { mutate: addShortcut, isPending: addShortcutLoading } = usersQuery.createShortcutQuery();
 const { mutate: removeShortcut, isPending: removeShortcutLoading } = usersQuery.removeShortcutQuery();
 
-// Follower NVR controllers — one per shortcut, created on demand.
 const followerControllers = new Map<string, NvrPlayback>();
 
 const placeholderRef = useTemplateRef('placeholderRef');
@@ -535,8 +534,6 @@ function isSecuritySystemStateActive(sensor: ReactiveSensor | undefined, state: 
   return sensor.getProperty(SecuritySystemProperty.TargetState) === state;
 }
 
-// Falls back to TargetState if currentState is unset (fresh sensor without state writes).
-
 function securitySystemMenuRef(el: any, id: string): void {
   if (el) securitySystemMenuRefs.value[id] = el;
 }
@@ -572,19 +569,11 @@ function getBatteryStatusLabel(sensor: ReactiveSensor | undefined): string {
   return `${level}%${chargingLabel}`;
 }
 
-// Bucket battery level into one of {0, 20, 40, 60, 80, 100} for icon selection.
-// 0 maps to the alert icon (no `battery-0` exists in mdi).
-
-// Color: red <15%, orange <30%, yellow <50%, green ≥50%. Charging always green
-// regardless of level, to indicate "incoming power".
-
 function onSensorClick(resolved: ResolvedSensorShortcut): void {
   if (SENSOR_READONLY_TYPES.has(resolved.shortcut.sensorType)) return;
   if (!canControlSensors) return;
 
-  // SecuritySystem opens a popover with the 4 user-settable states.
-  // Build a synthetic event with currentTarget = the shortcut's DOM element so
-  // PrimeVue Popover positions itself relative to the icon.
+  // synthetic event so the PrimeVue popover anchors to the shortcut icon
   if (resolved.shortcut.sensorType === 'securitySystem') {
     const popover = securitySystemMenuRefs.value[resolved.shortcut._id];
     const target = shortcutElementRefs.value[resolved.shortcut._id] as HTMLElement | undefined;
@@ -604,8 +593,7 @@ function onHover(id: string, isHovering: boolean): void {
 
   isHoveringMap.value[id] = isDragging.value ? false : isHovering;
 
-  // Only close other popovers when hovering IN, not when leaving — prevents
-  // delayed leave callbacks from closing newly opened popovers.
+  // only on hover in, a delayed leave would close the popover that just opened
   if (isHovering) {
     Object.entries(isHoveringMap.value).forEach(([key, value]) => {
       if (key !== id && value) {
@@ -632,7 +620,7 @@ function onMouseUpCallback(isLongPress: boolean, shortcut: DBCameraShortcut) {
     if (!isHoveringMap.value[shortcut._id]) {
       onHover(shortcut._id, true);
     } else {
-      // Capture NVR handoff timestamp before clearing hover (which stops preview).
+      // read before clearing hover, that stops the preview
       const nvrHandoffTs = isNvrActive.value && parentNvr ? Math.floor(playheadUs(parentNvr) / 1000) : undefined;
       onHover(shortcut._id, false);
       routeCamera(shortcut.cameraId, nvrHandoffTs);
@@ -776,8 +764,7 @@ function initDraggables(): void {
         containment: shortcutContainerRef.value as Element,
       });
 
-      // Lock dragging while the parent stream is zoomed — coordinate spaces
-      // diverge during pan/zoom and saved %-positions would otherwise drift.
+      // zoomed coordinates would drift the saved %-positions
       if (interactionLocked.value) {
         draggie.disable();
       }
@@ -827,13 +814,11 @@ function makeDraggable(e: MouseEvent): void {
     return;
   }
 
-  // Block new-shortcut placement while the stream is zoomed in — click coords
-  // wouldn't map cleanly to the unscaled %-space the shortcut is saved in.
+  // zoomed click coordinates don't map to the saved %-space
   if (interactionLocked.value) {
     return;
   }
 
-  // Keep the popover open while placing the new shortcut.
   placeholderActive.value = true;
 
   const containerRect = shortcutContainerRef.value.getBoundingClientRect();
@@ -1020,7 +1005,7 @@ watch(
   [placeholderRef, placeholderPosition],
   ([el, position]) => {
     if (el && position) {
-      // Delay to ensure DOM is updated before showing the popover.
+      // let the DOM update before the popover opens
       setTimeout(() => {
         camerasMenuRef.value?.show({ currentTarget: el } as any);
       }, 50);
@@ -1061,9 +1046,6 @@ watch(editing, (isEditing) => {
   }
 });
 
-// Toggle Draggabilly on every shortcut when the parent stream zoom-state
-// changes. Disable while zoomed in (coordinate spaces diverge), re-enable
-// when back at zoom=1. Also clear any pending placeholder.
 watch(interactionLocked, (locked) => {
   Object.values(draggies.value).forEach((draggie) => {
     if (locked) {
@@ -1209,7 +1191,6 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.4);
 }
 
-/* Sensor Shortcut Styles */
 .sensor-shortcut {
   transition: opacity 0.2s ease;
 }
@@ -1246,7 +1227,6 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-/* Doorbell ring animation — applied to icon when ring=true */
 .doorbell-shake {
   animation: doorbell-shake 0.15s ease-in-out infinite;
   transform-origin: center;
@@ -1263,7 +1243,6 @@ onUnmounted(() => {
   }
 }
 
-/* SecuritySystem state-picker popover buttons */
 .security-state-button {
   display: flex;
   align-items: center;
@@ -1290,7 +1269,6 @@ onUnmounted(() => {
   color: rgb(168, 85, 247);
 }
 
-/* SecuritySystem alarm-triggered icon — red pulse */
 .security-alarm-pulse {
   animation: security-alarm-pulse 0.8s ease-in-out infinite alternate;
 }
@@ -1307,7 +1285,6 @@ onUnmounted(() => {
   }
 }
 
-/* Shortcut Menu Tabs */
 .shortcut-menu-tabs {
   width: 240px;
 }

@@ -114,7 +114,6 @@ export class SensorsNamespace {
       if (!user) continue;
       if (user.role !== 'admin' && user.role !== 'master') continue;
 
-      // discovered lists go only to subscribed sockets
       if (eventType === 'sensors:discovered' && !(socket as Socket & { sensorsSubscribed?: boolean }).sensorsSubscribed) continue;
 
       socket.emit(eventType, data);

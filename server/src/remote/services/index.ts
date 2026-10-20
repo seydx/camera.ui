@@ -93,8 +93,7 @@ export class RemoteAccessService {
 
     this.remoteConfig = next;
 
-    // tearing down mid-login kills the cloudflared process that is waiting for
-    // the user to authorize in the browser, and the login cannot be resumed
+    // a teardown mid-login kills the cloudflared that waits for the browser authorization
     if (directConfigChanged && !this.cloudflareService.managed.busy) {
       this.teardownActive();
     }
@@ -221,10 +220,7 @@ export class RemoteAccessService {
     if (!target) return false;
     if (await this.waitReachable(target)) return true;
 
-    // a custom domain has no such signal, so the probe stays. A name that does
-    // not resolve publicly is proof it is dead; a failing probe on a resolvable
-    // name is not, and giving up there would swap a working domain for a
-    // throwaway quick tunnel URL
+    // no such signal for a custom domain: only a name that does not resolve publicly counts as dead
     try {
       return (await publicDnsAnswer(new URL(target).hostname)) !== 'no';
     } catch {
@@ -272,9 +268,7 @@ export class RemoteAccessService {
     const target = this.configuredTargetUrl();
     if (!target) return;
 
-    // nothing serves the named hostname while the quick tunnel holds cloudflared,
-    // so probing it would fail forever. Starting it again is the only test, and
-    // reconcile falls back once more if it still does not register
+    // the quick tunnel holds cloudflared, so only starting the named tunnel again can test it
     if (this.remoteConfig.directMode === 'cloudflare') {
       this.tunnelRetries++;
       this.logger.log('Trying the configured Cloudflare tunnel again, the Quick Tunnel URL changes if it still fails.');
@@ -413,8 +407,7 @@ export class RemoteAccessService {
     }
     if (!url) return null;
 
-    // Hand the URL out only once it's publicly resolvable. Clients that learn
-    // a not-yet-live hostname cache the NXDOMAIN and stay locked out for minutes.
+    // clients that look up a not yet live hostname cache the NXDOMAIN for minutes
     if (!this.urlReadiness.isReady(url)) {
       this.urlReadiness.ensureReady(url);
       return null;

@@ -257,7 +257,7 @@ function pairRequest(host: string, port: number, body: { code: string; agentId: 
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
         },
-        // Self-signed master cert
+        // the CA comes with the answer
         rejectUnauthorized: false,
         timeout: REQUEST_TIMEOUT_MS,
       },

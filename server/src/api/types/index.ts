@@ -313,7 +313,6 @@ export interface Go2RtcInfo {
 }
 
 export interface NatsInfo {
-  // servers: string[];
   auth: AuthConfig;
 }
 
@@ -946,11 +945,11 @@ export interface MovePullStatus {
 export type SupportedThemes = 'light' | 'dark';
 
 export interface ConfigSettings {
-  zoom: number; // 8 - 20
+  zoom: number; // 8 to 20
 }
 
 export interface ConsoleSettings {
-  zoom: number; // 8 - 20
+  zoom: number; // 8 to 20
 }
 
 export type SettingsViews = 'account' | 'appearance' | 'user' | 'notifications' | 'permissions' | 'recordings' | 'remote' | 'backup' | 'system';
@@ -974,8 +973,8 @@ export interface CamviewSettings {
 
 export interface CamerasSettings {
   showEvents: boolean;
-  order?: string[]; // Camera IDs in custom order
-  groupOrder?: Record<string, string[]>; // Per-room camera order for grouped view
+  order?: string[]; // camera ids
+  groupOrder?: Record<string, string[]>; // camera order per room
   viewMode?: 'default' | 'grouped';
   dragDisabled: boolean;
 }
@@ -1201,7 +1200,6 @@ export interface EngineIssue {
   current: string;
 }
 
-// unknown = plugin built before the protocol stamp existed
 export type ProtocolCompat = 'compatible' | 'unknown' | 'pluginTooOld' | 'serverTooOld';
 
 export interface EngineCompatResult {

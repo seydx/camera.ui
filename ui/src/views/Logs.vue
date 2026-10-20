@@ -318,7 +318,6 @@ const logsSocket = useLogsSocket({
   },
   onDisconnect: () => consoleRef.value?.writeTerminal('\r\nWebsocket failed to connect! Is the server running?\r\n\r\n'),
   onClearLog: (source) => {
-    // Per-source clears only reset the view that is actually looking at that source.
     if (source === activeSourceKey.value) {
       resetView();
     }
@@ -340,7 +339,7 @@ async function clearLog(): Promise<void> {
       await clearPluginLogFn({ pluginName: source.id });
       resetView();
     } else {
-      // Server truncates + broadcasts clear-log, which resets the view via onClearLog.
+      // the server broadcasts clear-log, onClearLog resets the view
       await clearServerLogFn(source.kind === 'system' ? source.id : undefined);
     }
     toast.add({ severity: 'success', detail: t('components.toast.log_cleared'), life: 3000 });

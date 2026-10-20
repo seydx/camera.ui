@@ -48,8 +48,7 @@ function scopeToCards(): PostcssPlugin {
       const rootSelectors = rule.selectors.filter((sel) => ROOT_SELECTOR.test(sel.trim()) && !ROOT_COMPOUND.test(sel.trim()));
       const others = rule.selectors.filter((sel) => !rootSelectors.includes(sel));
       if (rootSelectors.length) {
-        // html/body rules size the app to the viewport (min-width: 100vw, min-height: 100dvh); the scope node
-        // must not, it lives inside a card box. Colors and fonts stay.
+        // the scope node lives in a card box, it takes the colors and fonts but not the viewport sizing
         const rootRule = rule.clone({ selectors: [SCOPE] });
         rootRule.walkDecls((decl) => {
           if (ROOT_SIZING_PROPS.test(decl.prop)) decl.remove();

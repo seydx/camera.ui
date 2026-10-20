@@ -304,7 +304,6 @@ export class WorkerManager {
     this.probeOutdatedWorkers();
 
     if (reconcileAcceptor) {
-      // Bring up the leaf-acceptor if workers are already paired.
       await this.proxyServer.applyLeafNodeAuth();
     }
 
@@ -873,7 +872,6 @@ export class WorkerManager {
       seq,
       workload: { id, capability, spec: built.spec, live: built.live, revision: ++this.revision, gen, adopt },
     });
-
     this.nudge(agentId);
 
     const presence = this.presence.get(agentId);
@@ -1925,8 +1923,7 @@ export class WorkerManager {
     if (!proxy) {
       throw new Error('Proxy is not initialized');
     }
-    const rpcSubject = NamespaceManager.workerAgentRpc(agentId);
-    return proxy.createProxy<WorkerAgentRPC>(rpcSubject);
+    return proxy.createProxy<WorkerAgentRPC>(NamespaceManager.workerAgentRpc(agentId));
   }
 
   private async listen(agentId: string): Promise<void> {
@@ -1983,7 +1980,7 @@ export class WorkerManager {
       const nudge: WorkerNudge = { runId: this.runId, seq: this.seqs.get(agentId) ?? 0, ...extra };
       this.proxyServer.proxy?.publish(NamespaceManager.workerSync(agentId), nudge);
     } catch {
-      // agent will converge on its next heartbeat anyway
+      // the agent converges on its next heartbeat anyway
     }
   }
 

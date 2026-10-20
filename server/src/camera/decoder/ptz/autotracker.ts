@@ -187,8 +187,7 @@ export class PtzAutotracker {
       return;
     }
 
-    // frames right after a stop were captured mid-move, aiming on them
-    // overshoots; shorter than the motion settle, a post-stop frame suffices
+    // frames right after a stop were captured mid-move, aiming on them overshoots
     if (this.isPtzMoving) {
       return;
     }
@@ -196,7 +195,6 @@ export class PtzAutotracker {
       return;
     }
 
-    // a human recently drove the camera, back off until the cooldown ends
     if (now < this.externalControlUntil) {
       return;
     }
@@ -242,8 +240,7 @@ export class PtzAutotracker {
 
   public consumePoseDelta(): PtzPoseDelta | undefined {
     if (!this.referencePose) return undefined;
-    // emit even (0,0) once seeded: toggling the transform mid-session would
-    // strand earlier filter state in the old frame
+    // emit even (0,0) once seeded, toggling the transform mid-session would strand filter state
     return {
       panDelta: this.currentPose.pan - this.referencePose.pan,
       tiltDelta: this.currentPose.tilt - this.referencePose.tilt,
@@ -255,7 +252,6 @@ export class PtzAutotracker {
     let bestArea = -1;
     for (const t of targets) {
       if (typeof t.trackId !== 'number') continue;
-      // too small to be worth turning the camera for, and usually noise
       if (minSize > 0 && t.box.height < minSize) continue;
       const area = t.box.width * t.box.height;
       if (area > bestArea) {
@@ -334,8 +330,7 @@ export class PtzAutotracker {
   private stepActive(ptz: PtzSensorInfo, targets: readonly TrackedDetection[], settings: PtzAutotrackSettings, now: number): void {
     let target = targets.find((t) => t.trackId === this.activeTrackId);
     if (!target) {
-      // a pan or a gap can give the same person a new id: the track where the
-      // target should be by now takes over at once
+      // a pan or a gap can give the same person a new id, the track where the target should be takes over
       target = this.continuation(targets, now);
       if (target) {
         this.deps.logger.trace(`[autotracker] target #${this.activeTrackId} continues as #${target.trackId}`);
@@ -343,8 +338,7 @@ export class PtzAutotracker {
       }
     }
     if (!target) {
-      // nobody there: hold the pose through the gap instead of handing the
-      // camera to another person; blind time while the camera moves never counts
+      // hold the pose through the gap instead of handing the camera to another person
       this.missingSince ||= now;
       if (now - this.missingSince < TARGET_MISS_GRACE_MS) return;
       this.deps.logger.trace(`[autotracker] lost target #${this.activeTrackId}`);
@@ -362,13 +356,11 @@ export class PtzAutotracker {
     const cx = target.box.x + target.box.width * 0.5;
     const cy = target.box.y + target.box.height * 0.5;
 
-    // lead across the camera's move+settle blind window, in real time: the
-    // velocity is frame widths per second, neither stream fps nor tick rate enter
+    // lead across the move and settle window in real time, velocity is frame widths per second
     const leadSec = (settings.leadMs ?? DEFAULT_LEAD_MS) / 1000;
     const vx = this.aim?.vx ?? 0;
     const vy = this.aim?.vy ?? 0;
-    // the estimate never quite reaches zero when someone stops, so fade the
-    // prediction out with the speed instead of trusting it at face value
+    // the speed estimate never quite reaches zero, so the lead fades out with the speed
     const leadScale = clamp((Math.hypot(vx, vy) - STILL_SPEED) / STILL_SPEED, 0, 1);
     const leadX = clamp(vx * leadSec * leadScale, -MAX_LEAD_DISPLACEMENT, MAX_LEAD_DISPLACEMENT);
     const leadY = clamp(vy * leadSec * leadScale, -MAX_LEAD_DISPLACEMENT, MAX_LEAD_DISPLACEMENT);
@@ -397,16 +389,14 @@ export class PtzAutotracker {
       return;
     }
 
-    // too close to read anything off the picture: hold the pose, keep the
-    // track, and pick it up again when the target backs off
+    // too close to read anything off the picture, hold the pose and keep the track
     const maxSize = settings.maxTargetSize ?? 0;
     if (maxSize > 0 && target.box.height >= maxSize) {
       this.resetAimStreak();
       return;
     }
 
-    // an off-centre target the camera never centred is approached right away;
-    // once centred, only a displacement that survives a few frames counts
+    // an off-centre target is approached at once, once centred only a displacement lasting a few frames counts
     const confirmedX = this.confirmAxis('x', errX, deadZone);
     const confirmedY = this.confirmAxis('y', errY, deadZone);
     if (this.targetCentered && !confirmedX && !confirmedY) return;
@@ -441,12 +431,11 @@ export class PtzAutotracker {
       const target = {
         pan: clamp(this.currentPose.pan + move.pan / PAN_TO_IMAGE_RATIO, -1, 1),
         tilt: clamp(this.currentPose.tilt + move.tilt / PAN_TO_IMAGE_RATIO, -1, 1),
-        // carried over unchanged, but a camera can report a pose outside the space it accepts
+        // a camera can report a pose outside the space it accepts
         zoom: clamp(this.currentPose.zoom, -1, 1),
       };
 
-      // a space-limit clamp can pin the target onto the pose; a 360° camera
-      // can cross that seam, but only via the velocity pulse below
+      // a space-limit clamp can pin the target onto the pose, a 360° camera crosses that seam only by velocity
       const panProgress = Math.abs(target.pan - this.currentPose.pan) > POSE_EPSILON;
       const tiltProgress = Math.abs(target.tilt - this.currentPose.tilt) > POSE_EPSILON;
       if (panProgress || tiltProgress) {
@@ -462,8 +451,7 @@ export class PtzAutotracker {
       this.deps.logger.trace(`[autotracker] absolute target pinned at space limits, trying velocity err=(${errX.toFixed(2)},${errY.toFixed(2)})`);
     }
 
-    // minor axis speed scaled so both arrive together: an independent
-    // MIN_SPEED floor overshot during the shared pulse and drove a staircase
+    // the minor axis is scaled so both arrive together, its own speed floor would overshoot
     const speedGain = settings.trackingSpeed ?? DEFAULT_SPEED_GAIN;
     const panRate = settings.panRate ?? DEFAULT_PAN_RATE;
     const absX = confirmedX ? Math.abs(errX) : 0;
@@ -471,7 +459,7 @@ export class PtzAutotracker {
     const domErr = Math.max(absX, absY);
     const domSpeed = Math.min(MAX_SPEED, Math.max(MIN_SPEED, domErr * speedGain));
 
-    // pulse sized to close the dominant error once, panRate = travel/s at full speed
+    // pulse sized to close the dominant error once, panRate is travel per second at full speed
     const estMs = (domErr / Math.max(0.01, domSpeed * panRate)) * 1000;
     const pulseMs = Math.max(MIN_PULSE_MS, Math.min(MAX_PULSE_MS, estMs));
     const pulseSec = pulseMs / 1000;
@@ -615,8 +603,7 @@ export class PtzAutotracker {
       return;
     }
 
-    // same person under a new id after detector churn, or a new person:
-    // beats staring at an empty spot until the home timeout
+    // same person under a new id or a new person, beats staring at an empty spot until the home timeout
     const successor = this.continuation(targets, now) ?? this.pickLargestFresh(targets, settings.minTargetSize ?? 0);
     if (successor) {
       this.deps.logger.trace(`[autotracker] reacquired ${successor.label}#${successor.trackId} (was #${this.activeTrackId})`);
@@ -655,8 +642,7 @@ export class PtzAutotracker {
     // pose moved off the pin (external reposition), axis is drivable again
     if (this.pinnedPan && Math.abs(this.currentPose.pan - this.pinnedPan.pose) > POSE_EPSILON) this.pinnedPan = undefined;
     if (this.pinnedTilt && Math.abs(this.currentPose.tilt - this.pinnedTilt.pose) > POSE_EPSILON) this.pinnedTilt = undefined;
-    // seed from a real event, the SDK's (0,0) default would feed a spurious
-    // world-scale offset to the tracker on frame 1
+    // seed from a real event, the SDK's (0,0) default would give the tracker a spurious offset
     this.referencePose ??= { pan: this.currentPose.pan, tilt: this.currentPose.tilt };
   }
 
@@ -679,7 +665,7 @@ export class PtzAutotracker {
     if (was === moving) return;
     this.deps.logger.trace(`[autotracker] camera ${moving ? 'moving' : 'stopped'} (reported)`);
     if (moving) {
-      // blank motion bboxes, frame-diff is unusable during ego-motion
+      // frame-diff is unusable while the camera moves
       this.deps.onSuppressionActivated();
     } else {
       // external stops get the same settle window as our own

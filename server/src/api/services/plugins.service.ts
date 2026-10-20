@@ -388,7 +388,7 @@ export class PluginsService {
           // windows releases file handles of a just-killed process with a delay
           await sleep(2000);
           await move(targetDir, backupTempDir).catch((retryError: any) => {
-            retryError.message = `${retryError.message} (plugin files are locked — is a plugin process still running?)`;
+            retryError.message = `${retryError.message} (plugin files are locked, is a plugin process still running?)`;
             throw retryError;
           });
         }
@@ -400,13 +400,10 @@ export class PluginsService {
       const manifest = await extractPackage(`${pluginName}@${version}`, targetDir);
       log.done();
 
-      // Skip dependency install when the plugin can't run on this host anyway
-      // (native builds for a foreign platform would fail) — a compatible
-      // worker installs its own copy including dependencies.
       const pjson = await readJson(join(targetDir, 'package.json')).catch(() => null);
       if (pjson && !isPlatformCompatible(pjson.os, pjson.cpu)) {
         const requirement = describePlatformRequirement(pjson.os, pjson.cpu);
-        log.step(`Skipping dependencies — plugin requires ${requirement}, this host is ${process.platform}/${process.arch} (worker-only plugin)`);
+        log.step(`Skipping dependencies: plugin requires ${requirement}, this host is ${process.platform}/${process.arch} (worker-only plugin)`);
         log.done();
       } else {
         log.block('Installing dependencies');
@@ -466,7 +463,7 @@ export class PluginsService {
       throw error;
     }
 
-    // installPlugin handles its own error/restore output, so it stays outside the try above.
+    // outside the try, installPlugin reports its own errors and restores
     await this.installPlugin(log, pluginName, version, targetDir, true);
     return true;
   }

@@ -15,7 +15,6 @@ export function subscribeSensor(ctx: TriggerContext, flow: DBAutomation, trigger
   const registry = inject('sensorRegistry');
   const record = registry.getRecord(sensorId);
   if (!record) {
-    // arm anyway, the sensor entity may appear later (plugin install, import)
     ctx.logger.debug(`Automation "${flow.name}": Sensor "${sensorId}" not found, trigger arms when it appears`);
   }
 

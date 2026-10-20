@@ -2,6 +2,7 @@ import { convertSchemaToJsonSchema, renderLazyCatalogEntry } from '@tanstack/ai'
 
 import type { CoreTool } from './tools/shared.js';
 
+// measured with Apple's tokenizer: prose 4.3 to 5.1 characters per token, JSON full of ids 1.6
 const LETTERS_PER_TOKEN = 4.5;
 const SYMBOLS_PER_TOKEN = 1.2;
 const OVERHEAD_SHARE = 0.35;
@@ -40,7 +41,6 @@ export interface RunPlan {
 
 const costs = new WeakMap<object, { eager: number; catalog: number }>();
 
-// measured with Apple's tokenizer: prose 4.3 to 5.1 characters per token, JSON full of ids and timestamps 1.6
 export function estimateTokens(text: string): number {
   const letters = text.match(/[\p{L}\s]/gu)?.length ?? 0;
   return Math.ceil(letters / LETTERS_PER_TOKEN + (text.length - letters) / SYMBOLS_PER_TOKEN);

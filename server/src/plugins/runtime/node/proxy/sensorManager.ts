@@ -132,7 +132,7 @@ export class SensorManagerProxy implements SensorManager {
     return await this.#registryProxy.getSensorHistory(sensorIds, from, to);
   }
 
-  /** @internal Keeps a camera-registered sensor's assignedCameraIds in sync with the global stream. */
+  /** @internal */
   public async _trackCameraSensor(sensor: Sensor<any, any, any>): Promise<void> {
     await this.#ensureGlobalSubscription();
     this.#external.set(sensor.id, sensor);
@@ -211,8 +211,7 @@ export class SensorManagerProxy implements SensorManager {
   }
 
   async #bind(sensor: Sensor<any, any, any>, recordId: string): Promise<void> {
-    // producers need the global stream too: assignment changes must reach
-    // owned sensors, their detection fan-out reads assignedCameraIds
+    // producers need the global stream too, their detection fan-out reads assignedCameraIds
     await this.#ensureGlobalSubscription();
 
     sensor._setPluginId(this.#plugin.id);
@@ -238,7 +237,6 @@ export class SensorManagerProxy implements SensorManager {
           properties = rest;
         }
 
-        // external detection provider: fan the write into every assigned camera's coordinator
         for (const cameraId of sensor.assignedCameraIds) {
           const detectionNs = NamespaceManager.frameWorkerDetectionNamespaces(cameraId);
           const coordinator = this.#proxy.createProxy<DetectionCoordinatorInterface>(detectionNs.detectionRpc);
@@ -248,8 +246,7 @@ export class SensorManagerProxy implements SensorManager {
       }
       await this.#registryProxy.updatePropertyValues(sensor.id, properties);
     };
-    // writes are fire-and-forget for the sensor author, a failed RPC must not
-    // surface as an unhandled rejection
+    // fire-and-forget for the sensor author, a failed RPC must not become an unhandled rejection
     sensor._init((properties) => {
       pushProperties(properties).then(
         () => this._settleWrite(sensor, properties, true),
@@ -393,7 +390,7 @@ export class SensorManagerProxy implements SensorManager {
         this.#external.get(event.sensor.id)?._setAssignedCameras(event.sensor.assignedCameraIds);
         const consumed = this.#consumed.get(event.sensor.id);
         if (consumed) {
-          // re-announced while we already hold it: the payload is authoritative, our cache may be stale
+          // a re-announce is authoritative, our cache may be stale
           consumed._applyRefreshedState(event.state);
           return;
         }
@@ -436,7 +433,7 @@ export class SensorManagerProxy implements SensorManager {
         if (!proxySensor) break;
         proxySensor._setConnected(event.connected);
         if (event.connected) {
-          // the owner was away, whatever it published in the meantime never reached us
+          // the owner was away, what it published meanwhile never reached us
           this.#resyncConsumed(event.sensorId);
         }
         break;

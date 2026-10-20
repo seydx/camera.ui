@@ -48,7 +48,7 @@ const stopBus = cuiToastBus.on((payload: CuiToastMessage | CuiToastDismissEvent)
     actionConfig = {
       label,
       onClick: (e: MouseEvent) => {
-        // Don't auto-dismiss on click — caller controls the lifecycle.
+        // keeps the toast open, the caller dismisses it
         e.preventDefault();
         e.stopPropagation();
         const result = onClick();

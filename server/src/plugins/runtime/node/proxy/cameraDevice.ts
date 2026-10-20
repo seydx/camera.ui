@@ -256,8 +256,7 @@ export class CameraDeviceProxy extends CameraDevice {
 
     const sensorJSON = this.#registrationJson(sensor, false);
 
-    // resolve the durable id first and wire storage with it, so registration
-    // data (modelSpec) can read sensor storage
+    // resolve the id and wire storage first, modelSpec in the registration reads sensor storage
     const sensorId = await this.#sensorRegistryProxy.resolveSensor(sensorJSON, this.#plugin.id, { assignCameraId: this.id });
     sensor._setId(sensorId);
     sensorJSON.id = sensorId;
@@ -275,7 +274,6 @@ export class CameraDeviceProxy extends CameraDevice {
     sensor._setAssignedCameras(registration.assignedCameraIds);
     sensor._setAssignmentLocked?.();
 
-    // assignment changes arrive on the global stream the sensor manager owns
     await this.#sensorManager._trackCameraSensor(sensor);
 
     const sensorNamespace = NamespaceManager.sensorProviderNamespaces(this.#plugin.id, sensor.id).sensorRpc;
@@ -283,8 +281,7 @@ export class CameraDeviceProxy extends CameraDevice {
     const pushProperties = async (properties: Record<string, unknown>): Promise<void> => {
       const sensorType = sensor.type;
       if (DETECTION_SENSOR_TYPES.has(sensorType)) {
-        // the spec belongs to the registry: it survives a frame worker that is
-        // not up yet, the coordinator receives it with the next sensor push
+        // modelSpec belongs to the registry, the coordinator gets it with the next sensor push
         const { modelSpec, ...rest } = properties;
         if (modelSpec) {
           await this.#sensorRegistryProxy.updateModelSpec(sensor.id, modelSpec as ModelSpec);
@@ -303,8 +300,7 @@ export class CameraDeviceProxy extends CameraDevice {
       await this.#sensorRegistryProxy.updatePropertyValues(sensor.id, properties);
     };
 
-    // writes are fire-and-forget for the sensor author, a failed RPC must not
-    // surface as an unhandled rejection
+    // fire-and-forget for the sensor author, a failed RPC must not become an unhandled rejection
     sensor._init((properties) => {
       pushProperties(properties).then(
         () => this.#sensorManager._settleWrite(sensor, properties, true),
@@ -333,8 +329,6 @@ export class CameraDeviceProxy extends CameraDevice {
 
     this.#ownedSensors.set(sensor.id, { sensor, type: sensor.type });
 
-    // Subscribe to backend-initiated property changes for the owned sensor so that
-    // backend updates (e.g., motion dwell timer) sync into the local sensor state.
     const sensorEventNamespace = NamespaceManager.sensorEventNamespaces(sensor.id);
     // frame-fed owners skip the echo of their per-frame detection writes
     const eventSubject = registration.stateSubject && sensorJSON.requiresFrames ? sensorEventNamespace.sensorStateSubject : sensorEventNamespace.sensorSubject;

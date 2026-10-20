@@ -2,8 +2,6 @@ import type { Migration, MigrationContext } from './types.js';
 
 const DEFAULT_PLATE_CONFIDENCE = 0.3;
 
-// the single plate confidence always gated the recognized text, the detector
-// side had no setting at all and lived in the plugin
 async function splitPlateConfidence(ctx: MigrationContext): Promise<void> {
   await ctx.db.camerasDB.transaction(() => {
     for (const { key, value: camera } of ctx.db.camerasDB.getRange()) {

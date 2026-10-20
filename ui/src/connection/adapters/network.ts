@@ -21,7 +21,7 @@ function createCapacitorNetworkAdapters(): NetworkAdapters {
   let lastConnected: boolean | null = null;
   let lastType: string | null = null;
 
-  void (async () => {
+  (async () => {
     const { Network } = await import('@capacitor/network');
 
     const status = await Network.getStatus();
@@ -34,8 +34,7 @@ function createCapacitorNetworkAdapters(): NetworkAdapters {
         lastConnected = next.connected;
         networkSource.dispatchEvent(new Event(next.connected ? 'online' : 'offline'));
       }
-      // Type change while still connected (WiFi ↔ Cellular) — separate signal so
-      // attachNetworkChange can dispatch USER_RETRY to escape an existing backoff.
+      // wifi/cellular switch while connected, a separate signal lets USER_RETRY escape the backoff
       if (next.connected && lastType !== next.connectionType) {
         lastType = next.connectionType;
         networkChangeSource.dispatchEvent(new Event('change'));

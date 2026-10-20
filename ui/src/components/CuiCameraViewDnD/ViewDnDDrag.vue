@@ -48,7 +48,6 @@ const [collect, drag] = useDrag(() => ({
 }));
 
 const isDragging = computed(() => collect.value.isDragging);
-// the touch backend renders no native preview, mouse drags on it need the custom one too
 const needsCustomPreview = computed(() => isDragging.value && isTouch.value);
 
 function onNativeDragStart(event: DragEvent): void {

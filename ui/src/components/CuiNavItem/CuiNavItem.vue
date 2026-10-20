@@ -128,16 +128,6 @@ function onLogout() {
 </script>
 
 <style scoped>
-/* .p-button-text.p-button-secondary:not(:disabled):not(.navitem-active):hover {
-  border-top: 1px solid var(--p-surface-800);
-  background: var(--p-surface-900) !important;
-}
-
-.p-button-text.p-button-secondary:not(:disabled):not(.navitem-active):active {
-  border-top: 1px solid var(--p-surface-700);
-  background: var(--p-surface-800) !important;
-} */
-
 .navitem-active {
   background: var(--navitem-active-color, var(--p-button-text-primary-active-background));
   border-color: transparent;

@@ -221,7 +221,6 @@ export class UsersQuery {
       },
       onSuccess: async (_data, variables) => {
         await this._queryClient.refetchQueries({ queryKey: ['users', variables.username] });
-        // this.toast.add({ severity: 'success', detail: this.t('components.toast.user_updated'), life: 3000 });
       },
     });
   }

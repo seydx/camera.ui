@@ -37,7 +37,7 @@ export function withEmptyTurnRetry(adapter: AssistantAdapter, onRetry: () => voi
 
   // eslint-disable-next-line @stylistic/generator-star-spacing
   async function* chatStream(options: ChatStreamOptions): AsyncGenerator<StreamChunk> {
-    // a model that stays silent once often stays silent with the same tools, the last try takes them away so it has to write
+    // a model silent once often stays silent with the same tools, the last try drops them
     const attempts = [
       options,
       { ...options, systemPrompts: [...(options.systemPrompts ?? []), RETRY_PROMPT] },

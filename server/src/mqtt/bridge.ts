@@ -113,7 +113,7 @@ export class MqttBridge {
       const { cameraId, property } = payload as CameraEventPayload;
       const controller = this.api.getCamera(cameraId);
       if (!controller) return;
-      // A rename changes the HA device block in every discovery config.
+      // a rename changes the HA device block of every discovery config
       if (property === 'name' && this.manager.haDiscovery.enabled) {
         this.publishCameraState(controller);
       } else {

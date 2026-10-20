@@ -1,12 +1,4 @@
 <script lang="ts">
-/**
- *
- * CuiVirtualScroller is a performant approach to handle huge data efficiently.
- *
- * [Live Demo](https://www.primevue.org/virtualscroller/)
- *
- */
-
 // @ts-nocheck
 
 import BaseComponent from '@openvue/core/basecomponent';
@@ -106,16 +98,6 @@ export default {
       type: Boolean,
       default: false,
     },
-    /**
-     * Optional key resolver for the rendered items. Accepts:
-     *   - a string: uses `item[key]` as the Vue :key
-     *   - a function: `(item, index) => string | number`
-     * Falls back to the index when the item has no resolvable key.
-     * Use this to keep slot VNodes stable across scroll-induced range
-     * shifts — without it, PrimeVue keys rendered items by position, which
-     * causes every visible item's slot content to remount whenever the
-     * render window slides by one.
-     */
     itemKey: {
       type: [String, Function],
       default: null,

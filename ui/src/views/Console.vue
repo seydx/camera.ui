@@ -239,7 +239,6 @@ function onScroll(): void {
   stickToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
 }
 
-// Tapping the topbar title scrolls the log back to the top.
 function scrollToTop(): void {
   scrollEl.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }

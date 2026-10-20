@@ -214,7 +214,7 @@ export class SecondaryStage {
       for (const classifierResult of Object.values(results.classifiers)) {
         const classifications = classifierResult.detections.filter((d) => d.subAttribute);
         for (const [detection, jpeg] of await this.attributeCrops(sourceFrame, scaler, classifications)) {
-          // keyed by subAttribute, the attribute label injectSegmentThumbnails looks up
+          // keyed by subAttribute, the label injectSegmentThumbnails looks up
           thumbnails.push(this.attributeThumbnail(`class:${detection.subAttribute}`, detection, jpeg));
         }
       }
@@ -271,9 +271,6 @@ export class SecondaryStage {
       area: detection.box.width * detection.box.height,
       onEdge: this.isOnEdge(detection.box),
     };
-    // every candidate, not just the winner: a crop that loses the ranking is
-    // the only way to see why the shipped one is worse than what was available
-    // debugging
     detectionRecord.attributeCandidate(label, { score: thumbnail.score, area: thumbnail.area, onEdge: thumbnail.onEdge, box: detection.box }, jpeg);
     return thumbnail;
   }
@@ -314,7 +311,7 @@ export class SecondaryStage {
       const scaled = await scaler.cropAndScaleMulti(
         sourceFrame,
         face,
-        // a stretched face drifts away from its enrolled picture: same crop, cosine p10 0.35 stretched, 0.60 square
+        // a stretched face drifts from its enrolled picture (cosine p10 0.35 stretched, 0.60 square)
         [{ key: 'faceEmbed', width: input.width, height: input.height, format: input.format, fit: 'expand' }],
         FACE_CROP_PADDING,
       );
@@ -449,7 +446,6 @@ export class SecondaryStage {
 
       if (targets.length === 0) continue;
 
-      // consumers with identical dimensions and fit share one scaled region
       const uniqueTargets: ScaleTarget[] = [];
       const dupeMap = new Map<string, string[]>(); // sizeKey → [consumerKey, ...]
       for (const t of targets) {
@@ -507,8 +503,7 @@ export class SecondaryStage {
     return {
       frame: this.frameScaler.toVideoFrameData(letterboxed.padded, `fullframe:${key}`),
       detection: { label: 'person', confidence: 1.0, box: { ...FULL_FRAME_BOX } },
-      // a virtual crop covering frame plus fill bars, so the linear box
-      // mapping in transformBoxToOriginal un-letterboxes for free
+      // a virtual crop over frame and bars, so transformBoxToOriginal un-letterboxes for free
       offset: { x: (-g.padX / g.innerWidth) * rawFrame.width, y: (-g.padY / g.innerHeight) * rawFrame.height },
       cropSize: { width: (g.targetWidth / g.innerWidth) * rawFrame.width, height: (g.targetHeight / g.innerHeight) * rawFrame.height },
       originalSize: { width: rawFrame.width, height: rawFrame.height },
@@ -582,8 +577,7 @@ export class SecondaryStage {
     }
 
     if (allFaces.length === 0) return { detected: false, detections: [] };
-    // NMS only, the crops come from already zone-filtered object detections;
-    // faces under the user threshold are never recognized or reported
+    // NMS only, the crops come from zone-filtered object detections
     const { kept, weak } = this.pipeline.splitFaces(this.pipeline.runNms(allFaces));
     this.suggest(results, this.pipeline.trainingSuggestionsFor(weak, 'face'));
     if (weak.length > 0) results.weakFaces = weak;
@@ -699,8 +693,7 @@ export class SecondaryStage {
     if (!plugin || (requireFrames && !plugin.requiresFrames)) return undefined;
     if (!hasSecondaryModelSpec(plugin.modelSpec) || !isVideoInputSpec(plugin.modelSpec.input)) return undefined;
     const { input, triggerLabels } = plugin.modelSpec;
-    // the box padded with gray, not squared up with the picture around it: the
-    // surroundings pulled a black car's color to white
+    // padded with gray, not squared with the surroundings, which pulled a black car's color to white
     return { triggerLabels, scale: { key: 'clip', width: input.width, height: input.height, format: input.format, fit: 'letterbox' } };
   }
 
@@ -764,7 +757,7 @@ export class SecondaryStage {
   }
 
   private personDue(trackId: number, box: BoundingBox, frame: Frame): boolean {
-    // a body half out of the side of the picture is someone walking in or out, its vector drags the track's mean off
+    // a body cut by the side edge is someone walking in or out, its vector drags the track's mean off
     if (box.height * frame.height < MIN_PERSON_PX || box.x < 0.01 || box.x + box.width > 0.99) return false;
 
     const now = Date.now();
@@ -857,8 +850,6 @@ export class SecondaryStage {
     box: { x: number; y: number; width: number; height: number },
     region: CroppedRegion,
   ): { x: number; y: number; width: number; height: number } {
-    // boxes are normalized to the scaled crop, map back through the original
-    // crop dimensions before scaling
     const pixelX = box.x * region.cropSize.width + region.offset.x;
     const pixelY = box.y * region.cropSize.height + region.offset.y;
     const pixelW = box.width * region.cropSize.width;

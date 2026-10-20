@@ -19,7 +19,7 @@ export class FrameHandle implements AsyncDisposable {
   }
 
   public static async fromUrl(url: string, timeoutMs: number): Promise<FrameHandle> {
-    const timeoutUs = Math.max(1, Math.floor(timeoutMs * 1000)); // libavformat expects timeout in microseconds
+    const timeoutUs = Math.max(1, Math.floor(timeoutMs * 1000));
     const isRTSP = url.startsWith('rtsp://') || url.startsWith('rtsps://');
 
     const demuxer = await Demuxer.open(url, {

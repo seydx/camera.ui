@@ -126,7 +126,7 @@ export function seedVariables(context: FlowContext): void {
         }
       }
     } catch {
-      // non-JSON payload — mqtt.payload carries the raw text
+      // non-json payload, mqtt.payload carries the raw text
     }
   }
 

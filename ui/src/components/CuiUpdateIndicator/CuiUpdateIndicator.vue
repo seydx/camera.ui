@@ -73,7 +73,6 @@ function onApply() {
   white-space: nowrap;
 }
 
-/* Fade transition */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;

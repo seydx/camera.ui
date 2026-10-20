@@ -122,8 +122,7 @@ class CoreManagerProxy(CoreManager):
             return None
 
     async def getFFmpegPath(self) -> str:
-        # Remote-hosted: the master's path points at the wrong machine - the
-        # worker injects its own bundled ffmpeg at spawn time.
+        # on a worker the master's ffmpeg path is wrong, the worker injects its own
         ffmpeg_path = os.environ.get("CAMERAUI_FFMPEG_PATH")
         if ffmpeg_path:
             return ffmpeg_path
@@ -151,7 +150,6 @@ class CoreManagerProxy(CoreManager):
         return await self.__core_manager_proxy.assistantAccess(self.__plugin["id"])
 
     async def close(self) -> None:
-        """Internal method to close the core manager proxy."""
         self.__initialized = False
         self.__event_subject.complete()
 

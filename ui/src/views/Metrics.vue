@@ -1016,7 +1016,7 @@ async function frameWorkerRestart(frameWorkerName: string): Promise<void> {
   try {
     await restartFrameWorker({ frameWorkerName });
   } catch {
-    // Error surfaces via the mutation's observer-level handlers (toast, etc.)
+    // the mutation's handlers show the error
   } finally {
     frameWorkersRestarting.value = frameWorkersRestarting.value.filter((frameWorker) => frameWorker !== frameWorkerName);
   }
@@ -1027,7 +1027,7 @@ async function pluginRestart(pluginName: string): Promise<void> {
   try {
     await restartPlugin({ pluginName });
   } catch {
-    // Error surfaces via the mutation's observer-level handlers (toast, etc.)
+    // the mutation's handlers show the error
   } finally {
     pluginsRestarting.value = pluginsRestarting.value.filter((plugin) => plugin !== pluginName);
   }

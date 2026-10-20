@@ -16,7 +16,7 @@ const props = defineProps<TwoFactorBackupCodesProps>();
 const { backupCodes } = toRefs(props);
 
 async function onConfirm(): Promise<void> {
-  // Just close the dialog
+  // just close
 }
 
 defineExpose({

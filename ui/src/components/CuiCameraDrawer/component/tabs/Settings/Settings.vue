@@ -2207,9 +2207,7 @@ function deleteCamera() {
         }
 
         emit('close');
-      } catch {
-        //
-      }
+      } catch {}
     },
   });
 }

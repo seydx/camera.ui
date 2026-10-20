@@ -45,14 +45,6 @@
 </template>
 
 <script lang="ts">
-/**
- *
- * CuiVirtualScroller is a performant approach to handle huge data efficiently.
- *
- * [Live Demo](https://www.primevue.org/virtualscroller/)
- *
- */
-
 // @ts-nocheck
 
 import { findSingle, getHeight, getWidth, isVisible } from '@openuxkit/utils/dom';
@@ -81,7 +73,6 @@ export default {
       loaderArr: [],
       spacerStyle: {},
       contentStyle: {},
-      // measured by an observer instead of read back from the element, see calculateNumItems
       observedWidth: 0,
       observedHeight: 0,
     };
@@ -169,8 +160,6 @@ export default {
         this.d_loading = newValue;
       }
     },
-    // No `deep: true` — the handler only checks length, and Vue 3 array proxies
-    // already trigger non-deep watchers on push/splice/etc.
     items(newValue, oldValue) {
       if (!oldValue || oldValue.length !== (newValue || []).length) {
         this.scheduleInit();
@@ -239,11 +228,6 @@ export default {
         this.setSpacerSize();
       }
     },
-    // Coalesce repeated init() invocations within the same tick into a single
-    // microtask-tailed run. Watchers on items/itemSize/scrollHeight/scrollWidth
-    // can all fire back-to-back during initial list population; each init() does
-    // forced-layout reads (offsetWidth/offsetHeight) so running it once per tick
-    // instead of once per mutation is a direct cut to the Safari layout storm.
     scheduleInit() {
       if (this._initScheduled) return;
       this._initScheduled = true;
@@ -400,8 +384,7 @@ export default {
       const horizontal = this.isHorizontal();
       const itemSize = this.itemSize;
       const contentPos = this.getContentPosition();
-      // offsetWidth/offsetHeight right after writing styles forces a synchronous
-      // layout. The observer hands us the same numbers for free.
+      // reading offsetWidth after a style write forces a sync layout, the observer has the same value
       const measuredWidth = this.observedWidth || (this.element ? this.element.offsetWidth : 0);
       const measuredHeight = this.observedHeight || (this.element ? this.element.offsetHeight : 0);
       const contentWidth = measuredWidth ? measuredWidth - contentPos.left : 0;
@@ -466,11 +449,6 @@ export default {
             this.content.style.position = 'relative';
             this.element.style.contain = 'none';
 
-            /* const [contentWidth, contentHeight] = [getWidth(this.content), getHeight(this.content)];
-
-                      contentWidth !== this.defaultContentWidth && (this.element.style.width = '');
-                      contentHeight !== this.defaultContentHeight && (this.element.style.height = ''); */
-
             const [width, height] = [getWidth(this.element), getHeight(this.element)];
 
             (both || horizontal) && (this.element.style.width = width < this.defaultWidth ? width + 'px' : this.scrollWidth || this.defaultWidth + 'px');
@@ -486,9 +464,6 @@ export default {
     getLast(last = 0, isCols) {
       return this.items ? Math.min(isCols ? (this.columns || this.items[0])?.length || 0 : this.items?.length || 0, last) : 0;
     },
-    // getComputedStyle forces a style recalculation, and this runs on every
-    // init — which, with a per-frame item size, means every frame of a window
-    // drag. The padding only changes with the stylesheet, so read it once.
     getContentPosition() {
       if (this.content) {
         if (this.cachedContentPosition && this.cachedContentElement === this.content) {

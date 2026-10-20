@@ -248,7 +248,6 @@ function goBack() {
       return;
     }
   }
-  // In-app switch back to home
   instanceStore.switchInstance(null);
 }
 
@@ -290,8 +289,7 @@ async function onBiometricLogin(): Promise<void> {
     password.value = creds.password;
     const ok = await performLogin(creds);
     if (!ok) {
-      // Stale credentials (server password changed). Drop them so next time
-      // we don't keep prompting biometric for a dead login.
+      // the password changed, drop the stale credentials
       await clearCredentials(serverId);
       hasCredsForServer.value = false;
     }
@@ -316,8 +314,6 @@ async function maybePromptSaveCredentials(creds: { username: string; password: s
   if (!biometryAvailable.value) return;
   const serverId = await readCurrentServerId();
   if (!serverId) return;
-  // Already saved (e.g. user logging in via biometric or via re-login after
-  // manual edit) → just refresh the storage with the latest password.
   if (hasCredsForServer.value) {
     await saveCredentials(serverId, creds);
     return;
@@ -343,7 +339,7 @@ async function maybePromptSaveCredentials(creds: { username: string; password: s
       try {
         localStorage.setItem(SAVE_PROMPT_DECLINED_KEY + ':' + serverId, '1');
       } catch {
-        // localStorage unavailable — degrade gracefully (we'll re-prompt next login)
+        // localStorage unavailable, the next login asks again
       }
     },
   });
@@ -357,9 +353,7 @@ async function goToCloud(): Promise<void> {
     } catch {
       // ignore
     }
-    // Clear Capacitor cloud handoff state — cloud frontend bundle (index.html)
-    // takes over after replace. Wiping preferences here ensures we don't try
-    // to bypass the server-pick flow on next launch.
+    // otherwise the next launch skips the server pick
     await clearCapacitorCloudPreferences();
     window.location.replace(`${window.location.origin}/`);
     return;

@@ -64,7 +64,7 @@ export class AssistantToolRegistry {
     const known = new Set(providers.map((plugin) => plugin.id));
     for (const pluginId of this.models.keys()) if (!known.has(pluginId)) this.models.delete(pluginId);
 
-    // a plugin whose first answer failed never made it into the list, so the running ones are asked, not the listed ones
+    // a plugin whose first answer failed is not listed, so the running ones are asked
     await Promise.all(
       providers.map(async (plugin) => {
         if (plugin.worker.isRunning()) await this.registerModels(plugin);

@@ -214,7 +214,7 @@ export class PythonInstaller {
     try {
       await this.installServerPackages(['certifi']);
     } catch (error) {
-      this.logger.warn(`Failed to install certifi into the base Python — plugins may fail TLS to external hosts: ${(error as Error).message}`);
+      this.logger.warn(`Failed to install certifi into the base Python, plugins may fail TLS to external hosts: ${(error as Error).message}`);
     }
   }
 
@@ -237,7 +237,7 @@ export class PythonInstaller {
       lockPythonVersion = lockLines[0].replace('# Python version: ', '').trim();
       requirementsLockContent = lockLines.slice(1).join('\n');
     } catch {
-      //
+      // ignore
     }
 
     const currentPythonVersion = this.version;

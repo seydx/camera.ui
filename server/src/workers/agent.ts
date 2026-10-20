@@ -270,7 +270,6 @@ export class WorkerAgent implements WorkerAgentRPC {
 
     const secret = this.workersService.getWorkerConnection()?.secret;
 
-    // Local NATS (leaf node)
     this.proxy = createRPCClient({
       name: `worker-agent-${this.agentId}`,
       connId: secret ? NamespaceManager.workerConnId(this.agentId, secret) : undefined,
@@ -329,7 +328,7 @@ export class WorkerAgent implements WorkerAgentRPC {
       return;
     }
 
-    // the graphics lookup can take seconds, the heartbeat carries it once it is there
+    // the graphics lookup can take seconds, the heartbeat carries it later
     collectSystemInfo(ConfigService.RUNNING_VERSION)
       .then((info) => {
         this.system = info;
@@ -437,7 +436,7 @@ export class WorkerAgent implements WorkerAgentRPC {
     this.updateTarget = version;
     this.lastUpdateResult = undefined;
 
-    // an install takes minutes: answer the master now, report through the heartbeat
+    // an install takes minutes, answer now and report through the heartbeat
     this.runUpdate(version);
   }
 
@@ -1130,7 +1129,6 @@ export class WorkerAgent implements WorkerAgentRPC {
       this.sharedMaster = false;
       return response;
     } catch (error) {
-      // a master that has not been updated yet only listens on the shared subjects, and its update run updates workers first
       if (isNoRespondersError(error) || (isRPCError(error) && error.code === ERROR_CODES.NOT_FOUND)) {
         const response = await this.sharedManagerProxy.heartbeat(heartbeat);
         this.sharedMaster = true;
@@ -1274,7 +1272,7 @@ export class WorkerAgent implements WorkerAgentRPC {
     try {
       this.proxy?.publish(this.sharedMaster ? NamespaceManager.sharedWorkerLogs() : NamespaceManager.workerLogs(this.agentId), entry).catch(() => {});
     } catch {
-      // master will miss this line — local trace still has it
+      // not connected, the line stays in the local log
     }
   }
 }

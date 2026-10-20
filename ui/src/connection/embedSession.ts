@@ -49,7 +49,6 @@ function loginUser(user: EmbedUser): LoginUserData {
 interface EmbedUser {
   _id?: string;
   username?: string;
-  email?: string;
   role?: string;
   firstLogin?: boolean;
   avatar?: string;

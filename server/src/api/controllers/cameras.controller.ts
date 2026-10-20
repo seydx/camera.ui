@@ -452,7 +452,7 @@ export class CamerasController {
         .map((source) => ({
           name: source.name,
           role: source.role,
-          // req.hostname: the address the client reached us on is the one it can route to go2rtc
+          // the address the client reached is one it can route to go2rtc
           url: `rtsp://${auth}${req.hostname}:${port}/${createSourceName(camera.name, source.name)}`,
         }));
 
@@ -527,7 +527,7 @@ export class CamerasController {
           src: sourceName,
         });
       } catch {
-        //
+        // ignore
       }
 
       return reply.code(error.response?.status ?? 500).send({
@@ -571,7 +571,6 @@ export class CamerasController {
 
       const streamUrl = await camera.streamUrl(source._id);
       if (!streamUrl) {
-        // No custom stream URL from plugin, client should use default go2rtc URLs
         return reply.code(404).send({
           statusCode: 404,
           message: 'Custom stream URL not available, use default source URLs',
@@ -983,7 +982,7 @@ export class CamerasController {
       try {
         schemaConfig = await proxy.getConfig();
       } catch {
-        // No storage registered for this sensor - return empty schema
+        // no storage for this sensor
       }
 
       const sensorExtension: PluginExtensionConfig = {

@@ -1,8 +1,4 @@
-// Values must round-trip identically through all three runtimes' msgpack
-// codecs — anything outside the shared domain is refused up front.
-// Depth cap: rejects circular references (and absurd nesting) with a clear
-// error instead of a stack overflow.
-const MAX_DEPTH = 64;
+const MAX_DEPTH = 64; // catches circular references before a stack overflow
 
 export function validateStoreValue(key: string, value: unknown): void {
   walk(value, key, 0);

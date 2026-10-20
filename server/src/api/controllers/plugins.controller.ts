@@ -419,7 +419,7 @@ export class PluginsController {
           if (classifierDetectionSettings) allSettings.push(...classifierDetectionSettings);
         }
       } catch {
-        //
+        // ignore
       }
 
       return reply.code(200).send(allSettings.length > 0 ? allSettings : undefined);
@@ -444,9 +444,6 @@ export class PluginsController {
       }
 
       const contract = plugin.contract;
-      // CameraController plugins can only work with cameras they created
-      // CameraAndSensorProvider plugins can work with any camera (provide sensors to all)
-      // Other plugins (Hub, SensorProvider) can also be assigned to any camera
       const onlyOwnCameras = canCreateCameras(contract) && !canProvideSensorsToAnyCameras(contract);
       const camerasList = onlyOwnCameras ? this.camerasService.listByPluginId(plugin.id) : this.camerasService.list();
 
@@ -697,7 +694,6 @@ export class PluginsController {
           continue;
         }
 
-        // Blocked plugins are never shown in the store and cannot be installed.
         if (getBlock(pkg.name, pkg.version, blocklist)) {
           continue;
         }
@@ -724,7 +720,7 @@ export class PluginsController {
             interfaces: [],
             name: '',
           },
-          // npm search results carry no platform data — resolved at install.
+          // search results carry no platform data, the install checks it
           compatible: true,
         };
 
@@ -942,8 +938,7 @@ export class PluginsController {
       this.configService.writeConfig();
     }
 
-    // Start the plugin in the background. The UI reflects the real state via the
-    // /plugins `plugin-status-<name>` socket event when the child reaches STARTED/ERROR.
+    // not awaited, the plugin-status socket event reports the outcome
     this.pluginManager.startPluginChild(pluginName).catch((error: unknown) => {
       this.logger.error(`Failed to start plugin ${pluginName} after enable:`, error);
     });
@@ -965,8 +960,7 @@ export class PluginsController {
     this.configService.config.plugins.disabledPlugins.push(pluginName);
     this.configService.writeConfig();
 
-    // Stop in the background — same reasoning as enable: a graceful teardown can
-    // run into its shutdown grace period and shouldn't hold the HTTP reply open.
+    // not awaited, a graceful teardown can run into its shutdown grace period
     this.pluginManager.stopPluginChild(pluginName).catch((error: unknown) => {
       this.logger.error(`Failed to stop plugin ${pluginName} after disable:`, error);
     });
@@ -979,7 +973,6 @@ export class PluginsController {
       throw Object.assign(new Error(`Plugin is blocked: ${block.reason}`), { statusCode: 403 });
     }
 
-    // registry metadata is best-effort, an unreachable registry must not block installs
     const manifest = await getFullManifest(`${pluginname}@${pluginversion}`).catch(() => undefined);
     const protocolCompat = manifest ? checkProtocolCompat(manifest.cameraui?.protocolLevel) : 'unknown';
     if (protocolCompat === 'serverTooOld') {
@@ -1173,7 +1166,6 @@ export class PluginsController {
         return plugin;
       }
 
-      // Blocked plugins are never shown in the store and cannot be installed.
       if (getBlock(pkg.name, latestVersion, blocklist)) {
         return;
       }
