@@ -307,6 +307,9 @@
                   <label for="backupDestination" class="cui-label">{{ $t('views.settings.backup_destination') }}</label>
                   <InputText id="backupDestination" v-model="schedulerForm.destinationPath" :placeholder="defaultDestination" :disabled="schedulerSaving" />
                   <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.backup_destination_hint') }}</Message>
+                  <Message v-if="savedDestination" severity="secondary" variant="simple" size="small" class="cui-input-hint select-text">
+                    {{ $t('views.settings.backup_saved_in', { path: savedDestination }) }}
+                  </Message>
                 </div>
               </template>
 
@@ -765,6 +768,7 @@ async function saveScheduler(): Promise<void> {
     const settings = await patchBackupSchedulerFn({ ...schedulerForm });
     lastRun.value = settings.lastRun;
     toast.add({ severity: 'success', detail: t('components.toast.backup_scheduler_saved'), life: 3000 });
+    await loadScheduler();
   } catch (error: any) {
     toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
   } finally {

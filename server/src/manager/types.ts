@@ -33,6 +33,7 @@ export const SystemNotificationTypeId = {
   AppUpdateAvailable: 'system.app.update_available',
   WorkerUpdateAvailable: 'system.worker.update_available',
   CloudReauth: 'system.cloud.reauth_required',
+  BackupFailed: 'system.backup.failed',
 } as const;
 
 export type SystemNotificationTypeId = (typeof SystemNotificationTypeId)[keyof typeof SystemNotificationTypeId];
@@ -45,6 +46,7 @@ export const SYSTEM_NOTIFICATION_TYPES: readonly SystemNotificationType[] = [
   { type: SystemNotificationTypeId.AppUpdateAvailable, label: 'App update available' },
   { type: SystemNotificationTypeId.WorkerUpdateAvailable, label: 'Worker updates available' },
   { type: SystemNotificationTypeId.CloudReauth, label: 'Cloud sign-in required' },
+  { type: SystemNotificationTypeId.BackupFailed, label: 'Scheduled backup failed' },
 ] as const;
 
 export interface SourcesListing {

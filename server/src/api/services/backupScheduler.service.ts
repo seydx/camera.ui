@@ -1,8 +1,13 @@
+import { Severity } from '@camera.ui/sdk';
 import { ensureDir, move, pathExists, remove } from 'fs-extra/esm';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 import { container } from 'tsyringe';
 
+import { inject, provide, tryInject } from '../../container.js';
+import { SystemNotificationTypeId } from '../../manager/types.js';
+import { backupKeyId, parseBackupKey, readArchiveLayout } from '../../services/config/backup-archive.js';
+import { BACKUP_IGNORE_FILE, removeExpiredRestoreData } from '../../services/config/restore.js';
 import { BackupService } from './backup.service.js';
 
 import type { ConfigService } from '../../services/config/index.js';
@@ -21,6 +26,10 @@ export interface ScheduledBackupEntry {
 
 const BACKUP_FILE_PATTERN = /^camera\.ui-backup-\d+\.(tar\.gz|cuibackup)$/;
 const MAX_TIMER_CHUNK_MS = 12 * 60 * 60 * 1000;
+const RESTORE_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+const CATCH_UP_DELAY_MS = 2 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const INTERVAL_DAYS = { daily: 1, weekly: 7, monthly: 31 } as const;
 
 export class BackupSchedulerService {
   private logger: LoggerService;
@@ -29,6 +38,8 @@ export class BackupSchedulerService {
   private backupService: BackupService;
 
   private timer?: NodeJS.Timeout;
+  private catchUpTimer?: NodeJS.Timeout;
+  private restoreCleanupTimer?: NodeJS.Timeout;
   private running = false;
 
   constructor() {
@@ -64,40 +75,35 @@ export class BackupSchedulerService {
     }
 
     const merged: DBBackupSchedulerSettings = { ...this.getSettings(), ...patch };
+    if (merged.destinationPath) await this.markDestination(this.destinationRoot(merged));
     await this.persist(merged);
     this.arm();
     return merged;
   }
 
-  public resolveDestination(settings = this.getSettings()): string {
+  public destinationRoot(settings = this.getSettings()): string {
     return settings.destinationPath ? resolve(settings.destinationPath) : this.defaultDestination;
   }
 
+  public resolveDestination(settings = this.getSettings()): string {
+    const root = this.destinationRoot(settings);
+    const instanceId = this.dbs.settingsDB.get('settings')?.instanceId;
+    return settings.destinationPath && instanceId ? join(root, instanceId) : root;
+  }
+
   public async listBackups(): Promise<ScheduledBackupEntry[]> {
-    const destination = this.resolveDestination();
-    if (!(await pathExists(destination))) return [];
-
-    const entries: ScheduledBackupEntry[] = [];
-    for (const file of await readdir(destination)) {
-      if (!BACKUP_FILE_PATTERN.test(file)) continue;
-      try {
-        const info = await stat(join(destination, file));
-        if (!info.isFile()) continue;
-        entries.push({ filename: file, size: info.size, timestamp: info.mtimeMs });
-      } catch {
-        // ignore files disappearing mid-scan
-      }
-    }
-
-    return entries.sort((a, b) => b.timestamp - a.timestamp);
+    return this.scan(this.searchFolders());
   }
 
   public async resolveBackupFile(filename: string): Promise<string | null> {
     const name = basename(filename);
     if (!BACKUP_FILE_PATTERN.test(name)) return null;
 
-    const filePath = join(this.resolveDestination(), name);
-    return (await pathExists(filePath)) ? filePath : null;
+    for (const folder of this.searchFolders()) {
+      const filePath = join(folder, name);
+      if (await pathExists(filePath)) return filePath;
+    }
+    return null;
   }
 
   public async deleteBackup(filename: string): Promise<boolean> {
@@ -116,11 +122,20 @@ export class BackupSchedulerService {
   public start(): void {
     this.backupService.removeStaleBackupFolders().catch(() => {});
     this.arm();
+    this.catchUp();
+
+    clearInterval(this.restoreCleanupTimer);
+    this.restoreCleanupTimer = setInterval(() => this.removeExpiredRestoreData(), RESTORE_CLEANUP_INTERVAL_MS);
+    this.restoreCleanupTimer.unref();
   }
 
   public stop(): void {
     clearTimeout(this.timer);
     this.timer = undefined;
+    clearTimeout(this.catchUpTimer);
+    this.catchUpTimer = undefined;
+    clearInterval(this.restoreCleanupTimer);
+    this.restoreCleanupTimer = undefined;
   }
 
   private arm(): void {
@@ -148,6 +163,112 @@ export class BackupSchedulerService {
       },
       Math.max(1000, Math.min(delay, MAX_TIMER_CHUNK_MS)),
     );
+  }
+
+  private searchFolders(): string[] {
+    const destination = this.resolveDestination();
+    const root = this.destinationRoot();
+    return destination === root ? [root] : [destination, root];
+  }
+
+  private async scan(folders: string[]): Promise<ScheduledBackupEntry[]> {
+    const ownKey = parseBackupKey(this.configService.SECRETS.backupKey);
+    const ownKeyId = ownKey ? backupKeyId(ownKey) : undefined;
+
+    const entries: ScheduledBackupEntry[] = [];
+    for (const folder of folders) {
+      for (const file of await readdir(folder).catch(() => [])) {
+        if (!BACKUP_FILE_PATTERN.test(file) || entries.some((entry) => entry.filename === file)) continue;
+        try {
+          const path = join(folder, file);
+          const info = await stat(path);
+          if (!info.isFile()) continue;
+          const { header } = await readArchiveLayout(path).catch(() => ({ header: null }));
+          entries.push({
+            filename: file,
+            size: info.size,
+            timestamp: header?.createdAt ?? info.mtimeMs,
+            encrypted: !!header,
+            ownKey: header ? header.keyId === ownKeyId : undefined,
+            version: header?.version,
+          });
+        } catch {
+          // ignore files disappearing mid-scan
+        }
+      }
+    }
+
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private catchUp(): void {
+    const settings = this.getSettings();
+    const due = settings.enabled && settings.lastRun ? this.lastDueRun(settings, new Date()) : undefined;
+    if (!due || settings.lastRun!.timestamp >= due.getTime()) return;
+
+    this.logger.log(`The scheduled backup of ${due.toLocaleString()} was missed, it runs in a few minutes`);
+    clearTimeout(this.catchUpTimer);
+    this.catchUpTimer = setTimeout(() => {
+      this.run().catch(() => {});
+    }, CATCH_UP_DELAY_MS);
+    this.catchUpTimer.unref();
+  }
+
+  private lastDueRun(settings: DBBackupSchedulerSettings, now: Date): Date | undefined {
+    let due: Date | undefined;
+    for (
+      let slot = this.computeNextRun(settings, new Date(now.getTime() - INTERVAL_DAYS[settings.interval] * DAY_MS));
+      slot <= now;
+      slot = this.computeNextRun(settings, slot)
+    ) {
+      due = slot;
+    }
+    return due;
+  }
+
+  private async prepareDestination(settings: DBBackupSchedulerSettings, destination: string): Promise<void> {
+    if (settings.destinationPath) {
+      const root = this.destinationRoot(settings);
+      if (!(await pathExists(root))) {
+        throw new Error(`The backup folder ${root} does not exist. Check that the drive is mounted.`);
+      }
+      const marked = await pathExists(join(root, BACKUP_IGNORE_FILE));
+      if (!marked && (await readdir(root)).length === 0) {
+        throw new Error(
+          `The backup folder ${root} is empty and has no camera.ui marker. Check that the drive is mounted, or save the folder in the backup settings again.`,
+        );
+      }
+      await this.markDestination(root);
+    }
+
+    await ensureDir(destination);
+    // keeps the archives out of backups and in place when a restore is applied
+    await writeFile(join(destination, BACKUP_IGNORE_FILE), '', { flag: 'a' });
+  }
+
+  private async markDestination(root: string): Promise<void> {
+    try {
+      await ensureDir(root);
+      await writeFile(join(root, BACKUP_IGNORE_FILE), '', { flag: 'a' });
+    } catch (error) {
+      throw new Error(`The backup folder ${root} cannot be written: ${error.message}`, { cause: error });
+    }
+  }
+
+  private notifyFailed(message: string): void {
+    // without the proxy the backup page still shows the error
+    tryInject('proxy')
+      ?.notificationManager.notify({
+        source: { kind: 'system', id: SystemNotificationTypeId.BackupFailed },
+        notification: {
+          title: 'Scheduled backup failed',
+          body: message,
+          severity: Severity.Warn,
+          tag: SystemNotificationTypeId.BackupFailed,
+          adminOnly: true,
+        },
+      })
+      .catch(() => {});
   }
 
   private computeNextRun(settings: DBBackupSchedulerSettings, from: Date): Date {
@@ -180,7 +301,7 @@ export class BackupSchedulerService {
 
     try {
       this.logger.log('Running scheduled backup...');
-      await ensureDir(destination);
+      await this.prepareDestination(settings, destination);
 
       const backup = await this.backupService.createBackup({ excludePaths: [this.destinationRoot(settings)], encrypt: true, source: 'schedule' });
       const targetFile = join(destination, backup.backupFileName);
@@ -211,6 +332,7 @@ export class BackupSchedulerService {
       };
       await this.persistLastRun(lastRun);
       this.logger.error('Scheduled backup failed:', error);
+      this.notifyFailed(error.message);
       return lastRun;
     } finally {
       this.running = false;
@@ -218,7 +340,7 @@ export class BackupSchedulerService {
   }
 
   private async prune(destination: string, retention: number): Promise<void> {
-    const backups = await this.listBackups();
+    const backups = await this.scan([destination]);
     for (const backup of backups.slice(retention)) {
       try {
         await remove(join(destination, backup.filename));

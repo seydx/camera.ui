@@ -51,12 +51,11 @@ export class BackupController {
 
   public async download(req: FastifyRequest<AuthLoginRequest & BackupCreateRequest>, reply: FastifyReply): Promise<FastifyReply | void> {
     try {
-      const backup = await this.service.createBackup(req.body.localStorage);
-
-      readFile(backup.backupFile, (error, fileBuffer) => {
-        if (error) {
-          this.logger.error(error);
-        }
+      const backup = await this.service.createBackup({ localStorage: req.body.localStorage, excludePaths: [this.scheduler.destinationRoot()], encrypt: true });
+      const info = await stat(backup.backupFile).catch(async (error) => {
+        await this.service.removeBackup(backup).catch(() => {});
+        throw error;
+      });
 
         this.service.removeBackup(backup);
         reply.send(error ?? fileBuffer);
@@ -344,6 +343,8 @@ export class BackupController {
         settings,
         backups,
         defaultDestination: this.scheduler.defaultDestination,
+        destination: this.scheduler.resolveDestination(settings),
+        lastBackupAt: this.scheduler.lastBackupAt,
       });
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
