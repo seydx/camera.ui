@@ -30,6 +30,8 @@ export interface BackupSchedulerState {
   lastBackupAt?: number;
 }
 
+export type BackupDownloadSource = { url: string; filename: string } | { blob: Blob };
+
 const BACKUP_TIMEOUT_MS = 300_000;
 
 export async function backupDownloadSourceFn(localStorage?: Partial<UiLocalStorage>): Promise<BackupDownloadSource> {

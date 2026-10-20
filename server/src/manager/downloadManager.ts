@@ -1,7 +1,7 @@
 import { RPCMethod } from '@camera.ui/rpc';
 import { randomUUID } from 'node:crypto';
 import { closeSync, createReadStream, existsSync, fstatSync, openSync, readSync, statSync } from 'node:fs';
-import { readFile, realpath, unlink } from 'node:fs/promises';
+import { readFile, realpath, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
@@ -40,6 +40,15 @@ interface DownloadEntry {
   streaming?: boolean;
   markerPath?: string;
   remotePluginId?: string;
+  owned?: boolean;
+  release?: () => Promise<void>;
+}
+
+export interface ServerDownloadOptions {
+  filePath: string;
+  filename: string;
+  mimeType: string;
+  release?: () => Promise<void>;
 }
 
 const REMOTE_CHUNK_SIZE = 256 * 1024;
@@ -231,13 +240,35 @@ export class DownloadManager implements DownloadManagerInterface {
     }
   }
 
+  public createServerDownload(options: ServerDownloadOptions): DownloadToken {
+    const token = randomUUID();
+    const expiresAt = Date.now() + DEFAULT_TTL_MS;
+
+    this.registry.set(token, {
+      filePath: options.filePath,
+      filename: options.filename,
+      mimeType: options.mimeType,
+      expiresAt,
+      cleanup: 'on-download',
+      owned: true,
+      release: options.release,
+    });
+
+    return {
+      token,
+      url: `/api/download/${token}`,
+      publicUrl: this.buildPublicUrl(token),
+      expiresAt,
+    };
+  }
+
   public publicUrl(token: string): string {
     return this.buildPublicUrl(token);
   }
 
   public resolveLocalFile(token: string): string | null {
     const entry = this.registry.get(token);
-    if (!entry || entry.remotePluginId || entry.streaming || Date.now() > entry.expiresAt) return null;
+    if (!entry || entry.owned || entry.remotePluginId || entry.streaming || Date.now() > entry.expiresAt) return null;
     return entry.filePath;
   }
 
@@ -266,7 +297,7 @@ export class DownloadManager implements DownloadManagerInterface {
       return this.handleRemoteDownload(reply, token, entry);
     }
 
-    const filePath = await this.allowedLocalPath(entry.filePath, true);
+    const filePath = entry.owned ? entry.filePath : await this.allowedLocalPath(entry.filePath, true);
     if (!filePath || !existsSync(filePath)) {
       this.registry.delete(token);
       this.removePersistedEntry(token);
@@ -286,11 +317,26 @@ export class DownloadManager implements DownloadManagerInterface {
       stream.on('end', () => {
         this.registry.delete(token);
         this.removePersistedEntry(token);
-        this.deleteLocalFile(entry.filePath).catch(() => {});
+        this.deleteEntryFile(entry).catch(() => {});
       });
     }
 
     return reply.send(stream);
+  }
+
+  public async handleDownloadCheck(req: FastifyRequest<DownloadParamsRequest>, reply: FastifyReply): Promise<void> {
+    const entry = this.registry.get(req.params.token);
+    const size = entry && Date.now() <= entry.expiresAt ? await this.availableSize(entry) : null;
+
+    if (!entry || size === null) {
+      reply.code(404).send({ error: 'Download not found or expired' });
+      return;
+    }
+
+    reply.header('Content-Type', entry.mimeType);
+    reply.header('Content-Disposition', `attachment; filename="${entry.filename}"`);
+    if (size !== undefined) reply.header('Content-Length', size);
+    reply.send();
   }
 
   private fileServeProxy(pluginId: string): Promisify<PluginFileServeInterface> {
@@ -311,10 +357,22 @@ export class DownloadManager implements DownloadManagerInterface {
     });
   }
 
-  private async handleRemoteDownload(reply: FastifyReply, token: string, entry: DownloadEntry): Promise<void> {
-    // Downloads a finished file that lives on a remote worker, pulling it in
-    // ranged chunks over the plugin's file-serve RPC.
+  private async availableSize(entry: DownloadEntry): Promise<number | null | undefined> {
+    if (entry.streaming) return undefined;
 
+    if (entry.remotePluginId) {
+      const remote = await this.fileServeProxy(entry.remotePluginId)
+        .statFile(entry.filePath)
+        .catch(() => null);
+      return remote?.exists ? remote.size : null;
+    }
+
+    const filePath = entry.owned ? entry.filePath : await this.allowedLocalPath(entry.filePath, true);
+    const info = filePath ? await stat(filePath).catch(() => null) : null;
+    return info?.isFile() ? info.size : null;
+  }
+
+  private async handleRemoteDownload(reply: FastifyReply, token: string, entry: DownloadEntry): Promise<void> {
     const serve = this.fileServeProxy(entry.remotePluginId!);
 
     let stat: { exists: boolean; size: number };
@@ -677,6 +735,10 @@ export class DownloadManager implements DownloadManagerInterface {
   }
 
   private async deleteEntryFile(entry: DownloadEntry): Promise<void> {
+    if (entry.owned) {
+      await entry.release?.().catch((err) => this.logger.warn(`Failed to remove download file: ${entry.filePath}`, err));
+      return;
+    }
     if (entry.cleanup === 'never') return;
     if (entry.remotePluginId) {
       await this.deleteRemoteFile(entry).catch(() => {});

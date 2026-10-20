@@ -10,6 +10,7 @@ import { MovePullService } from '../services/move-pull.service.js';
 import { MoveService } from '../services/move.service.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { DownloadManager } from '../../manager/downloadManager.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { BackupSchedulerService } from '../services/backupScheduler.service.js';
 import type {
@@ -40,10 +41,12 @@ export class BackupController {
   private move: MoveService;
   private movePull: MovePullService;
   private scheduler: BackupSchedulerService;
+  private downloadManager: DownloadManager;
 
   constructor(private app: FastifyInstance) {
-    this.logger = container.resolve<LoggerService>('logger');
-    this.scheduler = container.resolve<BackupSchedulerService>('backupScheduler');
+    this.logger = inject('logger');
+    this.scheduler = inject('backupScheduler');
+    this.downloadManager = inject('proxy').downloadManager;
     this.service = new BackupService();
     this.move = new MoveService();
     this.movePull = new MovePullService();
@@ -421,6 +424,22 @@ export class BackupController {
       reply.header('Content-Length', info.size);
 
       return reply.send(createReadStream(filePath));
+    } catch (error: any) {
+      return reply.code(500).send({ statusCode: 500, message: error.message });
+    }
+  }
+
+  public async scheduledBackupDownloadLink(req: FastifyRequest<AuthLoginRequest & ScheduledBackupParamsRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      const filePath = await this.scheduler.resolveBackupFile(req.params.filename);
+      if (!filePath) {
+        return reply.code(404).send({ statusCode: 404, message: 'Backup not found' });
+      }
+
+      const filename = basename(filePath);
+      const link = this.downloadManager.createServerDownload({ filePath, filename, mimeType: BACKUP_MIME_TYPE });
+
+      return reply.code(201).send({ url: link.url, filename, expiresAt: link.expiresAt } satisfies BackupDownloadLink);
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
     }

@@ -825,8 +825,8 @@ async function runSchedulerNow(): Promise<void> {
 async function downloadScheduled(backup: ScheduledBackupEntry): Promise<void> {
   downloadingBackup.value = backup.filename;
   try {
-    const data = await downloadScheduledBackupFn(backup.filename);
-    await download({ blob: new Blob([data]), filename: backup.filename, mimeType: 'application/gzip' });
+    const source = await scheduledBackupDownloadSourceFn(backup.filename);
+    await download({ filename: backup.filename, mimeType: backup.encrypted ? 'application/octet-stream' : 'application/gzip', ...source });
   } catch (error: any) {
     toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
   } finally {

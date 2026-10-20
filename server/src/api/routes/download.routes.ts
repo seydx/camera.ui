@@ -10,10 +10,22 @@ export const DownloadRoute: FastifyPluginAsync = async (app) => {
   app.withTypeProvider<ZodTypeProvider>().route({
     method: 'GET',
     url: '/:token',
+    exposeHeadRoute: false,
     handler: downloadController.download.bind(downloadController),
     schema: {
       tags: ['Download'],
       summary: 'Download a file by its signed token',
+      params: downloadParamsSchema,
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().route({
+    method: 'HEAD',
+    url: '/:token',
+    handler: downloadController.check.bind(downloadController),
+    schema: {
+      tags: ['Download'],
+      summary: 'Check that a download token is still valid without downloading the file',
       params: downloadParamsSchema,
     },
   });

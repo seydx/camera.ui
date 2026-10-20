@@ -1,5 +1,6 @@
 import { isPublicFqdnUrl } from '@camera.ui/transport/transports/nativeHttp';
 
+import { isPinnedUrl } from '@/connection/certTrust.js';
 import { fetchAuthHeaders } from '@/connection/fetchAuth.js';
 import { getConnection } from '@/connection/instance.js';
 import { isCapacitor } from '@/connection/runtime.js';
@@ -36,9 +37,17 @@ export async function download(options: DownloadOptions): Promise<void> {
     return;
   }
 
+  const standalone = isStandalone();
+  const url = 'url' in options ? buildAbsoluteUrl(options.url) : null;
+  if (url && !standalone && isTokenDownloadUrl(url)) {
+    await assertDownloadAvailable(url);
+    clickLink(url, options.filename);
+    return;
+  }
+
   const blob = await resolveBlobForWeb(options);
 
-  if (isStandalone() && (await tryWebShare(blob, options.filename))) {
+  if (standalone && (await tryWebShare(blob, options.filename))) {
     return;
   }
 
@@ -47,6 +56,19 @@ export async function download(options: DownloadOptions): Promise<void> {
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[\\/:*?"<>|]/g, '_');
+}
+
+function isTokenDownloadUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin === window.location.origin && /\/api\/download\/[^/]+$/.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function assertDownloadAvailable(url: string): Promise<void> {
+  assertOk(await fetch(url, { method: 'HEAD', cache: 'no-store' }));
 }
 
 function buildAbsoluteUrl(url: string): string {
@@ -66,17 +88,23 @@ async function resolveBlobForWeb(options: DownloadOptions): Promise<Blob> {
     return response.blob();
   }
 
-  // Cross-origin server URL fetched in the page context (browser, PWA, and
-  // the app's webview for LAN endpoints). Bare fetch with the auth headers
-  // axios would attach keeps streaming chunked responses working.
-  const response = await fetch(buildAbsoluteUrl(options.url), {
+  const response = await fetchDownload(buildAbsoluteUrl(options.url));
+  return response.blob();
+}
+
+async function fetchDownload(url: string): Promise<Response> {
+  const response = await fetch(url, {
     headers: await fetchAuthHeaders(),
     credentials: 'include',
   });
+  assertOk(response);
+  return response;
+}
+
+function assertOk(response: Response): void {
   if (!response.ok) {
     throw new Error(`Download failed: ${response.status} ${response.statusText}`);
   }
-  return response.blob();
 }
 
 function isStandalone(): boolean {
@@ -109,60 +137,66 @@ async function tryWebShare(blob: Blob, filename: string): Promise<boolean> {
 
 function downloadViaAnchor(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
+  clickLink(url, filename);
+  // safari needs a moment to start the download before the url is revoked
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function clickLink(href: string, filename: string): void {
   const link = document.createElement('a');
-  link.href = url;
+  link.href = href;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  // Defer revoke so Safari has time to start the download before the URL dies.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function downloadViaCapacitor(options: DownloadOptions): Promise<void> {
-  const [{ Filesystem, Directory }, { Share }] = await Promise.all([import('@capacitor/filesystem'), import('@capacitor/share')]);
+  const [{ Capacitor }, { Filesystem, Directory }, { Share }, { DOWNLOAD_DIR, downloadPath, holdDownload, sweepDownloads, writeBlobToCache, writeStreamToCache }] =
+    await Promise.all([import('@capacitor/core'), import('@capacitor/filesystem'), import('@capacitor/share'), import('@/utils/cacheFile.js')]);
 
-  let writtenUri: string;
+  const path = downloadPath(options.filename);
+  const url = 'url' in options ? buildAbsoluteUrl(options.url) : null;
+  const release = holdDownload(path);
+  let sharing = false;
 
-  // FileTransfer downloads in a native session that only knows the system
-  // trust store — it bypasses the CertTrust hook, so direct LAN/IP endpoints
-  // signed by the instance CA must be fetched in the webview instead.
-  if ('url' in options && isPublicFqdnUrl(buildAbsoluteUrl(options.url))) {
-    const { FileTransfer } = await import('@capacitor/file-transfer');
-    const fullPath = await Filesystem.getUri({ path: options.filename, directory: Directory.Cache });
-    await FileTransfer.downloadFile({
-      url: buildAbsoluteUrl(options.url),
-      path: fullPath.uri,
-      headers: await fetchAuthHeaders(),
-      readTimeout: 5 * 60 * 1000,
-    });
-    writtenUri = fullPath.uri;
-  } else {
-    const blob = await resolveBlobForWeb(options);
-    const base64 = await blobToBase64(blob);
-    const written = await Filesystem.writeFile({
-      path: options.filename,
-      data: base64,
-      directory: Directory.Cache,
-    });
-    writtenUri = written.uri;
+  try {
+    await sweepDownloads();
+    let writtenUri: string;
+
+    // FileTransfer only knows the system trust store, LAN and pinned hosts load in the webview
+    if (url && isPublicFqdnUrl(url) && !isPinnedUrl(url)) {
+      const { FileTransfer } = await import('@capacitor/file-transfer');
+      await Filesystem.mkdir({ path: DOWNLOAD_DIR, directory: Directory.Cache, recursive: true }).catch(() => {});
+      const fullPath = await Filesystem.getUri({ path, directory: Directory.Cache });
+      await FileTransfer.downloadFile({
+        url,
+        path: fullPath.uri,
+        headers: await fetchAuthHeaders(),
+        readTimeout: 5 * 60 * 1000,
+      });
+      writtenUri = fullPath.uri;
+    } else if (url) {
+      const response = await fetchDownload(url);
+      writtenUri = response.body ? await writeStreamToCache(response.body, path) : await writeBlobToCache(await response.blob(), path);
+    } else {
+      writtenUri = await writeBlobToCache(await resolveBlobForWeb(options), path);
+    }
+
+    sharing = true;
+    await Share.share({
+      title: options.filename,
+      url: writtenUri,
+    }).catch(ignoreShareCancel);
+  } finally {
+    // android receivers may read the file after the chooser closes, even on a reported cancel, a later sweep removes it
+    if (!sharing || Capacitor.getPlatform() !== 'android') {
+      await Filesystem.deleteFile({ path, directory: Directory.Cache }).catch(() => {});
+    }
+    release();
   }
-
-  await Share.share({
-    title: options.filename,
-    url: writtenUri,
-  });
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
-    reader.onload = () => {
-      const result = reader.result as string;
-      const comma = result.indexOf(',');
-      resolve(comma >= 0 ? result.slice(comma + 1) : result);
-    };
-    reader.readAsDataURL(blob);
-  });
+function ignoreShareCancel(err: unknown): void {
+  if (!(err instanceof Error && err.message === 'Share canceled')) throw err;
 }
