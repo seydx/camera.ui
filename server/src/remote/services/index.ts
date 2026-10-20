@@ -39,6 +39,7 @@ export class RemoteAccessService {
     this.cloudflareService = new CloudflareService(this.logger, (url) => this.urlReadiness.ensureReady(url));
     this.customDomainService = new CustomDomainService(this.logger);
     this.remoteConfig = this.remoteService.info();
+    this.cloudEnabled = this.remoteConfig.enabled;
   }
 
   public async start(): Promise<void> {
@@ -68,8 +69,10 @@ export class RemoteAccessService {
     const next = this.remoteService.info();
     const prev = this.remoteConfig;
 
-    if (prev.enabled !== next.enabled) {
-      await this.updateWithCloud(next.enabled);
+    if (this.cloudEnabled !== next.enabled) {
+      this.cloudEnabled = next.enabled;
+      this.cloudSwitch = this.cloudSwitch.then(() => this.updateWithCloud(next.enabled));
+      await this.cloudSwitch;
     }
 
     await this.cleanupManagedIfMoving(next);
@@ -425,8 +428,10 @@ export class RemoteAccessService {
       this.logger.error('Failed to update cloud status:', error.message);
     }
 
-    if (!enabled) {
-      await this.proxyService.disconnect();
+    try {
+      await (enabled ? this.proxyService.startAgent() : this.proxyService.stopAgent());
+    } catch (error) {
+      this.logger.error(`Failed to ${enabled ? 'start' : 'stop'} the tunnel agent:`, error?.message ?? error);
     }
   }
 }

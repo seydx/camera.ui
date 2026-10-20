@@ -1,6 +1,8 @@
 <template>
   <div class="flex flex-col gap-6">
     <div v-if="!shareResult" class="flex flex-col gap-4">
+      <Message v-if="needsCloud" severity="warn" variant="simple" size="small">{{ $t('shares.needs_cloud') }}</Message>
+
       <div class="flex flex-col field-gap">
         <label class="cui-label">{{ $t('shares.source') }}</label>
         <Select v-model="sourceId" :options="sourceOptions" option-label="label" option-value="value" class="w-full" />
@@ -68,6 +70,7 @@
 <script setup lang="ts">
 import CopyIcon from '~icons/fluent/copy-16-filled';
 
+import { RemoteQuery } from '@/api/routes/remote.js';
 import { SharesQuery } from '@/api/routes/shares.js';
 import { copyToClipboard as copy } from '@/common/utils.js';
 
@@ -76,6 +79,7 @@ import type { CustomDialogComponent, DialogRefProps } from '@/composables/useCui
 import type { ShareFormProps } from './types.js';
 
 const sharesQuery = new SharesQuery();
+const remoteQuery = new RemoteQuery();
 
 const props = defineProps<ShareFormProps>();
 
@@ -83,6 +87,8 @@ const { t } = useI18n();
 const dialogRefProps = inject<DialogRefProps>('dialogRefProps')!;
 
 const { mutateAsync: createShare, isPending: createLoading } = sharesQuery.createShareQuery();
+const { data: remoteInfo } = remoteQuery.getRemoteInfoQuery();
+const { data: registrationStatus } = remoteQuery.getRegistrationStatusQuery();
 
 const ttlOptions = [
   { label: '1 ' + t('shares.hour'), value: 1 },
@@ -107,6 +113,7 @@ const shareResult = ref<ShareCreateResult | null>(null);
 
 const canShare = computed(() => !!navigator.share);
 const isLoading = computed(() => Boolean(dialogRefProps.loading?.value || createLoading.value));
+const needsCloud = computed(() => remoteInfo.value?.remoteSettings.enabled === false || registrationStatus.value?.isRegistered === false);
 
 async function shareNative() {
   if (!shareResult.value) return;

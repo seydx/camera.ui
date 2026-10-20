@@ -103,6 +103,11 @@ export class TunnelClient {
       this.setStatus(RUNTIME_STATUS.STOPPED);
       return;
     }
+    if (!this.remoteService.info().enabled) {
+      this.logger.debug('Tunnel Client skipped: cloud access is turned off');
+      this.setStatus(RUNTIME_STATUS.STOPPED);
+      return;
+    }
 
     this.pausedForReauth = false;
 

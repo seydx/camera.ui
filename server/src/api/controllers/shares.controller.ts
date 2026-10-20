@@ -3,6 +3,10 @@ import { SharesService } from '../services/shares.service.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthLoginRequest, CreateShareRequest, ListShareRequest, ShareParamsRequest, ValidateShareRequest } from '../types/index.js';
 
+interface ShareViewerRequest extends ShareParamsRequest {
+  Body: unknown;
+}
+
 const MAX_SHARE_TTL_HOURS = 30 * 24;
 
 export class SharesController {
@@ -71,13 +75,19 @@ export class SharesController {
 
       const rlKey = `${token}:${req.ip}`;
       if (this.service.isValidateRateLimited(rlKey)) {
-        return reply.code(429).send({ statusCode: 429, message: 'Too many attempts, please try again later' });
+        return reply.code(429).send({ statusCode: 429, message: 'Too many attempts, please try again later', error: 'rate_limited' });
       }
 
       const share = this.service.validate(token, code);
-      if (!share) {
+      if (share === 'invalid_code') {
         this.service.recordValidateFailure(rlKey);
-        return reply.code(403).send({ statusCode: 403, message: 'Invalid or expired share' });
+        return reply.code(403).send({ statusCode: 403, message: 'Invalid code', error: share });
+      }
+      if (share === 'gone') {
+        return reply.code(410).send({ statusCode: 410, message: 'Share revoked or expired', error: share });
+      }
+      if (share === 'full') {
+        return reply.code(429).send({ statusCode: 429, message: 'Maximum number of viewers reached', error: share });
       }
       this.service.clearValidateRateLimit(rlKey);
 
@@ -86,7 +96,7 @@ export class SharesController {
         return reply.code(404).send({ statusCode: 404, message: 'Shared source no longer available' });
       }
 
-      const jwtToken = await this.service.generateShareJWT(share);
+      const jwtToken = await this.service.issueViewerToken(share);
       await this.service.countView(token);
 
       return reply.code(200).send({
@@ -100,24 +110,31 @@ export class SharesController {
     }
   }
 
-  public async disconnect(req: FastifyRequest<ShareParamsRequest>, reply: FastifyReply): Promise<FastifyReply> {
+  public async disconnect(req: FastifyRequest<ShareViewerRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const { token } = req.params;
-      await this.service.endView(token);
+      if (!(await this.service.endView(token, viewerProof(req.body)))) {
+        return reply.code(401).send({ statusCode: 401, message: 'Viewer token required', error: 'unauthorized' });
+      }
       return reply.code(200).send({ message: 'Disconnected' });
     } catch (error: any) {
       return reply.code(500).send({ statusCode: 500, message: error.message });
     }
   }
 
-  public async refresh(req: FastifyRequest<ShareParamsRequest>, reply: FastifyReply): Promise<FastifyReply> {
+  public async refresh(req: FastifyRequest<ShareViewerRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       const { token } = req.params;
 
       const actualShare = this.service.getShare(token);
 
       if (!actualShare) {
-        return reply.code(403).send({ statusCode: 403, message: 'Invalid or expired share' });
+        return reply.code(410).send({ statusCode: 410, message: 'Share revoked or expired', error: 'gone' });
+      }
+
+      const viewer = this.service.findViewer(token, viewerProof(req.body), true);
+      if (!viewer) {
+        return reply.code(401).send({ statusCode: 401, message: 'Viewer token required', error: 'unauthorized' });
       }
 
       const streamName = this.service.getStreamName(actualShare.cameraId, actualShare.sourceId);
@@ -125,7 +142,10 @@ export class SharesController {
         return reply.code(404).send({ statusCode: 404, message: 'Shared source no longer available' });
       }
 
-      const jwtToken = await this.service.generateShareJWT(actualShare);
+      const jwtToken = await this.service.refreshViewerToken(actualShare, viewer);
+      if (!jwtToken) {
+        return reply.code(401).send({ statusCode: 401, message: 'Viewer token required', error: 'unauthorized' });
+      }
 
       return reply.code(200).send({
         access_token: jwtToken,
@@ -137,4 +157,8 @@ export class SharesController {
       return reply.code(500).send({ statusCode: 500, message: error.message });
     }
   }
+}
+
+function viewerProof(body: unknown): string | undefined {
+  return typeof body === 'string' && body.trim() ? body.trim() : undefined;
 }

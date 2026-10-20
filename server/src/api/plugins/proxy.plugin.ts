@@ -135,11 +135,11 @@ class WebSocketProxy {
         }
         targetUrl += `?src=${encodeURIComponent(src)}`;
 
-        if (dbToken.user_id.startsWith('share_')) {
+        if (dbToken.user_id.startsWith(SHARE_USER_PREFIX)) {
           targetUrl += `&tag=${encodeURIComponent(dbToken.user_id)}`;
         }
       } else if (this.target === 'nats') {
-        if (dbToken.stream_scope || dbToken.user_id.startsWith('share_')) {
+        if (dbToken.stream_scope || dbToken.user_id.startsWith(SHARE_USER_PREFIX)) {
           this.reject(request, socket, head, 4403, 'forbidden: token not allowed on rpc bus', token);
           return;
         }
@@ -156,6 +156,24 @@ class WebSocketProxy {
           firewallConnId = connId;
           firewallUserId = dbToken.user_id;
         }
+      }
+
+      let endsAt: number | undefined;
+      if (dbToken.user_id.startsWith(SHARE_USER_PREFIX)) {
+        const share = this.dbs.sharesDB.get(dbToken.user_id.slice(SHARE_USER_PREFIX.length));
+        endsAt = share && !share.revoked ? Date.parse(share.expiresAt) : undefined;
+        if (!share || !endsAt || endsAt <= Date.now()) {
+          this.reject(request, socket, head, ...SHARE_ENDED, token);
+          return;
+        }
+        if (this.shareSeatsTaken(dbToken) >= Math.min(share.maxViewers || MAX_RELAYS_PER_SHARE, MAX_RELAYS_PER_SHARE)) {
+          this.reject(request, socket, head, 4429, 'share full', token);
+          return;
+        }
+        this.relays.closeTokens([dbToken.id], [4403, 'forbidden: replaced by a newer connection']);
+      } else if (!this.hasRelaySlot(dbToken.id)) {
+        this.reject(request, socket, head, ...TOO_MANY_RELAYS, token);
+        return;
       }
 
       const wsOptions: ClientOptions = {
@@ -300,11 +318,11 @@ class WebSocketProxy {
   }
 
   private isGo2rtcViewer(dbToken: DBToken): boolean {
-    return Boolean(dbToken.stream_scope) || dbToken.user_id.startsWith('share_') || !this.isAdmin(dbToken.user_id);
+    return Boolean(dbToken.stream_scope) || dbToken.user_id.startsWith(SHARE_USER_PREFIX) || !this.isAdmin(dbToken.user_id);
   }
 
   private go2rtcSrcDenial(dbToken: DBToken, src: string, viewer: boolean): string | undefined {
-    if (dbToken.stream_scope || dbToken.user_id.startsWith('share_')) {
+    if (dbToken.stream_scope || dbToken.user_id.startsWith(SHARE_USER_PREFIX)) {
       return src && src === dbToken.stream_scope ? undefined : 'forbidden: src out of scope';
     }
     if (!viewer || this.isCameraStream(src)) {

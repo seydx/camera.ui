@@ -13,6 +13,7 @@ import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { Database } from '../database/index.js';
 import type { DBShare } from '../database/types.js';
+import type { DBToken } from '../types/index.js';
 
 interface CreateShareParams {
   cameraId: string;
@@ -32,8 +33,16 @@ interface ShareCreateResult {
 
 type ShareListItem = DBShare & { sourceName: string | null };
 
+type ShareRefusal = 'gone' | 'invalid_code' | 'full';
+
 const VALIDATE_RL_WINDOW_MS = 60_000;
 const VALIDATE_RL_MAX = 10;
+const VALIDATE_RL_MAX_KEYS = 10_000;
+
+const SHARE_USER_PREFIX = 'share_';
+const VIEWER_IDLE_MS = 10 * 60_000;
+const MAX_VIEWER_TOKENS_PER_SHARE = 50;
+const VIEWER_TOKEN_SECONDS = 300;
 
 export class SharesService {
   private dbs: Database;
@@ -121,8 +130,9 @@ export class SharesService {
     });
     if (!share) return false;
 
+    // relays first, an offer they still forward would start a new consumer
+    await this.authService.revokeUsers([shareUserId(token)]);
     await this.killShareConsumers(token);
-    await this.authService.invalidateById(`share_${token}`);
     await this.deregisterFromCloud(token);
 
     return true;
@@ -134,12 +144,29 @@ export class SharesService {
     return share;
   }
 
-  public validate(token: string, code: string): DBShare | null {
+  public validate(token: string, code: string): DBShare | ShareRefusal {
     const share = this.getShare(token);
-    if (!share) return null;
-    if (share.code !== code) return null;
-    if (share.maxViewers > 0 && this.currentViewers(token) >= share.maxViewers) return null;
+    if (!share) return 'gone';
+    if (share.code !== code) return 'invalid_code';
+    if (share.maxViewers > 0 && this.currentViewers(token) >= share.maxViewers) return 'full';
     return share;
+  }
+
+  public findViewer(token: string, proof: string | undefined, unexpired = false): DBToken | undefined {
+    if (!proof) return undefined;
+
+    const viewer = this.authService.resolveAccessToken(proof)?.token;
+    if (viewer?.user_id !== shareUserId(token)) return undefined;
+
+    if (unexpired) {
+      try {
+        jwt.verify(proof, this.configService.SECRETS.jwtAccessKey);
+      } catch {
+        return undefined;
+      }
+    }
+
+    return viewer;
   }
 
   public isValidateRateLimited(key: string): boolean {
@@ -155,47 +182,43 @@ export class SharesService {
   public recordValidateFailure(key: string): void {
     const now = Date.now();
     const entry = this.validateAttempts.get(key);
-    if (!entry || now - entry.first > VALIDATE_RL_WINDOW_MS) {
-      this.validateAttempts.set(key, { count: 1, first: now });
+    if (entry && now - entry.first <= VALIDATE_RL_WINDOW_MS) {
+      entry.count++;
       return;
     }
-    entry.count++;
+
+    // a new window goes last, so the loop meets the oldest first
+    this.validateAttempts.delete(key);
+    for (const [oldKey, old] of this.validateAttempts) {
+      if (now - old.first <= VALIDATE_RL_WINDOW_MS && this.validateAttempts.size < VALIDATE_RL_MAX_KEYS) break;
+      this.validateAttempts.delete(oldKey);
+    }
+    this.validateAttempts.set(key, { count: 1, first: now });
   }
 
   public clearValidateRateLimit(key: string): void {
     this.validateAttempts.delete(key);
   }
 
-  public async generateShareJWT(share: DBShare): Promise<string> {
-    const jwtKey = this.configService.SECRETS.jwtAccessKey;
-    const shareId = `share_${share._id}`;
-    const streamScope = this.getStreamName(share.cameraId, share.sourceId) ?? undefined;
-
-    const token = jwt.sign(
-      {
-        _id: shareId,
-        username: 'share_viewer',
-        shareToken: share._id,
-        cameraId: share.cameraId,
-        src: streamScope,
-      },
-      jwtKey,
-      { expiresIn: '5m' },
-    );
-
-    await this.authService.invalidateById(shareId);
-
+  public async issueViewerToken(share: DBShare): Promise<string> {
     const now = Date.now();
-    await this.dbs.tokensDB.put(shareId, {
-      id: shareId,
-      user_id: shareId,
-      access_token: token,
+    const userId = shareUserId(share._id);
+    const id = `${userId}_${randomBytes(9).toString('base64url')}`;
+    const streamScope = this.getStreamName(share.cameraId, share.sourceId) ?? undefined;
+    const accessToken = this.signViewerToken(share, streamScope);
+
+    await this.pruneViewers(share._id, now);
+    await this.dbs.tokensDB.put(id, {
+      id,
+      user_id: userId,
+      access_token: accessToken,
+      access_token_expires_at: now + VIEWER_TOKEN_SECONDS * 1000,
       refresh_token: '',
       refresh_token_expires_at: 0,
       persistent: false,
       stream_scope: streamScope,
       device: {
-        id: shareId,
+        id,
         name: 'Share viewer',
         kind: 'web',
         user_agent: '',
@@ -205,7 +228,29 @@ export class SharesService {
       },
     });
 
-    return token;
+    return accessToken;
+  }
+
+  public async refreshViewerToken(share: DBShare, viewer: DBToken): Promise<string | undefined> {
+    const now = Date.now();
+    const streamScope = this.getStreamName(share.cameraId, share.sourceId) ?? undefined;
+    const accessToken = this.signViewerToken(share, streamScope);
+
+    const rotated = await this.dbs.commit(this.dbs.tokensDB, viewer.id, (current) => {
+      if (!current) return undefined;
+
+      return {
+        ...current,
+        access_token: accessToken,
+        access_token_expires_at: now + VIEWER_TOKEN_SECONDS * 1000,
+        previous_access_token: current.access_token,
+        rotated_at: now,
+        stream_scope: streamScope,
+        device: { ...current.device, last_seen_at: now },
+      };
+    });
+
+    return rotated ? accessToken : undefined;
   }
 
   public async countView(token: string): Promise<void> {
@@ -218,23 +263,40 @@ export class SharesService {
     });
   }
 
-  public async endView(token: string): Promise<void> {
-    await this.authService.invalidateById(`share_${token}`);
+  public async endView(token: string, proof: string | undefined): Promise<boolean> {
+    const viewer = this.findViewer(token, proof);
+    if (!viewer) return false;
+
+    await this.authService.invalidateById(viewer.id);
+    return true;
   }
 
   public currentViewers(token: string): number {
-    return this.go2rtcState.countConsumersByTag(`share_${token}`);
+    return this.go2rtcState.countConsumersByTag(shareUserId(token));
   }
 
   public async cleanup(): Promise<void> {
-    const now = new Date().toISOString();
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
+    const ended = new Set<string>();
     const tasks: Promise<unknown>[] = [];
 
     for (const { key, value } of this.dbs.sharesDB.getRange()) {
-      if (value.revoked || value.expiresAt <= now) {
-        tasks.push(this.killShareConsumers(key));
-        tasks.push(this.authService.invalidateById(`share_${key}`));
-        tasks.push(this.dbs.sharesDB.remove(key));
+      if (value.revoked || value.expiresAt <= nowIso) ended.add(key);
+    }
+
+    if (ended.size) await this.authService.revokeUsers([...ended].map(shareUserId));
+    for (const key of ended) {
+      tasks.push(this.killShareConsumers(key));
+      tasks.push(this.dbs.sharesDB.remove(key));
+    }
+
+    for (const { value } of this.dbs.tokensDB.getRange()) {
+      if (!value.user_id.startsWith(SHARE_USER_PREFIX)) continue;
+
+      const token = value.user_id.slice(SHARE_USER_PREFIX.length);
+      if (ended.has(token) || !this.dbs.sharesDB.get(token) || now - value.device.last_seen_at > VIEWER_IDLE_MS) {
+        tasks.push(this.authService.invalidateById(value.id));
       }
     }
 
@@ -251,9 +313,38 @@ export class SharesService {
     return createSourceName(camera.name, source.name);
   }
 
+  private signViewerToken(share: DBShare, streamScope: string | undefined): string {
+    return jwt.sign(
+      {
+        _id: shareUserId(share._id),
+        shareToken: share._id,
+        cameraId: share.cameraId,
+        src: streamScope,
+      },
+      this.configService.SECRETS.jwtAccessKey,
+      { expiresIn: VIEWER_TOKEN_SECONDS, jwtid: randomBytes(9).toString('base64url') },
+    );
+  }
+
+  private async pruneViewers(token: string, now: number): Promise<void> {
+    const live: DBToken[] = [];
+    const drop: DBToken[] = [];
+
+    for (const viewer of this.authService.listTokensByUserId(shareUserId(token))) {
+      (now - viewer.device.last_seen_at > VIEWER_IDLE_MS ? drop : live).push(viewer);
+    }
+
+    if (live.length >= MAX_VIEWER_TOKENS_PER_SHARE) {
+      live.sort((a, b) => a.device.last_seen_at - b.device.last_seen_at);
+      drop.push(...live.slice(0, live.length - MAX_VIEWER_TOKENS_PER_SHARE + 1));
+    }
+
+    if (drop.length) await Promise.all(drop.map((viewer) => this.authService.invalidateById(viewer.id)));
+  }
+
   private async killShareConsumers(token: string): Promise<void> {
     try {
-      await this.go2rtcApi.streamsRoute.killConsumersByTag(`share_${token}`);
+      await this.go2rtcApi.streamsRoute.killConsumersByTag(shareUserId(token));
     } catch {
       // ignore
     }
@@ -306,4 +397,8 @@ export class SharesService {
   private sha256(input: string): string {
     return createHash('sha256').update(input).digest('hex');
   }
+}
+
+function shareUserId(token: string): string {
+  return `${SHARE_USER_PREFIX}${token}`;
 }

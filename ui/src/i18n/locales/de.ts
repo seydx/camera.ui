@@ -2114,6 +2114,7 @@ export default {
     label_placeholder: 'Optionale Bezeichnung',
     link: 'Share-Link',
     max_viewers: 'Max. Zuschauer',
+    needs_cloud: 'Share-Links funktionieren nur mit Cloud-Zugriff. Unter Einstellungen, Remote Zugriff einschalten.',
     no_shares: 'Keine aktiven Share-Links',
     revoke: 'Widerrufen',
     share_created: 'Share-Link erstellt',

@@ -72,6 +72,27 @@ export class ProxyService extends EventEmitter {
     }
   }
 
+  public async startAgent(): Promise<void> {
+    const agent = tryInject('tunnelClient');
+    if (!agent) return;
+
+    // an agent told to shut down keeps its process alive but never connects again
+    await (agent.isRunning ? agent.restart() : agent.start());
+  }
+
+  public async stopAgent(): Promise<void> {
+    await this.disconnect();
+
+    const agent = tryInject('tunnelClient');
+    if (agent?.isRunning) {
+      await agent.stop();
+    }
+  }
+
+  private agentRunning(): boolean {
+    return tryInject('tunnelClient')?.isRunning ?? false;
+  }
+
   private async handleServerDeleted(): Promise<void> {
     this.logger.log('Server was deleted from camera.ui cloud, cleaning up...');
 

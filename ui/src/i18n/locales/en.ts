@@ -2097,6 +2097,7 @@ export default {
     label_placeholder: 'Optional label',
     link: 'Share Link',
     max_viewers: 'Max Viewers',
+    needs_cloud: 'Share links only work with cloud access. Turn it on under Settings, Remote Access.',
     no_shares: 'No active share links',
     revoke: 'Revoke',
     share_created: 'Share link created',
