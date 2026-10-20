@@ -45,6 +45,11 @@
                 </span>
               </div>
 
+              <div v-if="lastBackupAt !== undefined" class="flex flex-row items-center justify-between">
+                <span class="text-sm">{{ $t('views.settings.backup_last') }}</span>
+                <span class="text-sm font-bold">{{ lastBackupAt ? formatRelativeTime(lastBackupAt) : $t('views.settings.backup_last_never') }}</span>
+              </div>
+
               <div v-if="!isElectronBuild" class="flex w-full items-center gap-2">
                 <div class="ml-auto"></div>
 
@@ -178,8 +183,10 @@
 
 <script setup lang="ts">
 import { ApiQuery, apiInfo as fetchApiInfo } from '@/api/routes/api.js';
+import { getBackupSchedulerFn } from '@/api/routes/backup.js';
 import { downloadCertFn, getCertificate, removeCertificate, restartGo2RtcFn, ServerQuery, uploadCertificate } from '@/api/routes/server.js';
 import { asyncComponent } from '@/common/asyncComponent.js';
+import { formatRelativeTime } from '@/common/utils.js';
 import { isCapacitor } from '@/connection/index.js';
 
 import type { CertificateUploadResult } from '@/components/CuiDialog/templates/CertificateUpload/types.js';
@@ -213,6 +220,7 @@ const currentElectronVersion = ref(t('views.settings.unknown'));
 const loadingCert = ref(false);
 const certificateState = shallowRef<CustomCertificateState | null>(null);
 const certificateBusy = ref(false);
+const lastBackupAt = ref<number | null>();
 
 let refreshRun = 0;
 
@@ -355,6 +363,14 @@ function askGo2RtcRestart(): void {
   });
 }
 
+async function loadLastBackup(): Promise<void> {
+  try {
+    lastBackupAt.value = (await getBackupSchedulerFn()).lastBackupAt ?? null;
+  } catch {
+    // the row stays hidden
+  }
+}
+
 async function loadCertificateState(): Promise<void> {
   try {
     certificateState.value = await getCertificate();
@@ -444,6 +460,9 @@ onMounted(() => {
   }
   if (canManageCertificate.value) {
     loadCertificateState();
+  }
+  if (hasPermission(undefined, 'admin')) {
+    loadLastBackup();
   }
 });
 </script>

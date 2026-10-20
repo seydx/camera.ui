@@ -26,9 +26,39 @@ export interface BackupSchedulerState {
   settings: DBBackupSchedulerSettings;
   backups: ScheduledBackupEntry[];
   defaultDestination: string;
+  destination?: string;
+  lastBackupAt?: number;
 }
 
 const BACKUP_TIMEOUT_MS = 300_000;
+
+export async function backupDownloadSourceFn(localStorage?: Partial<UiLocalStorage>): Promise<BackupDownloadSource> {
+  const link = await dataOrNull<BackupDownloadLink>(api.post('/backup/download/link', { localStorage }, { timeout: BACKUP_TIMEOUT_MS }));
+  return link ? { url: link.url, filename: link.filename } : { blob: new Blob([await downloadBackupFn(localStorage)]) };
+}
+
+export async function startBackupJobFn(localStorage?: Partial<UiLocalStorage>): Promise<BackupJob | null> {
+  return dataOrNull<BackupJob>(api.post('/backup/jobs', { localStorage }));
+}
+
+export async function backupJobFn(): Promise<BackupJob | null> {
+  return getOrNull('/backup/jobs');
+}
+
+export async function backupKeyFn(): Promise<BackupKeyInfo> {
+  const response: AxiosResponse<BackupKeyInfo> = await api.get('/backup/key');
+  return response.data;
+}
+
+export async function confirmBackupKeyFn(): Promise<BackupKeyInfo> {
+  const response: AxiosResponse<BackupKeyInfo> = await api.post('/backup/key/confirm');
+  return response.data;
+}
+
+export async function scheduledBackupDownloadSourceFn(filename: string): Promise<BackupDownloadSource> {
+  const link = await dataOrNull<BackupDownloadLink>(api.post(`/backup/scheduler/backups/${encodeURIComponent(filename)}/link`));
+  return link ? { url: link.url, filename: link.filename } : { blob: new Blob([await downloadScheduledBackupFn(filename)]) };
+}
 
 export async function downloadBackupFn(localStorage?: Partial<UiLocalStorage>): Promise<BlobPart> {
   const response: AxiosResponse<BlobPart> = await api.post('/backup/download', { localStorage }, { responseType: 'arraybuffer', timeout: BACKUP_TIMEOUT_MS });

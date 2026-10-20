@@ -52,7 +52,11 @@ export class BackupSchedulerService {
   }
 
   public get defaultDestination(): string {
-    return join(this.configService.STORAGE_PATH, 'backups');
+    return this.configService.DEFAULT_BACKUPS_PATH;
+  }
+
+  public get lastBackupAt(): number | undefined {
+    return this.dbs.settingsDB.get('settings')?.lastBackupAt;
   }
 
   public getSettings(): DBBackupSchedulerSettings {

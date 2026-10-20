@@ -1,4 +1,4 @@
-import { createReadStream, readFile } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { pipeline, Transform } from 'node:stream';
@@ -57,14 +57,17 @@ export class BackupController {
         throw error;
       });
 
-        this.service.removeBackup(backup);
-        reply.send(error ?? fileBuffer);
+      const stream = createReadStream(backup.backupFile);
+      // close also fires when the client aborts
+      stream.once('close', () => {
+        this.service.removeBackup(backup).catch((error) => this.logger.error(error));
       });
 
       reply.header('Content-Type', 'application/octet-stream');
       reply.header('Content-Disposition', `attachment; filename=${backup.backupFileName}`);
+      reply.header('Content-Length', info.size);
 
-      return reply;
+      return reply.send(stream);
     } catch (error: any) {
       return reply.code(500).send({
         statusCode: 500,
@@ -73,7 +76,43 @@ export class BackupController {
     }
   }
 
-  public async restore(req: FastifyRequest<AuthLoginRequest & BackupRestoreRequest>, reply: FastifyReply): Promise<FastifyReply | void> {
+  public async startJob(req: FastifyRequest<AuthLoginRequest & BackupCreateRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      const job = this.service.startJob({ localStorage: req.body.localStorage, excludePaths: [this.scheduler.destinationRoot()], encrypt: true }, (backup) =>
+        this.serverDownload(backup),
+      );
+      return reply.code(202).send(job);
+    } catch (error) {
+      return this.fail(reply, error);
+    }
+  }
+
+  public async getJob(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    const job = this.service.currentJob();
+    if (!job) {
+      return reply.code(404).send({ statusCode: 404, message: 'No backup job' });
+    }
+    return reply.code(200).send(job);
+  }
+
+  public async getKey(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    return reply.code(200).send(this.service.keyInfo() satisfies BackupKeyInfo);
+  }
+
+  public async confirmKey(_req: FastifyRequest<AuthLoginRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    return reply.code(200).send((await this.service.confirmKey()) satisfies BackupKeyInfo);
+  }
+
+  public async downloadLink(req: FastifyRequest<AuthLoginRequest & BackupCreateRequest>, reply: FastifyReply): Promise<FastifyReply> {
+    try {
+      const backup = await this.service.createBackup({ localStorage: req.body.localStorage, excludePaths: [this.scheduler.destinationRoot()], encrypt: true });
+      return reply.code(201).send(this.serverDownload(backup));
+    } catch (error: any) {
+      return reply.code(500).send({ statusCode: 500, message: error.message });
+    }
+  }
+
+  public async restore(req: FastifyRequest<AuthLoginRequest & BackupRestoreRequest>, reply: FastifyReply): Promise<FastifyReply> {
     try {
       if (!req.isMultipart()) {
         throw new RestoreError('No multipart request!', 400);

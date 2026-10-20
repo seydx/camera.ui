@@ -746,6 +746,29 @@ export interface BackupInfo {
   version: string;
   plugins: PluginBackupInfo[];
   localStorage: Partial<UiLocalStorage>;
+  environment?: string[];
+  ingress?: boolean;
+  excluded?: BackupExcludedFolder[];
+}
+
+export type BackupJobSource = 'manual' | 'schedule' | 'move';
+
+export type BackupJobState = 'running' | 'done' | 'failed';
+
+export type BackupJobPhase = 'snapshot' | 'packing';
+
+export interface BackupJob {
+  id: string;
+  source: BackupJobSource;
+  state: BackupJobState;
+  phase: BackupJobPhase;
+  done: number;
+  total: number;
+  startedAt: number;
+  finishedAt?: number;
+  size?: number;
+  error?: string;
+  download?: BackupDownloadLink;
 }
 
 export interface BackupStorage {

@@ -410,8 +410,10 @@ import {
   patchBackupSchedulerFn,
   retryRestorePluginFn,
   runBackupSchedulerFn,
+  scheduledBackupDownloadSourceFn,
+  startBackupJobFn,
 } from '@/api/routes/backup.js';
-import { extractErrorMessage } from '@/common/utils.js';
+import { copyToClipboard, extractErrorMessage, formatBytes, formatRelativeTime } from '@/common/utils.js';
 import { readThemeStorage } from '@/stores/theme.js';
 
 import type CuiUploadFiles from '@/components/CuiUploadFIles/CuiUploadFiles.vue';
@@ -449,6 +451,10 @@ const schedulerRunning = ref(false);
 const downloadingBackup = ref<string | null>(null);
 const scheduledBackups = ref<ScheduledBackupEntry[]>([]);
 const defaultDestination = ref('');
+const destination = ref('');
+const lastBackupAt = ref<number>();
+const job = ref<BackupJob | null>(null);
+const backupKey = ref<BackupKeyInfo | null>(null);
 const lastRun = ref<DBBackupSchedulerLastRun>();
 const restoreOverview = ref<RestoreOverview>();
 const pluginBusy = ref<string | null>(null);
@@ -467,6 +473,16 @@ const schedulerForm = reactive<Omit<DBBackupSchedulerSettings, 'lastRun'>>({
 });
 
 const timeValid = computed(() => /^([01]\d|2[0-3]):[0-5]\d$/.test(schedulerForm.time));
+
+const jobPercent = computed(() => (job.value?.phase === 'packing' && job.value.total ? Math.round((job.value.done / job.value.total) * 100) : null));
+
+const jobText = computed(() => (job.value?.phase === 'packing' ? t('views.settings.backup_job_packing') : t('views.settings.backup_job_snapshot')));
+
+const lastBackupText = computed(
+  () => `${t('views.settings.backup_last')}: ${lastBackupAt.value ? formatRelativeTime(lastBackupAt.value) : t('views.settings.backup_last_never')}`,
+);
+
+const savedDestination = computed(() => (destination.value && destination.value !== defaultDestination.value ? destination.value : ''));
 
 const intervalOptions = computed(() => (['daily', 'weekly', 'monthly'] as const).map((value) => ({ label: t(`views.settings.backup_interval_${value}`), value })));
 
@@ -552,16 +568,30 @@ async function downloadBackup(): Promise<void> {
       uiLocalStorage.theme = readThemeStorage();
     }
 
-    const timestamp = Date.now();
-    const response = await downloadBackupFn(uiLocalStorage);
+    const started = await startBackupJobFn(uiLocalStorage);
 
-    await download({
-      blob: new Blob([response]),
-      filename: `cameraui-backup-${timestamp}.tar.gz`,
-      mimeType: 'application/gzip',
-    });
+    if (started) {
+      job.value = started;
+      const finished = await waitForJob(started.id);
+      if (finished.state === 'failed') throw new Error(finished.error);
+      lastBackupAt.value = finished.startedAt;
+      if (finished.download) {
+        await download({ url: finished.download.url, filename: finished.download.filename, mimeType: 'application/octet-stream' });
+      }
+      askToKeepKey();
+    } else {
+      const timestamp = Date.now();
+      const source = await backupDownloadSourceFn(uiLocalStorage);
+
+      await download({
+        filename: `cameraui-backup-${timestamp}.tar.gz`,
+        mimeType: 'application/gzip',
+        ...source,
+      });
+    }
   } catch (error: any) {
-    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+    if (job.value?.state === 'running') job.value = null;
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 10000 });
   }
 
   isLoading.value = false;
@@ -753,6 +783,8 @@ async function loadScheduler(): Promise<void> {
     lastRun.value = storedLastRun;
     scheduledBackups.value = state.backups;
     defaultDestination.value = state.defaultDestination;
+    destination.value = state.destination ?? '';
+    lastBackupAt.value = state.lastBackupAt;
   } catch (error: any) {
     toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
   } finally {
@@ -821,7 +853,35 @@ function confirmDeleteScheduled(backup: ScheduledBackupEntry): void {
   });
 }
 
-onMounted(loadScheduler);
+async function loadJob(): Promise<void> {
+  try {
+    const current = await backupJobFn();
+    if (current?.source !== 'move') job.value = current;
+  } catch {
+    // the progress shows with the next socket update
+  }
+}
+
+serverChannel.on<BackupJob>('backup-job', (payload) => {
+  if (payload.source === 'move') return;
+  job.value = payload;
+  if (payload.state === 'done') lastBackupAt.value = payload.startedAt;
+  if (payload.source === 'schedule' && payload.state !== 'running') loadScheduler();
+});
+
+watch(isRestoreActive, (active) => {
+  if (!active) loadRestore();
+});
+
+onMounted(() => {
+  loadScheduler();
+  loadRestore();
+  loadMove();
+  loadKey();
+  loadJob();
+});
+
+onBeforeUnmount(() => clearTimeout(movePollTimer));
 </script>
 
 <style scoped></style>

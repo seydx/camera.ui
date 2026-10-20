@@ -122,6 +122,9 @@ interface UploadMeta {
 
 export class BackupService {
   private static activeOperation: 'backup' | 'restore' | null = null;
+  private static uploadsInFlight = new Set<string>();
+  private static job: BackupJob | null = null;
+  private static jobEmittedAt = 0;
 
   private logger: LoggerService;
   private configService: ConfigService;
@@ -134,7 +137,12 @@ export class BackupService {
     this.pluginsService = new PluginsService();
   }
 
-  public async createBackup(localStorage: Partial<UiLocalStorage> = {}, extraExcludePaths: string[] = []): Promise<BackupStorage> {
+  public async createBackup(options: BackupOptions = {}): Promise<BackupStorage> {
+    this.acquireLock('backup');
+    return this.track(options);
+  }
+
+  public startJob(options: BackupOptions, deliver: (backup: BackupStorage) => BackupDownloadLink): BackupJob {
     this.acquireLock('backup');
     this.track(options, deliver).catch(() => {});
     return BackupService.job!;
@@ -355,6 +363,71 @@ export class BackupService {
     await remove(backup.backupDirectory);
   }
 
+  public async removeStaleBackupFolders(): Promise<void> {
+    const root = this.configService.BACKUP_PACKING_PATH;
+    const cutoff = Date.now() - STALE_TEMP_FOLDER_MS;
+    const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+
+    for (const entry of entries) {
+      const suffix = entry.name.slice(TEMP_FOLDER_PREFIX.length);
+      if (!entry.isDirectory() || !entry.name.startsWith(TEMP_FOLDER_PREFIX) || !TEMP_FOLDER_SUFFIX.test(suffix)) continue;
+
+      const folder = join(root, entry.name);
+      if ((await this.lastChange(folder)) > cutoff) continue;
+
+      try {
+        await remove(folder);
+        this.logger.debug(`Removed leftover backup folder ${folder}`);
+      } catch (error) {
+        this.logger.warn(`Failed to remove leftover backup folder ${folder}`, error);
+      }
+    }
+  }
+
+  private async track(options: BackupOptions, deliver?: (backup: BackupStorage) => BackupDownloadLink): Promise<BackupStorage> {
+    const job: BackupJob = { id: randomUUID(), source: options.source ?? 'manual', state: 'running', phase: 'snapshot', done: 0, total: 0, startedAt: Date.now() };
+    BackupService.job = job;
+    this.emitJob(true);
+
+    try {
+      const backup = await this.runCreateBackup(options, (phase, done, total) => {
+        Object.assign(job, { phase, done, total });
+        this.emitJob();
+      });
+      job.size = (await stat(backup.backupFile)).size;
+      job.download = deliver?.(backup);
+      job.state = 'done';
+      if (job.source !== 'move') await this.recordBackup(job.startedAt);
+      return backup;
+    } catch (error) {
+      job.state = 'failed';
+      job.error = error.message;
+      throw error;
+    } finally {
+      job.finishedAt = Date.now();
+      BackupService.activeOperation = null;
+      this.emitJob(true);
+    }
+  }
+
+  private async recordBackup(at: number): Promise<void> {
+    const dbs = tryInject('dbs');
+    if (!dbs) return;
+    await dbs.commit(dbs.settingsDB, 'settings', (current) => current && { ...current, lastBackupAt: at }).catch(() => {});
+  }
+
+  private emitJob(force = false): void {
+    const now = Date.now();
+    if (!force && now - BackupService.jobEmittedAt < JOB_EMIT_INTERVAL_MS) return;
+    BackupService.jobEmittedAt = now;
+    const socketService = tryInject('socketService');
+    if (socketService && BackupService.job) {
+      // the link opens the archive without a session, keep it out of the broadcast
+      const { download: _download, ...job } = BackupService.job;
+      socketService.io.of('/server').emit('backup-job', job);
+    }
+  }
+
   private acquireLock(operation: 'backup' | 'restore'): void {
     if (BackupService.activeOperation) {
       throw new RestoreError(`A ${BackupService.activeOperation} operation is already in progress. Please wait for it to finish and try again.`, 409);
@@ -362,7 +435,7 @@ export class BackupService {
     BackupService.activeOperation = operation;
   }
 
-  private async runCreateBackup(localStorage: Partial<UiLocalStorage>, extraExcludePaths: string[]): Promise<BackupStorage> {
+  private async runCreateBackup(options: BackupOptions, progress: BackupProgress): Promise<BackupStorage> {
     const timestamp = Date.now();
     const key = options.encrypt ? parseBackupKey(this.configService.SECRETS.backupKey) : null;
     if (options.encrypt && !key) throw new Error('The backup key of this server is missing.');
