@@ -128,7 +128,6 @@ import type { PatchUserInput } from '@/schemas/users.schema.js';
 import type { Form } from 'vee-validate';
 
 const log = useLogger();
-const dialog = useCuiDialog();
 const toast = useCuiToast();
 const { t } = useI18n();
 
@@ -144,10 +143,9 @@ const uploadedFile = shallowRef<File>();
 const backupRestore = useBackupRestore();
 const restoreError = backupRestore.lastError;
 const currentCategoryIndex = ref(0);
-const loading = ref(false);
 const lastFormValues = ref<Record<string, any>>();
 
-const isLoading = computed(() => loading.value || loginLoading.value);
+const isLoading = computed(() => loginLoading.value);
 const isMaster = computed(() => hasPermission(undefined, 'master'));
 const formRef = computed<InstanceType<typeof Form>>(() => accountFormRef.value?.formRef as any);
 
@@ -209,28 +207,9 @@ function triggerFileInput() {
 
 function handleBackupFileSelect(event: Event) {
   const fileInput = event.target as HTMLInputElement;
-  if (fileInput.files && fileInput.files[0]) {
-    uploadedFile.value = fileInput.files[0];
-
-    dialog.openTextDialog({
-      data: {
-        title: t('components.dialog.title.confirm'),
-        confirmText: t('components.form.button.restore_and_restart'),
-        contentText: t('components.dialog.message.confirm_restore'),
-        loading: isLoading,
-      },
-      onConfirm: restoreBackup,
-    });
-  }
+  const selected = fileInput.files?.[0];
   fileInput.value = '';
-}
-
-async function restoreBackup(): Promise<void> {
-  if (!uploadedFile.value) return;
-
-  loading.value = true;
-  await backupRestore.run(uploadedFile.value);
-  loading.value = false;
+  if (selected) backupRestore.upload(selected);
 }
 
 async function onFormSubmit(): Promise<void> {

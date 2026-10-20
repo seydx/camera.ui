@@ -1,4 +1,4 @@
-import { move, pathExists, readJson, remove } from 'fs-extra/esm';
+import { move, pathExists, readJson, readJsonSync, remove } from 'fs-extra/esm';
 
 import { sleep, uuidv4 } from '@camera.ui/common/utils';
 import { tmpdir, userInfo } from 'node:os';
@@ -177,12 +177,22 @@ export class PluginsService {
     await this.dbs.pluginsDB.clearAsync();
   }
 
+  public listPendingRestorePlugins(): Set<string> {
+    try {
+      const info: BackupInfo = readJsonSync(this.configService.BACKUP_INFO_FILE);
+      return new Set(info.plugins.map((plugin) => plugin.name));
+    } catch {
+      return new Set();
+    }
+  }
+
   public async removeOrphanPluginsDb(): Promise<void> {
     const identifiers = new Set(this.listPluginsIdentifier());
+    const pending = this.listPendingRestorePlugins();
     const orphanedNames: string[] = [];
 
     for (const { value } of this.dbs.pluginsDB.getRange()) {
-      if (!this.getPluginByName(value.pluginName) && !identifiers.has(value.pluginName)) {
+      if (!this.getPluginByName(value.pluginName) && !identifiers.has(value.pluginName) && !pending.has(value.pluginName)) {
         orphanedNames.push(value.pluginName);
       }
     }

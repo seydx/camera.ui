@@ -135,6 +135,16 @@ export class CoreManager implements CoreManagerInterface {
   }
 
   @RPCMethod
+  public async getRestoreGeneration(): Promise<string> {
+    return inject('dbs').settingsDB.get('settings')?.restoreGeneration ?? '';
+  }
+
+  @RPCMethod
+  public async getInstanceId(): Promise<string> {
+    return inject('dbs').settingsDB.get('settings')?.instanceId ?? '';
+  }
+
+  @RPCMethod
   public async getFloorPlan(): Promise<FloorPlan> {
     return { rooms: this.roomsService.get(), plan: this.floorPlanService.get() };
   }

@@ -165,7 +165,7 @@ export class CamerasService {
 
   public async cleanupNonExistentPlugins(): Promise<void> {
     const plugins = this.pluginsService.listPlugins();
-    const existingPluginNames = new Set<string>(plugins.map((p) => p.pluginName));
+    const existingPluginNames = new Set<string>([...plugins.map((p) => p.pluginName), ...this.pluginsService.listPendingRestorePlugins()]);
     const idsByName = new Map(plugins.map((p) => [p.pluginName, p.id]));
     const cameraIds = [...this.dbs.camerasDB.getRange()].map(({ value }) => value._id);
 

@@ -205,6 +205,7 @@ declare global {
   const useAuthStore: typeof import('../stores/auth').useAuthStore
   const useAutomationsStore: typeof import('../stores/automations').useAutomationsStore
   const useBackupRestore: typeof import('../composables/useBackupRestore').useBackupRestore
+  const useBackupRestoreDialog: typeof import('../composables/useBackupRestoreDialog').useBackupRestoreDialog
   const useBase64: typeof import('@vueuse/core').useBase64
   const useBattery: typeof import('@vueuse/core').useBattery
   const useBleedScroll: typeof import('../composables/useBleedScroll').useBleedScroll
@@ -791,6 +792,7 @@ declare module 'vue' {
     readonly useAuthStore: UnwrapRef<typeof import('../stores/auth')['useAuthStore']>
     readonly useAutomationsStore: UnwrapRef<typeof import('../stores/automations')['useAutomationsStore']>
     readonly useBackupRestore: UnwrapRef<typeof import('../composables/useBackupRestore')['useBackupRestore']>
+    readonly useBackupRestoreDialog: UnwrapRef<typeof import('../composables/useBackupRestoreDialog')['useBackupRestoreDialog']>
     readonly useBase64: UnwrapRef<typeof import('@vueuse/core')['useBase64']>
     readonly useBattery: UnwrapRef<typeof import('@vueuse/core')['useBattery']>
     readonly useBleedScroll: UnwrapRef<typeof import('../composables/useBleedScroll')['useBleedScroll']>

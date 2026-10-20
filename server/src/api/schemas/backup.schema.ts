@@ -40,7 +40,58 @@ export const patchBackupSchedulerSettingsSchema = backupSchedulerSettingsSchema.
 
 export const scheduledBackupParamsSchema = zod
   .object({
-    filename: zod.string().regex(/^camera\.ui-backup-\d+\.tar\.gz$/, 'Invalid backup filename'),
+    filename: zod.string().regex(/^camera\.ui-backup-\d+\.(tar\.gz|cuibackup)$/, 'Invalid backup filename'),
+  })
+  .strict();
+
+export const createRestoreUploadSchema = zod
+  .object({
+    size: zod.number().int().positive(),
+    name: zod.string().trim().max(255).default(''),
+  })
+  .strict();
+
+export const restoreUploadParamsSchema = zod
+  .object({
+    id: zod.string().regex(/^[a-f0-9]{32}$/, 'Invalid upload id'),
+  })
+  .strict();
+
+export const backupKeyBodySchema = zod
+  .object({
+    key: zod.string().trim().max(128).optional(),
+  })
+  .strict()
+  .optional();
+
+export const restorePluginSchema = zod
+  .object({
+    name: zod.string().trim().min(1),
+  })
+  .strict();
+
+export const confirmRestoreSchema = zod
+  .object({
+    mode: zod.enum(['move', 'copy']).optional(),
+  })
+  .strict();
+
+export const createMoveSchema = zod
+  .object({
+    hosts: zod.array(zod.string().trim().min(1).max(255)).max(4).default([]),
+  })
+  .strict();
+
+export const movePeerSchema = zod
+  .object({
+    secret: zod.string().min(1).max(64),
+  })
+  .strict();
+
+export const startMovePullSchema = zod
+  .object({
+    code: zod.string().trim().min(1).max(4096),
+    address: zod.string().trim().max(255).optional(),
   })
   .strict();
 
@@ -49,3 +100,11 @@ export type RestoreBackupInput = zod.output<typeof restoreBackupSchema>;
 export type BackupSchedulerSettingsInput = zod.output<typeof backupSchedulerSettingsSchema>;
 export type PatchBackupSchedulerSettingsInput = zod.output<typeof patchBackupSchedulerSettingsSchema>;
 export type ScheduledBackupParamsInput = zod.output<typeof scheduledBackupParamsSchema>;
+export type CreateRestoreUploadInput = zod.output<typeof createRestoreUploadSchema>;
+export type RestoreUploadParamsInput = zod.output<typeof restoreUploadParamsSchema>;
+export type RestorePluginInput = zod.output<typeof restorePluginSchema>;
+export type BackupKeyBodyInput = zod.output<typeof backupKeyBodySchema>;
+export type ConfirmRestoreInput = zod.output<typeof confirmRestoreSchema>;
+export type CreateMoveInput = zod.output<typeof createMoveSchema>;
+export type MovePeerInput = zod.output<typeof movePeerSchema>;
+export type StartMovePullInput = zod.output<typeof startMovePullSchema>;

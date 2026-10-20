@@ -234,4 +234,12 @@ export class BackupSchedulerService {
   private async persist(settings: DBBackupSchedulerSettings): Promise<void> {
     await this.dbs.commit(this.dbs.settingsDB, 'settings', (current) => ({ ...(current ?? { version: '' }), backupScheduler: settings }));
   }
+
+  private removeExpiredRestoreData(): void {
+    try {
+      removeExpiredRestoreData(this.configService.restorePaths);
+    } catch (error) {
+      this.logger.warn('Failed to remove expired restore data:', error);
+    }
+  }
 }

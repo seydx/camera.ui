@@ -13,6 +13,7 @@ import { Database } from './api/database/index.js';
 import { tryInject } from './container.js';
 import { ProxyServer } from './rpc/index.js';
 import { ConfigService } from './services/config/index.js';
+import { noteRestoreBootError } from './services/config/restore.js';
 import { LoggerService } from './services/logger/index.js';
 import { ShutdownOwner } from './shutdown-owner.js';
 import { markShuttingDown, resetShuttingDown } from './shutdown-state.js';
@@ -139,8 +140,10 @@ async function launch(): Promise<void> {
     sendIPCMessage({ type: 'HEALTHY', version: ConfigService.RUNNING_VERSION });
   } catch (error) {
     (cameraui?.logger ?? console).error('Failed to start camera.ui', error);
+    const configService = tryInject('configService');
+    const rollbackAhead = !!configService && noteRestoreBootError(configService.RESTORE_JOURNAL_FILE, error?.message ?? String(error));
 
-    await reportStartError(error);
+    await reportStartError(error, rollbackAhead);
     await cameraui?.close();
 
     process.exit(1);

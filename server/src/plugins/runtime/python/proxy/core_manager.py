@@ -110,6 +110,12 @@ class CoreManagerProxy(CoreManager):
     async def getCloudServerId(self) -> str:
         return await self.__core_manager_proxy.getCloudServerId()
 
+    async def getRestoreGeneration(self) -> str:
+        return await self.__core_manager_proxy.getRestoreGeneration()
+
+    async def getInstanceId(self) -> str:
+        return await self.__core_manager_proxy.getInstanceId()
+
     async def getPluginsByInterface(self, interfaceName: PluginInterface) -> list[PluginInfo]:
         return await self.__core_manager_proxy.getPluginsByInterface(interfaceName)
 

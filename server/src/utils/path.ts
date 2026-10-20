@@ -20,6 +20,7 @@ export const pythonPluginPath = resolve(join(__dirname, '..', 'plugins', 'runtim
 
 export const nodeDecoderPath = resolve(join(__dirname, '..', 'camera', 'decoder', `child.${JS_EXT}`)).replace('app.asar', ELECTRON_ASAR_UNPACKED);
 export const nodePluginPath = resolve(join(__dirname, '..', 'plugins', 'runtime', 'node', `child.${JS_EXT}`)).replace('app.asar', ELECTRON_ASAR_UNPACKED);
+export const restoreSummaryPath = resolve(join(__dirname, '..', 'services', 'config', `restore-summary.${JS_EXT}`)).replace('app.asar', ELECTRON_ASAR_UNPACKED);
 
 const shortPathCache = new Map<string, string>();
 

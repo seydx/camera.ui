@@ -7,7 +7,7 @@ import { copySync, emptyDirSync, ensureDirSync, ensureFileSync, moveSync, pathEx
 import { dump, load } from 'js-yaml';
 import { ffmpegPath, isFfmpegAvailable } from 'node-av';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { arch, platform, release, tmpdir, type } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -23,11 +23,15 @@ import { customCertificatePaths } from '../../api/utils/custom-cert.js';
 import { announceUpdateChannel } from '../../utils/ipc.js';
 import { execSafePath } from '../../utils/path.js';
 import { DEFAULT_CONFIG, DEFAULT_GO2RTC_CONFIG, ELECTRON_ASAR_UNPACKED } from './constants.js';
+import { resolveProxyAuth } from './proxy-auth.js';
+import { runPendingRestore } from './restore.js';
 
 import type { LoggerOptions } from '@camera.ui/common/logger';
 import type { PidRegistryEntry } from '@camera.ui/common/node';
 import type { DeepPartial } from '../../types.js';
 import type { LoggerService } from '../logger/index.js';
+import type { ProxyAuthSettings } from './proxy-auth.js';
+import type { RestorePaths } from './restore.js';
 import type { ConfigServiceOptions, EnvironmentInfo, Go2RtcConfig, IConfig, Secrets, SSLConfig } from './types.js';
 
 const __require = createRequire(import.meta.url);
@@ -35,6 +39,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const packageJson = __require('../../../package.json');
+
+const ENVIRONMENT_SETTINGS: Record<string, string> = {
+  CAMERA_UI_PORT: 'port',
+  CAMERA_UI_INSECURE_PORT: 'insecurePort',
+  CAMERA_UI_TRUSTED_PROXIES: 'trustedProxies',
+  CAMERA_UI_WORKERS_ENABLED: 'workers.enabled',
+  CAMERA_UI_WORKERS_ADDRESS: 'workers.address',
+  CAMERA_UI_WORKERS_PORT: 'workers.port',
+  CAMERA_UI_WORKER_MASTER: 'worker.master',
+  CAMERA_UI_WORKER_API_PORT: 'worker.apiPort',
+  CAMERA_UI_WORKER_PAIRING_CODE: 'worker.pairingCode',
+  CAMERA_UI_WORKER_NAME: 'worker.name',
+  CAMERA_UI_WORKER_CAPABILITIES: 'worker.capabilities',
+};
 
 export class ConfigService {
   static get VERSION(): string {
@@ -80,8 +98,16 @@ export class ConfigService {
 
   readonly PLUGINS_STORAGE_PATH: string;
   readonly PLUGINS_INSTALL_PATH: string;
+  readonly RESTORE_PATH: string;
   readonly RESTORE_STAGING_PATH: string;
-  readonly RESTORE_READY_FILE: string;
+  readonly RESTORE_JOURNAL_FILE: string;
+  readonly RESTORE_UPLOADS_PATH: string;
+  readonly RESTORE_PREVIOUS_PATH: string;
+  readonly RESTORE_PREVIOUS_INFO_FILE: string;
+  readonly RESTORE_PREVIOUS_MOVE_FILE: string;
+  readonly MOVE_FILE: string;
+  readonly BACKUP_PACKING_PATH: string;
+  readonly DEFAULT_BACKUPS_PATH: string;
 
   readonly REPORTS_FILE: string;
   readonly LOG_FILE: string;
@@ -93,7 +119,7 @@ export class ConfigService {
   readonly NATS_BINARY: string;
   readonly BACKUP_INFO_FILE: string;
   readonly DEFAULTS_INSTALLED_FILE: string;
-  readonly RESTORE_RESET_IDENTITY_FILE: string;
+  readonly RESTORE_APPLIED_FILE: string;
   readonly RESET_PASSWORD_FILE: string;
 
   readonly UI_PORT = parseInt(process.env.CAMERA_UI_UI_PORT!);
@@ -157,6 +183,37 @@ export class ConfigService {
     };
   }
 
+  public get BACKUP_EXCLUDED_PATHS(): string[] {
+    return [this.INTERFACE_CACHE_PATH, this.LOGS_PATH, this.LOG_FILE, this.PIDS_FILE, this.REPORTS_FILE, this.HOST_CERT_FILE, this.HOST_KEY_FILE];
+  }
+
+  public get RESTORE_PRESERVED_PATHS(): string[] {
+    return [...this.BACKUP_EXCLUDED_PATHS, this.DEFAULT_BACKUPS_PATH, ...this.restorePaths.identity];
+  }
+
+  public get restorePaths(): RestorePaths {
+    return {
+      storage: this.STORAGE_PATH,
+      root: this.RESTORE_PATH,
+      staging: this.RESTORE_STAGING_PATH,
+      previous: this.RESTORE_PREVIOUS_PATH,
+      previousInfo: this.RESTORE_PREVIOUS_INFO_FILE,
+      journal: this.RESTORE_JOURNAL_FILE,
+      uploads: this.RESTORE_UPLOADS_PATH,
+      backupInfo: this.BACKUP_INFO_FILE,
+      applied: this.RESTORE_APPLIED_FILE,
+      move: this.MOVE_FILE,
+      previousMove: this.RESTORE_PREVIOUS_MOVE_FILE,
+      identity: [this.ROOT_CERT_FILE, this.ROOT_KEY_FILE],
+    };
+  }
+
+  public get ENVIRONMENT_SETTINGS(): string[] {
+    return Object.entries(ENVIRONMENT_SETTINGS)
+      .filter(([name]) => process.env[name] !== undefined)
+      .map(([, setting]) => setting);
+  }
+
   public get STAGED_VERSION(): string | undefined {
     const serverPath = join(this.HOME_PATH, 'server');
     if (existsSync(join(serverPath, '.staging.lock'))) return undefined;
@@ -184,7 +241,7 @@ export class ConfigService {
     this.CONFIG_FILE = join(this.STORAGE_PATH, 'camera.ui.yaml');
     this.BACKUP_INFO_FILE = join(this.STORAGE_PATH, 'camera.ui.backup.json');
     this.DEFAULTS_INSTALLED_FILE = join(this.STORAGE_PATH, '.camera.ui.defaults-installed');
-    this.RESTORE_RESET_IDENTITY_FILE = join(this.STORAGE_PATH, '.restore-reset-identity');
+    this.RESTORE_APPLIED_FILE = join(this.STORAGE_PATH, '.restore-applied');
     this.RESET_PASSWORD_FILE = join(this.STORAGE_PATH, 'reset-password');
     this.DATABASE_PATH = join(this.STORAGE_PATH, 'database');
     this.USERS_STORAGE_PATH = join(this.STORAGE_PATH, 'users');
@@ -199,8 +256,16 @@ export class ConfigService {
 
     this.PLUGINS_STORAGE_PATH = join(this.STORAGE_PATH, 'plugins', 'storage');
     this.PLUGINS_INSTALL_PATH = join(this.HOME_PATH, 'plugins');
-    this.RESTORE_STAGING_PATH = join(this.HOME_PATH, 'restore');
-    this.RESTORE_READY_FILE = join(this.RESTORE_STAGING_PATH, '.ready');
+    this.RESTORE_PATH = join(this.HOME_PATH, 'restore');
+    this.RESTORE_STAGING_PATH = join(this.RESTORE_PATH, 'staging');
+    this.RESTORE_JOURNAL_FILE = join(this.RESTORE_PATH, 'state.json');
+    this.RESTORE_UPLOADS_PATH = join(this.RESTORE_PATH, 'uploads');
+    this.RESTORE_PREVIOUS_PATH = join(this.RESTORE_PATH, 'previous');
+    this.RESTORE_PREVIOUS_INFO_FILE = join(this.RESTORE_PATH, 'previous.json');
+    this.RESTORE_PREVIOUS_MOVE_FILE = join(this.RESTORE_PATH, 'previous-move.json');
+    this.MOVE_FILE = join(this.RESTORE_PATH, 'move.json');
+    this.BACKUP_PACKING_PATH = join(this.RESTORE_PATH, 'packing');
+    this.DEFAULT_BACKUPS_PATH = join(this.STORAGE_PATH, 'backups');
 
     this.GO2RTC_BINARY = go2rtcPath().replace('app.asar', ELECTRON_ASAR_UNPACKED);
     this.TUNNEL_BINARY = tunnelPath().replace('app.asar', ELECTRON_ASAR_UNPACKED);
@@ -499,34 +564,8 @@ export class ConfigService {
   }
 
   private applyPendingRestore(): void {
-    if (!existsSync(this.RESTORE_READY_FILE)) {
-      removeSync(this.RESTORE_STAGING_PATH);
-      return;
-    }
-
-    const stagedStorage = join(this.RESTORE_STAGING_PATH, 'storage');
-    const stagedInfo = join(this.RESTORE_STAGING_PATH, 'camera.ui.backup.json');
-
-    this.logger.attention('Restoring backup...');
-
-    try {
-      if (existsSync(stagedStorage)) {
-        for (const entry of readdirSync(stagedStorage)) {
-          moveSync(join(stagedStorage, entry), join(this.STORAGE_PATH, entry), { overwrite: true });
-        }
-      }
-
-      if (existsSync(stagedInfo)) {
-        moveSync(stagedInfo, this.BACKUP_INFO_FILE, { overwrite: true });
-      }
-
-      writeFileSync(this.RESTORE_RESET_IDENTITY_FILE, '');
-      removeSync(this.RESTORE_STAGING_PATH);
-
-      this.logger.log('Backup was successfully restored');
-    } catch (error) {
-      this.logger.error(`Backup restore failed: ${error.message}`);
-    }
+    ensureDirSync(this.RESTORE_PATH);
+    runPendingRestore(this.restorePaths, this.RESTORE_PRESERVED_PATHS, this.logger);
   }
 
   private defaultConfig(): IConfig {

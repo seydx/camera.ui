@@ -21,12 +21,94 @@
               <span class="text-sm">{{ $t('views.settings.restore_backup_info') }}</span>
               <CuiUploadFiles ref="filesRef" accept="application/gzip, .tar, .tar.gz" @files-uploaded="(files: File[]) => (uploadedFiles = files)" />
               <Button
-                :loading="isLoading"
-                :disabled="!uploadedFiles.length"
+                :disabled="!uploadedFiles.length || isRestoreActive"
                 class="ml-auto cui-button-medium"
                 :label="$t('components.form.button.restore_backup_archive')"
-                @click="openDialog"
+                @click="restoreUploaded"
               />
+              <span class="text-sm border-t-[1px] border-color pt-6">{{ $t('views.settings.restore_from_server') }}</span>
+              <CuiMoveCodeForm :offers-code="move?.state === 'offered'" />
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <div v-if="lastRestore || previousState">
+        <span class="card-title">{{ $t('views.settings.last_restore') }}</span>
+        <Card class="cui-card">
+          <template #content>
+            <div class="flex flex-col gap-6">
+              <div v-if="lastRestore" class="flex items-center gap-4">
+                <div class="flex flex-col gap-1 min-w-0">
+                  <span class="text-sm">{{ lastRestoreText }}</span>
+                  <span class="text-xs text-muted">{{ new Date(lastRestore.finishedAt ?? lastRestore.updatedAt).toLocaleString() }}</span>
+                  <span v-if="lastRestore.error" class="text-xs text-muted select-text">{{ lastRestore.error }}</span>
+                </div>
+
+                <div v-if="lastRestore.state === 'ready'" class="flex gap-2 ml-auto shrink-0">
+                  <Button severity="secondary" text :disabled="isRestoreActive" :label="$t('components.form.button.discard')" @click="discardStaged" />
+                  <Button
+                    severity="secondary"
+                    outlined
+                    :disabled="isRestoreActive"
+                    :label="$t('components.form.button.review')"
+                    @click="backupRestore.showStaged(lastRestore)"
+                  />
+                </div>
+              </div>
+
+              <div v-if="missingPlugins.length" class="flex flex-col gap-2">
+                <span class="text-sm font-semibold border-b-[1px] border-color pb-2">{{ $t('views.settings.restore_missing_plugins') }}</span>
+
+                <div v-for="plugin in missingPlugins" :key="plugin.name" class="flex items-center gap-3 py-1 min-w-0">
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-sm truncate">{{ plugin.name }}@{{ plugin.version }}</span>
+                    <span v-if="plugin.error" class="text-xs text-muted truncate select-text">{{ plugin.error }}</span>
+                  </div>
+
+                  <div class="flex gap-1 ml-auto shrink-0">
+                    <Button
+                      v-tooltip.top="{ value: $t('components.form.button.retry') }"
+                      text
+                      rounded
+                      severity="secondary"
+                      class="cui-icon-md"
+                      :loading="pluginBusy === plugin.name"
+                      :disabled="!!pluginBusy"
+                      @click="retryPlugin(plugin.name)"
+                    >
+                      <template #icon>
+                        <i-mdi:refresh width="100%" height="100%" />
+                      </template>
+                    </Button>
+                    <Button
+                      v-tooltip.top="{ value: $t('components.form.button.discard') }"
+                      text
+                      rounded
+                      severity="danger"
+                      class="cui-icon-md"
+                      :disabled="!!pluginBusy"
+                      @click="discardPlugin(plugin.name)"
+                    >
+                      <template #icon>
+                        <i-mdi:trash-can-outline width="100%" height="100%" />
+                      </template>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="previousState" class="flex items-center gap-4">
+                <span class="text-sm">{{ $t('views.settings.restore_previous', { date: new Date(previousState.expiresAt).toLocaleDateString() }) }}</span>
+                <Button
+                  severity="secondary"
+                  outlined
+                  :disabled="isRestoreActive"
+                  class="ml-auto shrink-0 cui-button-medium"
+                  :label="$t('components.form.button.undo_restore')"
+                  @click="confirmUndo"
+                />
+              </div>
             </div>
           </template>
         </Card>
@@ -145,6 +227,19 @@
 
                   <div class="flex gap-1 ml-auto shrink-0">
                     <Button
+                      v-tooltip.top="{ value: $t('components.form.button.restore') }"
+                      text
+                      rounded
+                      severity="secondary"
+                      class="cui-icon-md"
+                      :disabled="isRestoreActive"
+                      @click="backupRestore.stageScheduled(backup.filename)"
+                    >
+                      <template #icon>
+                        <i-mdi:backup-restore width="100%" height="100%" />
+                      </template>
+                    </Button>
+                    <Button
                       v-tooltip.top="{ value: $t('components.form.button.download') }"
                       text
                       rounded
@@ -183,10 +278,12 @@
 <script setup lang="ts">
 import {
   deleteScheduledBackupFn,
-  downloadBackupFn,
-  downloadScheduledBackupFn,
+  discardRestorePluginFn,
   getBackupSchedulerFn,
+  getRestoreFn,
+  moveStatusFn,
   patchBackupSchedulerFn,
+  retryRestorePluginFn,
   runBackupSchedulerFn,
 } from '@/api/routes/backup.js';
 import { extractErrorMessage } from '@/common/utils.js';
@@ -198,6 +295,9 @@ import type { DBBackupSchedulerLastRun, DBBackupSchedulerSettings, ScheduledBack
 const dialog = useCuiDialog();
 const toast = useCuiToast();
 const { t, locale } = useI18n();
+const backupRestore = useBackupRestore();
+const { beginServerRestart } = useServerRestart();
+const serverChannel = useSocket('/server');
 
 const filesRef = useTemplateRef<InstanceType<typeof CuiUploadFiles>>('filesRef');
 const uploadedFiles = shallowRef<File[]>([]);
@@ -229,6 +329,49 @@ const weekdayOptions = computed(() =>
     value: i,
   })),
 );
+
+const lastRestore = computed(() => {
+  const status = restoreOverview.value?.status;
+  return status && status.state !== 'cancelled' && status.state !== 'expired' ? status : null;
+});
+
+const previousState = computed(() => restoreOverview.value?.previous ?? null);
+
+const missingPlugins = computed(() =>
+  lastRestore.value && lastRestore.value.state !== 'ready' ? lastRestore.value.plugins.filter((plugin) => plugin.state === 'failed' || plugin.state === 'pending') : [],
+);
+
+const lastRestoreText = computed(() => {
+  switch (lastRestore.value?.state) {
+    case 'ready':
+      return t('views.settings.restore_waiting');
+    case 'confirmed':
+    case 'applied':
+      return t('views.settings.restore_running');
+    case 'done':
+      return lastRestore.value.kind === 'undo' ? t('restore.result_undone') : t('restore.result_done');
+    case 'done-with-problems':
+      return t('restore.result_problems');
+    case 'failed':
+      return t('restore.result_failed');
+    case 'rolled-back':
+      return t('restore.result_rolled_back');
+    default:
+      return '';
+  }
+});
+
+const moveExpiry = computed(() => (move.value ? new Date(move.value.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''));
+
+const moveSentPercent = computed(() => (move.value?.size && move.value.transferred !== undefined ? Math.round((move.value.transferred / move.value.size) * 100) : 0));
+
+const moveText = computed(() => {
+  const target = move.value?.target ?? '';
+  if (move.value?.state === 'sent') {
+    return t('views.settings.move_done', { target, date: new Date(move.value.sentAt ?? move.value.createdAt).toLocaleString() });
+  }
+  return t('views.settings.move_taking_over', { target });
+});
 
 const lastRunText = computed(() => {
   if (!lastRun.value) return t('views.settings.backup_last_run', { info: t('views.settings.backup_last_run_never') });
@@ -289,14 +432,21 @@ function openDialog() {
   });
 }
 
-async function restoreBackup(): Promise<void> {
+function restoreUploaded(): void {
   const file = uploadedFiles.value[0];
   if (!file) return;
 
-  isLoading.value = true;
-  await useBackupRestore().run(file);
   filesRef.value?.reset();
-  isLoading.value = false;
+  uploadedFiles.value = [];
+  backupRestore.upload(file);
+}
+
+async function loadRestore(): Promise<void> {
+  try {
+    restoreOverview.value = await getRestoreFn();
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  }
 }
 
 function formatBytes(bytes: number): string {

@@ -21,6 +21,14 @@
       </div>
 
       <Form v-else-if="!requires2FA" key="login" ref="formRef" :validation-schema="authValidationSchema" class="flex flex-col h-full" @submit="onLogin">
+        <Message v-if="movedAway" severity="warn" size="small" class="mb-6">{{ $t('restore.moved_away') }}</Message>
+        <Message v-if="restoreNotice" :severity="restoreNoticeSeverity" size="small" class="mb-6">
+          <div class="flex flex-col gap-1">
+            <span>{{ restoreNoticeText }}</span>
+            <span v-if="restoreAccounts" class="font-semibold select-text">{{ restoreAccounts }}</span>
+          </div>
+        </Message>
+
         <div class="flex flex-col gap-10 sm:gap-6 w-full mt-10 sm:mt-0">
           <Field v-slot="{ field, errors }" v-model.trim="username" name="username" as="div" class="flex flex-col field-gap">
             <label for="username" class="cui-label">{{ $t('components.form.label.username') }}</label>
@@ -151,6 +159,8 @@ import { useBootMode } from '@/connection/index.js';
 import { isCapacitor } from '@/connection/runtime.js';
 import { authValidationSchema } from '@/schemas/users.schema.js';
 
+import type { RestoreNotice, RestoreStatus } from '@shared/types';
+
 const SAVE_PROMPT_DECLINED_KEY = 'cui.biometric.declined';
 const OTP_LENGTH = 6;
 const BACKUP_CODE_LENGTH = 8;
@@ -162,6 +172,7 @@ const { t } = useI18n();
 const mode = useBootMode();
 const connection = useConnection();
 const { isNeedsAuth, isOnline, inTrouble } = connection;
+const { loginNotice } = useBackupRestore();
 
 const authStore = useAuthStore();
 const { loginLoading, requires2FA } = storeToRefs(authStore);
@@ -178,6 +189,8 @@ const useBackupCode = ref(false);
 const biometricLoading = ref(false);
 const hasCredsForServer = ref(false);
 const biometryAvailable = ref(false);
+const restoreNotice = ref<(RestoreNotice & Partial<RestoreStatus>) | null>(null);
+const movedAway = ref(false);
 
 const canGoBack = computed(() => !instanceStore.isHomeActive || instanceStore.redirectInfo !== null);
 const canVerify2FA = computed(() => (useBackupCode.value ? backupCode.value.trim().length === BACKUP_CODE_LENGTH : otpCode.value.length === OTP_LENGTH));
@@ -186,6 +199,39 @@ const showConnecting = computed(() => !isOnline.value && !isNeedsAuth.value && !
 const connectingText = computed(() => (inTrouble.value ? t('connection.unreachable') : t('connection.connecting_remote')));
 
 const biometricButtonVisible = computed(() => isCapacitor && biometryAvailable.value && hasCredsForServer.value);
+
+const restoreNoticeSeverity = computed(() => {
+  switch (restoreNotice.value?.state) {
+    case 'done':
+      return 'success';
+    case 'confirmed':
+    case 'applied':
+      return 'info';
+    default:
+      return 'warn';
+  }
+});
+
+const restoreNoticeText = computed(() => {
+  switch (restoreNotice.value?.state) {
+    case 'confirmed':
+    case 'applied':
+      return t('views.login.restore_running');
+    case 'done':
+    case 'done-with-problems':
+      return restoreNotice.value.kind === 'undo' ? t('restore.result_undone') : t('views.login.restore_done');
+    case 'failed':
+      return t('restore.result_failed');
+    default:
+      return t('restore.result_rolled_back');
+  }
+});
+
+const restoreAccounts = computed(() => {
+  const notice = restoreNotice.value;
+  if (notice?.kind === 'undo' || (notice?.state !== 'done' && notice?.state !== 'done-with-problems')) return '';
+  return notice.summary?.accounts.map((account) => account.username).join(', ') ?? '';
+});
 
 function onRetry() {
   connection.retry();
@@ -341,6 +387,16 @@ function onCancel2FA(): void {
   backupCode.value = '';
   useBackupCode.value = false;
 }
+
+watch(
+  () => isOnline.value || isNeedsAuth.value,
+  async (reachable) => {
+    if (!reachable) return;
+    if (!movedAway.value) movedAway.value = (await movedAwayStateFn().catch(() => null)) !== null;
+    if (!restoreNotice.value) restoreNotice.value = await loginNotice();
+  },
+  { immediate: true },
+);
 
 onMounted(async () => {
   if (!isCapacitor) return;

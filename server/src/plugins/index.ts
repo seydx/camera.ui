@@ -8,6 +8,10 @@ import semver from 'semver';
 import { container } from 'tsyringe';
 
 import { PluginsService } from '../api/services/plugins.service.js';
+import { inject, provide, tryInject } from '../container.js';
+import { ConfigService } from '../services/config/index.js';
+import { resolveRestoredPluginVersion } from '../services/config/restore-plugins.js';
+import { RestoreError, updateRestoreJournal } from '../services/config/restore.js';
 import { sendIPCMessage } from '../utils/ipc.js';
 import { serverRequirementsPath } from '../utils/path.js';
 import { DEFAULT_PY_VERSION, PythonInstaller } from '../utils/pythonInstaller.js';
@@ -18,8 +22,7 @@ import { PLUGIN_IDENTIFIER_PATTERN } from './types.js';
 
 import type { PluginContract } from '@camera.ui/sdk';
 import type { CameraUiAPI } from '../api.js';
-import type { BackupInfo, IPackageJson } from '../api/types/index.js';
-import type { ConfigService } from '../services/config/index.js';
+import type { BackupInfo, IPackageJson, PluginBackupInfo, RestorePluginResult } from '../api/types/index.js';
 import type { LoggerService } from '../services/logger/index.js';
 
 const KEEP_MARKER = '.cameraui-keep';
@@ -364,6 +367,23 @@ export class PluginManager {
     await this.installRequiredPythonEnvs();
   }
 
+  public async retryRestoredPlugin(name: string): Promise<void> {
+    const backupInfo: BackupInfo | null = await readJson(this.configService.BACKUP_INFO_FILE).catch(() => null);
+    const pluginInfo = backupInfo?.plugins.find((plugin) => plugin.name === name);
+    if (!backupInfo || !pluginInfo || this.plugins.has(name)) {
+      throw new RestoreError(`${name} is not waiting to be installed.`, 409);
+    }
+
+    const plugin = await this.installRestoredPlugin(pluginInfo);
+    if (!plugin) return;
+
+    if (this.configService.config.plugins.disabledPlugins.includes(plugin.pluginName)) {
+      plugin.disabled = true;
+    }
+    await this.finishRestoredPlugins(backupInfo);
+    this.initializeInstalledPlugin(plugin);
+  }
+
   private get pluginsService(): PluginsService {
     return (this._pluginsService ??= new PluginsService());
   }
@@ -411,93 +431,79 @@ export class PluginManager {
     }
   }
 
-  private async loadInstalledPlugins(): Promise<void> {
-    const searchPath = this.configService.PLUGINS_INSTALL_PATH;
-
-    const relativeinstallPaths = readdirSync(searchPath).filter((relativePath) => {
-      try {
-        return statSync(join(searchPath, relativePath)).isDirectory();
-      } catch (error: any) {
-        this.logger.debug(`Ignoring path ${resolve(searchPath, relativePath)}`, error);
-        return false;
-      }
-    });
-
-    for (const scopeDirectory of [...relativeinstallPaths].filter((path) => path.startsWith('@'))) {
-      const index = relativeinstallPaths.indexOf(scopeDirectory);
-      relativeinstallPaths.splice(index, 1);
-      const absolutePath = resolve(searchPath, scopeDirectory);
-
-      for (const name of readdirSync(absolutePath)
-        .filter((name) => PluginManager.isQualifiedPluginIdentifier(name))
-        .filter((name) => {
-          try {
-            return statSync(join(absolutePath, name)).isDirectory();
-          } catch (error: any) {
-            this.logger.debug(`Ignoring path ${resolve(absolutePath, name)} - ${error.message}`);
-            return false;
-          }
-        }))
-        relativeinstallPaths.push(join(scopeDirectory, name));
+  private async restorePlugins(): Promise<void> {
+    let backupInfo: BackupInfo;
+    try {
+      backupInfo = await readJson(this.configService.BACKUP_INFO_FILE);
+    } catch {
+      return;
     }
 
-    relativeinstallPaths.forEach((pluginIdentifier) => {
-      if (PluginManager.isQualifiedPluginIdentifier(pluginIdentifier)) {
-        this.pluginIdentifiers.add(pluginIdentifier);
-      }
-    });
+    const missing = backupInfo.plugins.filter((plugin) => !this.plugins.has(plugin.name));
+    if (missing.length > 0) {
+      this.logger.log('Restoring missing plugins...');
+    }
 
-    for (const pluginIdentifier of this.pluginIdentifiers) {
-      try {
-        const absolutePath = join(searchPath, pluginIdentifier);
-        await this.loadPlugin(absolutePath);
-      } catch (error: any) {
-        this.logger.warn(error.message);
-        continue;
+    for (const pluginInfo of backupInfo.plugins) {
+      if (this.plugins.has(pluginInfo.name)) this.recordRestoredPlugin(pluginInfo.name, { state: 'installed' });
+    }
+
+    for (const pluginInfo of missing) {
+      sendIPCMessage({ type: 'START_OUTPUT', message: `Installing ${pluginInfo.name}...` });
+      const plugin = await this.installRestoredPlugin(pluginInfo);
+      if (plugin && this.configService.config.plugins.disabledPlugins.includes(plugin.pluginName)) {
+        plugin.disabled = true;
       }
+    }
+
+    await this.finishRestoredPlugins(backupInfo);
+  }
+
+  private async installRestoredPlugin(pluginInfo: PluginBackupInfo): Promise<Plugin | null> {
+    try {
+      const target = await resolveRestoredPluginVersion(pluginInfo, ConfigService.VERSION);
+      if (target.note === 'unavailable') throw new Error(target.reason);
+      if (target.version !== pluginInfo.version) {
+        this.logger.log(`${pluginInfo.name}@${pluginInfo.version} from the backup does not run on this camera.ui, installing ${target.version}`);
+      }
+      this.logger.log(`Installing plugin: ${pluginInfo.name}@${target.version}`);
+
+      const installPath = await this.pluginsService.manage(pluginInfo.name, 'install', target.version);
+      const plugin = await this.loadPlugin(installPath, pluginInfo.id);
+
+      this.logger.log(`Plugin installed: ${plugin.pluginName}.${plugin.displayName} (${plugin.info.installedVersion})`);
+      this.recordRestoredPlugin(pluginInfo.name, { state: 'installed', installVersion: target.version !== pluginInfo.version ? target.version : undefined });
+      return plugin;
+    } catch (error: any) {
+      this.logger.error(`Error restoring plugin ${pluginInfo.name}:`, error);
+      this.recordRestoredPlugin(pluginInfo.name, { state: 'failed', error: error.message });
+      return null;
     }
   }
 
-  private async restorePlugins(): Promise<void> {
-    try {
-      const backupInfo: BackupInfo = await readJson(this.configService.BACKUP_INFO_FILE);
-      const notInstalledPlugins = backupInfo.plugins.filter((plugin) => !this.plugins.has(plugin.name));
-
-      const restorePromises: Promise<void>[] = [];
-
-      if (notInstalledPlugins.length > 0) {
-        this.logger.log('Restoring missing plugins...');
-
-        const restore = async () => {
-          for (const pluginInfo of notInstalledPlugins) {
-            try {
-              this.logger.log(`Installing plugin: ${pluginInfo.name}@${pluginInfo.version}`);
-
-              const installPath = await this.pluginsService.manage(pluginInfo.name, 'install', pluginInfo.version);
-              const plugin = await this.loadPlugin(installPath, pluginInfo.id);
-
-              if (this.configService.config.plugins.disabledPlugins.includes(plugin.pluginName)) {
-                plugin.disabled = true;
-              }
-
-              this.logger.log(`Plugin installed: ${plugin.pluginName}.${plugin.displayName} (${plugin.info.installedVersion})`);
-            } catch (error: any) {
-              this.logger.error(`Error restoring plugin ${pluginInfo.name}:`, error);
-            }
-          }
-        };
-
-        restorePromises.push(restore());
-
-        await Promise.all(restorePromises);
-
-        this.logger.log('Plugins restored');
-
-        await remove(this.configService.BACKUP_INFO_FILE);
-      }
-    } catch {
-      //
+  private async finishRestoredPlugins(backupInfo: BackupInfo): Promise<void> {
+    const pending = backupInfo.plugins.filter((plugin) => !this.plugins.has(plugin.name)).map((plugin) => plugin.name);
+    if (pending.length > 0) {
+      this.logger.warn(`Plugins from the backup are not installed yet, retrying on the next start: ${pending.join(', ')}`);
+      return;
     }
+
+    await remove(this.configService.BACKUP_INFO_FILE);
+    this.logger.log('Plugins restored');
+  }
+
+  private recordRestoredPlugin(name: string, result: Pick<RestorePluginResult, 'state' | 'error' | 'installVersion'>): void {
+    updateRestoreJournal(this.configService.RESTORE_JOURNAL_FILE, (journal) => {
+      const entry = journal.plugins.find((plugin) => plugin.name === name);
+      if (!entry || entry.state === 'discarded') return;
+
+      entry.state = result.state;
+      entry.error = result.error;
+      if (result.state === 'installed') entry.installVersion = result.installVersion;
+      if (journal.state === 'done-with-problems' && !journal.plugins.some((plugin) => plugin.state === 'failed' || plugin.state === 'pending')) {
+        journal.state = 'done';
+      }
+    });
   }
 
   private async installDefaultPlugins(): Promise<void> {

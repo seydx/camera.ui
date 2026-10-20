@@ -34,7 +34,19 @@ import type {
   ImportBlueprintInput,
   PatchAutomationInput,
 } from '../schemas/automations.schema.js';
-import type { PatchBackupSchedulerSettingsInput, RestoreBackupInput, ScheduledBackupParamsInput } from '../schemas/backup.schema.js';
+import type {
+  BackupKeyBodyInput,
+  ConfirmRestoreInput,
+  CreateMoveInput,
+  CreateRestoreUploadInput,
+  MovePeerInput,
+  PatchBackupSchedulerSettingsInput,
+  RestoreBackupInput,
+  RestorePluginInput,
+  RestoreUploadParamsInput,
+  ScheduledBackupParamsInput,
+  StartMovePullInput,
+} from '../schemas/backup.schema.js';
 import type {
   BulkDeleteCamerasInput,
   BulkPatchCamerasInput,
@@ -722,6 +734,11 @@ export interface PluginBackupInfo {
   version: string;
 }
 
+export interface BackupExcludedFolder {
+  path: string;
+  size?: number;
+}
+
 export interface BackupInfo {
   timestamp: number;
   platform: string;
@@ -735,6 +752,172 @@ export interface BackupStorage {
   backupDirectory: string;
   backupFile: string;
   backupFileName: string;
+}
+
+export interface BackupDownloadLink {
+  url: string;
+  filename: string;
+  expiresAt: number;
+}
+
+export type RestoreKind = 'upload' | 'archive' | 'move' | 'undo';
+
+export type RestoreMode = 'move' | 'copy';
+
+export type RestoreState = 'ready' | 'confirmed' | 'applied' | 'done' | 'done-with-problems' | 'failed' | 'rolled-back' | 'cancelled' | 'expired';
+
+export type RestorePluginState = 'pending' | 'installed' | 'failed' | 'discarded';
+
+export type RestorePluginNote = 'platform' | 'unavailable';
+
+export type RestorePluginIssue =
+  | { code: 'not-in-registry' }
+  | { code: 'gone'; version: string }
+  | { code: 'blocked'; version: string; detail: string }
+  | { code: 'needs-newer-server'; version: string }
+  | { code: 'built-for-older-server'; version: string }
+  | { code: 'engine'; version: string; engine: string; required: string }
+  | { code: 'platform'; os?: string[]; cpu?: string[] };
+
+export interface RestorePluginResult {
+  name: string;
+  version: string;
+  state: RestorePluginState;
+  error?: string;
+  installVersion?: string;
+  note?: RestorePluginNote;
+  issue?: RestorePluginIssue;
+  reason?: string;
+  worker?: string;
+}
+
+export interface RestoreAccount {
+  username: string;
+  role: string;
+}
+
+export interface RestorePlatformChange {
+  setting: string;
+  from: string;
+  to?: string;
+}
+
+export interface RestoreSummary {
+  version: string;
+  platform: string;
+  createdAt: number;
+  cameras: number;
+  accounts: RestoreAccount[];
+  platformChanges?: RestorePlatformChange[];
+  suggestedMode?: RestoreMode;
+  sameServer?: boolean;
+  certificate?: boolean;
+  cloud?: boolean;
+  workers?: number;
+  sourceRunning?: string[];
+  sourceUnchecked?: 'local-network' | 'network';
+  excluded?: BackupExcludedFolder[];
+  pluginsNotInBackup?: string[];
+}
+
+export interface RestoreStatus {
+  id: string;
+  kind: RestoreKind;
+  state: RestoreState;
+  createdAt: number;
+  updatedAt: number;
+  finishedAt?: number;
+  summary?: RestoreSummary;
+  mode?: RestoreMode;
+  plugins: RestorePluginResult[];
+  error?: string;
+}
+
+export type RestoreSwapStep = { from: string; to: string } | { remove: string };
+
+export interface RestoreSwap {
+  steps: RestoreSwapStep[];
+  done: number;
+  reverting?: boolean;
+  error?: string;
+}
+
+export interface MovePeer {
+  host: string;
+  port: number;
+  fingerprint: string;
+  secret: string;
+}
+
+export interface RestoreJournal extends RestoreStatus {
+  ticketHash: string;
+  boots: number;
+  lastBootError?: string;
+  swap?: RestoreSwap;
+  movePeer?: MovePeer;
+}
+
+export type RestoreNotice = Pick<RestoreStatus, 'id' | 'kind' | 'state' | 'updatedAt' | 'finishedAt'>;
+
+export interface RestoreStarted {
+  ticket: string;
+  status: RestoreStatus;
+  localStorage: Partial<UiLocalStorage>;
+}
+
+export interface RestorePrevious {
+  createdAt: number;
+  expiresAt: number;
+}
+
+export interface RestoreOverview {
+  status: RestoreStatus | null;
+  previous: RestorePrevious | null;
+}
+
+export interface RestoreUpload {
+  id: string;
+  size: number;
+  received: number;
+  chunkSize: number;
+}
+
+export type MoveState = 'offered' | 'preparing' | 'packing' | 'ready' | 'sent' | 'failed';
+
+export interface MoveStatus {
+  state: MoveState;
+  createdAt: number;
+  expiresAt: number;
+  readyUntil?: number;
+  size?: number;
+  transferred?: number;
+  target?: string;
+  sentAt?: number;
+  error?: string;
+}
+
+export interface MoveOffer {
+  code: string;
+  status: MoveStatus;
+}
+
+export interface MovePeerStatus {
+  state: MoveState;
+  version: string;
+  size?: number;
+  error?: string;
+}
+
+export type MovePullState = 'connecting' | 'stopping' | 'packing' | 'receiving' | 'checking' | 'staged' | 'failed' | 'cancelled';
+
+export interface MovePullStatus {
+  state: MovePullState;
+  source?: string;
+  received: number;
+  size?: number;
+  error?: string;
+  started?: RestoreStarted;
+  updatedAt: number;
 }
 
 export type SupportedThemes = 'light' | 'dark';
@@ -823,6 +1006,49 @@ export interface UiLocalStorage {
 
 export interface BackupRestoreRequest {
   Body: RestoreBackupInput;
+}
+
+export interface RestoreUploadCreateRequest {
+  Body: CreateRestoreUploadInput;
+}
+
+export interface RestoreUploadRequest {
+  Params: RestoreUploadParamsInput;
+}
+
+export interface RestoreUploadChunkRequest {
+  Params: RestoreUploadParamsInput;
+  Body: Buffer;
+  Headers: { 'upload-offset'?: string };
+}
+
+export interface RestorePluginRequest {
+  Body: RestorePluginInput;
+}
+
+export interface BackupKeyBodyRequest {
+  Body: BackupKeyBodyInput;
+}
+
+export interface BackupKeyInfo {
+  key: string;
+  confirmedAt?: number;
+}
+
+export interface ConfirmRestoreRequest {
+  Body: ConfirmRestoreInput;
+}
+
+export interface MoveCreateRequest {
+  Body: CreateMoveInput;
+}
+
+export interface MovePeerRequest {
+  Body: MovePeerInput;
+}
+
+export interface MovePullRequest {
+  Body: StartMovePullInput;
 }
 
 export interface INpmPluginState {

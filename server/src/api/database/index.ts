@@ -2,10 +2,15 @@ import { sleep } from '@camera.ui/common/utils';
 import { open } from 'lmdb';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { unlink } from 'node:fs/promises';
+import { readFile, unlink } from 'node:fs/promises';
 import semver from 'semver';
 import { container } from 'tsyringe';
 
+import { inject, provide } from '../../container.js';
+import { INGRESS_USERNAME, MIN_DATABASE_VERSION } from '../../services/config/constants.js';
+import { isMovedAway, readMoveRecord } from '../../services/config/move.js';
+import { isHostAddress } from '../../services/config/platform-values.js';
+import { dropsIngressAccount, isIngressAccount } from '../../services/config/restore.js';
 import { createSourceName, generatedSourceUrls, go2rtcStreamUrls, stripStreamToken } from '../../utils/camera.js';
 import { createAutomationSchema } from '../schemas/automations.schema.js';
 import { createCameraBaseSchema } from '../schemas/cameras.schema.js';
@@ -65,8 +70,9 @@ import { SelfCheck } from './selfcheck.js';
 
 import type { Database as DB, Key, RootDatabase as RootDB } from 'lmdb';
 import type { ConfigService } from '../../services/config/index.js';
+import type { AppliedRestore } from '../../services/config/restore.js';
 import type { LoggerService } from '../../services/logger/index.js';
-import type { DBToken } from '../types/index.js';
+import type { BackupInfo, DBToken } from '../types/index.js';
 import type {
   DBAssistant,
   DBAssistantAttachmentRecord,
@@ -214,7 +220,7 @@ export class Database {
     await this.checkOldVersion();
     await this.selfCheck.run();
     await this.ensureDatabases();
-    await this.resetRestoredIdentity();
+    await this.adoptRestoredState();
     await this.prepareDatabases();
     await this.ensureIngressUser();
     await this.ensureMaster();
@@ -335,7 +341,7 @@ export class Database {
     const settingsDB = this.settingsDB.get('settings');
     const oldVersion = settingsDB?.version ?? Database.VERSION;
 
-    if (semver.lt(oldVersion, '2.1.1')) {
+    if (semver.lt(oldVersion, MIN_DATABASE_VERSION)) {
       this.logger.attention('Database version is too old! camera.ui will reset the database and restart!');
 
       this.configService.reset();
@@ -380,12 +386,57 @@ export class Database {
     }
   }
 
-  private async resetRestoredIdentity(): Promise<void> {
-    const markerFile = this.configService.RESTORE_RESET_IDENTITY_FILE;
+  private async adoptRestoredState(): Promise<void> {
+    const markerFile = this.configService.RESTORE_APPLIED_FILE;
     if (!existsSync(markerFile)) {
       return;
     }
 
+    const applied = (await readFile(markerFile, 'utf-8')).trim() as AppliedRestore;
+    if (applied === 'copy') await this.resetCopiedIdentity();
+    else await this.dropCloudSession();
+    if (applied === 'move') await this.keepOwnServerAddresses();
+    if (applied !== 'undo') await this.dropIngressAccount();
+
+    const settings = this.settingsDB.get('settings');
+    if (settings) await this.settingsDB.put('settings', { ...settings, restoreGeneration: randomUUID() });
+
+    this.configService.refreshHostCertificate();
+    await unlink(markerFile);
+  }
+
+  private async dropCloudSession(): Promise<void> {
+    const { pending_pair, ...cloud } = this.cloudDB.get('cloud') ?? {};
+    if (!cloud.oauth) return;
+
+    await this.cloudDB.put('cloud', { ...cloud, oauth: { ...cloud.oauth, access_token: '', refresh_token: '', expires_at: 0, needs_reauth: true } });
+  }
+
+  private async dropIngressAccount(): Promise<void> {
+    const info = await readFile(this.configService.BACKUP_INFO_FILE, 'utf-8').then(
+      (content) => JSON.parse(content) as BackupInfo,
+      () => undefined,
+    );
+    if (!dropsIngressAccount(info, !!this.configService.INGRESS_TRUST_IP)) return;
+
+    for (const { key, value: user } of this.usersDB.getRange()) {
+      if (!isIngressAccount(user)) continue;
+
+      await this.usersDB.remove(key);
+      for (const { key: tokenKey, value: token } of this.tokensDB.getRange()) {
+        if (token.user_id === user._id) await this.tokensDB.remove(tokenKey);
+      }
+      this.logger.log(`Removed the account "${user.username}" of the backup, it only signs in inside Home Assistant`);
+    }
+  }
+
+  private async keepOwnServerAddresses(): Promise<void> {
+    const server = this.serverDB.get('server');
+    const own = server?.serverAddresses.filter((address) => isHostAddress(address));
+    if (server && own && own.length !== server.serverAddresses.length) await this.serverDB.put('server', { ...server, serverAddresses: own });
+  }
+
+  private async resetCopiedIdentity(): Promise<void> {
     await this.instancesConfigDB.put('instancesConfig', { homeId: randomUUID() });
     await this.serverDB.put('server', { serverAddresses: [] });
     await this.cloudDB.put('cloud', {});
@@ -396,10 +447,25 @@ export class Database {
       customDomain: { url: null },
       cloudflare: { mode: 'quick', hostname: null, token: null, tunnelId: null },
     });
+    await this.tokensDB.clearAsync();
 
-    this.configService.refreshHostCertificate();
+    const settings = this.settingsDB.get('settings');
+    if (settings) {
+      const { knownWorkers, workerCredentials, workerPairings, workerLastShutdown, workerReleases, workerUpdates, ...rest } = settings;
+      await this.settingsDB.put('settings', { ...rest, instanceId: randomUUID() });
+    }
+    await this.workerStateDB.clearAsync();
 
-    await unlink(markerFile);
+    for (const { key, value: camera } of this.camerasDB.getRange()) {
+      if (camera.workerAgentId === undefined && camera.workerOnly === undefined) continue;
+      const { workerAgentId, workerOnly, ...rest } = camera;
+      await this.camerasDB.put(key, rest);
+    }
+    for (const { key, value: plugin } of this.pluginsDB.getRange()) {
+      if (plugin.workerAgentId === undefined && plugin.workerOnly === undefined) continue;
+      const { workerAgentId, workerOnly, ...rest } = plugin;
+      await this.pluginsDB.put(key, rest);
+    }
   }
 
   private async prepareDatabases(): Promise<void> {

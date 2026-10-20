@@ -3,7 +3,8 @@ import { hostname } from 'node:os';
 
 import type { API, Ffmpeg, Log, Logger, PluginsSettings, RTMP, RTSP, SRTP, Webrtc, WorkerConfig } from './types.js';
 
-export const ELECTRON_PORT_OFFSET = IS_ELECTRON ? 100 : 0;
+export const DESKTOP_PORT_OFFSET = 100;
+export const ELECTRON_PORT_OFFSET = IS_ELECTRON ? DESKTOP_PORT_OFFSET : 0;
 
 const withOffset = (base: number): number => base + ELECTRON_PORT_OFFSET;
 const listenWithOffset = (host: string, base: number): string => `${host}:${withOffset(base)}`;

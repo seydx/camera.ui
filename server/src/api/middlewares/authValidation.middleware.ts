@@ -12,7 +12,20 @@ import type { ConfigService } from '../../services/config/index.js';
 import type { DBUser } from '../database/types.js';
 import type { AuthLoginRequest, AuthNewLoginRequest, CamerasStreamRequest, JwtTokenDecoded, TwoFactorPendingResponse } from '../types/index.js';
 
-const FIRST_LOGIN_ALLOWED_ROUTES: ReadonlySet<string> = new Set(['GET /api/auth/check', 'POST /api/backup/restore']);
+const FIRST_LOGIN_ALLOWED_ROUTES: ReadonlySet<string> = new Set([
+  'GET /api/auth/check',
+  'POST /api/backup/restore',
+  'DELETE /api/backup/restore',
+  'POST /api/backup/restore/confirm',
+  'POST /api/backup/restore/uploads',
+  'GET /api/backup/restore/uploads/:id',
+  'PATCH /api/backup/restore/uploads/:id',
+  'POST /api/backup/restore/uploads/:id/complete',
+  'DELETE /api/backup/restore/uploads/:id',
+  'POST /api/backup/restore/move',
+  'GET /api/backup/restore/move',
+  'DELETE /api/backup/restore/move',
+]);
 
 export function hashPassword(salt: string, password: string): string {
   return createHmac('sha512', salt).update(password).digest('base64');

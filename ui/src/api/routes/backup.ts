@@ -1,8 +1,26 @@
-import { i18n } from '@/i18n/index.js';
+import { isAxiosError, isServerGoneError } from '@/api/errors.js';
 import { axiosInstance as api } from '..';
 
-import type { DBBackupSchedulerLastRun, DBBackupSchedulerSettings, MethodKeys, ScheduledBackupEntry, UiLocalStorage } from '@shared/types';
-import type { AxiosResponse } from 'axios';
+import type {
+  BackupDownloadLink,
+  BackupJob,
+  BackupKeyInfo,
+  DBBackupSchedulerLastRun,
+  DBBackupSchedulerSettings,
+  MoveOffer,
+  MovePullStatus,
+  MoveState,
+  MoveStatus,
+  RestoreMode,
+  RestoreNotice,
+  RestoreOverview,
+  RestoreStarted,
+  RestoreStatus,
+  RestoreUpload,
+  ScheduledBackupEntry,
+  UiLocalStorage,
+} from '@shared/types';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 export interface BackupSchedulerState {
   settings: DBBackupSchedulerSettings;
@@ -17,14 +35,108 @@ export async function downloadBackupFn(localStorage?: Partial<UiLocalStorage>): 
   return response.data;
 }
 
-export async function restoreBackupFn(formData: FormData, onUploadProgress?: (percent: number) => void): Promise<Partial<UiLocalStorage>> {
-  const response: AxiosResponse<Partial<UiLocalStorage>> = await api.post('/backup/restore', formData, {
+export async function createRestoreUploadFn(size: number, name: string): Promise<RestoreUpload> {
+  const response: AxiosResponse<RestoreUpload> = await api.post('/backup/restore/uploads', { size, name });
+  return response.data;
+}
+
+export async function restoreUploadStatusFn(id: string): Promise<RestoreUpload> {
+  const response: AxiosResponse<RestoreUpload> = await api.get(`/backup/restore/uploads/${id}`);
+  return response.data;
+}
+
+export async function appendRestoreUploadFn(id: string, offset: number, chunk: Blob, onUploadProgress?: (loaded: number) => void): Promise<RestoreUpload> {
+  const response: AxiosResponse<RestoreUpload> = await api.patch(`/backup/restore/uploads/${id}`, chunk, {
+    headers: { 'Content-Type': 'application/octet-stream', 'Upload-Offset': String(offset) },
     timeout: BACKUP_TIMEOUT_MS,
-    onUploadProgress: (e) => {
-      if (e.total) onUploadProgress?.(Math.round((e.loaded / e.total) * 100));
-    },
+    onUploadProgress: (e) => onUploadProgress?.(e.loaded),
   });
   return response.data;
+}
+
+export async function completeRestoreUploadFn(id: string, key?: string): Promise<RestoreStarted> {
+  const response: AxiosResponse<RestoreStarted> = await api.post(`/backup/restore/uploads/${id}/complete`, key ? { key } : undefined, { timeout: BACKUP_TIMEOUT_MS });
+  return response.data;
+}
+
+export async function removeRestoreUploadFn(id: string): Promise<void> {
+  await api.delete(`/backup/restore/uploads/${id}`);
+}
+
+export async function restoreScheduledBackupFn(filename: string, key?: string): Promise<RestoreStarted> {
+  const response: AxiosResponse<RestoreStarted> = await api.post(`/backup/scheduler/backups/${encodeURIComponent(filename)}/restore`, key ? { key } : undefined, {
+    timeout: BACKUP_TIMEOUT_MS,
+  });
+  return response.data;
+}
+
+export async function getRestoreFn(): Promise<RestoreOverview> {
+  const response: AxiosResponse<RestoreOverview> = await api.get('/backup/restore');
+  return response.data;
+}
+
+async function getOrNull<T>(url: string, config?: AxiosRequestConfig): Promise<T | null> {
+  return dataOrNull<T>(api.get(url, config));
+}
+
+export async function restoreStatusFn(ticket?: string): Promise<RestoreStatus | RestoreNotice | null> {
+  return getOrNull('/backup/restore/status', { headers: ticket ? { 'X-Restore-Ticket': ticket } : undefined, timeout: 5000 });
+}
+
+export async function confirmRestoreFn(mode: RestoreMode): Promise<RestoreStatus> {
+  const response: AxiosResponse<RestoreStatus> = await api.post('/backup/restore/confirm', { mode });
+  return response.data;
+}
+
+export async function cancelRestoreFn(): Promise<RestoreStatus> {
+  const response: AxiosResponse<RestoreStatus> = await api.delete('/backup/restore');
+  return response.data;
+}
+
+export async function undoRestoreFn(): Promise<RestoreStarted> {
+  const response: AxiosResponse<RestoreStarted> = await api.post('/backup/restore/undo');
+  return response.data;
+}
+
+export async function retryRestorePluginFn(name: string): Promise<RestoreStatus | null> {
+  const response: AxiosResponse<RestoreStatus | null> = await api.post('/backup/restore/plugins/retry', { name }, { timeout: BACKUP_TIMEOUT_MS });
+  return response.data;
+}
+
+export async function discardRestorePluginFn(name: string): Promise<RestoreStatus> {
+  const response: AxiosResponse<RestoreStatus> = await api.post('/backup/restore/plugins/discard', { name });
+  return response.data;
+}
+
+export async function startMovePullFn(code: string, address?: string): Promise<MovePullStatus> {
+  const response: AxiosResponse<MovePullStatus> = await api.post('/backup/restore/move', { code, address: address || undefined });
+  return response.data;
+}
+
+export async function movePullStatusFn(): Promise<MovePullStatus | null> {
+  return getOrNull('/backup/restore/move');
+}
+
+export async function cancelMovePullFn(): Promise<void> {
+  await api.delete('/backup/restore/move');
+}
+
+export async function createMoveFn(hosts: string[]): Promise<MoveOffer> {
+  const response: AxiosResponse<MoveOffer> = await api.post('/backup/move', { hosts });
+  return response.data;
+}
+
+export async function moveStatusFn(): Promise<MoveStatus | null> {
+  return getOrNull('/backup/move');
+}
+
+export async function cancelMoveFn(): Promise<{ restart: boolean }> {
+  const response: AxiosResponse<{ restart: boolean }> = await api.delete('/backup/move');
+  return response.data;
+}
+
+export async function movedAwayStateFn(): Promise<MoveState | null> {
+  return (await getOrNull<{ state: MoveState }>('/backup/move/state', { timeout: 5000 }))?.state ?? null;
 }
 
 export async function getBackupSchedulerFn(): Promise<BackupSchedulerState> {
@@ -54,42 +166,11 @@ export async function deleteScheduledBackupFn(filename: string): Promise<void> {
   await api.delete(`/backup/scheduler/backups/${encodeURIComponent(filename)}`);
 }
 
-export class BackupQuery {
-  private _queryClient = useQueryClient();
-  private t = i18n.global.t;
-  private toast = useCuiToast();
-
-  private queryActivator = ref<{ name: MethodKeys<BackupQuery>; enabled: boolean }[]>([]);
-
-  get queryClient() {
-    return this._queryClient;
-  }
-
-  public downloadBackupQuery() {
-    return useMutation({
-      mutationFn: downloadBackupFn,
-      onSuccess: async () => {
-        this.toast.add({ severity: 'success', detail: this.t('components.toast.backup_downloaded'), life: 3000 });
-      },
-    });
-  }
-
-  public restoreBackupQuery() {
-    return useMutation({
-      mutationFn: (formData: FormData) => restoreBackupFn(formData),
-      onSuccess: async () => {
-        this.toast.add({ severity: 'success', detail: this.t('components.toast.backup_restored'), life: 3000 });
-      },
-    });
-  }
-
-  public toggleQueryActivator(name: MethodKeys<BackupQuery>, state: boolean) {
-    const query = this.queryActivator.value.find((query) => query.name === name);
-
-    if (query) {
-      query.enabled = state;
-    }
-
-    return this;
+async function dataOrNull<T>(request: Promise<AxiosResponse<T>>): Promise<T | null> {
+  try {
+    return (await request).data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404 && !isServerGoneError(error)) return null;
+    throw error;
   }
 }

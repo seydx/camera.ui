@@ -43,6 +43,8 @@ export interface ContentBaseProps {
   draggable?: boolean;
   blockDragOnSelectors?: string[];
   dismissableMask?: boolean;
+  closable?: boolean;
+  blurMask?: boolean;
   modal?: boolean;
   goTo?: string;
   rootId?: string;
@@ -383,6 +385,15 @@ export function useCuiDialog() {
       props.dismissableMask = isDismissableMask;
     }
 
+    if (unref(data.closable) === false) {
+      props.dismissableMask = false;
+      props.closeOnEscape = false;
+    }
+
+    if (unref(data.blurMask)) {
+      (props.pt as any).mask = { class: 'backdrop-blur-sm' };
+    }
+
     const isModal = unref(data.modal);
     if (isModal !== undefined) {
       props.modal = isModal;
@@ -407,6 +418,7 @@ export function useCuiDialog() {
           stayActive: data.stayActive ?? false,
           awaitConfirm: data.awaitConfirm ?? false,
           fullscreen: data.fullscreen ?? false,
+          closable: data.closable ?? true,
           contentText: (data as any).contentText ?? undefined,
           src: (data as any).src ?? undefined,
           markdown: (data as any).markdown ?? false,

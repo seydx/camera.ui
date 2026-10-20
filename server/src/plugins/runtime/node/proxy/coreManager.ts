@@ -89,6 +89,14 @@ export class CoreManagerProxy implements CoreManager {
     return await this.#coreManagerProxy.getCloudServerId();
   }
 
+  public async getRestoreGeneration(): Promise<string> {
+    return await this.#coreManagerProxy.getRestoreGeneration();
+  }
+
+  public async getInstanceId(): Promise<string> {
+    return await this.#coreManagerProxy.getInstanceId();
+  }
+
   public async getPluginsByInterface(interfaceName: PluginInterface): Promise<PluginInfo[]> {
     return await this.#coreManagerProxy.getPluginsByInterface(interfaceName);
   }

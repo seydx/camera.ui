@@ -173,14 +173,14 @@ async function* streamUpdateOutput(): AsyncGenerator<string, void, unknown> {
   }
 }
 
-export async function reportStartError(error: unknown): Promise<void> {
+export async function reportStartError(error: unknown, retry = false): Promise<void> {
   const send = process.send?.bind(process);
   if (!send) return;
 
   const message: IPCMessage = {
     type: 'START_ERROR',
     error: describeStartError(error),
-    fatal: error instanceof FatalBootError,
+    fatal: !retry && error instanceof FatalBootError,
   };
 
   await new Promise<void>((resolve) => {

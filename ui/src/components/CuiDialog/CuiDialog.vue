@@ -56,7 +56,7 @@
             <i-fluent:open-16-filled width="100%" height="100%" />
           </template>
         </Button>
-        <Button severity="secondary" text rounded class="p-dialog-close-button" @click="dialogRef.close">
+        <Button v-if="closable" severity="secondary" text rounded class="p-dialog-close-button" @click="dialogRef.close">
           <template #icon>
             <i-mdi:close width="100%" height="100%" />
           </template>
@@ -137,6 +137,7 @@ const {
   src,
   title,
   fullscreen,
+  closable,
   tabs,
   goTo,
   draggable,

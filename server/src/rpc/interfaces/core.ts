@@ -40,6 +40,8 @@ export interface CoreManagerInterface {
   getFFmpegPath(): Promise<string>;
   getServerAddresses(pluginId?: string): Promise<string[]>;
   getCloudServerId(): Promise<string>;
+  getRestoreGeneration(): Promise<string>;
+  getInstanceId(): Promise<string>;
   getPlugin(pluginName: string): Promise<HostPluginInfo | undefined>;
   getPluginsByInterface(interfaceName: PluginInterface): Promise<HostPluginInfo[]>;
   getFloorPlan(): Promise<FloorPlan>;
