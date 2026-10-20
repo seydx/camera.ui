@@ -1,9 +1,11 @@
 import { getBootResult } from '@/connection/bootApp.js';
 import { bounceToCloudFrontend } from '@/connection/cloudHandoff.js';
+import { getConnection } from '@/connection/instance.js';
 import { isCapacitor } from '@/connection/runtime.js';
 
 import { resolveAxiosClient } from './client.js';
 import { isRemoteDisabledError, isServerGoneError, isTunnelPendingError, readErrorBody } from './errors.js';
+import { scopeRequestsToSession } from './sessionScope.js';
 
 import type { ProxyMintResult } from '@/connection/types.js';
 import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
@@ -89,6 +91,7 @@ async function doRemintProxy(): Promise<string | null> {
 
 export function installApiErrorHandling(): void {
   const client = resolveAxiosClient();
+  scopeRequestsToSession(client, getConnection().kernel);
 
   client.interceptors.response.use(
     (response: AxiosResponse) => response,

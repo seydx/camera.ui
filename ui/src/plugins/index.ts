@@ -7,7 +7,7 @@ import ToastService from 'primevue/toastservice';
 import Tooltip from 'primevue/tooltip';
 import { ViewTransitionsPlugin } from 'vue-view-transitions';
 
-import { isCancellationError } from '@/common/utils.js';
+import { isCancellationError, isNoTargetError } from '@/common/utils.js';
 import { isRestoreActive } from '@/composables/useBackupRestore.js';
 import { restarting } from '@/composables/useServerRestart.js';
 import { i18n } from '@/i18n/index.js';
@@ -22,6 +22,14 @@ function surfaceQueryFailure(error: unknown): void {
   if (isRestoreActive.value || restarting.value) return;
   const toast = useCuiToast();
   toast.add({ severity: 'error', detail: error, life: 3000 });
+}
+
+function surfaceMutationFailure(error: unknown): void {
+  if (isNoTargetError(error) && !isRestoreActive.value && !restarting.value) {
+    useCuiToast().add({ severity: 'error', detail: i18n.global.t('connection.not_connected'), life: 3000 });
+    return;
+  }
+  surfaceQueryFailure(error);
 }
 
 function buildVueQueryOptions(): VueQueryPluginOptions {
@@ -49,8 +57,8 @@ function buildVueQueryOptions(): VueQueryPluginOptions {
         },
         mutations: {
           retry: 0,
-          networkMode: 'online',
-          onError: surfaceQueryFailure,
+          networkMode: 'always',
+          onError: surfaceMutationFailure,
         },
       },
     },

@@ -1,4 +1,7 @@
-import { extractErrorMessage } from '@/common/utils.js';
+import axios from 'axios';
+
+import { extractErrorMessage, isNoTargetError } from '@/common/utils.js';
+import { i18n } from '@/i18n/index.js';
 
 import type { CuiToastDismissEvent, CuiToastMessage } from '@/components/CuiToast/types.js';
 
@@ -12,6 +15,11 @@ export function useCuiToast() {
   const log = useLogger();
 
   const add = (message: CuiToastMessage) => {
+    if (message.severity === 'error' && axios.isCancel(message.detail)) {
+      if (!isNoTargetError(message.detail)) return;
+      message.detail = i18n.global.t('connection.not_connected');
+    }
+
     if (message.detail === '') {
       message.detail = undefined;
     }

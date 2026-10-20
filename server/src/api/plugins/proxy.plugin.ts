@@ -34,6 +34,60 @@ export interface ProxyOptions {
 
 const GO2RTC_VIEWER_MESSAGES = new Set(['mse', 'mse/stop', 'mp4', 'hls', 'mjpeg', 'webcodecs', 'webrtc/offer', 'webrtc/candidate', 'talkback']);
 
+const HEARTBEAT_MS = 30_000;
+// 60 to 90 s of silence, above the 45 s after which the browser drops a silent connection itself
+const DEAD_AFTER_PINGS = 2;
+
+const MIB = 1024 * 1024;
+// above max_payload (4 MiB), a single scrub or snapshot reply never pauses the upstream
+const NATS_PAUSE_ABOVE = 8 * MIB;
+// about 1 MiB drained, nats-server cuts an upstream whose pending write stalls for 10 s
+const NATS_RESUME_BELOW = 7 * MIB;
+// a writev reports nothing until all of it is out, the rest waits in the relay queue
+const IN_FLIGHT = 512 * 1024;
+// a write callback costs a closure and a tick, a smaller frame into an idle socket skips it
+const UNTRACKED_FRAME_MAX = 64 * 1024;
+const NATS_MAX_BUFFERED = 32 * MIB;
+// a client frame is about one message of at most max_payload, this bounds its inflated size
+const NATS_MAX_CLIENT_FRAME = 16 * MIB;
+// nats.swift refuses frames above 8 MB
+const NATS_FRAME_CAP = 4 * MIB;
+// a 10 s GOP replay of a 16 Mbit stream is about 20 MB
+const GO2RTC_MAX_BUFFERED = 32 * MIB;
+const GO2RTC_BEHIND_ABOVE = 2 * MIB;
+const GO2RTC_MAX_BEHIND_MS = 5_000;
+// a link with little headroom drains go2rtc's GOP replay for several seconds
+const GO2RTC_REPLAY_SETTLE_MS = 10_000;
+const GO2RTC_REPLAY_REPLIES = new Set(['mse', 'webcodecs']);
+const GO2RTC_APP_PING = '{"type":"ping"}';
+const GO2RTC_APP_PONG = '{"type":"pong"}';
+const APP_PING_MAX_BYTES = 64;
+const UPSTREAM_HANDSHAKE_TIMEOUT_MS = 10_000;
+// nothing is queued on a refusal, no need to wait the 30 s default
+const REFUSAL_CLOSE_TIMEOUT_MS = 2_000;
+// Home Assistant's proxies may hand the close right behind the notice, nats.js then drops it
+const REFUSAL_NOTICE_LEAD_MS = 50;
+const DIAL_WARNING_INTERVAL_MS = 30_000;
+const MAX_DIAL_WARNING_KEYS = 256;
+// nats.js reads an -ERR only after an INFO
+const NATS_REFUSAL_INFO = 'INFO {"server_id":"camera.ui-relay","version":"2.10.0","proto":1,"headers":true,"max_payload":1048576}\r\n';
+
+const SHARE_USER_PREFIX = 'share_';
+// per target, a reconnecting client leaves its old relay open until the heartbeat drops it
+const MAX_RELAYS_PER_TOKEN = 64;
+const MAX_RELAYS_PER_SHARE = 50;
+// setTimeout fires at once above this
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+const SESSION_REVOKED: Refusal = [4401, 'unauthorized: session revoked'];
+const SHARE_ENDED: Refusal = [4401, 'unauthorized: share ended'];
+// clients retry a 4429 with backoff, a 4403 or a forbidden reason makes them give up
+const TOO_MANY_RELAYS: Refusal = [4429, 'too many connections'];
+// clients read a 1008 or a reason that mentions auth as an expired token
+const UPSTREAM_REFUSALS: [line: Buffer, refusal: Refusal][] = [
+  [Buffer.from("-ERR 'Authorization Violation'"), [4500, 'upstream rejected relay credentials']],
+  [Buffer.from("-ERR 'Authentication Timeout'"), [4500, 'upstream timed out waiting for CONNECT']],
+];
+
 function isValidCloseCode(code: number): boolean {
   return (code >= 1000 && code <= 1014 && code !== 1004 && code !== 1005 && code !== 1006) || (code >= 3000 && code <= 4999);
 }
@@ -52,6 +106,11 @@ class WebSocketProxy {
   private proxy: ProxyServer;
   private logger: LoggerService;
   private dbs: Database;
+  private relays: RelayRegistry;
+  private unanswered = new WeakMap<WebSocket, number>();
+  private appPinged = new WeakSet<WebSocket>();
+  private dialWarnings = new Map<string, { at: number; suppressed: number }>();
+  private heartbeat: NodeJS.Timeout;
 
   constructor(fastify: FastifyInstance, options: ProxyOptions) {
     this.proxy = container.resolve<ProxyServer>('proxy');
@@ -94,6 +153,7 @@ class WebSocketProxy {
   }
 
   public close(): void {
+    clearInterval(this.heartbeat);
     this.wss.removeAllListeners();
     this.wss.close();
     this.wssDeflate?.removeAllListeners();
@@ -214,6 +274,21 @@ class WebSocketProxy {
     early: [RawData, boolean][],
     deflater?: FrameDeflater,
   ): void {
+    const seen = (): void => {
+      this.unanswered.set(client, 0);
+    };
+    seen();
+    client.on('message', seen);
+    // a proxy may answer protocol pings itself, app-level pingers prove themselves with those
+    client.on('pong', () => this.appPinged.has(client) || seen());
+
+    const closeUpstream = (code: number, reason?: Buffer): void => {
+      if (server.readyState !== WebSocket.OPEN) return;
+      // a paused upstream never reads the close reply, ws would wait its 30 s close timeout
+      if (server.isPaused) server.terminate();
+      else server.close(code, reason);
+    };
+
     if (firewallConnId) {
       const firewall = new NatsSubFirewall(
         firewallConnId,
@@ -224,7 +299,7 @@ class WebSocketProxy {
           close: (reason) => {
             this.logger.warn(`RPC firewall closed connection (connId ${firewallConnId}): ${reason}`);
             if (client.readyState === WebSocket.OPEN) client.close(4403, `forbidden: ${reason}`.slice(0, 123));
-            if (server.readyState === WebSocket.OPEN) server.close(1000);
+            closeUpstream(1000);
           },
           rewriteConnect: (connectData) => this.applyNatsCreds(connectData, natsCreds),
         },
@@ -240,6 +315,8 @@ class WebSocketProxy {
 
       client.on('message', (data, isBinary) => {
         if (server.readyState !== WebSocket.OPEN) return;
+
+        if (this.target === 'go2rtc' && !isBinary && this.answerAppPing(client, data)) return;
 
         if (go2rtcViewer && !isBinary) {
           const message = this.viewerMessage(data);
@@ -278,20 +355,12 @@ class WebSocketProxy {
     client.on('ping', (data) => server.readyState === WebSocket.OPEN && server.ping(data));
     client.on('pong', (data) => server.readyState === WebSocket.OPEN && server.pong(data));
 
-    client.on('close', (code, reason) => {
-      if (server.readyState === WebSocket.OPEN) {
-        server.close(isValidCloseCode(code) ? code : 1000, reason);
-      }
-    });
+    client.on('close', (code, reason) => closeUpstream(isValidCloseCode(code) ? code : 1000, reason));
+    client.on('error', () => closeUpstream(1011));
 
-    client.on('error', () => {
-      if (server.readyState === WebSocket.OPEN) server.close(1011);
-    });
-
-    server.on('message', (data, isBinary) => {
-      if (client.readyState !== WebSocket.OPEN) return;
-      client.send(data, { binary: isBinary });
-    });
+    const downstream = this.target === 'nats' ? this.natsDownstream(client, server, deflater) : this.go2rtcDownstream(client, server);
+    for (const [data, isBinary] of early) downstream(data, isBinary);
+    server.on('message', downstream);
 
     server.on('ping', (data) => client.readyState === WebSocket.OPEN && client.ping(data));
     server.on('pong', (data) => client.readyState === WebSocket.OPEN && client.pong(data));
@@ -309,6 +378,197 @@ class WebSocketProxy {
     server.on('error', () => {
       if (client.readyState === WebSocket.OPEN) client.close(1011);
     });
+  }
+
+  private natsDownstream(client: WebSocket, server: WebSocket, deflater?: FrameDeflater): (data: RawData, isBinary: boolean) => void {
+    const deflate = client.extensions.includes('permessage-deflate');
+    const queue: [Buffer, boolean][] = [];
+    let queued = 0;
+    let refusal: Refusal | undefined;
+    const inFlight = (): number => client.bufferedAmount + (deflater?.pending ?? 0);
+
+    const send = (data: Buffer, isBinary: boolean): void => {
+      if (deflater) deflater.push(data);
+      else sendFrame(data, isBinary, deflate && worthCompressing(data));
+    };
+
+    const sendFrame = (data: Buffer, isBinary: boolean, compress: boolean): void => {
+      if (data.length <= NATS_FRAME_CAP) {
+        // deflater frames always need the callback, their pending bytes drop before they leave
+        client.send(data, { binary: isBinary, compress }, deflater || data.length >= UNTRACKED_FRAME_MAX || inFlight() ? onSent : undefined);
+        return;
+      }
+      for (let offset = 0; offset < data.length; offset += NATS_FRAME_CAP) {
+        const end = Math.min(offset + NATS_FRAME_CAP, data.length);
+        const fin = end === data.length;
+        client.send(data.subarray(offset, end), { binary: isBinary, compress, fin }, fin ? onSent : undefined);
+      }
+    };
+
+    const onSent = (err?: Error): void => {
+      if (err || client.readyState !== WebSocket.OPEN) return;
+      while (queue.length && inFlight() < IN_FLIGHT) {
+        const [data, isBinary] = queue.shift()!;
+        queued -= data.length;
+        send(data, isBinary);
+      }
+      if (server.isPaused && queued + inFlight() < NATS_RESUME_BELOW) server.resume();
+    };
+
+    if (deflater) {
+      deflater.onFrame = (frame) => sendFrame(frame, true, false);
+      deflater.onError = (err) => {
+        this.logger.warn(`Proxy closed a client whose frame deflate failed target=${this.target}: ${err.message}`);
+        client.terminate();
+        server.terminate();
+      };
+    }
+
+    client.once('close', () => {
+      queue.length = 0;
+      queued = 0;
+      deflater?.close();
+    });
+    // runs before the close handler of proxyWebSockets, so the backlog still precedes the close frame
+    server.once('close', () => {
+      if (client.readyState === WebSocket.OPEN) {
+        const backlog = queued + inFlight();
+        if (server.isPaused || backlog >= NATS_PAUSE_ABOVE) {
+          this.dropSlowClient(client, server, backlog);
+        } else {
+          for (const [data, isBinary] of queue) send(data, isBinary);
+          const closeWith = refusal;
+          if (closeWith) {
+            const close = (): void => {
+              if (client.readyState === WebSocket.OPEN) client.close(...closeWith);
+            };
+            if (deflater) deflater.whenDrained(close);
+            else close();
+          }
+        }
+      }
+      queue.length = 0;
+      queued = 0;
+    });
+
+    return (raw, isBinary) => {
+      if (client.readyState !== WebSocket.OPEN) return;
+      const data = this.toBuffer(raw);
+
+      // 0x2d is '-', the close nats-server sends right after a refusal carries it
+      if (data[0] === 0x2d) {
+        const refused = upstreamRefusal(data);
+        if (refused) {
+          refusal = refused;
+          return;
+        }
+      }
+
+      const backlog = queued + inFlight();
+      if (backlog > NATS_MAX_BUFFERED) {
+        this.dropSlowClient(client, server, backlog);
+        return;
+      }
+
+      if (!server.isPaused && backlog >= NATS_PAUSE_ABOVE) server.pause();
+
+      if (queue.length || inFlight() >= IN_FLIGHT) {
+        queue.push([data, isBinary]);
+        queued += data.length;
+      } else {
+        send(data, isBinary);
+      }
+    };
+  }
+
+  private go2rtcDownstream(client: WebSocket, server: WebSocket): (data: RawData, isBinary: boolean) => void {
+    let settled = performance.now() + GO2RTC_REPLAY_SETTLE_MS;
+    const queue: [Buffer, boolean][] = [];
+    let queued = 0;
+    let behindSince: number | undefined;
+    let behindFrom = 0;
+
+    const onSent = (err?: Error): void => {
+      if (err || client.readyState !== WebSocket.OPEN) return;
+      while (queue.length && client.bufferedAmount < IN_FLIGHT) {
+        const [data, isBinary] = queue.shift()!;
+        queued -= data.length;
+        client.send(data, { binary: isBinary }, onSent);
+      }
+    };
+
+    client.once('close', () => {
+      queue.length = 0;
+      queued = 0;
+    });
+    // runs before the close handler of proxyWebSockets, so go2rtc's last frames still precede the close frame
+    server.once('close', () => {
+      if (client.readyState === WebSocket.OPEN) {
+        const backlog = queued + client.bufferedAmount;
+        if (backlog > GO2RTC_BEHIND_ABOVE) this.dropSlowClient(client, server, backlog);
+        else for (const [data, isBinary] of queue) client.send(data, { binary: isBinary });
+      }
+      queue.length = 0;
+      queued = 0;
+    });
+
+    return (raw, isBinary) => {
+      if (client.readyState !== WebSocket.OPEN) return;
+      const data = this.toBuffer(raw);
+      if (!isBinary && this.startsGo2rtcReplay(data)) settled = performance.now() + GO2RTC_REPLAY_SETTLE_MS;
+
+      if (queue.length || client.bufferedAmount >= IN_FLIGHT) {
+        queue.push([data, isBinary]);
+        queued += data.length;
+      } else {
+        client.send(data, { binary: isBinary }, onSent);
+      }
+
+      const backlog = queued + client.bufferedAmount;
+      if (backlog > GO2RTC_MAX_BUFFERED) {
+        this.dropSlowClient(client, server, backlog);
+        return;
+      }
+
+      const now = performance.now();
+      if (backlog <= GO2RTC_BEHIND_ABOVE || now < settled) {
+        behindSince = undefined;
+        return;
+      }
+      if (behindSince !== undefined && now - behindSince <= GO2RTC_MAX_BEHIND_MS) return;
+
+      if (behindSince === undefined || backlog < behindFrom) {
+        behindSince = now;
+        behindFrom = backlog;
+        return;
+      }
+      this.dropSlowClient(client, server, backlog);
+    };
+  }
+
+  private dropSlowClient(client: WebSocket, server: WebSocket, buffered: number): void {
+    this.logger.warn(`Proxy dropped a client that fell ${(buffered / MIB).toFixed(1)} MB behind target=${this.target}`);
+    client.terminate();
+    server.terminate();
+  }
+
+  private checkClients(): void {
+    const clients = this.wssDeflate ? [...this.wss.clients, ...this.wssDeflate.clients] : this.wss.clients;
+    for (const client of clients) {
+      const unanswered = this.unanswered.get(client);
+      if (unanswered === undefined) continue;
+
+      if (unanswered >= DEAD_AFTER_PINGS) {
+        this.logger.debug(`Proxy dropped a client that left ${DEAD_AFTER_PINGS} pings unanswered target=${this.target}`);
+        client.terminate();
+      } else {
+        this.unanswered.set(client, unanswered + 1);
+        if (client.readyState === WebSocket.OPEN) {
+          client.ping();
+          if (this.appPinged.has(client)) client.send(GO2RTC_APP_PING);
+        }
+      }
+    }
   }
 
   private reject(request: IncomingMessage, socket: Duplex, head: Buffer, code: number, reason: string, token: string): void {
@@ -376,6 +636,21 @@ class WebSocketProxy {
     return 'forbidden: src is not a camera stream';
   }
 
+  private hasRelaySlot(tokenId: string): boolean {
+    const ours = (relay: Relay): boolean => relay.target === this.target;
+    if (this.relays.count('token', tokenId, ours) < MAX_RELAYS_PER_TOKEN) return true;
+
+    const silent = (client: WebSocket | undefined): boolean => client !== undefined && (this.unanswered.get(client) ?? 0) >= DEAD_AFTER_PINGS;
+    const ended = this.relays.terminate(tokenId, (relay) => ours(relay) && silent(relay.client));
+    if (ended) this.logger.debug(`Proxy ended ${ended} relays of a token at its limit that left a ping unanswered target=${this.target}`);
+    return this.relays.count('token', tokenId, ours) < MAX_RELAYS_PER_TOKEN;
+  }
+
+  private shareSeatsTaken(dbToken: DBToken): number {
+    const others = this.relays.count('user', dbToken.user_id, (relay) => relay.tokenId !== dbToken.id);
+    return Math.max(others, inject('go2rtcState').countConsumersByTag(dbToken.user_id) - 1);
+  }
+
   private viewerMessage(data: RawData): string | undefined {
     let message: { type?: unknown; value?: unknown } | null;
     try {
@@ -387,6 +662,32 @@ class WebSocketProxy {
       return undefined;
     }
     return JSON.stringify({ type: message.type, value: message.value });
+  }
+
+  private startsGo2rtcReplay(data: Buffer): boolean {
+    const type = this.go2rtcType(data);
+    return typeof type === 'string' && GO2RTC_REPLAY_REPLIES.has(type);
+  }
+
+  private answerAppPing(client: WebSocket, data: RawData): boolean {
+    const frame = this.toBuffer(data);
+    if (frame.length > APP_PING_MAX_BYTES) return false;
+
+    const type = this.go2rtcType(frame);
+    if (type === 'ping') {
+      this.appPinged.add(client);
+      client.send(GO2RTC_APP_PONG);
+      return true;
+    }
+    return type === 'pong';
+  }
+
+  private go2rtcType(data: Buffer): unknown {
+    try {
+      return (JSON.parse(data.toString('utf-8')) as { type?: unknown } | null)?.type;
+    } catch {
+      return undefined;
+    }
   }
 
   private isCameraStream(src: string): boolean {

@@ -387,6 +387,7 @@ export function createConnection(options: ConnectionOptions): Connection {
     },
     isServerError: (err) => axios.isAxiosError(err) && (err.response?.status ?? 0) >= 500,
     maxServerErrorRetries: 1,
+    isReachable: anyChannelUp,
     refresh: options.callbacks.refresh,
     acquireRefreshLock,
     getLatestTokens: () => persistence.peek()?.tokens ?? null,

@@ -10,6 +10,10 @@ export function isCancellationError(err: unknown): boolean {
   return false;
 }
 
+export function isNoTargetError(err: unknown): boolean {
+  return axios.isCancel(err) && err.message === 'http-transport: no target';
+}
+
 export interface FormattedTimestamp {
   timestamp: number;
   formattedTime: string;

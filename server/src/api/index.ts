@@ -11,6 +11,8 @@ import Fastify, { LogController } from 'fastify';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { connect as connectNet, isIP } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -46,9 +48,11 @@ import type { FastifyMultipartAttachFieldsToBodyOptions, MultipartFile } from '@
 import type { FastifyStaticOptions } from '@fastify/static';
 import type { FastifyDynamicSwaggerOptions } from '@fastify/swagger';
 import type { FastifySwaggerUiOptions } from '@fastify/swagger-ui';
-import type { FastifyBaseLogger, FastifyHttp2SecureOptions, FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyBaseLogger, FastifyHttp2SecureOptions, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { Server as HttpServer, IncomingHttpHeaders, IncomingMessage } from 'node:http';
 import type { Http2SecureServer } from 'node:http2';
 import type { AddressInfo, Socket } from 'node:net';
+import type { Duplex } from 'node:stream';
 import type { ServerOptions } from 'socket.io';
 import type { CameraUiAPI } from '../api.js';
 import type { ProxyServer } from '../rpc/index.js';
@@ -57,14 +61,77 @@ import type { ProxyOptions } from './plugins/proxy.plugin.js';
 import type { ServerRuntime } from './websocket/types.js';
 
 const SHARES_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+const TOKEN_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const INGRESS_UPGRADE_HEADERS = new Set(['authorization', 'x-cui-embed', 'x-cui-base']);
+const HASHED_CARDS_CHUNK = /^ha[\\/][^\\/]+-[\w-]{8}\.js(?:\.br|\.gz)?$/;
 
 type IngressRequest = FastifyRequest & { ingressToken?: string };
+type ProxyAuthRequest = FastifyRequest & { proxyToken?: string };
+
+interface UpgradeIdentity {
+  token?: string;
+  drop: ReadonlySet<string>;
+  add: string[];
+}
+
+type RewriteRequestHeaders = NonNullable<NonNullable<FastifyHttpProxyOptions['replyOptions']>['rewriteRequestHeaders']>;
+type UpgradeIdentify = (address: string | undefined, headers: IncomingHttpHeaders) => Promise<UpgradeIdentity | false | undefined>;
+
+function cacheImmutable(reply: FastifyReply): void {
+  reply.header('cache-control', 'public, max-age=31536000, immutable');
+  reply.removeHeader('expires');
+  reply.removeHeader('pragma');
+  reply.removeHeader('surrogate-control');
+}
+
+function cacheInterfaceFile(reply: FastifyReply, root: string, path: string): void {
+  if (HASHED_CARDS_CHUNK.test(relative(root, path))) {
+    cacheImmutable(reply);
+  } else {
+    reply.header('cache-control', 'no-cache');
+  }
+}
 
 function stripCspUpgrade(value: string): string {
   return value
     .split(';')
     .filter((directive) => directive.trim().toLowerCase() !== 'upgrade-insecure-requests')
     .join(';');
+}
+
+function upgradeRequestHead(req: IncomingMessage, peer: string | undefined, identity: UpgradeIdentity | undefined): string {
+  const token = identity?.token;
+  let url = req.url ?? '/';
+  if (token) {
+    const at = url.indexOf('?');
+    const params = new URLSearchParams(at === -1 ? '' : url.slice(at + 1));
+    params.set('token', token);
+    url = `${at === -1 ? url : url.slice(0, at)}?${params.toString()}`;
+  }
+
+  const lines = [`${req.method ?? 'GET'} ${url} HTTP/1.1`];
+  for (let i = 0; i < req.rawHeaders.length; i += 2) {
+    const name = req.rawHeaders[i].toLowerCase();
+    if (name === 'x-forwarded-for' || identity?.drop.has(name)) continue;
+    lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+  }
+  lines.push(`X-Forwarded-For: ${[req.headers['x-forwarded-for'], peer].flat().filter(Boolean).join(', ')}`);
+  if (token) {
+    lines.push(`Authorization: Bearer ${token}`, ...identity.add);
+  }
+  return `${lines.join('\r\n')}\r\n\r\n`;
+}
+
+async function ingressUpgradeIdentity(ingress: IngressAuth, address: string | undefined, headers: IncomingHttpHeaders): Promise<UpgradeIdentity | undefined> {
+  const token = await ingress.accessToken(address, headers);
+  return token ? { token, drop: INGRESS_UPGRADE_HEADERS, add: ['X-Cui-Embed: hassio'] } : undefined;
+}
+
+async function proxyUpgradeIdentity(auth: ProxyAuth, address: string | undefined, headers: IncomingHttpHeaders): Promise<UpgradeIdentity | false> {
+  const outcome = await auth.signIn(address, headers).catch(() => ({ refused: '' }));
+  if (outcome && 'refused' in outcome) return false;
+  if (!outcome) return { drop: auth.ownHeaders, add: [] };
+  return { token: outcome.token, drop: new Set([...auth.ownHeaders, 'authorization']), add: ['X-Cui-Auth: proxy'] };
 }
 
 export class Server {
@@ -316,21 +383,63 @@ export class Server {
           return headers;
         },
       },
-      wsClientOptions: {
-        rejectUnauthorized: false,
-        queryString: (search, _reqUrl, req) => {
-          const params = new URLSearchParams(search);
-          const token = (req as IngressRequest).ingressToken;
-          if (token) params.set('token', token);
-          return params.toString();
-        },
-      },
     });
   }
 
-    await app.listen({ host, port });
-    this.insecureApp = app;
-    this.logger.log(paint('green', `camera.ui insecure (http) listener on http://${host}:${port}${ingress ? ' (ingress-trusted)' : ''}`));
+  private async forwardUpgrade(req: IncomingMessage, socket: Socket, head: Buffer, identify?: UpgradeIdentify): Promise<void> {
+    socket.on('error', () => socket.destroy());
+    if (req.headers.upgrade?.toLowerCase() !== 'websocket') {
+      socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+      return;
+    }
+
+    const identity = await identify?.(socket.remoteAddress, req.headers).catch(() => undefined);
+    if (socket.destroyed) return;
+    if (identity === false) {
+      socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+      return;
+    }
+
+    const upstream = connectNet({ host: '127.0.0.1', port: this.loopbackPort });
+    const close = () => {
+      socket.destroy();
+      upstream.destroy();
+    };
+    socket.on('close', close);
+    upstream.on('error', close).on('close', close);
+
+    upstream.once('connect', () => {
+      socket.setNoDelay(true);
+      upstream.setNoDelay(true);
+      upstream.write(upgradeRequestHead(req, socket.remoteAddress, identity));
+      if (head.length > 0) upstream.write(head);
+      socket.pipe(upstream).pipe(socket);
+    });
+  }
+
+  private async forwarderUpstream(): Promise<string> {
+    if (this.loopback) {
+      return `http://127.0.0.1:${this.loopbackPort}`;
+    }
+
+    const main = this.app?.server;
+    if (!main) {
+      throw new Error('Fastify instance not initialized');
+    }
+
+    // uploads through Home Assistant can outlast node's 5 min request timeout
+    const loopback = createServer({ requestTimeout: 0 });
+    loopback.on('request', (req, res) => main.emit('request', req, res));
+    loopback.on('upgrade', (req, socket, head) => main.emit('upgrade', req, socket, head));
+    this.trackConnections(loopback);
+    await new Promise<void>((resolve, reject) => {
+      loopback.once('error', reject);
+      loopback.listen(0, '127.0.0.1', () => resolve());
+    });
+
+    this.loopback = loopback;
+    this.loopbackPort = (loopback.address() as AddressInfo).port;
+    return `http://127.0.0.1:${this.loopbackPort}`;
   }
 
   private trackConnections(server: { on(event: 'connection', listener: (socket: Socket) => void): void }): void {

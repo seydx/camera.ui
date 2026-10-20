@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import { i18n } from '@/i18n/index.js';
 import { axiosInstance as api } from '..';
 
@@ -217,6 +219,10 @@ export class ServerQuery {
         this.toast.add({ severity: 'success', detail: this.t('components.toast.server_restarted'), life: 3000 });
       },
       onError: (error) => {
+        if (axios.isCancel(error)) {
+          this.toast.add({ severity: 'error', detail: error, life: 3000 });
+          return;
+        }
         const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === undefined || status >= 500) {
           this.toast.add({ severity: 'success', detail: this.t('components.toast.server_restarted'), life: 3000 });

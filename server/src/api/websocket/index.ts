@@ -21,12 +21,14 @@ import { TrainingNamespace } from './nsp/training.js';
 import { WorkersNamespace } from './nsp/workers.js';
 
 import type { FastifyInstance } from 'fastify';
-import type { DisconnectReason, ServerOptions, Socket } from 'socket.io';
+import type { DisconnectReason, Namespace, ServerOptions, Socket } from 'socket.io';
 import type { CameraUiAPI } from '../../api.js';
 import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type { JwtTokenDecoded } from '../types/index.js';
 import type { SocketNsp, SocketNspMap } from './types.js';
+
+const MAX_SOCKETS_PER_TOKEN = 64;
 
 export class SocketService {
   public io: Server;
@@ -128,6 +130,12 @@ export class SocketService {
       if (dbToken?.user_id !== user._id || dbToken.stream_scope) {
         return next(new UnauthorizedError('unauthenticated', { message: 'Unauthenticated' }));
       }
+
+      if (this.countTokenSockets(socket.nsp, dbToken.id) >= MAX_SOCKETS_PER_TOKEN) {
+        return next(new UnauthorizedError('too_many_connections', { message: `Too many connections to ${nsp}` }));
+      }
+
+      socket.data.tokenId = dbToken.id;
 
       return next();
     };
