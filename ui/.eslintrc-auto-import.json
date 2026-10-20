@@ -8,6 +8,7 @@
     "AssistantApproval": true,
     "AssistantQuestionInterrupt": true,
     "AssistantUiAction": true,
+    "BackupKeyProblem": true,
     "BackupRestorePhase": true,
     "BannerMode": true,
     "BiometryStatus": true,

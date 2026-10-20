@@ -34,6 +34,63 @@ export const BackupRoute: FastifyPluginAsync = async (app: FastifyInstance): Pro
     },
   });
 
+  app.withTypeProvider<ZodTypeProvider>().route({
+    url: '/jobs',
+    method: 'POST',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
+    handler: backupController.startJob.bind(backupController),
+    schema: {
+      tags: ['Backup'],
+      summary: 'Start packing an encrypted backup, progress comes over the server socket and GET /backup/jobs',
+      body: downloadBackupSchema,
+    },
+  });
+
+  app.route({
+    url: '/jobs',
+    method: 'GET',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
+    handler: backupController.getJob.bind(backupController),
+    schema: {
+      tags: ['Backup'],
+      summary: 'The running or last backup job, with a download link once it is done',
+    },
+  });
+
+  app.route({
+    url: '/key',
+    method: 'GET',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction, onlySessionCanDoThisAction],
+    handler: backupController.getKey.bind(backupController),
+    schema: {
+      tags: ['Backup'],
+      summary: 'The key that encrypts the backups of this server',
+    },
+  });
+
+  app.route({
+    url: '/key/confirm',
+    method: 'POST',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction, onlySessionCanDoThisAction],
+    handler: backupController.confirmKey.bind(backupController),
+    schema: {
+      tags: ['Backup'],
+      summary: 'Note that the backup key is saved somewhere else',
+    },
+  });
+
+  app.withTypeProvider<ZodTypeProvider>().route({
+    url: '/download/link',
+    method: 'POST',
+    preValidation: [validJWTNeeded, onlyAdminCanDoThisAction],
+    handler: backupController.downloadLink.bind(backupController),
+    schema: {
+      tags: ['Backup'],
+      summary: 'Create a backup archive and return a single-use download link',
+      body: downloadBackupSchema,
+    },
+  });
+
   app.route({
     url: '/restore',
     method: 'POST',

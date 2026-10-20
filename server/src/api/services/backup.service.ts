@@ -5,10 +5,23 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import { createReadStream, createWriteStream, existsSync } from 'node:fs';
 import { appendFile, lstat, mkdtemp, open, readdir, stat, statfs, utimes, writeFile } from 'node:fs/promises';
 import { platform, tmpdir } from 'node:os';
-import { dirname, join, resolve, sep } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { c, x } from 'tar';
 import { container } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
+import {
+  BackupArchiveError,
+  backupKeyId,
+  createArchiveDecryptor,
+  createArchiveEncryptor,
+  encodeArchiveHeader,
+  ENCRYPTED_BACKUP_EXTENSION,
+  newArchiveHeader,
+  parseBackupKey,
+  readArchiveLayout,
+} from '../../services/config/backup-archive.js';
 import { ConfigService } from '../../services/config/index.js';
 import { alignStagedPlatformValues } from '../../services/config/platform-values.js';
 import { describeRestoredPlugins } from '../../services/config/restore-plugins.js';
@@ -32,7 +45,9 @@ import { restoreSummaryPath } from '../../utils/path.js';
 import { PluginsService } from './plugins.service.js';
 
 import type { MultipartFile } from '@fastify/multipart';
-import type { CameraUi } from '../../main.js';
+import type { Stats } from 'node:fs';
+import type { DatabaseSync } from 'node:sqlite';
+import type { RestoreArchiveFacts } from '../../services/config/restore-summary.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type {
   BackupDownloadLink,
@@ -59,6 +74,52 @@ import type {
 
 export type UploadedBackupFile = MultipartFile & { filepath?: string };
 
+const TEMP_FOLDER_PREFIX = 'camera.ui-backup-';
+const TEMP_FOLDER_SUFFIX = /^[A-Za-z0-9]{6}$/;
+const STALE_TEMP_FOLDER_MS = 60 * 60 * 1000;
+const PACKING_RESERVE_BYTES = 512 * 1024 * 1024;
+const PACKING_ATTEMPTS = 3;
+const SUMMARY_TIMEOUT_MS = 60_000;
+const SOURCE_BROWSE_MS = 2000;
+const JOB_EMIT_INTERVAL_MS = 500;
+const IGNORED_MEASURE_MS = 3000;
+const SQLITE_HEADER = Buffer.from('SQLite format 3\0');
+const SQLITE_SIDE_FILES = ['-wal', '-shm', '-journal'];
+const SQLITE_BUSY_TIMEOUT_MS = 5000;
+
+export interface BackupOptions {
+  localStorage?: Partial<UiLocalStorage>;
+  excludePaths?: string[];
+  encrypt?: boolean;
+  source?: BackupJobSource;
+}
+
+type BackupProgress = (phase: BackupJobPhase, done: number, total: number) => void;
+
+interface BackupContents {
+  files: Map<string, number>;
+  sqlite: string[];
+  ignored: string[];
+  skipped?: Set<string>;
+}
+
+interface PackTarget {
+  file: string;
+  infoFile: string;
+  include: (path: string, stats: Stats) => boolean;
+  contents: BackupContents;
+  snapshots: Map<string, string>;
+  size: number;
+  timestamp: number;
+  key: Buffer | null;
+}
+
+interface UploadMeta {
+  size: number;
+  name: string;
+  createdAt: number;
+}
+
 export class BackupService {
   private static activeOperation: 'backup' | 'restore' | null = null;
 
@@ -75,6 +136,29 @@ export class BackupService {
 
   public async createBackup(localStorage: Partial<UiLocalStorage> = {}, extraExcludePaths: string[] = []): Promise<BackupStorage> {
     this.acquireLock('backup');
+    this.track(options, deliver).catch(() => {});
+    return BackupService.job!;
+  }
+
+  public currentJob(): BackupJob | null {
+    return BackupService.job;
+  }
+
+  public keyInfo(): BackupKeyInfo {
+    const settings = inject('dbs').settingsDB.get('settings');
+    return { key: this.configService.SECRETS.backupKey, confirmedAt: settings?.backupKeyConfirmedAt };
+  }
+
+  public async confirmKey(): Promise<BackupKeyInfo> {
+    const dbs = inject('dbs');
+    const confirmedAt = Date.now();
+    await dbs.commit(dbs.settingsDB, 'settings', (current) => current && { ...current, backupKeyConfirmedAt: confirmedAt });
+    return { key: this.configService.SECRETS.backupKey, confirmedAt };
+  }
+
+  public async stageUploadedFile(file: UploadedBackupFile, key?: string): Promise<RestoreStarted> {
+    const directory = await mkdtemp(join(tmpdir(), 'cameraui-restore-'));
+    const archive = join(directory, 'upload.tar.gz');
 
     try {
       if (file.filepath) {
@@ -280,79 +364,60 @@ export class BackupService {
 
   private async runCreateBackup(localStorage: Partial<UiLocalStorage>, extraExcludePaths: string[]): Promise<BackupStorage> {
     const timestamp = Date.now();
-    const backupDirectory = await mkdtemp(join(tmpdir(), 'camera.ui-backup-'));
-    const backupFileName = `camera.ui-backup-${timestamp}.tar.gz`;
+    const key = options.encrypt ? parseBackupKey(this.configService.SECRETS.backupKey) : null;
+    if (options.encrypt && !key) throw new Error('The backup key of this server is missing.');
+
+    await ensureDir(this.configService.BACKUP_PACKING_PATH);
+    const backupDirectory = await mkdtemp(join(this.configService.BACKUP_PACKING_PATH, TEMP_FOLDER_PREFIX));
+    const backupFileName = `camera.ui-backup-${timestamp}${key ? ENCRYPTED_BACKUP_EXTENSION : '.tar.gz'}`;
     const backupFile = join(backupDirectory, backupFileName);
 
     this.logger.log('Creating new backup...');
 
-    const plugins = this.pluginsService.listPlugins();
-    const pluginsInfo: PluginBackupInfo[] = plugins.map((plugin): PluginBackupInfo => ({
-      id: plugin.id,
-      name: plugin.pluginName,
-      version: plugin.info.installedVersion ?? 'latest',
-    }));
+    try {
+      const plugins = this.pluginsService.listPlugins();
+      const pluginsInfo: PluginBackupInfo[] = plugins.map((plugin): PluginBackupInfo => ({
+        id: plugin.id,
+        name: plugin.pluginName,
+        version: plugin.info.installedVersion ?? 'latest',
+      }));
 
-    const excludePaths = [
-      this.configService.INTERFACE_CACHE_PATH,
-      this.configService.LOGS_PATH,
-      this.configService.LOG_FILE,
-      this.configService.PIDS_FILE,
-      this.configService.REPORTS_FILE,
-      this.configService.BACKUP_INFO_FILE,
-      this.configService.ROOT_CERT_FILE,
-      this.configService.HOST_CERT_FILE,
-      this.configService.HOST_KEY_FILE,
-      this.configService.ROOT_KEY_FILE,
-      ...extraExcludePaths,
-    ].map((path) => resolve(path));
+      const excludePaths = [...this.configService.BACKUP_EXCLUDED_PATHS, this.configService.BACKUP_INFO_FILE, ...(options.excludePaths ?? [])].map((path) =>
+        resolve(path),
+      );
+      const excluded = (path: string): boolean => excludePaths.some((entry) => path === entry || path.startsWith(entry + sep));
+      const include = (path: string, stats: Stats): boolean => {
+        if (excluded(path)) return false;
+        if (stats.isDirectory()) return !existsSync(join(path, BACKUP_IGNORE_FILE));
+        return stats.isFile();
+      };
 
-    const isExcluded = (filePath: string): boolean => {
-      const normalized = resolve(filePath);
-      return excludePaths.some((excluded) => normalized === excluded || normalized.startsWith(excluded + sep));
-    };
+      const contents: BackupContents = { files: new Map(), sqlite: [], ignored: [] };
+      await this.collect(resolve(this.configService.STORAGE_PATH), include, excluded, contents);
+      const snapshots = await this.takeSnapshots(join(backupDirectory, 'snapshot'), contents, progress);
+      const size = [...contents.files.values()].reduce((sum, bytes) => sum + bytes, 0);
 
-    await copy(this.configService.STORAGE_PATH, join(backupDirectory, 'storage'), {
-      filter: async (filePath: string) => {
-        if (isExcluded(filePath)) {
-          return false;
-        }
+      await this.assertPackingSpace(this.configService.BACKUP_PACKING_PATH, size);
 
-        try {
-          const stat = await lstat(filePath);
-          if (stat.isDirectory()) {
-            if (await pathExists(join(filePath, '.backupignore'))) {
-              return false;
-            }
-            return true;
-          }
-          return stat.isFile();
-        } catch {
-          return false;
-        }
-      },
-    });
+      const info: BackupInfo = {
+        timestamp,
+        platform: platform(),
+        node: process.version,
+        version: ConfigService.VERSION,
+        plugins: pluginsInfo,
+        localStorage: options.localStorage ?? {},
+        environment: this.configService.ENVIRONMENT_SETTINGS,
+        ingress: !!this.configService.INGRESS_TRUST_IP,
+        excluded: await this.measureIgnored(contents.ignored),
+      };
+      const infoFile = join(backupDirectory, 'camera.ui.backup.json');
+      await writeJson(infoFile, info);
 
-    const info: BackupInfo = {
-      timestamp,
-      platform: platform(),
-      node: process.version,
-      version: ConfigService.VERSION,
-      plugins: pluginsInfo,
-      localStorage: localStorage,
-    };
-
-    await writeJson(join(backupDirectory, 'camera.ui.backup.json'), info);
-
-    await c(
-      {
-        portable: true,
-        gzip: true,
-        file: backupFile,
-        cwd: backupDirectory,
-      },
-      ['storage', 'camera.ui.backup.json'],
-    );
+      await this.packBackup({ file: backupFile, infoFile, include, contents, snapshots, size, timestamp, key }, progress);
+    } catch (error) {
+      await remove(backupDirectory).catch(() => {});
+      throw error;
+    }
 
     this.logger.log('Backup was successfully created');
 
@@ -363,30 +428,157 @@ export class BackupService {
     };
   }
 
-  private ensureStartupComplete(): void {
-    const cameraui = container.resolve<CameraUi>('cameraui');
-    if (cameraui.status !== 'ready') {
-      throw new Error('The server is still starting up. Please wait a moment and try again.');
+  private async packBackup(target: PackTarget, progress: BackupProgress): Promise<void> {
+    const storage = resolve(this.configService.STORAGE_PATH);
+    const names = await readdir(storage);
+    const { file, infoFile, include, contents, snapshots, size, key } = target;
+    const replaced = contents.skipped ?? new Set<string>();
+    const snapshotPaths = new Map([...snapshots].map(([live, copy]) => [copy, relative(storage, live).split(sep).join('/')]));
+
+    for (let attempt = 1; ; attempt++) {
+      let done = 0;
+      try {
+        const pack = c(
+          {
+            portable: true,
+            gzip: true,
+            cwd: storage,
+            prefix: 'storage',
+            filter: (path, entry) => {
+              if (path === infoFile || snapshotPaths.has(path)) return true;
+              const absolute = resolve(storage, path);
+              return !replaced.has(absolute) && include(absolute, entry as Stats);
+            },
+            onWriteEntry: (entry) => {
+              done += contents.files.get(entry.absolute) ?? 0;
+              progress('packing', done, size);
+              if (entry.absolute === infoFile) {
+                entry.prefix = undefined;
+                entry.path = basename(infoFile);
+              }
+              const snapshot = snapshotPaths.get(entry.absolute);
+              if (snapshot) {
+                entry.prefix = undefined;
+                entry.path = `storage/${snapshot}`;
+              }
+            },
+          },
+          [...names, infoFile, ...snapshotPaths.keys()],
+        );
+
+        if (key) {
+          const header = newArchiveHeader(key, { createdAt: target.timestamp, version: ConfigService.VERSION, size });
+          const headerBytes = encodeArchiveHeader(header);
+          await writeFile(file, headerBytes);
+          await pipeline(pack, createArchiveEncryptor(key, header, headerBytes), createWriteStream(file, { flags: 'a' }));
+        } else {
+          await pipeline(pack, createWriteStream(file));
+        }
+        return;
+      } catch (error) {
+        await remove(file).catch(() => {});
+        if (error.code === 'ENOSPC') throw new Error(`The disk ran full while the backup was packed in ${this.configService.BACKUP_PACKING_PATH}.`);
+        if (attempt === PACKING_ATTEMPTS || (error.code !== 'EOF' && error.code !== 'ENOENT')) throw error;
+        this.logger.debug(`${error.path ?? 'A file'} changed while the backup was packed, packing again`);
+      }
     }
   }
 
-  private async removeUploadedFile(file: UploadedBackupFile): Promise<void> {
-    if (file.filepath) {
-      await remove(dirname(file.filepath)).catch(() => {});
+  private async collect(path: string, include: (path: string, stats: Stats) => boolean, excluded: (path: string) => boolean, contents: BackupContents): Promise<void> {
+    for (const name of await readdir(path).catch(() => [])) {
+      const child = join(path, name);
+      const stats = await lstat(child).catch(() => null);
+      if (!stats) continue;
+
+      if (!include(child, stats)) {
+        if (stats.isDirectory() && !excluded(child) && child !== resolve(this.configService.DEFAULT_BACKUPS_PATH)) contents.ignored.push(child);
+        continue;
+      }
+      if (stats.isDirectory()) {
+        await this.collect(child, include, excluded, contents);
+        continue;
+      }
+
+      contents.files.set(child, stats.size);
+      if (stats.size >= SQLITE_HEADER.length && (await isSqlite(child))) contents.sqlite.push(child);
     }
   }
 
-  private async runRestoreBackup(file: UploadedBackupFile): Promise<any> {
-    this.ensureStartupComplete();
+  private async takeSnapshots(directory: string, contents: BackupContents, progress: BackupProgress): Promise<Map<string, string>> {
+    const storage = resolve(this.configService.STORAGE_PATH);
+    const snapshots = new Map<string, string>();
+    const skipped = new Set<string>();
+    const total = contents.sqlite.length + 1;
+    progress('snapshot', 0, total);
 
-    const uploadDirectory = await mkdtemp(join(tmpdir(), 'cameraui-restore-'));
-    const backupFile = join(uploadDirectory, 'upload.tar.gz');
-
-    if (file.filepath) {
-      await move(file.filepath, backupFile, { overwrite: true });
-    } else {
-      await writeFile(backupFile, await file.toBuffer());
+    const database = this.configService.DATABASE_PATH && resolve(this.configService.DATABASE_PATH);
+    const liveData = database && join(database, 'data.mdb');
+    const dbs = tryInject('dbs');
+    if (liveData && contents.files.has(liveData) && dbs) {
+      const target = join(directory, relative(storage, database));
+      try {
+        await dbs.snapshot(target);
+        snapshots.set(liveData, join(target, 'data.mdb'));
+        skipped.add(join(database, 'lock.mdb'));
+      } catch (error) {
+        this.logger.warn('Could not take a snapshot of the database, copying it as it is', error);
+      }
     }
+    progress('snapshot', 1, total);
+
+    for (const [index, file] of contents.sqlite.entries()) {
+      const target = join(directory, relative(storage, file));
+      if (await snapshotSqlite(file, target)) {
+        snapshots.set(file, target);
+        for (const suffix of SQLITE_SIDE_FILES) skipped.add(file + suffix);
+      } else {
+        this.logger.debug(`Could not take a snapshot of ${file}, copying it as it is`);
+      }
+      progress('snapshot', index + 2, total);
+    }
+
+    for (const [live, copy] of snapshots) {
+      skipped.add(live);
+      contents.files.delete(live);
+      contents.files.set(copy, (await stat(copy)).size);
+    }
+    for (const path of skipped) contents.files.delete(path);
+    contents.skipped = skipped;
+    return snapshots;
+  }
+
+  private async measureIgnored(folders: string[]): Promise<BackupExcludedFolder[]> {
+    const storage = resolve(this.configService.STORAGE_PATH);
+    const deadline = Date.now() + IGNORED_MEASURE_MS;
+    const result: BackupExcludedFolder[] = [];
+    for (const folder of folders) {
+      result.push({ path: relative(storage, folder).split(sep).join('/'), size: await folderSize(folder, deadline) });
+    }
+    return result;
+  }
+
+  private async assertPackingSpace(directory: string, size: number): Promise<void> {
+    await this.assertSpace(directory, size, 'pack the backup');
+  }
+
+  private async assertSpace(directory: string, size: number, action: string): Promise<void> {
+    const { bavail, bsize } = await statfs(directory);
+    const free = bavail * bsize;
+    if (free >= size + PACKING_RESERVE_BYTES) return;
+
+    const gb = (bytes: number): string => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+    throw new RestoreError(`Not enough free space to ${action}: it needs up to ${gb(size + PACKING_RESERVE_BYTES)}, ${gb(free)} are free in ${directory}.`, 507);
+  }
+
+  private async lastChange(folder: string): Promise<number> {
+    const names = await readdir(folder).catch(() => []);
+    let newest = 0;
+    for (const path of [folder, ...names.map((name) => join(folder, name))]) {
+      const info = await lstat(path).catch(() => null);
+      newest = Math.max(newest, info?.mtimeMs ?? Infinity);
+    }
+    return newest;
+  }
 
   private async stage(archive: string, kind: RestoreKind, peer?: MovePeer, key?: string): Promise<RestoreStarted> {
     this.acquireLock('restore');
@@ -401,6 +593,10 @@ export class BackupService {
 
   private async extractStaged(archive: string, kind: RestoreKind, peer?: MovePeer, key?: string): Promise<RestoreStarted> {
     const stagingPath = this.configService.RESTORE_STAGING_PATH;
+    const layout = await readArchiveLayout(archive).catch((error) => {
+      throw error instanceof BackupArchiveError ? new RestoreError(error.message) : error;
+    });
+    const archiveKey = layout.header ? this.archiveKey(layout.header.keyId, key) : null;
 
     try {
       const journal = readRestoreJournal(this.configService.RESTORE_JOURNAL_FILE);
@@ -413,11 +609,15 @@ export class BackupService {
 
       await remove(stagingPath);
       await ensureDir(stagingPath);
+      if (layout.header) await this.assertSpace(this.configService.RESTORE_PATH, layout.header.size, 'unpack the backup');
 
-      await x({
-        cwd: stagingPath,
-        file: backupFile,
-      });
+      try {
+        const source = createReadStream(archive, { start: layout.payloadOffset });
+        if (layout.header && archiveKey) await pipeline(source, createArchiveDecryptor(archiveKey, layout.header, layout.headerBytes), x({ cwd: stagingPath }));
+        else await pipeline(source, x({ cwd: stagingPath }));
+      } catch (error) {
+        throw this.unpackError(error);
+      }
 
       const infoPath = join(stagingPath, 'camera.ui.backup.json');
       const storagePath = join(stagingPath, 'storage');
@@ -459,9 +659,19 @@ export class BackupService {
     }
   }
 
-      const infoFile: BackupInfo = await readJson(infoPath);
+  private archiveKey(keyId: string, provided: string | undefined): Buffer {
+    const own = parseBackupKey(this.configService.SECRETS.backupKey);
+    if (own && backupKeyId(own) === keyId) return own;
 
-      this.logger.debug('Backup Archive Information:', infoFile);
+    if (!provided) {
+      throw new RestoreError('This backup is encrypted. Enter the backup key of the server it comes from.', 422, 'backup-key-required');
+    }
+    const key = parseBackupKey(provided);
+    if (!key || backupKeyId(key) !== keyId) {
+      throw new RestoreError('This key does not open the backup.', 422, 'backup-key-wrong');
+    }
+    return key;
+  }
 
   private unpackError(error: NodeJS.ErrnoException & { code?: string }): RestoreError {
     if (error instanceof RestoreError) return error;

@@ -14,9 +14,12 @@ export interface ScheduledBackupEntry {
   filename: string;
   size: number;
   timestamp: number;
+  encrypted: boolean;
+  ownKey?: boolean;
+  version?: string;
 }
 
-const BACKUP_FILE_PATTERN = /^camera\.ui-backup-\d+\.tar\.gz$/;
+const BACKUP_FILE_PATTERN = /^camera\.ui-backup-\d+\.(tar\.gz|cuibackup)$/;
 const MAX_TIMER_CHUNK_MS = 12 * 60 * 60 * 1000;
 
 export class BackupSchedulerService {
@@ -111,6 +114,7 @@ export class BackupSchedulerService {
   }
 
   public start(): void {
+    this.backupService.removeStaleBackupFolders().catch(() => {});
     this.arm();
   }
 
@@ -178,9 +182,7 @@ export class BackupSchedulerService {
       this.logger.log('Running scheduled backup...');
       await ensureDir(destination);
 
-      // The destination may live inside the storage path — exclude it so the
-      // backup can't recursively include earlier archives.
-      const backup = await this.backupService.createBackup({}, [destination]);
+      const backup = await this.backupService.createBackup({ excludePaths: [this.destinationRoot(settings)], encrypt: true, source: 'schedule' });
       const targetFile = join(destination, backup.backupFileName);
 
       try {

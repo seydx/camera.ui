@@ -139,6 +139,8 @@ export const dbSettingsSchema = zod.object({
         .optional(),
     })
     .optional(),
+  backupKeyConfirmedAt: zod.number().optional(),
+  lastBackupAt: zod.number().optional(),
 });
 
 export const dbServerSchema = zod.object({

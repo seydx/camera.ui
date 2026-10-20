@@ -488,7 +488,7 @@ declare global {
   export type { AssistantQuestionInterrupt, AssistantApproval, UseAssistantChatOptions } from '../composables/useAssistantChat'
   import('../composables/useAssistantChat')
   // @ts-ignore
-  export type { BackupRestorePhase } from '../composables/useBackupRestore'
+  export type { BackupRestorePhase, BackupKeyProblem } from '../composables/useBackupRestore'
   import('../composables/useBackupRestore')
   // @ts-ignore
   export type { StoredCredentials, BiometryStatus } from '../composables/useBiometricCredentials'

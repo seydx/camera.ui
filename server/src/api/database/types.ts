@@ -121,6 +121,9 @@ export interface DBSettings {
   notificationsSuppressed?: boolean;
   notificationsMutedCameras?: string[];
   training?: DBTrainingSettings;
+  restoreGeneration?: string;
+  backupKeyConfirmedAt?: number;
+  lastBackupAt?: number;
 }
 
 export interface DBKnownWorker {

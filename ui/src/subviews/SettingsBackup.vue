@@ -132,7 +132,7 @@
           <template #content>
             <div class="flex flex-col gap-6">
               <span class="text-sm">{{ $t('views.settings.restore_backup_info') }}</span>
-              <CuiUploadFiles ref="filesRef" accept="application/gzip, .tar, .tar.gz" @files-uploaded="(files: File[]) => (uploadedFiles = files)" />
+              <CuiUploadFiles ref="filesRef" accept=".cuibackup, application/gzip, .tar, .tar.gz" @files-uploaded="(files: File[]) => (uploadedFiles = files)" />
               <Button
                 :disabled="!uploadedFiles.length || isRestoreActive"
                 class="ml-auto cui-button-medium"
@@ -335,7 +335,7 @@
                 <div v-for="backup in scheduledBackups" :key="backup.filename" class="flex items-center gap-3 py-1 min-w-0">
                   <div class="flex flex-col min-w-0">
                     <span class="text-sm truncate">{{ backup.filename }}</span>
-                    <span class="text-xs text-muted">{{ new Date(backup.timestamp).toLocaleString() }} · {{ formatBytes(backup.size) }}</span>
+                    <span class="text-xs text-muted">{{ backupDetails(backup) }}</span>
                   </div>
 
                   <div class="flex gap-1 ml-auto shrink-0">
@@ -564,15 +564,66 @@ async function downloadBackup(): Promise<void> {
   isLoading.value = false;
 }
 
-function openDialog() {
+async function waitForJob(id: string): Promise<BackupJob> {
+  let failures = 0;
+
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
+
+    let current: BackupJob | null;
+    try {
+      current = await backupJobFn();
+      failures = 0;
+    } catch (error) {
+      if (++failures < JOB_POLL_ATTEMPTS) continue;
+      throw error;
+    }
+
+    // a restart drops the job
+    if (current?.id !== id) throw new Error(t('views.settings.backup_job_lost'));
+    job.value = current;
+    if (current.state !== 'running') return current;
+  }
+}
+
+async function loadKey(): Promise<void> {
+  try {
+    backupKey.value = await backupKeyFn();
+  } catch {
+    // servers before 2.4.0 have no key
+  }
+}
+
+async function confirmKey(): Promise<void> {
+  try {
+    backupKey.value = await confirmBackupKeyFn();
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  }
+}
+
+async function saveKeyFile(): Promise<void> {
+  if (!backupKey.value) return;
+
+  try {
+    const text = `${t('views.settings.backup_key_file')}\n\n${backupKey.value.key}\n`;
+    await download({ blob: new Blob([text], { type: 'text/plain' }), filename: 'camera.ui-backup-key.txt', mimeType: 'text/plain' });
+  } catch (error: any) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 3000 });
+  }
+}
+
+function askToKeepKey(): void {
+  if (!backupKey.value || backupKey.value.confirmedAt) return;
+
   dialog.openTextDialog({
     data: {
-      title: t('components.dialog.title.confirm'),
-      contentText: t('components.dialog.message.confirm_restore'),
-      confirmText: t('components.form.button.restore_and_restart'),
-      loading: isLoading,
+      title: t('views.settings.backup_key_dialog_title'),
+      contentText: `${t('views.settings.backup_key_dialog_text')}\n\n\`${backupKey.value.key}\``,
+      markdown: true,
+      confirmText: t('views.settings.backup_key_dialog_confirm'),
     },
-    onConfirm: restoreBackup,
+    onConfirm: confirmKey,
   });
 }
 

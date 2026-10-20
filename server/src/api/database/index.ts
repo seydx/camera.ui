@@ -1,4 +1,5 @@
 import { sleep } from '@camera.ui/common/utils';
+import { ensureDir } from 'fs-extra/esm';
 import { open } from 'lmdb';
 import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -230,6 +231,11 @@ export class Database {
     this.syncCamerasToGo2RtcConfig();
 
     this.logger.debug('Database initialized!');
+  }
+
+  public async snapshot(directory: string): Promise<void> {
+    await ensureDir(directory);
+    await this.lowdb.backup(directory, true);
   }
 
   public async close(): Promise<void> {

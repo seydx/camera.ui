@@ -12,6 +12,7 @@ export interface Secrets {
   jwtRefreshKey: string;
   jwt2faKey: string;
   twoFactorKey: string;
+  backupKey: string;
 }
 
 export interface RuntimeInfo {

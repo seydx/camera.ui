@@ -22,6 +22,7 @@ import { CUSTOM_CERT_FILENAME, CUSTOM_KEY_FILENAME, HOST_CERT_FILENAME, HOST_KEY
 import { customCertificatePaths } from '../../api/utils/custom-cert.js';
 import { announceUpdateChannel } from '../../utils/ipc.js';
 import { execSafePath } from '../../utils/path.js';
+import { newBackupKey, parseBackupKey } from './backup-archive.js';
 import { DEFAULT_CONFIG, DEFAULT_GO2RTC_CONFIG, ELECTRON_ASAR_UNPACKED } from './constants.js';
 import { resolveProxyAuth } from './proxy-auth.js';
 import { runPendingRestore } from './restore.js';
@@ -731,6 +732,7 @@ export class ConfigService {
         jwtRefreshKey: randomBytes(32).toString('hex'),
         jwt2faKey: randomBytes(32).toString('hex'),
         twoFactorKey: randomBytes(32).toString('hex'),
+        backupKey: newBackupKey(),
       };
 
       writeJsonSync(this.SECRETS_FILE, secrets, { spaces: 2 });
@@ -754,6 +756,10 @@ export class ConfigService {
         }
         if (!secrets.twoFactorKey) {
           secrets.twoFactorKey = randomBytes(32).toString('hex');
+          needsUpdate = true;
+        }
+        if (!secrets.backupKey || !parseBackupKey(secrets.backupKey)) {
+          secrets.backupKey = newBackupKey();
           needsUpdate = true;
         }
         if (needsUpdate) {
