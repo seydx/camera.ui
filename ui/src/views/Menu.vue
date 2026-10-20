@@ -47,7 +47,7 @@
           </template>
           {{ $t('views.menu.switch_server') }}
         </CuiListItem>
-        <CuiListItem @click="() => authStore.logout()">
+        <CuiListItem v-if="signOut" @click="() => authStore.logout()">
           <template #prepend>
             <i-tabler:power class="w-5 h-5 text-primary" />
           </template>
@@ -59,6 +59,7 @@
 </template>
 
 <script lang="ts" setup>
+import { canSignOut } from '@/common/base.js';
 import { bounceToCloudFrontend, isCapacitor } from '@/connection/index.js';
 import { routes } from '@/router/index.js';
 
@@ -77,6 +78,8 @@ const authStore = useAuthStore();
 const { user } = storeToRefs(authStore);
 
 const SETTINGS_ROUTES = ['Updates', 'Settings'];
+
+const signOut = canSignOut();
 
 const ungroupedRoutes = computed<RouteRecordRaw[]>(() =>
   routes.filter((r) => r.meta?.navbar?.position === 'bottom' && !r.meta.navbar.group && !SETTINGS_ROUTES.includes(r.name as string) && hasPermission(r)),

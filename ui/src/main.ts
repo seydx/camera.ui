@@ -16,7 +16,7 @@ import { createApp } from 'vue';
 
 import { bridgeConnectionToQueryOnline, installApiErrorHandling } from '@/api/index.js';
 import AppRoot from '@/App.vue';
-import { isEmbedded } from '@/common/base.js';
+import { isEmbedded, isProxySignIn } from '@/common/base.js';
 import { installCertTrustBridge } from '@/common/certTrustService.js';
 import { attemptChunkReload, markLoadStable } from '@/common/chunkReload.js';
 import { initHostSync } from '@/common/hostSync.js';
@@ -67,7 +67,7 @@ let seeded = await consumeAuthParam(connection, {
   },
 });
 
-if (!seeded && isEmbedded()) {
+if (!seeded && (isEmbedded() || isProxySignIn())) {
   seeded = await consumeEmbedSession(connection, {
     onUser: (user) => useAuthStore().setUserFromLogin(user),
   });

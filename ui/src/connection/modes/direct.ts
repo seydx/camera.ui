@@ -1,3 +1,5 @@
+import { embedHost, isEmbedded, isProxySignIn, runtimeBase } from '@/common/base.js';
+
 import { createNetworkAdapters } from '../adapters/network.js';
 import { createStorageAdapter } from '../adapters/storage.js';
 import { createVisibilitySource } from '../adapters/visibility.js';
@@ -33,6 +35,7 @@ export function buildDirectMode(endpointUrl: string, logger?: Logger): DirectMod
       bindRefresh: refresh.bindCoordination,
       onConnectionReset: refresh.clear,
     },
+    transportOptions: isProxySignIn() ? { http: { authorize: async () => {} } } : undefined,
     logger,
   };
 

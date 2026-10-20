@@ -1,3 +1,5 @@
+import { isProxySignIn } from '@/common/base.js';
+
 import { getConnection } from './instance.js';
 
 export type FetchAuthorizer = () => Promise<Record<string, string>>;
@@ -8,11 +10,11 @@ export function setFetchAuthorizer(fn: FetchAuthorizer | null): void {
   authorizer = fn;
 }
 
+export function bearer(access: string | undefined): Record<string, string> {
+  return access && !isProxySignIn() ? { Authorization: `Bearer ${access}` } : {};
+}
+
 export async function fetchAuthHeaders(): Promise<Record<string, string>> {
   if (authorizer) return authorizer();
-  const headers: Record<string, string> = {};
-  const tokens = getConnection().target.value?.tokens;
-  if (tokens?.access) headers.Authorization = `Bearer ${tokens.access}`;
-  if (tokens?.proxySession) headers['X-Proxy-Session'] = tokens.proxySession;
-  return headers;
+  return bearer(getConnection().target.value?.tokens?.access);
 }

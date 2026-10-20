@@ -30,15 +30,22 @@ export function normalizeEmbed(header: string | string[] | undefined): string {
   return value && EMBED_HOSTS.has(value) ? value : '';
 }
 
-export function renderIndexHtml(base: string, embed = ''): string {
-  const key = `${base}\n${embed}`;
+export function isProxySignIn(header: string | string[] | undefined): boolean {
+  return (Array.isArray(header) ? header[0] : header) === 'proxy';
+}
+
+export function renderIndexHtml(base: string, embed = '', proxied = false): string {
+  const logoutUrl = proxied ? (inject('configService').proxyAuth?.logoutUrl ?? '') : '';
+  const key = `${base}\n${embed}\n${proxied ? `proxy ${logoutUrl}` : ''}`;
   const cached = rendered.get(key);
   if (cached) return cached;
 
   const html = raw()
     .replace(/((?:src|href)=")\.\//g, `$1${base}`)
     .replace(/window\.__CUI_BASE__\s*=\s*'[^']*'/, `window.__CUI_BASE__ = '${base}'`)
-    .replace(/window\.__CUI_EMBED__\s*=\s*'[^']*'/, `window.__CUI_EMBED__ = '${embed}'`);
+    .replace(/window\.__CUI_EMBED__\s*=\s*'[^']*'/, `window.__CUI_EMBED__ = '${embed}'`)
+    .replace(/window\.__CUI_AUTH__\s*=\s*'[^']*'/, `window.__CUI_AUTH__ = '${proxied ? 'proxy' : ''}'`)
+    .replace(/window\.__CUI_LOGOUT__\s*=\s*'[^']*'/, () => `window.__CUI_LOGOUT__ = ${JSON.stringify(logoutUrl).replace(/</g, '\\u003c')}`);
   if (rendered.size < 16) rendered.set(key, html);
   return html;
 }

@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import { bearer } from '../fetchAuth.js';
 import { installNativeHttp } from '../nativeHttp.js';
 
 import type { JwtTokenResponse, SessionResponse, TwoFactorPendingResponse } from '@shared/types';
@@ -89,14 +90,14 @@ export function createAuthApi(): AuthApi {
 
   async function authCheck(endpoint: string, accessToken: string, signal?: AbortSignal): Promise<void> {
     await httpClient.get(`${endpoint}/api/auth/check`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: bearer(accessToken),
       signal,
     });
   }
 
   async function logoutDirect(endpoint: string, accessToken: string): Promise<void> {
     await httpClient.post(`${endpoint}/api/auth/logout`, null, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: bearer(accessToken),
     });
   }
 

@@ -27,6 +27,7 @@ import { syncInterfaceCache } from '../utils/interface-cache.js';
 import { IngressSession } from './ingress.js';
 import { HeaderPlugin } from './plugins/header.plugin.js';
 import { ProxyPlugin } from './plugins/proxy.plugin.js';
+import { PROXY_AUTH_HEADER, ProxyAuth } from './proxy-auth.js';
 import { SocketIoPlugin } from './plugins/socket.plugin.js';
 import { SystemPlugin } from './plugins/system.plugin.js';
 import { FastifyRoutes } from './routes/index.js';
@@ -37,6 +38,7 @@ import { parseFormBody } from './utils/form-body.js';
 
 import type { FastifyCorsOptions } from '@fastify/cors';
 import type { FastifyHelmetOptions } from '@fastify/helmet';
+import type { FastifyHttpProxyOptions } from '@fastify/http-proxy';
 import type { FastifyMultipartAttachFieldsToBodyOptions, MultipartFile } from '@fastify/multipart';
 import type { FastifyStaticOptions } from '@fastify/static';
 import type { FastifyDynamicSwaggerOptions } from '@fastify/swagger';
@@ -67,6 +69,7 @@ export class Server {
   public app?: FastifyInstance<Http2SecureServer>;
   public internalApp?: FastifyInstance;
   public insecureApp?: FastifyInstance;
+  public proxyAuthApp?: FastifyInstance;
 
   private api: CameraUiAPI;
   private logger: LoggerService;
@@ -155,6 +158,7 @@ export class Server {
     logCustomCertificate(CertificateGeneration.requiredAddresses());
 
     await this.startInsecureForwarder();
+    await this.startProxyAuthForwarder();
 
     this.isRunning = true;
 
@@ -170,7 +174,14 @@ export class Server {
 
     await this.mdnsService.stop();
 
-    const closing = Promise.allSettled([this.app?.close(), this.internalApp?.close(), this.insecureApp?.close()]);
+    const loopback = this.loopback;
+    const closing = Promise.allSettled([
+      this.app?.close(),
+      this.internalApp?.close(),
+      this.insecureApp?.close(),
+      this.proxyAuthApp?.close(),
+      loopback && new Promise<void>((resolve) => loopback.close(() => resolve())),
+    ]);
 
     for (const socket of this.connections) {
       socket.destroy();
@@ -182,6 +193,9 @@ export class Server {
     this.app = undefined;
     this.internalApp = undefined;
     this.insecureApp = undefined;
+    this.proxyAuthApp = undefined;
+    this.loopback = undefined;
+    this.loopbackPort = 0;
     this._internalPort = 0;
   }
 
@@ -205,21 +219,91 @@ export class Server {
       });
     }
 
+    const identify: UpgradeIdentify | undefined = ingress && ((address, headers) => ingressUpgradeIdentity(ingress, address, headers));
+    app.server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      this.forwardUpgrade(req, socket as Socket, head, identify);
+    });
+
+    await this.forwardRequests(app, (req, headers) => {
+      headers['x-forwarded-for'] = [headers['x-forwarded-for'], req.ip].flat().filter(Boolean).join(', ');
+      const ingressPath = req.headers['x-ingress-path'];
+      if (ingress?.isTrusted(req.ip) && typeof ingressPath === 'string') {
+        headers['x-cui-base'] = ingressPath;
+      }
+      const token = (req as IngressRequest).ingressToken;
+      if (token) {
+        headers.authorization = `Bearer ${token}`;
+        headers['x-cui-embed'] = 'hassio';
+      }
+      return headers;
+    });
+
+    await app.listen({ host, port });
+    this.insecureApp = app;
+    this.logger.log(paint('green', `camera.ui insecure (http) listener on http://${host}:${port}${ingress ? ' (ingress-trusted)' : ''}`));
+  }
+
+  private async startProxyAuthForwarder(): Promise<void> {
+    const settings = this.configService.proxyAuth;
+    if (!settings) {
+      return;
+    }
+
+    const host = this.configService.config.host ?? '0.0.0.0';
+    const auth = new ProxyAuth(settings);
+    const app = this.createForwarder();
+
+    app.server.on('connection', (socket: Socket) => {
+      if (!auth.isTrusted(socket.remoteAddress)) socket.destroy();
+    });
+    app.addHook('onRequest', async (req, reply) => {
+      const outcome = await auth.signIn(req.ip, req.headers).catch(() => ({ refused: 'camera.ui could not sign you in.' }));
+      if (outcome && 'refused' in outcome) {
+        return reply.code(401).header('cache-control', 'no-store').type('text/plain; charset=utf-8').send(outcome.refused);
+      }
+      (req as ProxyAuthRequest).proxyToken = outcome?.token;
+    });
+
+    app.server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
+      this.forwardUpgrade(req, socket as Socket, head, (address, headers) => proxyUpgradeIdentity(auth, address, headers));
+    });
+
+    await this.forwardRequests(app, (req, headers) => {
+      for (const name of auth.ownHeaders) delete headers[name];
+      headers['x-forwarded-for'] = [headers['x-forwarded-for'], req.ip].flat().filter(Boolean).join(', ');
+      const token = (req as ProxyAuthRequest).proxyToken;
+      if (token) {
+        headers.authorization = `Bearer ${token}`;
+        headers[PROXY_AUTH_HEADER] = 'proxy';
+      }
+      return headers;
+    });
+
+    try {
+      await app.listen({ host, port: settings.port });
+    } catch (error) {
+      this.logger.error(`Proxy sign-in could not listen on port ${settings.port}: ${(error as Error).message}`);
+      await app.close().catch(() => {});
+      return;
+    }
+    this.proxyAuthApp = app;
+    const trusted = settings.trust.length > 0 ? settings.trust.join(', ') : 'the secret';
+    this.logger.log(paint('green', `camera.ui proxy sign-in listener on http://${host}:${settings.port}, user from ${settings.header}, trusts ${trusted}`));
+  }
+
+  private createForwarder(): FastifyInstance {
+    const app = Fastify({ bodyLimit: 1e8, logController: new LogController({ disableRequestLogging: true }) });
+    this.trackConnections(app.server);
+    return app;
+  }
+
+  private async forwardRequests(app: FastifyInstance, rewrite: RewriteRequestHeaders): Promise<void> {
     await app.register(FastifyHttpProxy, {
       upstream: `https://127.0.0.1:${this.configService.config.port}`,
       websocket: true,
       undici: { connect: { rejectUnauthorized: false } },
       replyOptions: {
-        rewriteRequestHeaders: (req, headers) => {
-          const token = (req as IngressRequest).ingressToken;
-          if (token) {
-            headers.authorization = `Bearer ${token}`;
-            headers['x-cui-embed'] = 'hassio';
-            const ingressPath = req.headers['x-ingress-path'];
-            if (typeof ingressPath === 'string') headers['x-cui-base'] = ingressPath;
-          }
-          return headers;
-        },
+        rewriteRequestHeaders: rewrite,
         rewriteHeaders: (headers) => {
           const csp = headers['content-security-policy'];
           if (typeof csp === 'string') {
@@ -238,6 +322,7 @@ export class Server {
         },
       },
     });
+  }
 
     await app.listen({ host, port });
     this.insecureApp = app;

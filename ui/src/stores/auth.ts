@@ -1,6 +1,7 @@
 import { useLocalStorage } from '@vueuse/core';
 
 import { UsersQuery } from '@/api/routes/users.js';
+import { isEmbedded, proxyLogoutUrl, runtimeBase } from '@/common/base.js';
 import { login as connectionLogin, verify2FA as connectionVerify2FA, isTwoFactorPending, logoutCurrent, useConnection } from '@/connection/index.js';
 import router, { resolveLandingPage } from '@/router/index.js';
 
@@ -103,7 +104,9 @@ export const useAuthStore = defineStore('auth', () => {
       pending2FA.value = null;
       logoutLoading.value = false;
       resetCuiBus();
-      router.push('/');
+      const exit = proxyLogoutUrl();
+      if (exit) window.location.assign(exit);
+      else router.push('/');
     }
   }
 

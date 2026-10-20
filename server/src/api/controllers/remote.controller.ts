@@ -5,8 +5,10 @@ import { RemoteService } from '../services/remote.service.js';
 import { ServerService } from '../services/server.service.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { TLSSocket } from 'node:tls';
 import type { RemoteAccessManager } from '../../remote/index.js';
 import type { ConnectionInfo, RemoteTestResult } from '../../remote/types.js';
+import type { ConfigService } from '../../services/config/index.js';
 import type { LoggerService } from '../../services/logger/index.js';
 import type {
   AuthLoginRequest,
@@ -22,13 +24,15 @@ import type {
 export class RemoteController {
   private remoteAccessManager: RemoteAccessManager;
   private logger: LoggerService;
+  private configService: ConfigService;
 
   private service: RemoteService;
   private serverService: ServerService;
 
   constructor(_app: FastifyInstance) {
-    this.remoteAccessManager = container.resolve<RemoteAccessManager>('remoteAccessManager');
-    this.logger = container.resolve<LoggerService>('logger');
+    this.remoteAccessManager = inject('remoteAccessManager');
+    this.logger = inject('logger');
+    this.configService = inject('configService');
 
     this.service = new RemoteService();
     this.serverService = new ServerService();
@@ -243,7 +247,9 @@ export class RemoteController {
       return { type: 'local', address: this.localAddress(req) };
     }
 
-    if (!proxied && isLanClientAddress(req.ip, req.socket?.localAddress)) {
+    // behind a local hop the reached listener is unknown, the private-range checks still apply
+    const listener = req.socket?.localAddress && isLoopbackAddress(req.socket.localAddress) ? '0.0.0.0' : req.socket?.localAddress;
+    if (!proxied && isLanClientAddress(req.ip, listener)) {
       return { type: 'lan', address: this.localAddress(req) };
     }
 
@@ -258,7 +264,9 @@ export class RemoteController {
   }
 
   private isProxied(req: FastifyRequest): boolean {
-    return !!req.headers['x-forwarded-host'] || !!req.headers['x-forwarded-for'] || !!req.headers['cf-connecting-ip'] || !!req.headers['cf-ray'];
+    if (req.headers['x-forwarded-host'] || req.headers['cf-connecting-ip'] || req.headers['cf-ray']) return true;
+    // a local hop is trusted, req.ip already names the client behind it
+    return !!req.headers['x-forwarded-for'] && !isLoopbackAddress(req.socket?.remoteAddress ?? '');
   }
 
   private localAddress(req: FastifyRequest): string {
@@ -283,7 +291,9 @@ export class RemoteController {
         if (host && !isLoopbackHost(host)) return host;
       }
       const hostPart = ip.includes(':') ? `[${ip}]` : ip;
-      return `${hostPart}:${sock.localPort}`;
+      // the app only speaks TLS, a plain socket is the in-process hop behind the http listener
+      const port = (sock as TLSSocket).encrypted ? sock.localPort : (this.configService.config.insecurePort ?? sock.localPort);
+      return `${hostPart}:${port}`;
     }
 
     return req.headers.host ?? 'localhost';

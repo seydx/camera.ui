@@ -131,6 +131,10 @@ export class ConfigService {
   private _config!: IConfig;
   private _go2rtcConfig!: Go2RtcConfig;
   private _ssl!: SSLConfig;
+  private _proxyAuthBlock?: unknown;
+  private _proxyAuth?: ProxyAuthSettings;
+  private _pidRegistry?: PidRegistry;
+  private sslListeners?: Set<(ssl: SSLConfig) => void>;
 
   get ssl(): SSLConfig {
     return this._ssl;
@@ -142,6 +146,10 @@ export class ConfigService {
 
   set config(newConfig: IConfig) {
     this.validateAndSetConfig(newConfig);
+  }
+
+  public get proxyAuth(): ProxyAuthSettings | undefined {
+    return this._proxyAuth;
   }
 
   get go2rtcConfig(): Go2RtcConfig {
@@ -326,7 +334,8 @@ export class ConfigService {
       this.mergeAndValidate(this._config, newConfig);
     }
 
-    writeFileSync(this.CONFIG_FILE, dump(this._config, { lineWidth: -1, noRefs: true }));
+    const content = this._proxyAuthBlock === undefined ? this._config : { ...this._config, proxyAuth: this._proxyAuthBlock };
+    writeFileSync(this.CONFIG_FILE, dump(content, { lineWidth: -1, noRefs: true }));
 
     announceUpdateChannel(this._config.betaUpdates ?? false);
   }
@@ -587,11 +596,13 @@ export class ConfigService {
 
   private readConfig(): IConfig {
     let config = this.defaultConfig();
+    this._proxyAuthBlock = undefined;
 
     if (pathExistsSync(this.CONFIG_FILE)) {
       let configFileData = this.parseYaml<IConfig>(readFileSync(this.CONFIG_FILE, 'utf-8'));
 
       if (configFileData) {
+        this._proxyAuthBlock = (configFileData as { proxyAuth?: unknown }).proxyAuth;
         configFileData = this.cleanupConfig(config, configFileData);
 
         config = mergeWith(this.defaultConfig(), configFileData, (source: any, target: any) => {
@@ -667,6 +678,7 @@ export class ConfigService {
 
   private updateConfig(): void {
     this.validateAndSetConfig(this.readConfig());
+    this._proxyAuth = resolveProxyAuth(this._proxyAuthBlock, process.env, [this._config.port, this._config.insecurePort], (message) => this.logger.warn(message));
     this.validateAndSetGo2RtcConfig(this.readGo2RtcConfig());
     this._ssl = this.readSSL();
 

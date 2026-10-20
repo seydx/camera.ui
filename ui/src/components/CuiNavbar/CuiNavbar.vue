@@ -259,7 +259,7 @@
           </Button>
         </div>
 
-        <div v-if="navbarWidth === NAVBAR_SIZE.MINIFIED" class="w-full h-[50px]">
+        <div v-if="navbarWidth === NAVBAR_SIZE.MINIFIED && signOut" class="w-full h-[50px]">
           <Button
             v-tooltip.right="$t('views.menu.logout')"
             text
@@ -282,7 +282,7 @@
             :label="user?.username ?? 'unknown'"
             :description="user?.role ?? 'unknown'"
             :expanded="navbarWidth === NAVBAR_SIZE.EXPANDED"
-            show-logout
+            :show-logout="signOut"
             to="/settings/account"
             dark-mode
             :avatar-size="38"
@@ -317,6 +317,7 @@ import InlineSvg from 'vue-inline-svg';
 import { DndProvider } from 'vue3-dnd';
 
 import { ApiQuery } from '@/api/routes/api.js';
+import { canSignOut } from '@/common/base.js';
 import { getImageUrl } from '@/common/utils.js';
 import { WINDOW_CONTROL_HEIGHT } from '@/components/CuiWindowButtons/types.js';
 import { routes } from '@/router/index.js';
@@ -345,6 +346,8 @@ const uiStore = useUiStore();
 const { uiSettings } = storeToRefs(uiStore);
 
 const { data: apiInfo } = apiQuery.apiInfoQuery();
+
+const signOut = canSignOut();
 
 const navbarRef = useTemplateRef('navbarRef');
 const state = ref<NavbarState>('closed');

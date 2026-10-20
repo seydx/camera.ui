@@ -76,7 +76,7 @@
                 <div class="flex flex-col field-gap">
                   <label for="username" class="cui-label">{{ $t('components.form.label.username') }}</label>
                   <InputGroup>
-                    <InputText v-model="profileUsername" :loading="profileLoading" type="text" />
+                    <InputText v-model="profileUsername" :loading="profileLoading" :disabled="isIngress || isProxy" type="text" />
                   </InputGroup>
                 </div>
 
@@ -376,6 +376,7 @@ import LaptopIcon from '~icons/mdi/laptop';
 import TvIcon from '~icons/mdi/television';
 
 import { AuthQuery } from '@/api/routes/auth.js';
+import { isHaIngress, isProxySignIn } from '@/common/base.js';
 import { copyToClipboard, formatRelativeTime, readImgUpload } from '@/common/utils.js';
 import ApiTokenCreatedDialog from '@/components/CuiDialog/templates/ApiTokenCreated/ApiTokenCreated.vue';
 import CreateApiTokenDialog from '@/components/CuiDialog/templates/CreateApiToken/CreateApiToken.vue';
@@ -441,6 +442,9 @@ const firststepsSchema = z
   });
 
 type PasswordInput = z.infer<typeof passwordSchema>;
+
+const isIngress = isHaIngress();
+const isProxy = isProxySignIn();
 
 const formRef = useTemplateRef<InstanceType<typeof Form>>('formRef');
 const passwordFormRef = useTemplateRef<InstanceType<typeof Form>>('passwordFormRef');
@@ -696,7 +700,7 @@ async function savePassword(values: { password: string; passwordConfirm: string 
     await authStore.updateUser({ password: values.password, passwordConfirm: values.passwordConfirm });
     toast.add({ severity: 'success', detail: t('components.toast.password_updated'), life: 3000 });
     passwordFormRef.value?.resetForm();
-    authStore.logout();
+    if (!isProxy) authStore.logout();
   } catch (error: any) {
     toast.add({ severity: 'error', detail: error, life: 3000 });
   }

@@ -5,6 +5,8 @@ declare global {
     electron?: ElectronAPI;
     __CUI_BASE__?: string;
     __CUI_EMBED__?: string;
+    __CUI_AUTH__?: string;
+    __CUI_LOGOUT__?: string;
     __CUI_HA_CARDS__?: boolean;
     __CUI_HA_CSS__?: string;
   }

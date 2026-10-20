@@ -27,7 +27,7 @@ import { UpdatesRoute } from './updates.routes.js';
 import { UsersRoute } from './users.routes.js';
 import { WorkersRoute } from './workers.routes.js';
 
-import { normalizeBase, normalizeEmbed, renderIndexHtml } from '../render-index.js';
+import { isProxySignIn, normalizeBase, normalizeEmbed, renderIndexHtml } from '../render-index.js';
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
@@ -73,7 +73,10 @@ export class FastifyRoutes {
       try {
         const base = normalizeBase(req.headers['x-cui-base']);
         const embed = normalizeEmbed(req.headers['x-cui-embed']);
-        reply.type('text/html').header('cache-control', 'no-store').send(renderIndexHtml(base, embed));
+        reply
+          .type('text/html')
+          .header('cache-control', 'no-store')
+          .send(renderIndexHtml(base, embed, isProxySignIn(req.headers['x-cui-auth'])));
       } catch {
         reply.sendFile('index.html');
       }
