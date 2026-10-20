@@ -15,6 +15,8 @@ import type {
 
 export const MAX_METRICS_DATA_POINTS = 30;
 
+const DISPOSAL_GRACE_MS = 5_000;
+
 export const DEFAULT_PROCESS_LOAD: Omit<ProcessInfo, 'name' | 'type'> = {
   pid: -1,
   cpuLoad: '0.00',
@@ -75,6 +77,8 @@ const state = reactive<MetricsSocketState>(makeInitialState());
 let scope: ReturnType<typeof effectScope> | null = null;
 let metricsChannel: SocketChannel | null = null;
 let statusChannel: SocketChannel | null = null;
+let refCount = 0;
+let disposalTimer: ReturnType<typeof setTimeout> | null = null;
 
 function isBothConnected(): boolean {
   return Boolean(metricsChannel?.connected.value && statusChannel?.connected.value);
@@ -215,7 +219,21 @@ function ensureChannels(): void {
   });
 }
 
+function teardown(): void {
+  scope?.stop();
+  scope = null;
+  metricsChannel = null;
+  statusChannel = null;
+  Object.assign(state, makeInitialState());
+}
+
 export function useMetricsSocket() {
+  if (disposalTimer) {
+    clearTimeout(disposalTimer);
+    disposalTimer = null;
+  }
+  refCount++;
+
   function connect(): void {
     ensureChannels();
     if (isBothConnected()) loadAll();
@@ -224,6 +242,16 @@ export function useMetricsSocket() {
   function disconnect(): void {
     // Channel teardown is global via resetMetricsSocket().
   }
+
+  tryOnScopeDispose(() => {
+    refCount--;
+    if (refCount > 0) return;
+    refCount = 0;
+    disposalTimer = setTimeout(() => {
+      disposalTimer = null;
+      if (refCount <= 0) teardown();
+    }, DISPOSAL_GRACE_MS);
+  });
 
   return {
     isConnected: computed(() => isBothConnected()),
@@ -258,9 +286,10 @@ export function useMetricsSocket() {
 }
 
 export function resetMetricsSocket(): void {
-  scope?.stop();
-  scope = null;
-  metricsChannel = null;
-  statusChannel = null;
-  Object.assign(state, makeInitialState());
+  if (disposalTimer) {
+    clearTimeout(disposalTimer);
+    disposalTimer = null;
+  }
+  refCount = 0;
+  teardown();
 }

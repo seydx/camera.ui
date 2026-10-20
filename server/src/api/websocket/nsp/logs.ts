@@ -1,6 +1,6 @@
 import { Logger } from '@camera.ui/common/logger';
-import { createReadStream, existsSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { container } from 'tsyringe';
 
@@ -8,7 +8,6 @@ import { paint } from '../../../utils/colors.js';
 import { setTerminalCols } from '../../utils/install-logger.js';
 
 import type { LogEntry } from '@camera.ui/common/logger';
-import type { ReadStream } from 'node:fs';
 import type { Namespace, Server, Socket } from 'socket.io';
 import type { CameraUiAPI } from '../../../api.js';
 import type { CameraUi } from '../../../master.js';
@@ -18,6 +17,7 @@ import type { LogManager } from '../../../services/logger/logManager.js';
 import type { SocketNsp } from '../types.js';
 
 const MAIN_TARGET = 'main';
+const REPLAY_BYTES = 50_000;
 
 interface LogSubscriber {
   socket: Socket;
@@ -35,6 +35,7 @@ export class LogsNamespace {
   private static readonly STARTUP_POLL_MS = 250;
 
   private subscribers = new Map<string, Map<string, LogSubscriber>>();
+  private unsubscribes = new WeakMap<Socket, Map<string, number>>();
   private logListener?: (entry: LogEntry) => void;
 
   private api: CameraUiAPI;
@@ -59,6 +60,10 @@ export class LogsNamespace {
           setTerminalCols(payload.target, payload.cols);
         }
       });
+      socket.on('logs:unsubscribe', (payload?: { channel?: unknown }) => {
+        if (typeof payload?.channel === 'string') this.unsubscribe(socket, payload.channel);
+      });
+      socket.on('disconnect', () => this.unsubscribe(socket));
     });
   }
 
@@ -81,6 +86,7 @@ export class LogsNamespace {
 
   public async getCameraLog(socket: Socket, cameraName: string, options?: { sinceLastStart?: boolean }) {
     const emitTo = `stdout/${cameraName}`;
+    const unsubscribes = this.unsubscribeCount(socket, emitTo);
     const cameraController = await this.lookupAfterStartup(socket, emitTo, () => this.api.getCamera(cameraName));
 
     if (!cameraController) {
@@ -88,11 +94,12 @@ export class LogsNamespace {
       return;
     }
 
-    this.streamLog(socket, cameraController.logPath, emitTo, `camera:${cameraController.id}`, cameraController.camera.name, options);
+    this.streamLog(socket, cameraController.logPath, emitTo, `camera:${cameraController.id}`, cameraController.camera.name, options, unsubscribes);
   }
 
   public async getPluginLog(socket: Socket, pluginName: string, options?: { sinceLastStart?: boolean }) {
     const emitTo = `stdout/${pluginName}`;
+    const unsubscribes = this.unsubscribeCount(socket, emitTo);
     const plugin = await this.lookupAfterStartup(socket, emitTo, () => this.pluginManager.plugins.get(pluginName));
 
     if (!plugin) {
@@ -100,7 +107,7 @@ export class LogsNamespace {
       return;
     }
 
-    this.streamLog(socket, plugin.logPath, emitTo, `plugin:${plugin.id}`, plugin.displayName, options);
+    this.streamLog(socket, plugin.logPath, emitTo, `plugin:${plugin.id}`, plugin.displayName, options, unsubscribes);
   }
 
   private async lookupAfterStartup<T>(socket: Socket, channel: string, lookup: () => T | undefined): Promise<T | undefined> {
@@ -116,50 +123,36 @@ export class LogsNamespace {
     return found;
   }
 
-  private async streamLog(socket: Socket, logFile: string, channel: string, target: string, filter?: string | number, options?: { sinceLastStart?: boolean }) {
+  private async streamLog(
+    socket: Socket,
+    logFile: string,
+    channel: string,
+    target: string,
+    filter?: string | number,
+    options?: { sinceLastStart?: boolean },
+    unsubscribes = this.unsubscribeCount(socket, channel),
+  ) {
     if (!existsSync(logFile)) {
       socket.emit(channel, paint('red', `\r\nNo log file exists at path: ${logFile}\r\n`));
       return;
     }
 
     try {
-      const logStats = await stat(logFile);
-      const fileContent = await this.readFileContent(logFile, logStats.size);
+      const content = await readTail(logFile, REPLAY_BYTES);
+      if (socket.disconnected || this.unsubscribeCount(socket, channel) !== unsubscribes) {
+        return;
+      }
+      const lastStartPosition = options?.sinceLastStart ? this.findLastStartPosition(content) : -1;
+      const replay = lastStartPosition === -1 ? this.replayLines(content, false, filter) : this.replayLines(content.substring(lastStartPosition), true, filter);
 
-      if (options?.sinceLastStart) {
-        const lastStartPosition = this.findLastStartPosition(fileContent);
-        if (lastStartPosition !== -1) {
-          const recentContent = fileContent.substring(lastStartPosition);
-          this.emitContent(socket, channel, recentContent, filter);
-        } else {
-          const logStartPosition = logStats.size <= 50000 ? 0 : logStats.size - 50000;
-          const logStream = createReadStream(logFile, { start: logStartPosition });
-          this.handleLogStream(socket, channel, logStream, filter);
-        }
-      } else {
-        const logStartPosition = logStats.size <= 50000 ? 0 : logStats.size - 50000;
-        const logStream = createReadStream(logFile, { start: logStartPosition });
-        this.handleLogStream(socket, channel, logStream, filter);
+      if (replay) {
+        socket.emit(channel, replay);
       }
 
       this.subscribe(socket, target, channel, filter);
     } catch (error: any) {
       socket.emit(channel, paint('red', `Failed to read log file: ${error.message}\r\n`));
     }
-  }
-
-  private async readFileContent(logFile: string, size: number): Promise<string> {
-    const startPosition = size <= 50000 ? 0 : size - 50000;
-    const fd = createReadStream(logFile, { start: startPosition });
-
-    return new Promise((resolve, reject) => {
-      let content = '';
-      fd.on('data', (chunk) => {
-        content += chunk.toString();
-      });
-      fd.on('end', () => resolve(content));
-      fd.on('error', reject);
-    });
   }
 
   private findLastStartPosition(content: string): number {
@@ -174,36 +167,15 @@ export class LogsNamespace {
     return -1;
   }
 
-  private emitContent(socket: Socket, to: string, content: string, filter?: string | number) {
-    const lines = content.split(/\r?\n/);
-    lines.forEach((line) => {
-      if (line.trim()) {
-        let processedLine = line;
-        if (filter !== undefined) {
-          processedLine = this.filterLine(processedLine, filter);
-        }
-        socket.emit(to, processedLine + '\r\n');
-      }
-    });
-  }
-
-  private handleLogStream(socket: Socket, to: string, logStream: ReadStream, filter?: string | number) {
-    logStream.on('data', (buffer) => {
-      let line = buffer.toString().split(/\r?\n/).join('\r\n');
-      if (filter !== undefined) {
-        line = this.filterLine(line, filter);
-      }
-      socket.emit(to, line);
-    });
-
-    logStream.on('end', () => {
-      logStream.close();
-    });
-
-    logStream.on('error', (error) => {
-      socket.emit(to, paint('red', `Error reading log file: ${error.message}\r\n`));
-      logStream.close();
-    });
+  private replayLines(content: string, sinceStart: boolean, filter?: string | number): string {
+    let lines = content.split(/\r?\n/);
+    if (sinceStart) {
+      lines = lines.filter((line) => line.trim());
+    }
+    if (filter !== undefined) {
+      lines = lines.map((line) => this.filterLine(line, filter));
+    }
+    return sinceStart ? lines.map((line) => `${line}\r\n`).join('') : lines.join('\r\n');
   }
 
   private subscribe(socket: Socket, target: string, channel: string, filter?: string | number) {
@@ -213,36 +185,35 @@ export class LogsNamespace {
       this.subscribers.set(target, subscribers);
     }
 
-    const alreadySubscribed = subscribers.has(socket.id);
     subscribers.set(socket.id, { socket, channel, filter });
-
-    if (!this.listen(socket, channel)) {
-      return;
-    }
-    if (alreadySubscribed) {
-      return;
-    }
-
-    const cleanup = () => {
-      const current = this.subscribers.get(target);
-      if (current) {
-        current.delete(socket.id);
-        if (current.size === 0) {
-          this.subscribers.delete(target);
-        }
-      }
-
-      socket.removeListener('end', cleanup);
-      socket.removeListener('disconnect', cleanup);
-    };
-
-    socket.on('end', cleanup);
-    socket.on('disconnect', cleanup);
+    this.listen(socket, channel);
   }
 
-  private listen(socket: Socket, channel: string): boolean {
+  private unsubscribe(socket: Socket, channel?: string) {
+    if (channel !== undefined) {
+      const counts = this.unsubscribes.get(socket) ?? new Map<string, number>();
+      counts.set(channel, (counts.get(channel) ?? 0) + 1);
+      this.unsubscribes.set(socket, counts);
+    }
+
+    for (const [target, subscribers] of this.subscribers) {
+      if (channel !== undefined && subscribers.get(socket.id)?.channel !== channel) {
+        continue;
+      }
+      subscribers.delete(socket.id);
+      if (subscribers.size === 0) {
+        this.subscribers.delete(target);
+      }
+    }
+  }
+
+  private unsubscribeCount(socket: Socket, channel: string): number {
+    return this.unsubscribes.get(socket)?.get(channel) ?? 0;
+  }
+
+  private listen(socket: Socket, channel: string) {
     if (this.logListener) {
-      return true;
+      return;
     }
 
     let logManager: LogManager;
@@ -250,13 +221,11 @@ export class LogsNamespace {
       logManager = container.resolve<LogManager>('logManager');
     } catch {
       socket.emit(channel, paint('red', 'Live log output is not available yet.\r\n'));
-      return false;
+      return;
     }
 
     this.logListener = (entry: LogEntry) => this.dispatch(entry);
     logManager.on('log', this.logListener);
-
-    return true;
   }
 
   private dispatch(entry: LogEntry) {
@@ -317,5 +286,18 @@ export class LogsNamespace {
     }
 
     return targets;
+  }
+}
+
+async function readTail(path: string, maxBytes: number): Promise<string> {
+  const handle = await open(path, 'r');
+  try {
+    const { size } = await handle.stat();
+    const length = Math.min(size, maxBytes);
+    const buffer = Buffer.alloc(length);
+    const { bytesRead } = await handle.read(buffer, 0, length, size - length);
+    return buffer.toString('utf8', 0, bytesRead);
+  } finally {
+    await handle.close();
   }
 }

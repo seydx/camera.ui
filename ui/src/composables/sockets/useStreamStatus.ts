@@ -9,6 +9,13 @@ export interface StreamCodecs {
   audio: Go2RTCOfferCodec[];
 }
 export type CameraStreamCodecs = Record<string, Record<string, StreamCodecs | undefined>>;
+export interface CameraStreamDelta {
+  status: Record<string, StreamStatus>;
+  connections: Record<string, number>;
+  codecs?: Record<string, StreamCodecs | undefined>;
+}
+
+const DISPOSAL_GRACE_MS = 5_000;
 
 const state = reactive<{ streamStatus: CameraStreamStatus; streamConnections: CameraStreamConnections; streamCodecs: CameraStreamCodecs }>({
   streamStatus: {},
@@ -18,9 +25,35 @@ const state = reactive<{ streamStatus: CameraStreamStatus; streamConnections: Ca
 
 let scope: ReturnType<typeof effectScope> | null = null;
 let channel: SocketChannel | null = null;
+let refCount = 0;
+let disposalTimer: ReturnType<typeof setTimeout> | null = null;
 
 function refresh(): void {
-  channel?.emit('get-stream-status');
+  channel?.emit('get-stream-status', { deltas: true });
+}
+
+function applyDelta(delta: Record<string, CameraStreamDelta | null>): void {
+  for (const [cameraId, camera] of Object.entries(delta)) {
+    if (!camera) {
+      delete state.streamStatus[cameraId];
+      delete state.streamConnections[cameraId];
+      delete state.streamCodecs[cameraId];
+      continue;
+    }
+    state.streamStatus[cameraId] = camera.status;
+    state.streamConnections[cameraId] = camera.connections;
+    if (camera.codecs) state.streamCodecs[cameraId] = camera.codecs;
+  }
+}
+
+function teardown(): void {
+  channel?.emit('stream-status:unsubscribe');
+  scope?.stop();
+  scope = null;
+  channel = null;
+  state.streamStatus = {};
+  state.streamConnections = {};
+  state.streamCodecs = {};
 }
 
 function ensureChannel(): SocketChannel {
@@ -44,6 +77,8 @@ function ensureChannel(): SocketChannel {
     ch.on<CameraStreamCodecs>('stream-codecs', (data) => {
       state.streamCodecs = data;
     });
+
+    ch.on<Record<string, CameraStreamDelta | null>>('stream-status-delta', applyDelta);
 
     ch.onReady(() => {
       refresh();
@@ -69,6 +104,12 @@ function deriveCameraStatus(sources: Record<string, StreamStatus>): StreamStatus
 }
 
 export function useStreamStatus() {
+  if (disposalTimer) {
+    clearTimeout(disposalTimer);
+    disposalTimer = null;
+  }
+  refCount++;
+
   function connect(): void {
     ensureChannel();
   }
@@ -113,10 +154,10 @@ export function useStreamStatus() {
 }
 
 export function resetStreamStatus(): void {
-  scope?.stop();
-  scope = null;
-  channel = null;
-  state.streamStatus = {};
-  state.streamConnections = {};
-  state.streamCodecs = {};
+  if (disposalTimer) {
+    clearTimeout(disposalTimer);
+    disposalTimer = null;
+  }
+  refCount = 0;
+  teardown();
 }

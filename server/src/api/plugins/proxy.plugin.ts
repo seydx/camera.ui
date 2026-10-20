@@ -178,7 +178,9 @@ class WebSocketProxy {
 
       const wsOptions: ClientOptions = {
         perMessageDeflate: false,
-        headers: { host: this.upstreamHost },
+        handshakeTimeout: UPSTREAM_HANDSHAKE_TIMEOUT_MS,
+        // a Mozilla/ user agent makes nats-server cut messages into 4 KB frames
+        headers: { host: this.upstreamHost, 'user-agent': 'camera.ui-relay' },
         ca: this.tlsConfig?.ca,
         cert: this.tlsConfig?.cert,
         key: this.tlsConfig?.key,

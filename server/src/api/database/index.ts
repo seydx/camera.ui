@@ -68,6 +68,7 @@ import {
   dbUserSchema,
 } from './record-schemas.js';
 import { SelfCheck } from './selfcheck.js';
+import { tokenIndex } from './tokenIndex.js';
 
 import type { Database as DB, Key, RootDatabase as RootDB } from 'lmdb';
 import type { ConfigService } from '../../services/config/index.js';
@@ -172,6 +173,8 @@ export class Database {
     }
 
     this.tokensDB = this.lowdb.openDB({ name: TOKENS_ID });
+    tokenIndex(this.tokensDB);
+
     this.camerasDB = this.lowdb.openDB({ name: CAMERAS_ID });
     this.pluginsDB = this.lowdb.openDB({ name: PLUGINS_ID });
     this.settingsDB = this.lowdb.openDB({ name: SETTINGS_ID });

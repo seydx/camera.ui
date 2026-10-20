@@ -570,8 +570,11 @@ declare global {
   export type { ServerSocketState } from '../composables/sockets/useServerSocket'
   import('../composables/sockets/useServerSocket')
   // @ts-ignore
-  export type { StreamStatus, CameraStreamStatus, CameraStreamConnections, StreamCodecs, CameraStreamCodecs } from '../composables/sockets/useStreamStatus'
+  export type { StreamStatus, CameraStreamStatus, CameraStreamConnections, StreamCodecs, CameraStreamCodecs, CameraStreamDelta } from '../composables/sockets/useStreamStatus'
   import('../composables/sockets/useStreamStatus')
+  // @ts-ignore
+  export type { TrainingCandidatesChange } from '../composables/sockets/useTrainingSocket'
+  import('../composables/sockets/useTrainingSocket')
   // @ts-ignore
   export type { PublicUpdatesStatus } from '../composables/sockets/useUpdatesSocket'
   import('../composables/sockets/useUpdatesSocket')

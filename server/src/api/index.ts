@@ -483,15 +483,9 @@ export class Server {
 
   private get natsProxyOptions(): ProxyOptions {
     return {
-      upstream: `wss://127.0.0.1:${this.proxyServer.server.wsPort}`,
+      upstream: `ws://127.0.0.1:${this.proxyServer.server.wsPort}`,
       prefix: '/api/proxy',
       target: 'nats',
-      tls: {
-        cert: this.configService.ssl.cert,
-        key: this.configService.ssl.key,
-        ca: this.configService.ssl.ca,
-        rejectUnauthorized: false,
-      },
     };
   }
 

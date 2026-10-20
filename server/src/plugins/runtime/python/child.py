@@ -8,6 +8,7 @@ import asyncio
 import importlib.util
 import os
 import sys
+from collections.abc import Coroutine
 from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
@@ -584,6 +585,20 @@ class PluginChild:
             raise Exception("Plugin does not have a __main__ function.")
 
 
+def run_loop(main: Coroutine[Any, Any, None], logger: LoggerService) -> None:
+    if sys.platform != "win32" and os.environ.get("CAMERA_UI_PYTHON_UVLOOP") == "1":
+        try:
+            # imported after inject_into_ssl: uvloop caches ssl.SSLContext at import
+            import uvloop  # type: ignore[import-not-found]
+        except ImportError:
+            logger.warn("CAMERA_UI_PYTHON_UVLOOP is set but uvloop is not installed, using asyncio")
+        else:
+            logger.debug(f"Event loop: uvloop {uvloop.__version__}")
+            uvloop.run(main)
+            return
+    asyncio.run(main)
+
+
 if __name__ == "__main__":
     plugin_child = PluginChild()
-    asyncio.run(plugin_child.run())
+    run_loop(plugin_child.run(), plugin_child.logger)

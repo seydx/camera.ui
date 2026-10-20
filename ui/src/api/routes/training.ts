@@ -66,6 +66,19 @@ export class TrainingQuery {
     });
   }
 
+  public removeCandidatesFromCache(ids: string[]): boolean {
+    const queryKey = ['training-candidates'];
+    const state = this.queryClient.getQueryState<DBTrainingCandidate[]>(queryKey);
+    if (!state?.data || state.status !== 'success' || state.fetchStatus !== 'idle' || state.isInvalidated) return false;
+    const removed = new Set(ids);
+    if (state.data.some((candidate) => removed.has(candidate.id) && candidate.status !== 'verified')) return false;
+    this.queryClient.setQueryData<DBTrainingCandidate[]>(
+      queryKey,
+      state.data.filter((candidate) => !removed.has(candidate.id)),
+    );
+    return true;
+  }
+
   public getSettingsQuery() {
     return useQueryEnhanced({
       queryKey: ['training-settings'],

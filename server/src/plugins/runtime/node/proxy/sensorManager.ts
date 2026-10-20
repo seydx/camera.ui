@@ -269,10 +269,15 @@ export class SensorManagerProxy implements SensorManager {
       this.#registryProxy.updateSource(sensor.id, patch).catch((error) => this.#logger.debug(`Source write for sensor ${sensor.id} failed:`, error));
     });
 
-    const rpcCleanup = await this.#proxy.registerHandler(sensorNamespace, sensor, { withoutDecorators: true });
+    const rpcCleanup = await this.#proxy.registerHandler(sensorNamespace, sensor, {
+      withoutDecorators: true,
+      concurrency: (sensor as { _rpcConcurrency?: Record<string, number> })._rpcConcurrency,
+    });
 
     const eventNs = NamespaceManager.sensorEventNamespaces(sensor.id);
-    const unsubscribeEvents = await this.#proxy.subscribe<{ type: string; data: unknown }>(eventNs.sensorSubject, (event) => {
+    // frame-fed owners skip the echo of their per-frame detection writes
+    const eventSubject = registration.stateSubject && sensorJSON.requiresFrames ? eventNs.sensorStateSubject : eventNs.sensorSubject;
+    const unsubscribeEvents = await this.#proxy.subscribe<{ type: string; data: unknown }>(eventSubject, (event) => {
       if (event.type === 'property:changed') {
         const changeEvent = event.data as { property: string; value: unknown; timestamp?: number };
         sensor._onBackendPropertyChanged(changeEvent.property, changeEvent.value, changeEvent.timestamp);

@@ -17,13 +17,19 @@ import type { NATS } from '../../../rpc/server.js';
 import type { WorkerManager } from '../../../workers/manager.js';
 import type { AllProcesses, ProcessInfo, ProcessType, ServerProcesses, SocketNsp, StreamStatsRow, WorkerPerfStats, WorkerProcesses } from '../types.js';
 
+interface MetricsSample {
+  system: ProcessInfo;
+  processes: AllProcesses;
+}
+
 export class MetricsNamespace {
   public nsp: Namespace;
   public nspName: SocketNsp = '/metrics';
 
   private readonly HISTORY_INTERVAL = 60000;
   private readonly REALTIME_INTERVAL = 5000;
-  private readonly MAX_HISTORY_POINTS = 60;
+  private readonly STALE_AFTER = 10000;
+  private readonly MAX_HISTORY_POINTS = 30;
 
   private api: CameraUiAPI;
   private pluginManager: PluginManager;
@@ -51,6 +57,8 @@ export class MetricsNamespace {
   };
 
   private workerPerf: Record<string, WorkerPerfStats> = {};
+  private collectedAt = 0;
+  private collecting?: Promise<MetricsSample>;
 
   constructor(io: Server) {
     this.api = container.resolve<CameraUiAPI>('api');
@@ -72,13 +80,8 @@ export class MetricsNamespace {
       socket.on('get-plugins-process-info', this.handleGetPluginsProcessInfo.bind(this));
       socket.on('get-frameworker-process-info', this.handleGetFrameWorkerProcessInfo.bind(this));
 
-      if (this.realtimeData.system) {
-        socket.emit('system-infos-realtime', this.realtimeData.system);
-      }
-      if (this.realtimeData.processes) {
-        socket.emit('process-infos-realtime', this.realtimeData.processes);
-      }
       socket.emit('stream-stats-realtime', this.streamStats);
+      this.sendRealtime(socket).catch(() => {});
     });
 
     this.go2rtcState.on('stats', (stats) => this.updateStreamStats(stats));
@@ -86,45 +89,71 @@ export class MetricsNamespace {
     this.setupIntervals();
   }
 
-  public snapshot(): { system: ProcessInfo | null; processes: AllProcesses | null } {
-    return this.realtimeData;
+  public async snapshot(): Promise<{ system: ProcessInfo | null; processes: AllProcesses | null }> {
+    return this.current();
   }
 
   private setupIntervals(): void {
     setInterval(async () => {
-      await this.refreshWorkerPerf();
+      try {
+        const { processes, system } = await this.current();
 
-      let processData = this.realtimeData.processes;
-      let systemData = this.realtimeData.system;
-
-      if (!processData || !systemData) {
-        [processData, systemData] = await Promise.all([this.collectProcessData(), this.getSystemLoad()]);
-      } else {
-        processData = this.withWorkerPerf(processData);
+        this.updateHistory(processes, system);
+        this.emitHistoryUpdates(processes, system);
+      } catch {
+        // skip this sample, the next tick retries
       }
-
-      this.updateHistory(processData, systemData);
-      this.emitHistoryUpdates(processData, systemData);
     }, this.HISTORY_INTERVAL);
 
     setInterval(async () => {
-      if (this.hasConnectedClients()) await this.refreshWorkerPerf();
-      const [collected, systemData] = await Promise.all([this.collectProcessData(), this.getSystemLoad()]);
-      const processData = this.withWorkerPerf(collected);
-
-      this.realtimeData = {
-        system: systemData,
-        processes: processData,
-      };
-
-      if (this.shouldUpdateHistory()) {
-        this.updateHistory(processData, systemData);
+      if (!this.hasConnectedClients()) {
+        return;
       }
 
-      this.emitRealtimeUpdates(processData, systemData);
+      try {
+        const { processes, system } = await this.collect();
+
+        if (this.shouldUpdateHistory()) {
+          this.updateHistory(processes, system);
+        }
+
+        this.emitRealtimeUpdates(processes, system);
+      } catch {
+        // skip this sample, the next tick retries
+      }
     }, this.REALTIME_INTERVAL);
 
-    this.collectInitialData();
+    this.collectInitialData().catch(() => {});
+  }
+
+  private async sendRealtime(socket: Socket): Promise<void> {
+    const { processes, system } = await this.current();
+    socket.emit('system-infos-realtime', system);
+    socket.emit('process-infos-realtime', processes);
+  }
+
+  private async current(): Promise<MetricsSample> {
+    const { processes, system } = this.realtimeData;
+    if (processes && system && Date.now() - this.collectedAt <= this.STALE_AFTER) {
+      return { processes, system };
+    }
+    return this.collect();
+  }
+
+  private collect(): Promise<MetricsSample> {
+    this.collecting ??= this.runCollect().finally(() => {
+      this.collecting = undefined;
+    });
+    return this.collecting;
+  }
+
+  private async runCollect(): Promise<MetricsSample> {
+    await this.refreshWorkerPerf();
+    const [processes, system] = await Promise.all([this.collectProcessData(), this.getSystemLoad()]);
+
+    this.realtimeData = { system, processes };
+    this.collectedAt = Date.now();
+    return { processes, system };
   }
 
   private async refreshWorkerPerf(): Promise<void> {
@@ -151,23 +180,9 @@ export class MetricsNamespace {
     return pluginId;
   }
 
-  private withWorkerPerf(processData: AllProcesses): AllProcesses {
-    const workers = Object.fromEntries(
-      Object.entries(processData.workers).map(([name, info]) => [name, this.workerPerf[name] ? { ...info, perf: this.workerPerf[name] } : info]),
-    );
-    return { ...processData, workers };
-  }
-
   private async collectInitialData(): Promise<void> {
-    await this.refreshWorkerPerf();
-    const [collected, systemData] = await Promise.all([this.collectProcessData(), this.getSystemLoad()]);
-    const processData = this.withWorkerPerf(collected);
-
-    this.updateHistory(processData, systemData);
-    this.realtimeData = {
-      system: systemData,
-      processes: processData,
-    };
+    const { processes, system } = await this.collect();
+    this.updateHistory(processes, system);
   }
 
   private async collectProcessData(): Promise<AllProcesses> {
@@ -308,8 +323,14 @@ export class MetricsNamespace {
       if (!this.history.frameWorkers[name]) {
         this.history.frameWorkers[name] = [];
       }
-      this.history.frameWorkers[name].push(info);
-      this.history.frameWorkers[name] = this.history.frameWorkers[name].slice(-this.MAX_HISTORY_POINTS);
+      const points = this.history.frameWorkers[name];
+      const newest = points.at(-1);
+      if (newest?.perf) {
+        const { perf: _perf, ...lean } = newest;
+        points[points.length - 1] = lean;
+      }
+      points.push(info);
+      this.history.frameWorkers[name] = points.slice(-this.MAX_HISTORY_POINTS);
     });
 
     this.cleanupOrphanedEntries(processData);

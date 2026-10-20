@@ -49,7 +49,8 @@ export class CameraDeviceProxy extends CameraDevice {
   #plugin: PluginInfo;
   #storageController: StorageController;
   #sensorManager: SensorManagerProxy;
-  #closeSubscription?: () => void;
+  #eventSubscriptions = new Map<string, () => void>();
+  #refreshing: Promise<void> = Promise.resolve();
   #detectionWire?: Promise<(() => void) | undefined>;
   #detectionSubscriberCount = 0;
   #ownedSensors = new Map<string, { sensor: Sensor<any>; type: SensorType }>();
@@ -151,8 +152,6 @@ export class CameraDeviceProxy extends CameraDevice {
 
     this.initialized.next(true);
 
-    this.#closeSubscription = await this.#proxy.subscribe<CameraDeviceListenerMessagePayload>(this.#namespaces.cameraSubject, this.#onEventMessage.bind(this));
-
     await this._refreshStates();
   }
 
@@ -192,7 +191,8 @@ export class CameraDeviceProxy extends CameraDevice {
     this.initialized.next(false);
     this.removeAllListeners();
     this.unsubscribe();
-    this.#closeSubscription?.();
+    for (const unsubscribe of this.#eventSubscriptions.values()) unsubscribe();
+    this.#eventSubscriptions.clear();
     this.#dropDetectionWire();
 
     this.#detectionEventSubject.complete();
@@ -329,7 +329,10 @@ export class CameraDeviceProxy extends CameraDevice {
         .catch((error) => this.logger.debug(`Capability write for sensor ${sensor.id} failed:`, error));
     });
 
-    const sensorCleanup = await this.#proxy.registerHandler(sensorNamespace, sensor, { withoutDecorators: true });
+    const sensorCleanup = await this.#proxy.registerHandler(sensorNamespace, sensor, {
+      withoutDecorators: true,
+      concurrency: (sensor as { _rpcConcurrency?: Record<string, number> })._rpcConcurrency,
+    });
     this.#sensorCleanupFunctions.set(sensor.id, sensorCleanup);
 
     this.#ownedSensors.set(sensor.id, { sensor, type: sensor.type });
@@ -337,7 +340,9 @@ export class CameraDeviceProxy extends CameraDevice {
     // Subscribe to backend-initiated property changes for the owned sensor so that
     // backend updates (e.g., motion dwell timer) sync into the local sensor state.
     const sensorEventNamespace = NamespaceManager.sensorEventNamespaces(sensor.id);
-    const unsubscribeBackendEvents = await this.#proxy.subscribe<{ type: string; data: unknown }>(sensorEventNamespace.sensorSubject, (event) => {
+    // frame-fed owners skip the echo of their per-frame detection writes
+    const eventSubject = registration.stateSubject && sensorJSON.requiresFrames ? sensorEventNamespace.sensorStateSubject : sensorEventNamespace.sensorSubject;
+    const unsubscribeBackendEvents = await this.#proxy.subscribe<{ type: string; data: unknown }>(eventSubject, (event) => {
       if (event.type === 'property:changed') {
         const changeEvent = event.data as { property: string; value: unknown; timestamp?: number };
         sensor._onBackendPropertyChanged(changeEvent.property, changeEvent.value, changeEvent.timestamp);
@@ -389,7 +394,58 @@ export class CameraDeviceProxy extends CameraDevice {
   #dropDetectionWire(): void {
     const wire = this.#detectionWire;
     this.#detectionWire = undefined;
-    void wire?.then((close) => close?.());
+    wire?.then((close) => close?.());
+  }
+
+  async #refreshStates(): Promise<void> {
+    if (!this.initialized.value) return;
+
+    if (this.#eventSubscriptions.size === 0) {
+      // both until the controller tells which one it publishes
+      await this.#subscribeEvents(this.#namespaces.cameraSubject);
+      await this.#subscribeEvents(this.#namespaces.cameraStateSubject);
+    }
+
+    let response = await this.#applyStates();
+    const subject = response.stateSubject ? this.#namespaces.cameraStateSubject : this.#namespaces.cameraSubject;
+    if (!this.#eventSubscriptions.has(subject)) {
+      await this.#subscribeEvents(subject);
+      // re-read to cover what the old subject missed
+      response = await this.#applyStates();
+    }
+
+    for (const [other, unsubscribe] of this.#eventSubscriptions) {
+      if (other === subject) continue;
+      unsubscribe();
+      this.#eventSubscriptions.delete(other);
+    }
+  }
+
+  async #applyStates(): Promise<RefreshedStates> {
+    const response: RefreshedStates = await this.#cameraControllerProxy.refreshStates();
+
+    // a resync must not wake subscribers for state they already hold
+    if (!isEqual(this.cameraSubject.getValue(), response.camera)) {
+      super.updateCamera(response.camera);
+    }
+    if (this.cameraState.getValue() !== response.cameraState) {
+      super.updateCameraState(response.cameraState);
+    }
+    if (this.frameWorkerState.getValue() !== response.frameWorkerState) {
+      super.updateFrameWorkerState(response.frameWorkerState);
+    }
+
+    return response;
+  }
+
+  async #subscribeEvents(subject: string): Promise<void> {
+    const unsubscribe = await this.#proxy.subscribe<CameraDeviceListenerMessagePayload>(subject, this.#onEventMessage.bind(this));
+    // cleaned up while the subscribe was in flight
+    if (!this.initialized.value) {
+      unsubscribe();
+      return;
+    }
+    this.#eventSubscriptions.set(subject, unsubscribe);
   }
 
   async #onEventMessage(event: CameraDeviceListenerMessagePayload): Promise<void> {

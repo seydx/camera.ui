@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from deepdiff.diff import DeepDiff
@@ -63,6 +64,7 @@ from plugins.runtime.python.proxy.sensor import (
     DETECTION_SENSOR_TYPES,
     DetectionCoordinatorRPC,
     SensorRegistryInterface,
+    sensor_handler_options,
 )
 from plugins.runtime.python.remote_urls import rewrite_source_urls_for_remote
 from plugins.runtime.python.typings import (
@@ -156,7 +158,8 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
 
         self._detection_event_subject: Subject[DetectionEventPayload] = Subject()
 
-        self._close_subscription: CloseHandler | None = None
+        self._event_subscriptions: dict[str, CloseHandler] = {}
+        self._refresh_lock = asyncio.Lock()
         self._detection_wire: CloseHandler | None = None
         self._detection_wire_pending = False
         self._detection_subscriber_count = 0
@@ -319,17 +322,25 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             snapshot_source = next((s for s in self.sources if s.useForSnapshot), None)
         return snapshot_source
 
-    @property
+    @cached_property
     def _camera_controller_proxy(self) -> CameraControllerInterface:
         return self._proxy.create_proxy(self._namespaces[0].camera_controller_rpc)
 
-    @property
+    @cached_property
     def _sensor_registry_proxy(self) -> SensorRegistryInterface:
         return self._proxy.create_proxy(self._namespaces[3].sensors_rpc)
 
-    @property
+    @cached_property
     def _detection_coordinator_proxy(self) -> DetectionCoordinatorRPC:
         return self._proxy.create_proxy(self._namespaces[4].detection_rpc)
+
+    @cached_property
+    def _report_sensor_write(self) -> Callable[[str, SensorType, dict[str, Any]], Awaitable[None]]:
+        return self._detection_coordinator_proxy.reportSensorWrite
+
+    @cached_property
+    def _update_property_values(self) -> Callable[[str, dict[str, Any]], Awaitable[None]]:
+        return self._sensor_registry_proxy.updatePropertyValues
 
     def getSourceById(self, id: str) -> CameraDeviceSource | None:
         return next((s for s in self.sources if s._id == id), None)  # pyright: ignore[reportPrivateUsage]
@@ -339,10 +350,6 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             return
 
         self._initialized.next(True)
-
-        self._close_subscription = await self._proxy.subscribe(
-            self._namespaces[0].camera_subject, self._on_event_message
-        )
 
         await self._refresh_states()
 
@@ -449,13 +456,21 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         sensor._initCapabilities(lambda caps: self._on_sensor_capabilities_changed(sensor.id, caps))  # pyright: ignore[reportPrivateUsage]
         sensor._initSource(lambda patch: self._on_sensor_source_changed(sensor.id, patch))  # pyright: ignore[reportPrivateUsage]
 
-        rpc_cleanup = await self._proxy.register_handler(sensor_namespace, sensor, without_decorators=True)
+        rpc_cleanup = await self._proxy.register_handler(
+            sensor_namespace, sensor, without_decorators=True, **sensor_handler_options(sensor)
+        )
 
         self._owned_sensors[sensor.id] = (sensor, sensor.type)
 
         # Subscribe to backend-initiated property changes for the owned sensor so that
         # backend updates (e.g., motion dwell timer) sync into the local sensor state.
         sensor_event_ns = NamespaceManager.sensor_event_namespaces(sensor.id)
+        # frame-fed owners skip the echo of their per-frame detection writes
+        event_subject = (
+            sensor_event_ns.sensor_state_subject
+            if registration.get("stateSubject") and sensor_json.get("requiresFrames")
+            else sensor_event_ns.sensor_subject
+        )
 
         async def handle_backend_event(event: dict[str, Any]) -> None:
             if event.get("type") == "property:changed":
@@ -466,9 +481,7 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
                         prop, change_data.get("value"), change_data.get("timestamp")
                     )
 
-        unsubscribe_backend = await self._proxy.subscribe(
-            sensor_event_ns.sensor_subject, handle_backend_event
-        )
+        unsubscribe_backend = await self._proxy.subscribe(event_subject, handle_backend_event)
 
         async def combined_cleanup() -> None:
             await unsubscribe_backend()
@@ -544,9 +557,10 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
 
         self._tasks.remove_all()
 
-        if self._close_subscription:
-            await self._close_subscription()
-            self._close_subscription = None
+        subscriptions = list(self._event_subscriptions.values())
+        self._event_subscriptions.clear()
+        for close in subscriptions:
+            await close()
 
         if self._detection_wire:
             await self._detection_wire()
@@ -622,6 +636,30 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
         return sensor_json
 
     async def _refresh_states(self) -> None:
+        async with self._refresh_lock:
+            if not self._initialized.value:
+                return
+
+            namespaces = self._namespaces[0]
+            if not self._event_subscriptions:
+                # both until the controller tells which one it publishes
+                await self._subscribe_events(namespaces.camera_subject)
+                await self._subscribe_events(namespaces.camera_state_subject)
+
+            response = await self._apply_states()
+            subject = (
+                namespaces.camera_state_subject if response.get("stateSubject") else namespaces.camera_subject
+            )
+            if subject not in self._event_subscriptions:
+                await self._subscribe_events(subject)
+                # re-read to cover what the old subject missed
+                await self._apply_states()
+
+            for other in [other for other in self._event_subscriptions if other != subject]:
+                close = self._event_subscriptions.pop(other)
+                await close()
+
+    async def _apply_states(self) -> dict[str, Any]:
         response = await self._camera_controller_proxy.refreshStates()
 
         # a resync must not wake subscribers for state they already hold
@@ -631,6 +669,16 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
             self._camera_state.next(response["cameraState"])
         if response["frameWorkerState"] != self._frame_worker_state.value:
             self._frame_worker_state.next(response["frameWorkerState"])
+
+        return response
+
+    async def _subscribe_events(self, subject: str) -> None:
+        close = await self._proxy.subscribe(subject, self._on_event_message)
+        # cleaned up while the subscribe was in flight
+        if not self._initialized.value:
+            await close()
+            return
+        self._event_subscriptions[subject] = close
 
     async def _on_event_message(self, event: CameraEventMessage) -> None:
         if not self._initialized.value:
@@ -671,9 +719,7 @@ class CameraDeviceProxy(Subscribed, CameraDeviceInterface):
 
             async def notify_coordinator() -> None:
                 try:
-                    await self._detection_coordinator_proxy.reportSensorWrite(
-                        sensor_id, sensor_type, properties
-                    )
+                    await self._report_sensor_write(sensor_id, sensor_type, properties)
                 except Exception as e:
                     self._logger.warn(f"Failed to forward sensor write to coordinator for {sensor_id}: {e}")
 

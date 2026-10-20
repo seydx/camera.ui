@@ -2,6 +2,8 @@ import { mergeWith } from '@camera.ui/common/utils';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { container, delay, registry } from 'tsyringe';
 
+import { inject, tryInject } from '../../container.js';
+import { tokenIndex } from '../database/tokenIndex.js';
 import { API_TOKEN_PREFIX, TOKEN_LIFETIME } from '../types/index.js';
 import { SocketService } from '../websocket/index.js';
 
@@ -42,37 +44,31 @@ export class AuthService {
   }
 
   public findByAccessToken(access_token: string): DBToken | undefined {
-    for (const { value } of this.dbs.tokensDB.getRange()) {
-      if (value.access_token === access_token) return value;
-    }
-    return undefined;
+    return this.rowsWith(access_token).find((t) => t.access_token === access_token);
   }
 
   public findByRefreshToken(refresh_token: string): DBToken | undefined {
-    for (const { value } of this.dbs.tokensDB.getRange()) {
-      if (value.refresh_token === refresh_token) return value;
-    }
-    return undefined;
+    return this.rowsWith(refresh_token).find((t) => t.refresh_token === refresh_token);
   }
 
   public resolveAccessToken(access_token: string): { token: DBToken; via: 'current' | 'previous' } | undefined {
-    for (const { value } of this.dbs.tokensDB.getRange()) {
-      if (value.access_token === access_token) return { token: value, via: 'current' };
-      if (value.previous_access_token === access_token && this.withinRotationGrace(value)) {
-        return { token: value, via: 'previous' };
-      }
-    }
-    return undefined;
+    const rows = this.rowsWith(access_token);
+
+    const current = rows.find((t) => t.access_token === access_token);
+    if (current) return { token: current, via: 'current' };
+
+    const previous = rows.find((t) => t.previous_access_token === access_token && this.withinRotationGrace(t));
+    return previous ? { token: previous, via: 'previous' } : undefined;
   }
 
   public resolveRefreshToken(refresh_token: string): { token: DBToken; via: 'current' | 'previous' } | undefined {
-    for (const { value } of this.dbs.tokensDB.getRange()) {
-      if (value.refresh_token === refresh_token) return { token: value, via: 'current' };
-      if (value.previous_refresh_token === refresh_token && this.withinRotationGrace(value)) {
-        return { token: value, via: 'previous' };
-      }
-    }
-    return undefined;
+    const rows = this.rowsWith(refresh_token);
+
+    const current = rows.find((t) => t.refresh_token === refresh_token);
+    if (current) return { token: current, via: 'current' };
+
+    const previous = rows.find((t) => t.previous_refresh_token === refresh_token && this.withinRotationGrace(t));
+    return previous ? { token: previous, via: 'previous' } : undefined;
   }
 
   public findByDeviceId(userId: string, deviceId: string): DBToken | undefined {
@@ -226,6 +222,10 @@ export class AuthService {
       if (Array.isArray(source)) return target;
     });
     return token;
+  }
+
+  private rowsWith(token: string): DBToken[] {
+    return tokenIndex(this.dbs.tokensDB).rows(token);
   }
 
   private withinRotationGrace(token: DBToken): boolean {

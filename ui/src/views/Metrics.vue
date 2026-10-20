@@ -335,8 +335,8 @@ const frameWorkersRestarting = ref<string[]>([]);
 const pluginsRestarting = ref<string[]>([]);
 
 const { data: camerasData } = camerasQuery.getCamerasQuery({ page: 1, pageSize: -1 });
-const { data: plugins, isBusy: pluginsLoading, suspense: pluginsSuspense } = pluginsQuery.getPluginsQuery(pluginsPagination);
-const { data: frameWorkers, isBusy: frameWorkersLoading, suspense: frameWorkerSuspense } = frameWorkerQuery.getFrameWorkersQuery(frameworkersPagination);
+const { data: plugins, isBusy: pluginsLoading } = pluginsQuery.getPluginsQuery(pluginsPagination);
+const { data: frameWorkers, isBusy: frameWorkersLoading } = frameWorkerQuery.getFrameWorkersQuery(frameworkersPagination);
 const { mutateAsync: restartPlugin } = pluginsQuery.restartPluginQuery();
 const { mutateAsync: restartFrameWorker } = frameWorkerQuery.restartFrameWorkerQuery();
 const { mutateAsync: resetFrameWorkerPerf, isPending: resetPerfLoading } = frameWorkerQuery.resetFrameWorkerPerfQuery();
@@ -1113,13 +1113,8 @@ watch(
   { deep: true, immediate: true },
 );
 
-onBeforeMount(async () => {
+onBeforeMount(() => {
   metricsSocket.connect();
-
-  await Promise.all([pluginsSuspense(), frameWorkerSuspense()]);
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
-  metricsSocket.loadAll();
 });
 
 onUnmounted(() => {

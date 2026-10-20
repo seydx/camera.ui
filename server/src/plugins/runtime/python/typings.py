@@ -91,6 +91,7 @@ class SensorRegistration(TypedDict):
     id: str
     assignedCameraIds: list[str]
     active: bool
+    stateSubject: NotRequired[bool]
 
 
 class SensorRefreshedState(TypedDict):

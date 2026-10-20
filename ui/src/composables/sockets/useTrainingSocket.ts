@@ -1,11 +1,22 @@
 import type { SocketChannel } from '@/connection/index.js';
 import type { TrainingCandidatesChanged, TrainingSubmitProgress } from '@shared/types';
 
+export interface TrainingCandidatesChange extends TrainingCandidatesChanged {
+  onlyRemoved?: boolean;
+}
+
+const CHANGE_QUIET_MS = 1_000;
+const CHANGE_INTERVAL_MS = 5_000;
+
 const state = reactive<{ progress: TrainingSubmitProgress | null }>({ progress: null });
 
 let scope: ReturnType<typeof effectScope> | null = null;
 let channel: SocketChannel | null = null;
-const changeListeners = new Set<(change: TrainingCandidatesChanged) => void>();
+let pendingChange: TrainingCandidatesChange | null = null;
+let pendingSince = 0;
+let notifiedAt = 0;
+let changeTimer: ReturnType<typeof setTimeout> | null = null;
+const changeListeners = new Set<(change: TrainingCandidatesChange) => void>();
 const resyncListeners = new Set<() => void>();
 
 function notify<T>(listeners: Set<(payload: T) => void>, payload: T): void {
@@ -32,9 +43,41 @@ async function loadProgress(): Promise<void> {
   }
 }
 
+function takePendingChange(): TrainingCandidatesChange | null {
+  if (changeTimer) clearTimeout(changeTimer);
+  changeTimer = null;
+  notifiedAt = Date.now();
+  const change = pendingChange;
+  pendingChange = null;
+  return change;
+}
+
+function flushChange(): void {
+  const change = takePendingChange();
+  if (change) notify(changeListeners, change);
+}
+
+function queueChange(change: TrainingCandidatesChanged): void {
+  const now = Date.now();
+  const removed = change.removed?.length ? change.removed : undefined;
+  if (!pendingChange) {
+    pendingChange = { cameraId: change.cameraId, removed: removed && [...removed], onlyRemoved: !!removed };
+    pendingSince = now;
+  } else {
+    if (pendingChange.cameraId !== change.cameraId) pendingChange.cameraId = undefined;
+    if (removed) pendingChange.removed = [...(pendingChange.removed ?? []), ...removed];
+    else pendingChange.onlyRemoved = false;
+  }
+
+  const notifyAt = Math.min(pendingSince + CHANGE_INTERVAL_MS, Math.max(now + CHANGE_QUIET_MS, notifiedAt + CHANGE_INTERVAL_MS));
+  if (changeTimer) clearTimeout(changeTimer);
+  changeTimer = setTimeout(flushChange, notifyAt - now);
+}
+
 function resync(): void {
   loadProgress();
-  notify(changeListeners, {});
+  const removed = takePendingChange()?.removed;
+  notify(changeListeners, removed ? { removed } : {});
   notify(resyncListeners, undefined);
 }
 
@@ -46,11 +89,10 @@ function ensureChannel(): SocketChannel {
     const ch = useSocket('/training');
     channel = ch;
 
-    ch.on<TrainingCandidatesChanged>('candidates-changed', (change) => notify(changeListeners, change ?? {}));
+    ch.on<TrainingCandidatesChanged>('candidates-changed', (change) => queueChange(change ?? {}));
 
     ch.on<TrainingSubmitProgress>('submit-progress', (progress) => {
       state.progress = progress;
-      notify(changeListeners, {});
     });
 
     ch.onReady(resync);
@@ -64,7 +106,7 @@ export function useTrainingSocket() {
     ensureChannel();
   }
 
-  function onCandidatesChanged(listener: (change: TrainingCandidatesChanged) => void): () => void {
+  function onCandidatesChanged(listener: (change: TrainingCandidatesChange) => void): () => void {
     changeListeners.add(listener);
     return () => changeListeners.delete(listener);
   }
@@ -88,6 +130,7 @@ export function useTrainingSocket() {
 }
 
 export function resetTrainingSocket(): void {
+  takePendingChange();
   scope?.stop();
   scope = null;
   channel = null;

@@ -19,9 +19,9 @@ const getMetrics = toolDefinition({
   lazy: true,
   description: 'Current load: CPU and memory of host, server, streaming engine, plugins and workers, plus inference timings. How busy is it, is something slow.',
   inputSchema: zod.object({}),
-}).server<ToolContext['context']>(() => {
-  const metrics = container.resolve<SocketService>('socketService').namespaces.get('/metrics') as MetricsNamespace | undefined;
-  const snapshot = metrics?.snapshot();
+}).server<ToolContext['context']>(async () => {
+  const metrics = inject('socketService').namespaces.get('/metrics') as MetricsNamespace | undefined;
+  const snapshot = await metrics?.snapshot();
   if (!snapshot?.processes) return toolError('Metrics are not collected yet, ask again in a few seconds.');
 
   const { processes, system } = snapshot;

@@ -1,4 +1,5 @@
-import { container } from 'tsyringe';
+import { inject } from '../../../container.js';
+import { resolveSensorSemantics } from '../../../sensors/semantics.js';
 
 import type { DetectionEvent, DetectionEventType } from '@camera.ui/sdk';
 import type { Namespace, Server, Socket } from 'socket.io';
@@ -105,6 +106,7 @@ export class EventsNamespace {
 
     this.onBus(bus, 'sensor:property:changed', (payload) => {
       const p = payload as SensorPropertyChangedPayload;
+      if (this.nsp.sockets.size === 0 || !this.hasHaEntity(p.sensorId)) return;
       this.emitSensor({
         type: 'changed',
         sensorId: p.sensorId,
@@ -181,11 +183,16 @@ export class EventsNamespace {
     });
   }
 
+  private hasHaEntity(sensorId: string): boolean {
+    const record = inject('sensorRegistry').getRecord(sensorId);
+    if (!record?.exposed || record.origin === 'homeassistant') return false;
+    return resolveSensorSemantics({ type: record.type, capabilities: [] }) !== undefined;
+  }
+
   private emitSensor(message: SensorMessage): void {
-    // fan out into each assigned camera's room, 'all' subscribers see everything once
-    const rooms = this.nsp.to('all');
-    for (const cameraId of message.assignedCameraIds) rooms.to(`camera:${cameraId}`);
-    rooms.emit('sensor', message);
+    if (this.nsp.sockets.size === 0) return;
+    // one broadcast over all rooms, a socket in several of them gets it once
+    this.nsp.to(['all', ...message.assignedCameraIds.map((cameraId) => `camera:${cameraId}`)]).emit('sensor', message);
   }
 
   private onBus(bus: InternalEventBus, event: InternalEvent, handler: (payload: InternalEventPayload) => void): void {

@@ -14,7 +14,7 @@ import { LeafConnection } from './leafConnection.js';
 import { NamespaceManager, SUBJECT_TOKEN } from './namespaces.js';
 
 import type { Logger } from '@camera.ui/common/logger';
-import type { ChildProcess } from 'node:child_process';
+import type { ChildProcess, ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { Interface } from 'node:readline';
 import type { SocketService } from '../api/websocket/index.js';
 import type { ServerRuntime } from '../api/websocket/types.js';
@@ -287,11 +287,7 @@ export class NATS {
       websocket: {
         host: '127.0.0.1',
         port: this.wsPort,
-        no_tls: false,
-        tls: {
-          cert_file: this.configService.HOST_CERT_FILE,
-          key_file: this.configService.HOST_KEY_FILE,
-        },
+        no_tls: true,
       },
     };
 
@@ -506,7 +502,7 @@ export class NATS {
     this.logger.debug(`Starting Nats server with following command: ${this.configService.NATS_BINARY} ${args.join(' ')}`);
 
     await new Promise<void>((resolve, reject) => {
-      this.serverProcess = spawn(this.configService.NATS_BINARY, args, { windowsHide: true });
+      this.serverProcess = this.spawnNats(args);
       this.setupProcess(this.serverProcess, args, configFile, 'server', resolve, reject);
     });
   }
@@ -517,7 +513,7 @@ export class NATS {
     this.logger.debug(`Starting Nats cluster server with following command: ${this.configService.NATS_BINARY} ${args.join(' ')}`);
 
     await new Promise<void>((resolve, reject) => {
-      const clusterProcess = spawn(this.configService.NATS_BINARY, args, { windowsHide: true });
+      const clusterProcess = this.spawnNats(args);
       this.setupProcess(clusterProcess, args, configFile, 'cluster', resolve, reject);
       this.clusterProcesses.push(clusterProcess);
     });
@@ -531,7 +527,7 @@ export class NATS {
     this.logger.debug(`Starting Nats leaf-acceptor: ${this.configService.NATS_BINARY} ${args.join(' ')}`);
 
     await new Promise<void>((resolve, reject) => {
-      const proc = spawn(this.configService.NATS_BINARY, args, { windowsHide: true });
+      const proc = this.spawnNats(args);
       this.leafAcceptorProcess = proc;
 
       let settled = false;
@@ -872,6 +868,7 @@ export class NATS {
       case line.includes('Cluster name is'):
       case line.includes('Plaintext passwords detected'):
       case line.includes('Maximum payloads over'):
+      case line.includes('Websocket not configured with TLS'):
         return true;
       default:
         return false;

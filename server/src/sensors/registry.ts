@@ -898,7 +898,7 @@ export class SensorRegistry {
     const ns = NamespaceManager.sensorRegistryNamespaces();
     this.safePublish(ns.sensorsSubject, {
       type: 'sensor:connected:changed',
-      data: { sensorId: record._id, sensorType: record.type, connected },
+      data: { sensorId: record._id, sensorType: record.type, connected, assignedCameraIds: [...record.assignedCameraIds] },
     });
 
     this.emitBus('sensor:connected:changed', {

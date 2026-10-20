@@ -33,6 +33,7 @@ const ignorableLogMessages = [
   'non-existing SPS',
   'non-existing PPS',
   'Failed to send close message', // Windows tls
+  'Invalid qtable length 64.',
 ];
 
 const CLIENT_OPTIONS = { zeroCopyBinaries: true };

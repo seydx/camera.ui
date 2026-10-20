@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from collections.abc import Awaitable, Callable
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, cast
 
 from _camera_ui_tools.camera_ui_common import TaskSet
@@ -22,6 +24,7 @@ from plugins.runtime.python.proxy.sensor import (
     DetectionCoordinatorRPC,
     SensorProxy,
     SensorRegistryInterface,
+    sensor_handler_options,
 )
 
 if TYPE_CHECKING:
@@ -83,10 +86,14 @@ class SensorManagerProxy:
     def set_plugin(self, plugin: BasePlugin) -> None:
         self._plugin_instance = plugin
 
-    @property
+    @cached_property
     def _registry_proxy(self) -> SensorRegistryInterface:
         ns = NamespaceManager.sensor_registry_namespaces()
         return self._proxy.create_proxy(ns.sensors_rpc)
+
+    @cached_property
+    def _update_property_values(self) -> Callable[[str, dict[str, Any]], Awaitable[None]]:
+        return self._registry_proxy.updatePropertyValues
 
     @property
     def _consumes_something(self) -> bool:
@@ -213,6 +220,7 @@ class SensorManagerProxy:
                 await sensor_proxy._unsubscribe_from_events()  # pyright: ignore[reportPrivateUsage]
         self._consumed.clear()
         self._external.clear()
+        self._report_writes.clear()
 
         for cleanup in list(self._cleanups.values()):
             with contextlib.suppress(Exception):
@@ -274,9 +282,17 @@ class SensorManagerProxy:
         sensor._initCapabilities(lambda caps: self._on_sensor_capabilities_changed(sensor.id, caps))  # pyright: ignore[reportPrivateUsage]
         sensor._initSource(lambda patch: self._on_sensor_source_changed(sensor.id, patch))  # pyright: ignore[reportPrivateUsage]
 
-        rpc_cleanup = await self._proxy.register_handler(sensor_namespace, sensor, without_decorators=True)
+        rpc_cleanup = await self._proxy.register_handler(
+            sensor_namespace, sensor, without_decorators=True, **sensor_handler_options(sensor)
+        )
 
         event_ns = NamespaceManager.sensor_event_namespaces(sensor.id)
+        # frame-fed owners skip the echo of their per-frame detection writes
+        event_subject = (
+            event_ns.sensor_state_subject
+            if registration.get("stateSubject") and sensor_json.get("requiresFrames")
+            else event_ns.sensor_subject
+        )
 
         async def handle_backend_event(event: dict[str, Any]) -> None:
             if event.get("type") == "property:changed":
@@ -287,7 +303,7 @@ class SensorManagerProxy:
                         prop, change_data.get("value"), change_data.get("timestamp")
                     )
 
-        unsubscribe_events = await self._proxy.subscribe(event_ns.sensor_subject, handle_backend_event)
+        unsubscribe_events = await self._proxy.subscribe(event_subject, handle_backend_event)
 
         async def cleanup() -> None:
             await unsubscribe_events()
@@ -491,6 +507,8 @@ class SensorManagerProxy:
             ):
                 if candidate is not None:
                     targets.append(candidate)
+            if not assignment["assigned"]:
+                self._report_writes.pop(assignment["cameraId"], None)
             for target in targets:
                 cameras = set(target.assignedCameraIds)
                 if assignment["assigned"]:
@@ -525,12 +543,8 @@ class SensorManagerProxy:
             # external detection provider: fan the write into every assigned camera's coordinator
             async def notify_coordinators() -> None:
                 for camera_id in sensor.assignedCameraIds:
-                    detection_ns = NamespaceManager.frame_worker_detection_namespaces(camera_id)
-                    coordinator: DetectionCoordinatorRPC = self._proxy.create_proxy(
-                        detection_ns.detection_rpc
-                    )
                     with contextlib.suppress(Exception):
-                        await coordinator.reportSensorWrite(sensor.id, sensor_type, properties)
+                        await self._report_write(camera_id)(sensor.id, sensor_type, properties)
 
             self._tasks.add(notify_coordinators())
             return
@@ -544,6 +558,14 @@ class SensorManagerProxy:
             self.settle_write(sensor.id, properties, True)
 
         self._tasks.add(notify_registry())
+
+    def _report_write(self, camera_id: str) -> Callable[[str, SensorType, dict[str, Any]], Awaitable[None]]:
+        report = self._report_writes.get(camera_id)
+        if report is None:
+            detection_ns = NamespaceManager.frame_worker_detection_namespaces(camera_id)
+            coordinator: DetectionCoordinatorRPC = self._proxy.create_proxy(detection_ns.detection_rpc)
+            report = self._report_writes[camera_id] = coordinator.reportSensorWrite
+        return report
 
     def _on_sensor_capabilities_changed(self, sensor_id: str, capabilities: list[str]) -> None:
         async def notify() -> None:

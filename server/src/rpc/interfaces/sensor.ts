@@ -119,6 +119,7 @@ export interface SensorConnectedChangedEvent {
   sensorId: string;
   sensorType: SensorType;
   connected: boolean;
+  assignedCameraIds?: string[];
 }
 
 export interface SensorCapabilitiesChangedEvent {

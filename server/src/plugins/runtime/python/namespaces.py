@@ -31,6 +31,7 @@ class PluginNamespaces:
 @dataclass(frozen=True, slots=True)
 class CameraNamespaces:
     camera_subject: str
+    camera_state_subject: str
     camera_controller_rpc: str
 
 
@@ -55,6 +56,7 @@ class SensorRegistryNamespaces:
 @dataclass(frozen=True, slots=True)
 class SensorEventNamespaces:
     sensor_subject: str
+    sensor_state_subject: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +142,7 @@ class NamespaceManager:
     def camera_namespaces(camera_id: str) -> CameraNamespaces:
         return CameraNamespaces(
             camera_subject=f"camera.{camera_id}.subscriber",
+            camera_state_subject=f"camera.{camera_id}.state",
             camera_controller_rpc=f"camera.{camera_id}.controller.rpc",
         )
 
@@ -175,6 +178,7 @@ class NamespaceManager:
     def sensor_event_namespaces(sensor_id: str) -> SensorEventNamespaces:
         return SensorEventNamespaces(
             sensor_subject=f"sensor.{sensor_id}.subject",
+            sensor_state_subject=f"sensor.{sensor_id}.state",
         )
 
     @staticmethod

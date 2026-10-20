@@ -1,4 +1,5 @@
 import time
+from collections.abc import Mapping
 from typing import Any, Protocol
 
 from _camera_ui_tools.camera_ui_rpc import CloseHandler, RPCClient
@@ -255,3 +256,13 @@ class DetectionCoordinatorRPC(Protocol):
     async def reportSensorWrite(
         self, sensor_id: str, sensor_type: SensorType, properties: dict[str, Any]
     ) -> None: ...
+
+
+def sensor_handler_options(sensor: object) -> dict[str, Any]:
+    declared = getattr(sensor, "_rpc_concurrency", None)
+    if not isinstance(declared, Mapping):
+        return {}
+    limits = {
+        method: limit for method, limit in declared.items() if isinstance(method, str) and type(limit) is int
+    }
+    return {"concurrency": limits} if limits else {}
