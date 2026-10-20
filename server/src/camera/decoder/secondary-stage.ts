@@ -6,7 +6,7 @@ import { NamespaceManager } from '../../rpc/namespaces.js';
 import { detectionRecord } from './debug/detection-record.js';
 import { EVENT_THUMB_MAX_WIDTH } from './event-thumbnailer.js';
 import { faceRead } from './event-trace.js';
-import { faceParent, FaceTrackNames, keepOneFacePerTrack, stillOwner, votesOnReads } from './face-tracks.js';
+import { faceNote, faceParent, facePx, FaceTrackNames, setFaceNote, stillOwner, votesOnReads } from './face-tracks.js';
 import { directionBetween, MOMENT_QUALITY, momentFormat, momentWindow } from './moment-crop.js';
 import { MIN_PLATE_LENGTH, normalizePlateText } from './plate-vote.js';
 import { hasSecondaryModelSpec, isVideoInputSpec } from './plugin-registry.js';
@@ -15,6 +15,7 @@ import { DETECT_TIMEOUT_MS, ensureDetectionBoxes, FULL_FRAME_BOX } from './types
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { Promisify, RPCClient } from '@camera.ui/rpc';
+import type { WorldObject } from '@camera.ui/rust-postprocessor';
 import type { BoundingBox, ClassifierResult, Detection, FaceResult, LicensePlateResult, ModelSpec, Point, TrackedDetection, VideoFrameData } from '@camera.ui/sdk';
 import type { Frame } from 'node-av/lib';
 import type { CoreManagerInterface } from '../../rpc/interfaces/core.js';
@@ -87,11 +88,17 @@ interface FaceJob {
   region: CroppedRegion;
   capturedAt: number;
   card?: { jpeg: Buffer; window: CropWindow; frameWidth: number; frameHeight: number };
+  key: string;
+  trigger: string;
+  frame?: TraceReadFrame;
+  px: number;
+  attempt: FaceAttempt;
 }
 
 export class SecondaryStage {
   private readonly faceNames = new FaceTrackNames();
   private nearestFailedAt = 0;
+  private matchSensitivity?: string;
   private readonly clipTracks = new Map<string, ClipTrack>();
   private readonly clipQueue = new SideQueue<ClipJob>(
     (jobs) => this.runClip(jobs),
@@ -112,7 +119,7 @@ export class SecondaryStage {
     },
     (jobs) => {
       for (const job of jobs) {
-        this.faceNames.markSettled(job.face);
+        this.faceNames.markSettled(job.face, job.attempt);
         this.coordinator.vectorJobSettled();
       }
     },
@@ -215,6 +222,23 @@ export class SecondaryStage {
     return thumbnails;
   }
 
+  public forgetUntrackedFaces(): void {
+    this.faceNames.forgetUntracked();
+  }
+
+  public noteWorld(result: PipelineResult, ptzEnded: boolean): void {
+    const persons: FaceWorld['persons'] = [];
+    for (const track of [...result.tracked, ...result.staticTracks]) {
+      if (track.label === 'person' && track.trackId !== undefined) persons.push({ id: track.trackId, box: track.box, active: track.stationarySince === undefined });
+    }
+    const events = result.events.map(({ eventType, object }: { eventType: string; object: WorldObject & { farFromAnchor?: boolean } }) => ({
+      id: object.trackId,
+      kind: eventType,
+      far: object.farFromAnchor,
+    }));
+    this.faceNames.noteWorld({ events, persons, reassociated: result.reassociated }, ptzEnded);
+  }
+
   private async attributeCrops<T extends { box: BoundingBox; parentBox?: BoundingBox }>(
     sourceFrame: Frame,
     scaler: FrameScaler,
@@ -268,7 +292,9 @@ export class SecondaryStage {
 
   private async recognizeFaces(sourceFrame: Frame, scaler: FrameScaler, results: DetectionResults, stamp: TraceReadFrame | undefined): Promise<void> {
     if (!results.face?.detections.length) return;
-    await this.queueFaces(sourceFrame, scaler, results.face.detections);
+    // a changed threshold applies on this tick, not with the next read
+    this.syncMatchSensitivity();
+    await this.queueFaces(sourceFrame, scaler, results.face.detections, stamp);
     this.faceNames.carry(results.face.detections);
   }
 
@@ -278,8 +304,11 @@ export class SecondaryStage {
     const input = spec && isVideoInputSpec(spec.input) ? spec.input : undefined;
     if (!input) return;
 
-    for (const face of faces) {
-      if (!this.faceNames.wantsVector(face, sourceFrame)) continue;
+    for (const face of this.faceNames.turns(faces)) {
+      const key = this.faceNames.key(face);
+      // faces without a person of their own keep the timed pace
+      const trigger = key.startsWith('u') ? this.faceNames.wantsVector(face, sourceFrame) : this.faceNames.wantsRead(face, sourceFrame);
+      if (!trigger) continue;
 
       const scaled = await scaler.cropAndScaleMulti(
         sourceFrame,
@@ -294,9 +323,10 @@ export class SecondaryStage {
       const [crop] = await this.attributeCrops(sourceFrame, scaler, [face]);
       const card = crop ? { jpeg: crop[1], window: crop[2], frameWidth: sourceFrame.width, frameHeight: sourceFrame.height } : undefined;
 
-      this.faceNames.markAttempt(face);
-      const job: FaceJob = { face: { ...(face as TrackedFaceDetection) }, region, capturedAt: Date.now(), card };
-      if (!this.faceQueue.push(this.faceNames.key(face), job)) this.coordinator.vectorJobStarted();
+      const attempt = this.faceNames.markAttempt(face, sourceFrame);
+      const px = Math.round(facePx(face, sourceFrame));
+      const job: FaceJob = { face: { ...(face as TrackedFaceDetection) }, region, capturedAt: Date.now(), card, key, trigger, frame: stamp, px, attempt };
+      if (!this.faceQueue.push(key, job)) this.coordinator.vectorJobStarted();
     }
   }
 
@@ -311,10 +341,10 @@ export class SecondaryStage {
 
     const faces: TrackedFaceDetection[] = [];
     for (let i = 0; i < jobs.length; i++) {
-      const { face, region, card } = jobs[i];
+      const { face, region, card, attempt } = jobs[i];
       const { embedding, landmarks, quality } = embedded[i] ?? {};
       if (!embedding?.length) {
-        this.faceNames.markEmpty(face);
+        this.faceNames.markEmpty(face, attempt);
         continue;
       }
 
@@ -331,15 +361,34 @@ export class SecondaryStage {
       faces.push(face);
     }
 
-    await this.resolveFaceIdentities(faces);
+    const failed = await this.resolveFaceIdentities(faces);
     const reads: TraceFaceRead[] = [];
-    for (let i = 0; i < faces.length; i++) {
-      const face = faces[i];
+    for (let i = 0; i < jobs.length; i++) {
+      const { face, capturedAt, key, trigger, frame, px, attempt } = jobs[i];
+      const context = { frame, trigger, key, px, quality: embedded[i]?.quality };
+      if (!embedded[i]?.embedding?.length) {
+        reads.push(faceRead(face, capturedAt, undefined, { ...context, empty: true }));
+        continue;
+      }
       face.matched = face.identity;
-      const named = this.faceNames.markVector(face);
-      const votes = votesOnReads(face);
-      if (votes) face.identity = named;
-      reads.push(faceRead(face, jobs.find((job) => job.face === face)?.capturedAt ?? Date.now(), votes ? this.faceNames.tally(face) : undefined));
+      const outcome = failed ? this.faceNames.markFailed(face, attempt) : this.faceNames.markVector(face, attempt, trigger);
+      const tracked = key.startsWith('t');
+      // also in doubt or unanswered, so the read lands in its epoch's slot instead of unknown
+      if (tracked) face.identity = outcome.name;
+      const note: FaceNote = { key };
+      if (face.identity) note.source = tracked ? 'track' : key.startsWith('s') ? 'own' : 'single';
+      if (outcome.epoch !== undefined) note.epoch = outcome.epoch;
+      const shared = faceNote(face)?.shared;
+      if (shared !== undefined) note.shared = shared;
+      setFaceNote(face, note);
+      if (failed) {
+        const { empty: _empty, ...read } = faceRead(face, capturedAt, undefined, { ...context, empty: true });
+        reads.push({ ...read, failed: true });
+        continue;
+      }
+      const read = faceRead(face, capturedAt, votesOnReads(face) ? this.faceNames.tally(face) : undefined, { ...context, source: note.source });
+      if (outcome.epoch !== undefined) read.epoch = outcome.epoch;
+      reads.push(read);
     }
     detectionRecord.faceReads(reads);
     this.coordinator.traceFaceReads(reads);
@@ -347,7 +396,10 @@ export class SecondaryStage {
 
     const embeddingModel = (plugin.modelSpec as ModelSpec | undefined)?.embeddingModel ?? '';
     for (const job of jobs) {
-      if (job.face.embedding?.length) this.coordinator.acceptFaceVectors([job.face], embeddingModel, job.capturedAt);
+      if (!job.face.embedding?.length) continue;
+      this.coordinator.acceptFaceVectors([job.face], embeddingModel, job.capturedAt);
+      // a tracked face's name reaches the sensor through carry, and only outside doubt
+      if (job.face.identity && !job.key.startsWith('t')) this.coordinator.acceptFaceIdentity(job.face, job.capturedAt);
     }
   }
 
@@ -534,7 +586,7 @@ export class SecondaryStage {
     const { kept, weak } = this.pipeline.splitFaces(this.pipeline.runNms(allFaces));
     this.suggest(results, this.pipeline.trainingSuggestionsFor(weak, 'face'));
     if (weak.length > 0) results.weakFaces = weak;
-    keepOneFacePerTrack(kept);
+    this.faceNames.groupFaces(kept);
     return { detected: kept.length > 0, detections: kept };
   }
 
@@ -758,20 +810,20 @@ export class SecondaryStage {
     }
   }
 
-  private async resolveFaceIdentities(faces: ServerFaceDetection[]): Promise<void> {
+  private async resolveFaceIdentities(faces: ServerFaceDetection[]): Promise<boolean> {
     const withEmbeddings = faces.filter((f) => f.embedding?.length);
-    if (!withEmbeddings.length) return;
+    if (!withEmbeddings.length) return false;
 
     const embedPlugin = this.plugins.get(SensorType.FaceEmbedder);
     const embeddingModel = (embedPlugin?.modelSpec as ModelSpec | undefined)?.embeddingModel;
-    if (!embeddingModel) return;
+    if (!embeddingModel) return false;
 
     const nvr = await this.getNvrProxy();
-    if (!nvr) return;
+    if (!nvr) return false;
 
+    const sensitivity = this.syncMatchSensitivity();
     try {
       const embeddings = withEmbeddings.map((f) => f.embedding!);
-      const sensitivity = this.coordinator.detectionSettings.face?.matchSensitivity ?? 'balanced';
       const nearest = await this.matchNearest(nvr, embeddings, embeddingModel, sensitivity);
       const matches = nearest ?? (await nvr.matchFaces(embeddings, embeddingModel, sensitivity));
       for (let i = 0; i < withEmbeddings.length; i++) {
@@ -786,10 +838,18 @@ export class SecondaryStage {
           withEmbeddings[i].runnerUpScore = match.runnerUpScore;
         }
       }
+      return false;
     } catch (error) {
-      if (!this.coordinator.running || isNoRespondersError(error)) return;
-      this.logger.error('Could not resolve face identities:', error);
+      if (this.coordinator.running && !isNoRespondersError(error)) this.logger.error('Could not resolve face identities:', error);
+      return true;
     }
+  }
+
+  private syncMatchSensitivity(): string {
+    const sensitivity = this.coordinator.detectionSettings.face?.matchSensitivity ?? 'balanced';
+    if (this.matchSensitivity !== undefined && sensitivity !== this.matchSensitivity) this.faceNames.reopen();
+    this.matchSensitivity = sensitivity;
+    return sensitivity;
   }
 
   private transformBoxToOriginal(

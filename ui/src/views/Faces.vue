@@ -414,7 +414,7 @@ import FaceUploadDialog from '@/components/CuiDialog/templates/FaceUpload/FaceUp
 import { useCardSelection } from '@/composables/useCardSelection.js';
 
 import type { FaceDetailFaceImage } from '@/components/CuiDialog/templates/FaceDetail/types.js';
-import type { FaceProfile, IgnoredFace, UnknownFace } from '@camera.ui/nvr';
+import type { FaceImageData, FaceProfile, IgnoredFace, UnknownFace } from '@camera.ui/nvr';
 
 const dialog = useCuiDialog();
 const toast = useCuiToast();
@@ -531,7 +531,7 @@ async function openKnownFaceDetail(face: FaceProfile) {
             await faceStore.removeFaceImage(face.name, image.id);
             const at = images.value.findIndex((img) => img.id === image.id);
             if (at >= 0) images.value.splice(at, 1);
-            releaseSameAs(images.value, image.id);
+            applyMarks(images.value, await faceStore.listFaceImageMeta(face.name));
             toast.add({ severity: 'success', detail: t('views.faces.image_removed'), life: 3000 });
             await faceStore.refresh(true);
           } catch (err) {
@@ -556,7 +556,14 @@ async function openKnownFaceDetail(face: FaceProfile) {
 
   try {
     const meta = await faceStore.listFaceImageMeta(face.name);
-    images.value = meta.map((img) => ({ id: img.id, confidence: img.confidence ?? 0, clarity: img.clarity, sameAs: img.sameAs, alsoFiledUnder: img.alsoFiledUnder }));
+    images.value = meta.map((img) => ({
+      id: img.id,
+      confidence: img.confidence ?? 0,
+      clarity: img.clarity,
+      sameAs: img.sameAs,
+      alsoFiledUnder: img.alsoFiledUnder,
+      unlike: img.unlike,
+    }));
   } catch {
     // No images available
   } finally {
@@ -578,12 +585,14 @@ async function openKnownFaceDetail(face: FaceProfile) {
   }
 }
 
-function releaseSameAs(images: FaceDetailFaceImage[], removedId: string) {
-  let original: string | undefined;
+function applyMarks(images: FaceDetailFaceImage[], meta: FaceImageData[]) {
+  const fresh = new Map(meta.map((img) => [img.id, img]));
   for (const image of images) {
-    if (image.sameAs !== removedId) continue;
-    image.sameAs = original;
-    original ??= image.id;
+    const marks = fresh.get(image.id);
+    if (!marks) continue;
+    image.sameAs = marks.sameAs;
+    image.alsoFiledUnder = marks.alsoFiledUnder;
+    image.unlike = marks.unlike;
   }
 }
 

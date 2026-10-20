@@ -108,7 +108,7 @@ const fallbackUrl = getImageUrl();
 const fewPictures = computed(() => !!props.imageCount && props.imageCount < FACE_FEW_PICTURES);
 const marked = computed(() => {
   const marks = props.marks;
-  return (marks?.filedUnder ?? 0) + (marks?.unclear ?? 0) + (marks?.partlyVisible ?? 0) + (marks?.sameAs ?? 0);
+  return (marks?.filedUnder ?? 0) + (marks?.unclear ?? 0) + (marks?.unlike ?? 0) + (marks?.partlyVisible ?? 0) + (marks?.sameAs ?? 0);
 });
 const markedDanger = computed(() => !!(props.marks?.filedUnder || props.marks?.unclear));
 

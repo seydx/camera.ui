@@ -244,13 +244,13 @@
             <span v-else class="tile-empty">–</span>
           </div>
 
-          <div v-if="selected.tick.reads?.length" class="tile">
+          <div v-if="shownReads.length" class="tile">
             <div class="tile-head">
               <i-tabler:face-id class="w-3.5 h-3.5" />
               <span>{{ $t('views.recordings.trace.face_reads') }}</span>
             </div>
             <div class="chips">
-              <span v-for="(read, i) in selected.tick.reads" :key="i" class="chip">
+              <span v-for="(read, i) in shownReads" :key="i" class="chip">
                 <span class="chip-dot" :style="{ background: ATTRIBUTE_COLORS.face }" />
                 {{ readText(read) }}
               </span>
@@ -318,6 +318,7 @@ import { detectionStyle } from '@/common/detectionLabels.js';
 import { extractErrorMessage, randomLetter } from '@/common/utils.js';
 import { buildStoredZip } from '@/utils/zipStore.js';
 import { boxIntersectsPolygon, boxMatchesZone } from '@/utils/zoneGeometry.js';
+import { isShownRead } from './reads.js';
 
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
 import type { ZipEntry } from '@/utils/zipStore.js';
@@ -449,6 +450,7 @@ const motionZones = computed<MotionZone[]>(() => zones.value?.motion ?? []);
 const alertZones = computed<AlertZone[]>(() => zones.value?.alert ?? []);
 const droppingPrivacyZones = computed(() => privacyZones.value.filter((zone) => zone.dropDetections !== false));
 const thresholds = computed<Record<string, number>>(() => trace.value?.config?.objectConfidences ?? props.camera.detectionSettings?.object?.confidences ?? {});
+const shownReads = computed(() => (selected.value?.tick.reads ?? []).filter(isShownRead));
 
 const findings = computed<TraceFinding[]>(() => {
   const tick = selected.value?.tick;
@@ -470,7 +472,7 @@ const findings = computed<TraceFinding[]>(() => {
   for (const attr of tick.attrs ?? []) {
     if (attr.weak) frame(droppedFinding(attr));
   }
-  for (const read of tick.reads ?? []) {
+  for (const read of shownReads.value) {
     const face = `face${read.parent !== undefined ? ` #${read.parent}` : ''}`;
     if (read.match && !read.name && !read.single) {
       frame(t('views.recordings.trace.hint_read_held', { face, name: read.match, votes: read.votes ?? 0, reads: read.reads ?? 0 }));

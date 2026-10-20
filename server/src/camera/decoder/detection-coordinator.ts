@@ -179,6 +179,7 @@ export class DetectionCoordinator {
   private readonly activeSensorTriggerTypes = new Map<string, string>();
   private readonly secondaryBboxSeen = new Map<string, number>();
   private readonly faceIdentities = new Set<string>();
+  private faceIdentitiesClearedAt = 0;
   private readonly platesSeen = new Set<string>();
   private readonly classifierLabels = new Map<string, Set<string>>();
   private readonly feedingSensors = new Map<string, SensorType>();
@@ -542,6 +543,14 @@ export class DetectionCoordinator {
     this.eventManager.acceptFaceVectors(faces, embeddingModel, capturedAt);
   }
 
+  public acceptFaceIdentity(face: TrackedFaceDetection, capturedAt: number): void {
+    const facePlugin = this.plugins.get(SensorType.Face);
+    if (!facePlugin || !face.identity || capturedAt < this.faceIdentitiesClearedAt || this.faceIdentities.has(face.identity)) return;
+    if (this.pipeline.runZoneFilterWithLabel([face], 'face').length === 0) return;
+    this.faceIdentities.add(face.identity);
+    this.writeSensorProperties(facePlugin.sensorId, { identities: [...this.faceIdentities].sort() });
+  }
+
   public acceptPersonVectors(persons: TrackedPersonEmbedding[], embeddingModel: string, capturedAt: number): void {
     this.eventManager.acceptPersonVectors(persons, embeddingModel, capturedAt);
   }
@@ -595,7 +604,10 @@ export class DetectionCoordinator {
     this.witnessSensors.delete(sensorId);
     this.classifierLabels.delete(sensorId);
     const sensorType = this.feedingSensors.get(sensorId);
-    if (sensorType === SensorType.Face) this.faceIdentities.clear();
+    if (sensorType === SensorType.Face) {
+      this.clearFaceIdentities();
+      this.secondaries.forgetUntrackedFaces();
+    }
     if (sensorType === SensorType.LicensePlate) this.platesSeen.clear();
     if (sensorType !== undefined && this.feedingSensors.delete(sensorId)) {
       // a sensor removed mid-segment misses the cascade-end clear, so the
@@ -900,7 +912,8 @@ export class DetectionCoordinator {
       clearTargets.push(plugin.sensorId);
     }
 
-    this.faceIdentities.clear();
+    this.clearFaceIdentities();
+    this.secondaries.forgetUntrackedFaces();
     this.platesSeen.clear();
     this.classifierLabels.clear();
     const faceSensorId = this.plugins.get(SensorType.Face)?.sensorId;
@@ -919,6 +932,11 @@ export class DetectionCoordinator {
 
     // segment ends here, the event itself continues while motion is active
     this.eventManager.processResults(this.buildSnapshot());
+  }
+
+  private clearFaceIdentities(): void {
+    this.faceIdentities.clear();
+    this.faceIdentitiesClearedAt = Date.now();
   }
 
   private handleEventEnded(): void {
@@ -1663,7 +1681,10 @@ export class DetectionCoordinator {
           const postStart = Date.now();
           const pipelineResult = this.pipeline.process(detected, poseDelta, t0);
           this.perf.postMs += Date.now() - postStart;
-          trace = { ...pipelineResult.trace, motion: trace?.motion };
+          this.secondaries.noteWorld(pipelineResult, this.ptzEndPending);
+          this.ptzEndPending = false;
+          this.liveLabels = new Set([...pipelineResult.tracked, ...pipelineResult.staticTracks].map((t) => t.label));
+          trace = { ...pipelineResult.trace, motion: trace?.motion, ...windowTrace(plan) };
           this.lastWorldTickAt = t0;
           // the tick that opens a span analysed the low stream (the switch lands
           // next tick), its picture work is worth a one-off HQ decode
@@ -2112,7 +2133,7 @@ export class DetectionCoordinator {
 
     for (const face of results.face?.detections ?? []) {
       const f = face as TrackedFaceDetection;
-      if (!spanHolder(f.parentTrackId)) continue;
+      if (!spanHolder(f.parentTrackId ?? faceNote(f)?.shared)) continue;
       candidates.push({ label: `face:${f.identity ?? 'unknown'}`, box: f.box, parentBox: f.parentBox, confidence: f.confidence });
     }
     for (const plate of results.licensePlate?.detections ?? []) {

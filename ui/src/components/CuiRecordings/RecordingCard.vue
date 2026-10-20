@@ -357,7 +357,7 @@ const faceTarget = computed<FaceTarget | undefined>(() => {
   const seg = props.segIndex ?? primary.value?.segIndex;
   if (activeImageIndex.value > 0 || seg === undefined) return undefined;
   const attributes = shownSegment.value?.attributes ?? [];
-  const faces = attributes.flatMap((attribute, index) => (attribute.type === 'face' ? [index] : []));
+  const faces = attributes.flatMap((attribute, index) => (attribute.type === 'face' && !attribute.unlisted ? [index] : []));
   return faces.length === 1 ? { seg, label: attributes[faces[0]].label || 'unknown', attrIndex: faces[0] } : undefined;
 });
 

@@ -1,4 +1,4 @@
-export type FaceDetailMarkKind = 'filed_under' | 'unclear' | 'partly_visible' | 'same_as';
+export type FaceDetailMarkKind = 'filed_under' | 'unclear' | 'unlike' | 'partly_visible' | 'same_as';
 
 export interface FaceDetailMark {
   kind: FaceDetailMarkKind;
@@ -13,6 +13,7 @@ export interface FaceDetailFaceImage {
   clarity?: number;
   sameAs?: string;
   alsoFiledUnder?: string[];
+  unlike?: boolean;
 }
 
 export interface FaceDetailFace {

@@ -21,6 +21,7 @@ import type {
   VideoFrameData,
 } from '@camera.ui/sdk';
 import type { LineCrossingEvent } from '../../camera/decoder/detection-pipeline.js';
+import type { TraceFaceTick } from '../../camera/decoder/event-trace.js';
 
 type AnyModelSpec = ObjectModelSpec | ModelSpec | AudioModelSpec;
 
@@ -81,6 +82,7 @@ export interface DetectionResults {
   trainingSuggestions?: TrainingSuggestion[];
   weakFaces?: ServerFaceDetection[];
   weakPlates?: WeakPlate[];
+  faceTrace?: TraceFaceTick;
   timestamp: number;
 }
 

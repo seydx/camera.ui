@@ -68,6 +68,7 @@ export interface PipelineResult {
   removed: number[];
   events: WorldEvent[];
   sightings: WorldObject[];
+  reassociated: number[];
   trace: TraceTick;
 }
 
@@ -305,6 +306,7 @@ export class DetectionPipeline {
     }
 
     const training = this.collectTraining(rawDetections, tracked, staticTracks);
+    const signals: (WorldObject & WorldSignals)[] = result.tracked;
 
     return {
       tracked,
@@ -316,7 +318,8 @@ export class DetectionPipeline {
       removed: result.removed,
       events: result.events,
       sightings: result.sightings,
-      trace: this.traceOf(worldTrace(tMs, flat, cameraMotion, result)),
+      reassociated: signals.filter((t) => t.handover === 'reassociated').map((t) => t.trackId),
+      trace: this.traceOf(worldTrace(tMs, flat, cameraMotion, result), tMs),
     };
   }
 

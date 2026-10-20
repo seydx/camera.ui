@@ -1,4 +1,4 @@
-import type { RecordedEvent } from '@camera.ui/nvr';
+import type { RecordedEvent, TraceFaceRead } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 
 export interface EventTraceProps {
@@ -7,3 +7,5 @@ export interface EventTraceProps {
   startAtMs?: number;
   openedAt?: number;
 }
+
+export type TraceRead = TraceFaceRead & { empty?: true; failed?: true };

@@ -6,6 +6,7 @@ import { boxAnchorInPolygon, boxInsidePolygon, boxIntersectsPolygon } from '../u
 import { detectionRecord } from './debug/detection-record.js';
 import { iou } from './detection-window.js';
 import { EventTraceCollector } from './event-trace.js';
+import { faceNote } from './face-tracks.js';
 import { leanEvent, NvrSink } from './nvr-sink.js';
 import { MAX_UNTRACKED_PLATES, normalizePlateText, PlateVoteTracker } from './plate-vote.js';
 import { TrainingSink } from './training-sink.js';
@@ -121,12 +122,27 @@ export interface ProcessedDetectionData {
 const UPDATE_THROTTLE_MS = 1000;
 const MOMENT_IMPROVEMENT = 1.25;
 const CLIP_ATTRIBUTE = 'clip';
+const CLIP_VIEW_GROWTH = 1.5;
+const FACE_MEANS_APART = 0.3;
+const FACE_MEAN_MIN_FACES = 5;
 
 function unitVector(values: number[]): number[] {
   let norm = 0;
   for (const value of values) norm += value * value;
   norm = Math.sqrt(norm) || 1;
   return values.map((value) => value / norm);
+}
+
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(normA * normB) || 1);
 }
 
 function zoneHit(box: BoundingBox, zone: NormalizedDetectionZone): boolean {
@@ -228,6 +244,7 @@ export class DetectionEventManager {
   private needsEventThumbnail = false;
 
   private segmentFaceTrackIds = new Map<string, number>();
+  private segmentFaceSlots = new Map<number, FaceSlot>();
   private segmentPlateAttrIndex = new Map<string, number>();
   private segmentPlateReads = new Set<string>();
   private eventPlateVotes = new Map<string, PlateVoteTracker>();
@@ -387,8 +404,9 @@ export class DetectionEventManager {
   }
 
   public acceptFaceVectors(faces: TrackedFaceDetection[], model: string, capturedAt: number): void {
+    const together: number[] = [];
     for (const face of faces) {
-      if (face.embedding?.length) this.acceptVector(capturedAt, () => this.attachFace(face, model));
+      if (face.embedding?.length) this.acceptVector(capturedAt, () => this.attachFace(face, model, together));
     }
   }
 
@@ -800,7 +818,8 @@ export class DetectionEventManager {
     }
 
     this.faceMinConfidence = data.faceMinConfidence ?? 0;
-    for (const face of data.faces) this.attachFace(face, data.faceEmbeddingModel);
+    const together: number[] = [];
+    for (const face of data.faces) this.attachFace(face, data.faceEmbeddingModel, together);
 
     this.plateVotingActive = data.plateVoting !== false;
 
@@ -874,7 +893,7 @@ export class DetectionEventManager {
     this.attachUncountedClips();
   }
 
-  private attachFace(face: TrackedFaceDetection, model: string | undefined): void {
+  private attachFace(face: TrackedFaceDetection, model: string | undefined, together?: number[]): void {
     if (!this.activeSegment || face.confidence < this.faceMinConfidence) return;
     if (!face.identity && !face.embedding?.length) return;
 
@@ -884,12 +903,20 @@ export class DetectionEventManager {
     // scene spreads such faces over many image cells), and a name a tracked
     // face already carries is that person
     const tracked = face.parentTrackId !== undefined;
-    if (!tracked && face.identity && this.activeSegment.attributes.some((a) => a.type === 'face' && a.label === face.identity)) return;
-    const bucket = tracked ? `t${face.parentTrackId}` : `untracked:${face.identity ?? ''}`;
+    const note = faceNote(face);
+    const shared = note?.shared;
+    const carriesName = (a: RecordedAttribute) => a.type === 'face' && a.label === face.identity && (shared === undefined || a.parentTrackId === shared);
+    const bucket = faceBucket(face, shared, note?.epoch ?? 0);
     const index = this.segmentFaceTrackIds.get(bucket);
+    // a face of two in one box keeps taking sharper reads into its own slot
+    const ownSlot = shared !== undefined && index !== undefined;
+    if (!tracked && !ownSlot && face.identity && this.activeSegment.attributes.some(carriesName)) return;
     if (index === undefined) {
-      this.segmentFaceTrackIds.set(bucket, this.activeSegment.attributes.length);
-      this.pushAttribute({ type: 'face', label: face.identity ?? 'unknown', confidence: face.confidence, parentTrackId: face.parentTrackId }, this.heldFace(face, model));
+      const slotIndex = this.activeSegment.attributes.length;
+      this.segmentFaceTrackIds.set(bucket, slotIndex);
+      const parentTrackId = face.parentTrackId ?? shared;
+      this.pushAttribute({ type: 'face', label: face.identity ?? 'unknown', confidence: face.confidence, parentTrackId, unlisted: true }, this.heldFace(face, model));
+      this.noteFaceSlot(slotIndex, face, together);
       return;
     }
 
@@ -898,9 +925,56 @@ export class DetectionEventManager {
     // a track's slot carries the name the track settled on last, a vector may also take it back
     if (tracked && (face.identity || face.embedding?.length)) existing.label = face.identity ?? 'unknown';
     else if (face.identity && existing.label === 'unknown') existing.label = face.identity;
+    this.noteFaceSlot(index, face, together);
     if (!this.betterFace(face, existing, this.heldAttributes[index])) return;
     existing.confidence = face.confidence;
     this.heldAttributes[index] = this.heldFace(face, model);
+  }
+
+  private noteFaceSlot(index: number, face: TrackedFaceDetection, together: number[] | undefined): void {
+    const attributes = this.activeSegment?.attributes;
+    if (!attributes?.[index]) return;
+    let slot = this.segmentFaceSlots.get(index);
+    if (!slot) {
+      slot = { trackId: attributes[index].parentTrackId, count: 0, listed: false, together: new Set() };
+      this.segmentFaceSlots.set(index, slot);
+    }
+    if (face.embedding?.length && (!slot.sum || slot.sum.length === face.embedding.length)) {
+      const vector = unitVector(face.embedding);
+      slot.sum = slot.sum ? slot.sum.map((value, i) => value + vector[i]) : vector;
+      slot.count++;
+    }
+    if (together) {
+      for (const other of together) {
+        if (other === index) continue;
+        slot.together.add(other);
+        this.segmentFaceSlots.get(other)?.together.add(index);
+      }
+      if (!together.includes(index)) together.push(index);
+    }
+    this.listFaceSlots();
+  }
+
+  private listFaceSlots(): void {
+    const attributes = this.activeSegment?.attributes;
+    if (!attributes) return;
+    const listed = [...this.segmentFaceSlots].filter(([, slot]) => slot.listed);
+    for (const [index, slot] of this.segmentFaceSlots) {
+      if (slot.listed) continue;
+      const label = attributes[index]?.label;
+      const newName = label !== undefined && label !== 'unknown' && !listed.some(([other]) => attributes[other]?.label === label);
+      if (!newName && !listed.every(([other, otherSlot]) => this.distinctFaces(slot, other, otherSlot))) continue;
+      slot.listed = true;
+      delete attributes[index].unlisted;
+      listed.push([index, slot]);
+    }
+  }
+
+  private distinctFaces(slot: FaceSlot, other: number, otherSlot: FaceSlot): boolean {
+    if (slot.together.has(other)) return true;
+    if (slot.trackId !== undefined && otherSlot.trackId !== undefined && this.segmentSeenApart.get(slot.trackId)?.has(otherSlot.trackId)) return true;
+    if (!slot.sum || slot.sum.length !== otherSlot.sum?.length) return false;
+    return slot.count >= FACE_MEAN_MIN_FACES && otherSlot.count >= FACE_MEAN_MIN_FACES && cosine(slot.sum, otherSlot.sum) < FACE_MEANS_APART;
   }
 
   private betterFace(face: TrackedFaceDetection, existing: RecordedAttribute, held: HeldAttribute | undefined): boolean {
@@ -1127,7 +1201,8 @@ export class DetectionEventManager {
 
     for (const [index, attribute] of attributes.entries()) {
       const held = this.heldAttributes[index];
-      const crop = held?.thumbnail ?? this.attributeThumbnailFor(attribute);
+      // an unlisted face ships its picture only once it shows to be someone else
+      const crop = attribute.unlisted ? undefined : (held?.thumbnail ?? this.attributeThumbnailFor(attribute));
 
       if (crop?.length && this.shippedAttributes.get(index) !== crop) {
         this.shippedAttributes.set(index, crop);
@@ -1230,6 +1305,7 @@ export class DetectionEventManager {
     this.heldAttributes = [];
     this.shippedAttributes.clear();
     this.segmentFaceTrackIds.clear();
+    this.segmentFaceSlots.clear();
     this.segmentPlateAttrIndex.clear();
     this.segmentPlateReads.clear();
     this.segmentClassifierTrackIds.clear();
@@ -1309,7 +1385,7 @@ export class DetectionEventManager {
       types: this.activeEvent.types,
       recorderReachable: this.nvr.connected,
       detections: segment?.detections.map((d) => ({ label: d.label, score: d.score, count: d.maxCount, track: d.trackId, moving: d.moving })),
-      attributes: attributes.map((a) => ({ type: a.type, label: a.label, confidence: a.confidence, parent: a.parentTrackId })),
+      attributes: attributes.map((a) => ({ type: a.type, label: a.label, confidence: a.confidence, parent: a.parentTrackId, unlisted: a.unlisted })),
       sent: {
         scene: attachments?.scene ? detectionRecord.picture(this.eventThumbnailAt || at, 'scene', 'event', attachments.scene) : undefined,
         strip: attachments?.strip ? detectionRecord.picture(at, 'moment', 'strip', attachments.strip) : undefined,

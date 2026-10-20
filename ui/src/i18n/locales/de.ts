@@ -2770,6 +2770,7 @@ export default {
       to_check: '{count} zu prüfen',
       mark_filed_under: 'Auch bei {names} hinterlegt, nur bei einer Person behalten',
       mark_unclear: 'Kein klares Gesicht, besser entfernen',
+      mark_unlike: 'Die Erkennung kann es den anderen Bildern nicht zuordnen und nutzt es nicht',
       mark_partly_visible: 'Gesicht nur teilweise sichtbar, nur behalten, wenn bessere Bilder fehlen',
       mark_same_as: 'Doppelt vorhanden, ein Bild reicht',
       assign_filed_under: 'Schon bei {names} hinterlegt. | Schon bei {names} hinterlegt: {affected} von {total} Gesichtern.',

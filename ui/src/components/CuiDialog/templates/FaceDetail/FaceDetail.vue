@@ -42,13 +42,14 @@
           type="button"
           class="absolute top-1 left-1 cui-icon-sm rounded-full cursor-pointer shadow-md"
           :class="mark.danger ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'"
-          :title="mark.text"
+          v-tooltip.top="mark.text"
           :aria-label="mark.text"
           :aria-expanded="openMarkId === img.id"
           @click="toggleMark(img.id)"
         >
           <i-mdi:account-multiple v-if="mark.kind === 'filed_under'" width="100%" height="100%" />
           <i-mdi:blur v-else-if="mark.kind === 'unclear'" width="100%" height="100%" />
+          <i-mdi:account-question v-else-if="mark.kind === 'unlike'" width="100%" height="100%" />
           <i-mdi:circle-half-full v-else-if="mark.kind === 'partly_visible'" width="100%" height="100%" />
           <i-mdi:content-copy v-else width="100%" height="100%" />
         </button>
@@ -86,6 +87,7 @@ function markOf(img: FaceDetailFaceImage): FaceDetailMark | undefined {
     return { kind: 'filed_under', text: t('views.faces.mark_filed_under', { names: img.alsoFiledUnder.join(', ') }), danger: true };
   }
   if (clarity < FACE_CLARITY_UNCLEAR) return { kind: 'unclear', text: t('views.faces.mark_unclear'), danger: true };
+  if (img.unlike) return { kind: 'unlike', text: t('views.faces.mark_unlike'), danger: false };
   if (clarity < FACE_CLARITY_CLEAR) return { kind: 'partly_visible', text: t('views.faces.mark_partly_visible'), danger: false };
   if (img.sameAs) return { kind: 'same_as', text: t('views.faces.mark_same_as'), danger: false };
   return undefined;

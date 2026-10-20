@@ -2750,6 +2750,7 @@ export default {
       to_check: '{count} to check',
       mark_filed_under: 'Also filed under {names}, keep it for one person',
       mark_unclear: 'No clear face, better remove it',
+      mark_unlike: "Recognition can't link it to the other pictures and doesn't use it",
       mark_partly_visible: 'Face partly visible, keep it only if better pictures are missing',
       mark_same_as: 'Same as another picture, one is enough',
       assign_filed_under: 'Already filed under {names}. | Already filed under {names}: {affected} of {total} faces.',

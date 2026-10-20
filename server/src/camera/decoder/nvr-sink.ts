@@ -14,6 +14,7 @@ export interface RecordedDetection extends EventDetection {
 
 export interface RecordedAttribute extends EventAttribute {
   parentTrackId?: number;
+  unlisted?: boolean;
   embedding?: number[];
   embeddingModel?: string;
   clipEmbedding?: number[];
