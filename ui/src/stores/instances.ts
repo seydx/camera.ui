@@ -3,12 +3,14 @@ import { clearEventDataCache, resetEventStore } from '@camera.ui/nvr';
 
 import { createInstanceFn, deleteInstanceFn, getInstancesFn, isRequires2fa, loginToRemoteFn, toggleFavoriteFn, updateInstanceFn } from '@/api/routes/instances.js';
 import InstanceTwoFactorPrompt from '@/components/CuiDialog/templates/InstanceTwoFactorPrompt/InstanceTwoFactorPrompt.vue';
+import { createStorageAdapter } from '@/connection/adapters/storage.js';
 import { getConnection, instanceOverride } from '@/connection/instance.js';
+import { isCapacitor } from '@/connection/runtime.js';
 import { i18n } from '@/i18n/index.js';
 import router, { resolveLandingPage } from '@/router/index.js';
 
 import type { CreateInstancePayload, UpdateInstancePayload } from '@/api/routes/instances.js';
-import type { InstanceEntry, InstanceTokens, RedirectInfo } from '@/components/CuiInstanceSwitcher/types.js';
+import type { InstanceEntry, InstanceTokenEntry, InstanceTokens, RedirectInfo } from '@/components/CuiInstanceSwitcher/types.js';
 import type { Endpoint, Tokens } from '@camera.ui/transport';
 import type { DBInstance, UserData } from '@shared/types';
 
@@ -16,8 +18,10 @@ const SWITCH_TIMEOUT_MS = 30_000;
 const PROBE_TIMEOUT_MS = 5_000;
 const HOME_SLOT = '__home__';
 const LOCALHOST_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+const SLOT_SECRET_PREFIX = 'instanceTokens.';
 
 const log = useLogger('Instances');
+const slotSecrets = isCapacitor ? createStorageAdapter() : null;
 
 async function probeInstanceReachability(url: string, externalSignal?: AbortSignal): Promise<boolean> {
   try {
@@ -75,6 +79,7 @@ export const useInstanceStore = defineStore('instances', () => {
   const switchTargetName = ref<string | null>(null);
   const switchKey = ref(0);
   let _switchGeneration = 0;
+  const slotTokenCache = new Map<string, Tokens>();
 
   const serverHomeId = ref<string | null>(null);
   const serverInstances = ref<DBInstance[]>([]);
@@ -176,6 +181,7 @@ export const useInstanceStore = defineStore('instances', () => {
     await deleteInstanceFn(id);
     serverInstances.value = serverInstances.value.filter((si) => si.id !== id);
     delete instanceTokens.value[id];
+    forgetSlotSecret(id);
   }
 
   async function updateInstance(id: string, payload: UpdateInstancePayload): Promise<void> {
@@ -197,12 +203,38 @@ export const useInstanceStore = defineStore('instances', () => {
       return;
     }
     const slot = activeId.value ?? HOME_SLOT;
-    instanceTokens.value[slot] = {
+    writeSlot(slot, {
       userData: serializeUserData(target.tokens, authStore.user ?? undefined),
       lastConnectedAt: Date.now(),
       url: target.endpoint.url,
-    };
+    });
     log.debug('[save-tokens]', `slot=${slot} url=${target.endpoint.url}`);
+  }
+
+  function writeSlot(slot: string, entry: InstanceTokenEntry): void {
+    instanceTokens.value[slot] = entry;
+    if (!slotSecrets) return;
+    if (!entry.userData?.access_token) {
+      forgetSlotSecret(slot);
+      return;
+    }
+    const access = entry.userData.access_token;
+    const tokens = tokensFromUserData(entry.userData);
+    slotTokenCache.set(slot, tokens);
+    // blank the plain copy only once secure storage has it, a failed write keeps the slot usable
+    Promise.resolve(slotSecrets.set(SLOT_SECRET_PREFIX + slot, JSON.stringify(tokens)))
+      .then(() => {
+        const current = instanceTokens.value[slot];
+        if (!current?.userData || current.userData.access_token !== access) return;
+        instanceTokens.value[slot] = { ...current, userData: { ...current.userData, access_token: '', refresh_token: '' } };
+      })
+      .catch((err) => log.warn('[slot-secret]', `write failed slot=${slot}`, err));
+  }
+
+  function forgetSlotSecret(slot: string): void {
+    slotTokenCache.delete(slot);
+    if (!slotSecrets) return;
+    Promise.resolve(slotSecrets.del(SLOT_SECRET_PREFIX + slot)).catch((err) => log.warn('[slot-secret]', `delete failed slot=${slot}`, err));
   }
 
   function restoreActiveOverride(): void {
@@ -294,7 +326,7 @@ export const useInstanceStore = defineStore('instances', () => {
 
       // 4. Resolve final tokens (fresh > cached).
       const slot = targetId ?? HOME_SLOT;
-      const tokens = freshUserData ? tokensFromUserData(freshUserData) : slotTokens(slot);
+      const tokens = freshUserData ? tokensFromUserData(freshUserData) : await slotTokens(slot);
       log.debug('[switch]', `tokens source: ${freshUserData ? 'fresh' : tokens ? 'cached' : 'none'} (slot=${slot})`);
 
       // 5. Mixed-content + cross-localhost cases need a full-page URL handoff.
@@ -327,11 +359,11 @@ export const useInstanceStore = defineStore('instances', () => {
 
       // 7. Cache the resolved tokens + user identity.
       if (tokens && freshUserData) {
-        instanceTokens.value[slot] = {
+        writeSlot(slot, {
           userData: freshUserData,
           lastConnectedAt: Date.now(),
           url: target.url,
-        };
+        });
         authStore.user = {
           _id: freshUserData._id,
           username: freshUserData.username,
@@ -389,10 +421,22 @@ export const useInstanceStore = defineStore('instances', () => {
     }
   }
 
-  function slotTokens(slot: string): Tokens | null {
+  async function slotTokens(slot: string): Promise<Tokens | null> {
     const entry = instanceTokens.value[slot];
-    if (!entry?.userData?.access_token) return null;
-    return tokensFromUserData(entry.userData);
+    if (entry?.userData?.access_token) return tokensFromUserData(entry.userData);
+    if (!slotSecrets || !entry) return null;
+    const cached = slotTokenCache.get(slot);
+    if (cached) return cached;
+    try {
+      const raw = await slotSecrets.get(SLOT_SECRET_PREFIX + slot);
+      const tokens = raw ? (JSON.parse(raw) as Tokens) : null;
+      if (!tokens?.access) return null;
+      slotTokenCache.set(slot, tokens);
+      return tokens;
+    } catch (err) {
+      log.warn('[slot-secret]', `read failed slot=${slot}`, err);
+      return null;
+    }
   }
 
   function needsUrlHandoff(url: string): boolean {
@@ -490,6 +534,7 @@ export const useInstanceStore = defineStore('instances', () => {
   }
 
   function reset(): void {
+    for (const slot of Object.keys(instanceTokens.value)) forgetSlotSecret(slot);
     instanceTokens.value = {};
     activeId.value = null;
     instanceOverride.value = null;
@@ -497,6 +542,12 @@ export const useInstanceStore = defineStore('instances', () => {
     serverInstances.value = [];
     serverHomeId.value = null;
     log.debug('[reset]', 'store cleared');
+  }
+
+  if (slotSecrets) {
+    for (const [slot, entry] of Object.entries(instanceTokens.value)) {
+      if (entry.userData?.access_token) writeSlot(slot, entry);
+    }
   }
 
   return {
