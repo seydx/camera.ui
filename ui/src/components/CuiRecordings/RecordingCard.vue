@@ -56,11 +56,11 @@
             :title="$t('views.recordings.more_actions')"
             type="button"
             class="card-icon-button w-5 h-5 shrink-0"
-            :disabled="isDownloading || reassignBusy"
+            :disabled="isDownloading || reassignBusy || deleteBusy"
             @click.stop="openCardMenu"
             @mouseenter="stopPreview"
           >
-            <i-svg-spinners:ring-resize v-if="isDownloading || reassignBusy" class="w-3 h-3 text-white" />
+            <i-svg-spinners:ring-resize v-if="isDownloading || reassignBusy || deleteBusy" class="w-3 h-3 text-white" />
             <i-tabler:dots-vertical v-else class="w-3 h-3 text-white" />
           </button>
         </div>
@@ -167,6 +167,8 @@ import {
   useEventPictures,
   useEventStore,
 } from '@camera.ui/nvr';
+import DeleteIcon from '~icons/mdi/delete-outline';
+import DeleteRecordingIcon from '~icons/mdi/movie-remove-outline';
 import AssistantIcon from '~icons/mdi/robot-outline';
 import DownloadIcon from '~icons/tabler/download';
 import TraceIcon from '~icons/tabler/list-search';
@@ -209,6 +211,7 @@ const MORE_PX = 22;
 const CHECKBOX_PX = 28;
 const GROUP_GAP_PX = 8;
 const FOOTER_STEP_PX = 8;
+const EVENT_FOOTAGE_PAD_MS = 30_000;
 
 const { icons: eventIcons } = resolveEventIcons();
 
@@ -230,6 +233,7 @@ const isDownloading = ref(false);
 const activeImageIndexRaw = ref(0);
 const favoriteOverride = ref<boolean | null>(null);
 const reassignBusy = ref(false);
+const deleteBusy = ref(false);
 const focusFace = ref<FaceTarget>();
 const footerWidth = ref(0);
 
@@ -335,6 +339,8 @@ const hiddenThumbnailCount = computed(() => stripThumbnails.value.length - foote
 const formatDateTime = computed(() => formatCardTime(shownSegment.value?.firstSeen ?? props.event.thumbnailAt ?? props.event.startTime));
 
 const canDownload = computed(() => Boolean(nvrPluginRef.value && props.event.endTime && props.event.hasRecording !== false));
+const canDeleteEvent = computed(() => Boolean(isAdmin.value && nvrPluginRef.value && props.event.state === 'ended'));
+const canDeleteRecording = computed(() => canDeleteEvent.value && canDownload.value);
 
 const previewIndicator = computed(() => {
   if (!preview) return '';
@@ -377,6 +383,30 @@ const cardMenuItems = computed<MenuItem[]>(() => {
       icon: DownloadIcon,
       loading: isDownloading.value,
       onClick: () => handleDownload(),
+    });
+  }
+  if (canDeleteEvent.value) {
+    items.push({
+      key: 'delete_event',
+      label: t('views.recordings.delete_event'),
+      icon: DeleteIcon,
+      iconProps: { class: 'text-red-500' },
+      labelProps: { class: 'text-red-500' },
+      buttonProps: { severity: 'danger' },
+      loading: deleteBusy.value,
+      onClick: () => confirmDelete(t('views.recordings.delete_event_confirm'), deleteEvent),
+    });
+  }
+  if (canDeleteRecording.value) {
+    items.push({
+      key: 'delete_recording',
+      label: t('views.recordings.delete_recording'),
+      icon: DeleteRecordingIcon,
+      iconProps: { class: 'text-red-500' },
+      labelProps: { class: 'text-red-500' },
+      buttonProps: { severity: 'danger' },
+      loading: deleteBusy.value,
+      onClick: () => confirmDelete(t('views.recordings.delete_recording_confirm'), deleteRecording),
     });
   }
   return items;
@@ -547,6 +577,62 @@ async function handleDownload(): Promise<void> {
     toast.add({ severity: 'error', summary: t('views.recordings.download_failed'), detail: extractErrorMessage(error), life: 5000 });
   } finally {
     isDownloading.value = false;
+  }
+}
+
+function confirmDelete(contentText: string, onConfirm: () => Promise<void>): void {
+  dialog.openTextDialog({
+    data: {
+      title: t('components.dialog.title.confirm'),
+      contentText,
+      confirmText: t('components.form.button.remove'),
+      confirmButtonProps: {
+        severity: 'danger',
+      },
+    },
+    onConfirm,
+  });
+}
+
+async function deleteEvent(): Promise<void> {
+  if (deleteBusy.value) return;
+  const nvrPlugin = nvrPluginRef.value as { deleteEvents?: (eventIds: string[]) => Promise<void> } | undefined;
+  if (!nvrPlugin?.deleteEvents) return;
+
+  deleteBusy.value = true;
+  try {
+    await nvrPlugin.deleteEvents([props.event.id]);
+    toast.add({ severity: 'success', detail: t('views.recordings.delete_event_done'), life: 3000 });
+  } catch (error) {
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 5000 });
+  } finally {
+    deleteBusy.value = false;
+  }
+}
+
+async function deleteRecording(): Promise<void> {
+  if (deleteBusy.value || !props.event.endTime) return;
+  const nvrPlugin = nvrPluginRef.value as
+    { nvrDeleteRange?: (cameraId: string, startUs: number, endUs: number) => Promise<{ startMs: number; endMs: number }> } | undefined;
+  if (!nvrPlugin?.nvrDeleteRange) return;
+
+  deleteBusy.value = true;
+  try {
+    const result = await nvrPlugin.nvrDeleteRange(
+      props.event.cameraId,
+      (props.event.startTime - EVENT_FOOTAGE_PAD_MS) * 1000,
+      (props.event.endTime + EVENT_FOOTAGE_PAD_MS) * 1000,
+    );
+    if (result.endMs > result.startMs) {
+      toast.add({ severity: 'success', detail: t('views.recordings.delete_recording_done'), life: 3000 });
+    } else {
+      toast.add({ severity: 'info', detail: t('views.recordings.delete_recording_too_recent'), life: 5000 });
+    }
+  } catch (error) {
+    log.error('Recording delete failed:', error);
+    toast.add({ severity: 'error', detail: extractErrorMessage(error), life: 5000 });
+  } finally {
+    deleteBusy.value = false;
   }
 }
 
