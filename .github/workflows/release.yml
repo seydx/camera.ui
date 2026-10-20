@@ -27,12 +27,22 @@ jobs:
 
       - name: Resolve package + version from tag
         id: r
+        env:
+          SERVER_STABLE_DIST_TAG: ${{ vars.SERVER_STABLE_DIST_TAG }}
         run: |
           ref="${GITHUB_REF_NAME}"      # service-v1.2.3 | server-v1.2.3-beta.1
           dir="${ref%%-v*}"             # service | server
           version="${ref#*-v}"          # 1.2.3   | 1.2.3-beta.1
           case "$dir" in service|server) ;; *) echo "::error::bad release tag '$ref'"; exit 1 ;; esac
-          if [[ "$version" == *-* ]]; then preid="${version#*-}"; tag="${preid%%.*}"; else tag="latest"; fi
+          if [[ "$version" == *-* ]]; then
+            preid="${version#*-}"; tag="${preid%%.*}"
+          elif [ "$dir" = "server" ] && [ -n "$SERVER_STABLE_DIST_TAG" ]; then
+            tag="$SERVER_STABLE_DIST_TAG"
+            if ! [[ "$tag" =~ ^[a-z][a-z0-9-]*$ ]] || [ "$tag" = "beta" ]; then echo "::error::bad SERVER_STABLE_DIST_TAG '$tag'"; exit 1; fi
+            echo "::notice::server $version goes out under '$tag', run 'npm dist-tag add @camera.ui/server@$version latest' once the desktop app feed has it"
+          else
+            tag="latest"
+          fi
           printf 'dir=%s\nversion=%s\ntag=%s\n' "$dir" "$version" "$tag" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v7
@@ -48,6 +58,13 @@ jobs:
             echo "::error::tag version $want does not match ${{ steps.r.outputs.dir }}/package.json $have"
             exit 1
           fi
+
+      - name: Check out the docs for the assistant index
+        if: steps.r.outputs.dir == 'server'
+        uses: actions/checkout@v7
+        with:
+          repository: cameraui/docs
+          path: .docs-src
 
       - name: Setup Python
         if: steps.r.outputs.dir == 'server'
@@ -84,6 +101,8 @@ jobs:
 
       - name: Publish to npm (provenance via OIDC)
         working-directory: ${{ steps.r.outputs.dir }}
+        env:
+          CAMERA_UI_DOCS_DIR: ${{ steps.r.outputs.dir == 'server' && format('{0}/.docs-src', github.workspace) || '' }}
         run: |
           npm install -g npm@11.18.0
           npm publish --provenance --tag ${{ steps.r.outputs.tag }}
@@ -93,7 +112,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.r.outputs.version }}
-          NPM_TAG: ${{ steps.r.outputs.tag }}
           TAG: ${{ github.ref_name }}
         run: |
           notes="$(mktemp)"
@@ -121,7 +139,7 @@ jobs:
           [ -s "$notes" ] || echo "See the [changelog](https://github.com/${GITHUB_REPOSITORY}/blob/master/CHANGELOG.md)." > "$notes"
 
           prerelease=""
-          [ "$NPM_TAG" != "latest" ] && prerelease="--prerelease"
+          [[ "$VERSION" == *-* ]] && prerelease="--prerelease"
 
           gh release create "$TAG" \
             --title "camera.ui v${VERSION}" \
