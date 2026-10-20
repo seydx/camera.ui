@@ -40,7 +40,9 @@ export class PythonPluginRuntime extends BasePluginRuntime {
       return;
     }
 
-    await this.updatePython();
+    await this.updatePython(signal);
+    // provisioning takes minutes, a stop meanwhile must not leave an unwatched child
+    signal?.throwIfAborted();
 
     return new Promise<void>((resolve, reject) => {
       this.logger.log(`Starting plugin: ${this.plugin.displayName} (${this.plugin.pluginName}.${this.plugin.info.installedVersion})...`);
@@ -77,17 +79,21 @@ export class PythonPluginRuntime extends BasePluginRuntime {
     });
   }
 
-  private async updatePython(): Promise<void> {
+  public async prepare(signal?: AbortSignal): Promise<void> {
+    await this.updatePython(signal);
+  }
+
+  private async updatePython(signal?: AbortSignal): Promise<void> {
     if (this.plugin.isPython) {
       if (!this.pluginManager) {
         await installWorkerServerEnv(this.py);
       }
 
-      await this.py.installPluginPython();
+      await this.py.installPluginPython(signal);
 
       const requirementsPath = join(this.plugin.installPath, 'requirements.txt');
       if (existsSync(requirementsPath) && statSync(requirementsPath).size > 0) {
-        await this.py.updatePluginDependencies(requirementsPath);
+        await this.py.updatePluginDependencies(requirementsPath, signal);
       }
 
       // pluginManager only exists on the master; on a worker installPluginPython

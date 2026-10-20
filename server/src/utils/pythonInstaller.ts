@@ -1,6 +1,6 @@
 import { PortablePython } from '@bjia56/portable-python';
 import { copy, ensureDir, remove } from 'fs-extra/esm';
-import { exec } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { platform } from 'node:os';
@@ -8,12 +8,18 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import semver from 'semver';
 
+import { killTree } from '@camera.ui/common/node';
 import { IS_ELECTRON } from '@camera.ui/common/utils';
+
+import { tryInject } from '../container.js';
 
 import type { Logger } from '@camera.ui/common';
 import type { PythonVersion } from '@camera.ui/sdk';
+import type { ChildProcess } from 'node:child_process';
 
 export const DEFAULT_PY_VERSION = '3.11';
+
+const POSIX = process.platform !== 'win32';
 
 export class PythonInstaller {
   static readonly versions: PythonVersion[] = ['3.12', '3.11'];
@@ -24,6 +30,7 @@ export class PythonInstaller {
 
   private readonly pythonDir: string;
   private needsUpdate = false;
+  private signal?: AbortSignal;
 
   get isInstalled(): boolean {
     return this.python.isInstalled();
@@ -114,7 +121,8 @@ export class PythonInstaller {
     }
   }
 
-  public async installPluginPython(): Promise<void> {
+  public async installPluginPython(signal?: AbortSignal): Promise<void> {
+    this.signal = signal;
     await this.install('plugin');
     await this.cleanStaleVenvs();
     await this.createVenv();
@@ -128,7 +136,8 @@ export class PythonInstaller {
     await this.removeVenv();
   }
 
-  public async updatePluginDependencies(requirementsPath: string): Promise<void> {
+  public async updatePluginDependencies(requirementsPath: string, signal?: AbortSignal): Promise<void> {
+    this.signal = signal;
     await this.ensureVenv();
 
     const { needsUpdate, requirementsLockPath, requirementsContent, lockContent, updatedLockContent } = await this.updateRequirements(requirementsPath);
@@ -310,7 +319,7 @@ export class PythonInstaller {
     const command = args.join(' ');
     this.logger.trace(`Installing requirements command: ${command}`);
 
-    const child = exec(command, { env: { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' } });
+    const child = this.run(command, pythonPath, { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' }, pythonPath !== this.serverPythonPath);
 
     const stdoutLine = createInterface({
       input: child.stdout!,
@@ -359,7 +368,7 @@ export class PythonInstaller {
     const command = args.join(' ');
     this.logger.trace(`Installing packages command: ${command}`);
 
-    const child = exec(command, { env: { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' } });
+    const child = this.run(command, pythonPath, { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' }, pythonPath !== this.serverPythonPath);
 
     const stdoutLine = createInterface({
       input: child.stdout!,
@@ -406,7 +415,7 @@ export class PythonInstaller {
     const command = args.join(' ');
     this.logger.trace(`Uninstalling packages command: ${command}`);
 
-    const child = exec(command, { env: { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' } });
+    const child = this.run(command, pythonPath, { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' }, pythonPath !== this.serverPythonPath);
 
     const stdoutLine = createInterface({
       input: child.stdout!,
@@ -455,7 +464,7 @@ export class PythonInstaller {
     const command = args.join(' ');
     this.logger.trace(`Reinstalling packages command: ${command}`);
 
-    const child = exec(command, { env: { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' } });
+    const child = this.run(command, pythonPath, { ...process.env, PIP_DISABLE_PIP_VERSION_CHECK: '1' }, pythonPath !== this.serverPythonPath);
 
     const stdoutLine = createInterface({
       input: child.stdout!,
@@ -535,7 +544,7 @@ export class PythonInstaller {
     const command = args.join(' ');
     this.logger.trace(`Creating venv using virtualenv: ${command}`);
 
-    const child = exec(command, { env: { ...process.env, VIRTUALENV_PYTHON: this.serverPythonPath } });
+    const child = this.run(command, this.serverPythonPath, { ...process.env, VIRTUALENV_PYTHON: this.serverPythonPath }, true);
 
     const stdoutLine = createInterface({
       input: child.stdout!,
@@ -563,10 +572,37 @@ export class PythonInstaller {
         if (code === 0) {
           _resolve();
         } else {
-          _reject(new Error(`Virtualenv creation process exited with code ${code}`));
+          // a half-built venv would count as present on the next start
+          rm(this.venvPath!, { recursive: true, force: true }).finally(() => _reject(new Error(`Virtualenv creation process exited with code ${code}`)));
         }
       });
     });
+  }
+
+  private run(command: string, python: string, env: NodeJS.ProcessEnv, abortable: boolean): ChildProcess {
+    const child = spawn(command, { shell: true, env, detached: POSIX, windowsHide: true });
+    const pid = child.pid;
+    if (!pid) {
+      return child;
+    }
+
+    const entry = { pid, pgid: POSIX ? pid : undefined };
+    const configService = tryInject('configService');
+    configService?.addProcess({ ...entry, startTime: Date.now(), command: python, args: [], role: 'provision' });
+
+    // an install interrupted on the shared base python would break every plugin
+    const signal = abortable ? this.signal : undefined;
+    const abort = () => killTree(entry).catch(() => {});
+    signal?.addEventListener('abort', abort, { once: true });
+    child.once('exit', () => {
+      signal?.removeEventListener('abort', abort);
+      configService?.removeProcessByPID(pid);
+    });
+    if (signal?.aborted) {
+      abort();
+    }
+
+    return child;
   }
 
   private async removeVenv(): Promise<void> {
