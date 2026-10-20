@@ -1923,6 +1923,12 @@ export default {
     connected_wan: 'Connected via internet',
     unreachable: 'Cannot reach your home server',
     pick_server: 'Pick another server',
+    not_connected: 'Not connected. Nothing was sent.',
+    outdated_title: 'Update recommended',
+    server_outdated: 'This app needs camera.ui {required} or newer, the server runs {found}.',
+    nvr_outdated: 'This app needs NVR plugin {required} or newer, the server has {found}.',
+    outdated_hint: 'Some features may not work until then.',
+    outdated_dismiss: 'Got it',
   },
   restore: {
     title: 'Restoring backup',

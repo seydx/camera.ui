@@ -385,6 +385,7 @@ declare global {
   const useScrollHide: typeof import('../composables/useScrollHide').useScrollHide
   const useScrollLock: typeof import('@vueuse/core').useScrollLock
   const useSensorsSocket: typeof import('../composables/sockets/useSensorsSocket').useSensorsSocket
+  const useServerCompatibility: typeof import('../composables/useServerCompatibility').useServerCompatibility
   const useServerRestart: typeof import('../composables/useServerRestart').useServerRestart
   const useServerSocket: typeof import('../composables/sockets/useServerSocket').useServerSocket
   const useSessionStorage: typeof import('@vueuse/core').useSessionStorage
@@ -976,6 +977,7 @@ declare module 'vue' {
     readonly useScrollHide: UnwrapRef<typeof import('../composables/useScrollHide')['useScrollHide']>
     readonly useScrollLock: UnwrapRef<typeof import('@vueuse/core')['useScrollLock']>
     readonly useSensorsSocket: UnwrapRef<typeof import('../composables/sockets/useSensorsSocket')['useSensorsSocket']>
+    readonly useServerCompatibility: UnwrapRef<typeof import('../composables/useServerCompatibility')['useServerCompatibility']>
     readonly useServerRestart: UnwrapRef<typeof import('../composables/useServerRestart')['useServerRestart']>
     readonly useServerSocket: UnwrapRef<typeof import('../composables/sockets/useServerSocket')['useServerSocket']>
     readonly useSessionStorage: UnwrapRef<typeof import('@vueuse/core')['useSessionStorage']>

@@ -1940,6 +1940,12 @@ export default {
     connected_wan: 'Verbunden über Internet',
     unreachable: 'Server nicht erreichbar',
     pick_server: 'Anderen Server wählen',
+    not_connected: 'Nicht verbunden. Es wurde nichts gesendet.',
+    outdated_title: 'Update empfohlen',
+    server_outdated: 'Diese App braucht camera.ui {required} oder neuer, auf dem Server läuft {found}.',
+    nvr_outdated: 'Diese App braucht das NVR-Plugin {required} oder neuer, der Server hat {found}.',
+    outdated_hint: 'Bis dahin funktioniert nicht alles.',
+    outdated_dismiss: 'Verstanden',
   },
   restore: {
     title: 'Backup wiederherstellen',

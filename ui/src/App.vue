@@ -111,6 +111,8 @@ const { isElectronApp } = useElectron();
 useLocaleStore();
 setupAppUpdate();
 usePushHandler();
+useServerCompatibility();
+useBackupRestoreDialog(() => !showLoadingScreen.value);
 useElectronNotifications();
 useElectronDeepLinks();
 registerKeyboardInset();

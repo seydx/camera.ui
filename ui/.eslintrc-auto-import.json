@@ -470,6 +470,7 @@
     "useScrollHide": true,
     "useScrollLock": true,
     "useSensorsSocket": true,
+    "useServerCompatibility": true,
     "useServerRestart": true,
     "useServerSocket": true,
     "useSessionStorage": true,
