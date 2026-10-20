@@ -5,6 +5,7 @@ import { detectionRecord } from './debug/detection-record.js';
 import { iou } from './detection-window.js';
 import { worldTrace } from './event-trace.js';
 import { MIN_PLATE_LENGTH, normalizePlateText } from './plate-vote.js';
+import { OBJECT_MERGE_IOU_THRESHOLD } from './types.js';
 
 import type {
   MergeContainment,
@@ -34,7 +35,6 @@ import type { TraceAttest, TraceTick } from './event-trace.js';
 
 const NMS_IOU_THRESHOLD = 0.45;
 const NMS_CONFIDENCE_THRESHOLD = 0.25;
-const OBJECT_MERGE_IOU_THRESHOLD = 0.3;
 const OBJECT_MERGE_CLOSE_THRESHOLD = 0.0;
 const PERSON_MERGE_CONTAINMENT: MergeContainment = { labels: ['person'], minShare: 0.85 };
 const MOTION_MERGE_IOU_THRESHOLD = 0.01;

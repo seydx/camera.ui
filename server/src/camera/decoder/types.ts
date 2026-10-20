@@ -40,6 +40,7 @@ export const MOTION_WIDTH_MAP: Record<MotionResolution, number> = {
 };
 
 export const DETECT_TIMEOUT_MS = 30_000;
+export const OBJECT_MERGE_IOU_THRESHOLD = 0.3;
 
 export interface WorkerToMainMessage {
   message: 'started';

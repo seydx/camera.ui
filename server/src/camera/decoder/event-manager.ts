@@ -4,11 +4,12 @@ import { NamespaceManager } from '../../rpc/namespaces.js';
 import { jpegSize } from '../../utils/image.js';
 import { boxAnchorInPolygon, boxInsidePolygon, boxIntersectsPolygon } from '../utils/filter.js';
 import { detectionRecord } from './debug/detection-record.js';
+import { iou } from './detection-window.js';
 import { EventTraceCollector } from './event-trace.js';
 import { leanEvent, NvrSink } from './nvr-sink.js';
 import { MAX_UNTRACKED_PLATES, normalizePlateText, PlateVoteTracker } from './plate-vote.js';
 import { TrainingSink } from './training-sink.js';
-import { isFullFrameBox, isMovingTrack } from './types.js';
+import { isFullFrameBox, isMovingTrack, OBJECT_MERGE_IOU_THRESHOLD } from './types.js';
 
 import type { RPCClient } from '@camera.ui/rpc';
 import type {
@@ -44,7 +45,9 @@ export interface TrackedSecondary {
 export interface TrackedFaceDetection extends ServerFaceDetection, TrackedSecondary {}
 export interface TrackedLicensePlateDetection extends LicensePlateDetection, TrackedSecondary {}
 export interface TrackedClassifierDetection extends ClassifierDetection, TrackedSecondary {}
-export interface TrackedClipEmbedding extends ClipEmbedding, TrackedSecondary {}
+export interface TrackedClipEmbedding extends ClipEmbedding, TrackedSecondary {
+  onEdge?: boolean;
+}
 
 export interface TrackedPersonEmbedding {
   trackId: number;
@@ -172,6 +175,25 @@ interface ThumbnailCandidate {
   hasAttribute: boolean;
 }
 
+interface ClipSlot {
+  index: number;
+  trackId?: number;
+  area: number;
+}
+
+interface UncountedClip {
+  clip: TrackedClipEmbedding;
+  model: string;
+}
+
+interface FaceSlot {
+  trackId?: number;
+  sum?: number[];
+  count: number;
+  listed: boolean;
+  together: Set<number>;
+}
+
 export class DetectionEventManager {
   private static readonly MAX_PLATE_THUMBNAILS = 16;
   private static readonly SEGMENT_LINGER_MS = 10_000;
@@ -210,7 +232,10 @@ export class DetectionEventManager {
   private eventPlateVotes = new Map<string, PlateVoteTracker>();
   private plateVotingActive = true;
   private segmentClassifierTrackIds = new Map<string, number>();
-  private segmentClipLabels = new Map<string, number>();
+  private segmentClipSlots = new Map<string, ClipSlot[]>();
+  private segmentSeenApart = new Map<number, Set<number>>();
+  private uncountedClips: UncountedClip[] = [];
+  private countedAt = 0;
   private trackPersonVectors = new Map<number, HeldPerson>();
 
   private readonly eventSubject: string;
@@ -342,7 +367,7 @@ export class DetectionEventManager {
 
   public acceptClipVectors(clips: TrackedClipEmbedding[], model: string, capturedAt: number): void {
     for (const clip of clips) {
-      if (clip.embedding?.length) this.acceptVector(capturedAt, () => this.attachClip(clip, model));
+      if (clip.embedding?.length) this.acceptVector(capturedAt, () => this.attachCountedClip(clip, model, capturedAt));
     }
   }
 
@@ -599,8 +624,8 @@ export class DetectionEventManager {
   private closeSegment(): void {
     if (!this.activeSegment || !this.activeEvent) return;
 
-    // lastSeen stays on the last real detection: the linger only delays the
-    // decision to close, it is not part of what was seen
+    // lastSeen stays on the last real detection, the linger is not part of what was seen
+    this.attachUncountedClips();
     this.flushPlateFallbacks();
     this.publishSegment('segment-end');
     this.clearSegmentThumbnails();
@@ -632,6 +657,7 @@ export class DetectionEventManager {
     if (!this.activeSegment) return;
 
     this.activeSegment.lastSeen = now;
+    this.noteSeenApart([...data.objects, ...(data.staticObjects ?? [])]);
 
     if (data.objects.length > 0) {
       const labelCounts = new Map<
@@ -826,6 +852,9 @@ export class DetectionEventManager {
     for (const clip of data.clips) {
       if (clip.embedding?.length) this.attachClip(clip, data.clipEmbeddingModel);
     }
+
+    this.countedAt = Date.now();
+    this.attachUncountedClips();
   }
 
   private attachFace(face: TrackedFaceDetection, model: string | undefined): void {
@@ -869,16 +898,57 @@ export class DetectionEventManager {
     return face.quality !== undefined && held?.quality !== undefined ? face.quality > held.quality : face.confidence > (existing.confidence ?? 0);
   }
 
+  private attachCountedClip(clip: TrackedClipEmbedding, model: string, capturedAt: number): void {
+    // the vector can be back before its own tick's objects reached the segment counts
+    if (capturedAt > this.countedAt) {
+      this.uncountedClips.push({ clip, model });
+      return;
+    }
+    this.attachClip(clip, model);
+  }
+
+  private attachUncountedClips(): void {
+    const uncounted = this.uncountedClips;
+    this.uncountedClips = [];
+    for (const { clip, model } of uncounted) this.attachClip(clip, model);
+  }
+
   private attachClip(clip: TrackedClipEmbedding, model: string | undefined): void {
     if (!this.activeSegment) return;
-    // one embedding per subject actually present, not per track: a
-    // re-numbered track is the same person and would otherwise land in the
-    // search index again, while two real people must keep both appearances
-    const stored = this.segmentClipLabels.get(clip.label) ?? 0;
+    const held: HeldAttribute = { clipEmbedding: clip.embedding, clipEmbeddingModel: model };
+    const area = clipArea(clip);
+    const slots = this.segmentClipSlots.get(clip.label) ?? [];
+    const own = clip.parentTrackId === undefined ? undefined : slots.find((slot) => slot.trackId === clip.parentTrackId);
+    if (own) {
+      // an edge-cut box is someone walking in or out, often with another person in it
+      if (clip.onEdge || area < own.area * CLIP_VIEW_GROWTH) return;
+      own.area = area;
+      this.heldAttributes[own.index] = held;
+      return;
+    }
+
+    // one embedding per subject, a re-numbered track is still the same person
+    const trackId = clip.parentTrackId;
     const present = this.activeSegment.detections.find((d) => d.label === clip.label)?.maxCount ?? 1;
-    if (stored >= Math.max(1, present)) return;
-    this.segmentClipLabels.set(clip.label, stored + 1);
-    this.pushAttribute({ type: 'clip', label: clip.label, parentTrackId: clip.parentTrackId }, { clipEmbedding: clip.embedding, clipEmbeddingModel: model });
+    const apart = trackId !== undefined && slots.every((slot) => slot.trackId !== undefined && this.segmentSeenApart.get(slot.trackId)?.has(trackId));
+    if (slots.length >= Math.max(1, present) && !apart) return;
+    slots.push({ index: this.activeSegment.attributes.length, trackId: clip.parentTrackId, area });
+    this.segmentClipSlots.set(clip.label, slots);
+    this.pushAttribute({ type: 'clip', label: clip.label, parentTrackId: clip.parentTrackId }, held);
+  }
+
+  private noteSeenApart(objects: Detection[]): void {
+    for (const a of objects) {
+      const id = (a as { trackId?: number }).trackId;
+      if (id === undefined) continue;
+      for (const b of objects) {
+        const other = (b as { trackId?: number }).trackId;
+        if (other === undefined || other === id || iou(a.box, b.box) >= OBJECT_MERGE_IOU_THRESHOLD) continue;
+        const apart = this.segmentSeenApart.get(id) ?? new Set<number>();
+        apart.add(other);
+        this.segmentSeenApart.set(id, apart);
+      }
+    }
   }
 
   private attachPerson(person: TrackedPersonEmbedding, model: string): void {
@@ -1146,7 +1216,8 @@ export class DetectionEventManager {
     this.segmentPlateAttrIndex.clear();
     this.segmentPlateReads.clear();
     this.segmentClassifierTrackIds.clear();
-    this.segmentClipLabels.clear();
+    this.segmentClipSlots.clear();
+    this.segmentSeenApart.clear();
   }
 
   private offerTrainingCandidate(scene: Buffer, data: ProcessedDetectionData, capturedAt: number): void {

@@ -673,6 +673,8 @@ export class SecondaryStage {
         ...emb,
         box: this.transformBoxToOriginal(emb.box, region),
         parentTrackId,
+        parentBox: region.detection.box,
+        onEdge: this.isOnEdge(region.detection.box),
       }));
       this.coordinator.acceptClipVectors(embeddings, embeddingModel, capturedAt);
     }
