@@ -10,7 +10,7 @@ import { pluginMessageResponseTypeToToastType } from '@/common/utils.js';
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
 import type { UseStorageReturn } from '@camera.ui/browser';
 import type { SchemaConfig } from '@camera.ui/sdk';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { PluginSchemaProps, PluginSchemaStorageType } from './types.js';
 
 const props = defineProps<PluginSchemaProps>();

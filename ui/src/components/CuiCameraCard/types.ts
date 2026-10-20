@@ -3,7 +3,7 @@ import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser'
 import type { EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit } from '@shared/types';
-import type { CardProps } from 'primevue';
+import type { CardProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 export type VideoModeExtended = VideoStreamingMode | 'loading' | 'reconnecting' | 'error' | 'adapting';

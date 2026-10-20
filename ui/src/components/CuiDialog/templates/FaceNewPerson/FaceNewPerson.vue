@@ -22,7 +22,7 @@
 import { FACE_CLARITY_CLEAR, FACE_CLARITY_UNCLEAR } from '@/common/constants.js';
 
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
-import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
+import type { AutoCompleteCompleteEvent } from 'openvue/autocomplete';
 import type { FaceNewPersonProps } from './types.js';
 
 const props = defineProps<FaceNewPersonProps>();

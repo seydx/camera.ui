@@ -1,4 +1,4 @@
-import type { ButtonProps, PopoverProps } from 'primevue';
+import type { ButtonProps, PopoverProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 import type { CuiAvatarProps } from '../CuiAvatar/types.js';

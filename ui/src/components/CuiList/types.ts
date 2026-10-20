@@ -1,4 +1,4 @@
-import type { CardProps } from 'primevue';
+import type { CardProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 export interface CuiListProps {

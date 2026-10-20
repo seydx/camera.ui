@@ -162,7 +162,7 @@ import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { LogSource } from '@/composables/sockets/useLogsSocket.js';
 import type { ITerminalInitOnlyOptions, ITerminalOptions } from '@xterm/xterm';
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 
 const camerasQuery = new CamerasQuery();
 const pluginsQuery = new PluginsQuery();

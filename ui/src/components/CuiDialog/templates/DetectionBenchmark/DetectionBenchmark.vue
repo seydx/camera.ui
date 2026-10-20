@@ -71,7 +71,7 @@ import { FrameWorkerQuery } from '@/api/routes/frameWorkers.js';
 
 import type { CustomDialogComponent, DialogRefProps } from '@/composables/useCuiDialog.js';
 import type { BenchmarkHost, ObjectBenchmarkResult, ObjectBenchmarkRun } from '@shared/types';
-import type { DataTablePassThroughOptions } from 'primevue';
+import type { DataTablePassThroughOptions } from 'openvue';
 import type { DetectionBenchmarkProps } from './types.js';
 
 const props = defineProps<DetectionBenchmarkProps>();

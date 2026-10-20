@@ -1,5 +1,5 @@
 import type { PluginConfig, SchemaConfig } from '@camera.ui/sdk';
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 
 export interface CuiSchemaProps {
   // config: PluginConfig;

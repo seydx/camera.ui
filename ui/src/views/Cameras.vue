@@ -183,9 +183,9 @@ import ConnectionSchemaDialog from '@/components/CuiDialog/templates/ConnectionS
 
 import type { ConfirmCameraProps } from '@/components/CuiDialog/templates/ConfirmCamera/types.js';
 import type { ConnectionSchemaProps } from '@/components/CuiDialog/templates/ConnectionSchema/types.js';
-import type { PassThrough } from '@primevue/core';
+import type { PassThrough } from '@openvue/core';
 import type { DBCamera, DeviceListItem, DeviceStatus } from '@shared/types';
-import type { DataTablePassThroughOptions, DataTableRowClickEvent } from 'primevue';
+import type { DataTablePassThroughOptions, DataTableRowClickEvent } from 'openvue';
 
 const { t } = useI18n();
 const toast = useCuiToast();

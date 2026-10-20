@@ -743,7 +743,7 @@ import type { AssistantScheduleRow } from '@/api/routes/assistant.js';
 import type { AssistantModelFormProps } from '@/components/CuiDialog/templates/AssistantModel/types.js';
 import type { AssistantScheduleModelProps } from '@/components/CuiDialog/templates/AssistantScheduleModel/types.js';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { PassThrough } from '@primevue/core';
+import type { PassThrough } from '@openvue/core';
 import type {
   AssistantInfo,
   AssistantMaskedSettings,
@@ -756,7 +756,7 @@ import type {
   LanguageAbbreviations,
   PatchAssistantInput,
 } from '@shared/types';
-import type { DataTablePassThroughOptions } from 'primevue';
+import type { DataTablePassThroughOptions } from 'openvue';
 
 type SchedulePreset = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'hourly' | 'custom';
 type ToolSource = { key: string; label: string; serverId?: string; tools: AssistantToolInfo[] };

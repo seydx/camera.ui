@@ -154,7 +154,7 @@ import NotificationDetail from '@/components/CuiDialog/templates/NotificationDet
 import type { NotificationDetailProps } from '@/components/CuiDialog/templates/NotificationDetail/types.js';
 import type { IpcRendererEvent } from '@/types/electron';
 import type { StoredNotification } from '@shared/types';
-import type { Popover } from 'primevue';
+import type { Popover } from 'openvue';
 
 const router = useRouter();
 const dialog = useCuiDialog();

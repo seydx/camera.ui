@@ -1,4 +1,4 @@
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 
 export interface CuiNavItemProps {
   label: string;

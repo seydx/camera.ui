@@ -1,4 +1,4 @@
-import { PrimeVueResolver } from '@primevue/auto-import-resolver';
+import { PrimeVueResolver } from '@openvue/auto-import-resolver';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import dotenv from 'dotenv';
@@ -339,7 +339,7 @@ export default defineConfig(({ command }) => ({
     __UI_VERSION__: JSON.stringify(UI_VERSION),
   },
   resolve: {
-    dedupe: ['vue', 'primevue', '@primevue/core', '@primeuix/utils', '@vueuse/core', 'vue-i18n', '@camera.ui/browser', '@camera.ui/logger', '@camera.ui/sdk'],
+    dedupe: ['vue', 'openvue', '@openvue/core', '@openuxkit/utils', '@vueuse/core', 'vue-i18n', '@camera.ui/browser', '@camera.ui/logger', '@camera.ui/sdk'],
     alias: [
       ...(IS_MOBILE ? [{ find: 'virtual:pwa-register/vue', replacement: resolve(__dirname, './src/composables/pwa-register-stub.ts') }] : []),
       { find: /^firebase\/messaging$/, replacement: resolve(__dirname, './src/composables/firebase-messaging-stub.ts') },

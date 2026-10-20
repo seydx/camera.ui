@@ -3,7 +3,7 @@ import EpisodePlayerDialog from '@/components/CuiDialog/templates/EpisodePlayer/
 import type { EpisodePlayerProps } from '@/components/CuiDialog/templates/EpisodePlayer/types.js';
 import type { RecordedEpisode } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 
 export function useEpisodePlayerDialog() {
   const dialog = useCuiDialog();

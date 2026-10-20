@@ -9,8 +9,8 @@
 
 // @ts-nocheck
 
-import BaseComponent from '@primevue/core/basecomponent';
-import VirtualScrollerStyle from 'primevue/virtualscroller/style';
+import BaseComponent from '@openvue/core/basecomponent';
+import VirtualScrollerStyle from 'openvue/virtualscroller/style';
 
 export default {
   name: 'BaseVirtualScroller',

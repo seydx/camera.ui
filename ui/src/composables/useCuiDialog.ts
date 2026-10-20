@@ -1,13 +1,12 @@
 import { mergeWith } from '@camera.ui/common/utils';
-// @ts-expect-error
-import DynamicDialogEventBus from 'primevue/dynamicdialogeventbus';
+import DynamicDialogEventBus from 'openvue/dynamicdialogeventbus';
 
 import { randomLetter } from '@/common/utils.js';
 import CuiDialog from '@/components/CuiDialog/CuiDialog.vue';
 
 import type { DeepPartial } from '@shared/types';
-import type { ButtonProps, DialogProps } from 'primevue';
-import type { DynamicDialogInstance, DynamicDialogOptions, DynamicDialogTemplates } from 'primevue/dynamicdialogoptions';
+import type { ButtonProps, DialogProps } from 'openvue';
+import type { DynamicDialogInstance, DynamicDialogOptions, DynamicDialogTemplates } from 'openvue/dynamicdialogoptions';
 import type { DialogTabConfig } from './useCuiDialogStepper.js';
 
 export type DeepMaybeRef<T> =

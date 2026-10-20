@@ -129,7 +129,7 @@ import { NEW_KEY_SOURCE } from './types.js';
 
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
 import type { AssistantModelInput, DBAssistantProvider } from '@shared/types';
-import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
+import type { AutoCompleteCompleteEvent } from 'openvue/autocomplete';
 import type { AssistantModelFormProps } from './types.js';
 
 const assistantQuery = new AssistantQuery();

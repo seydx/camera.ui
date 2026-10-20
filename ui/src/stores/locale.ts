@@ -1,4 +1,4 @@
-import { usePrimeVue } from 'primevue/config';
+import { usePrimeVue } from 'openvue/config';
 
 import { isHomeAssistant } from '@/common/base.js';
 import { currentLanguage, i18n, LANGUAGE_LIST, SUPPORTED_LOCALES } from '@/i18n/index.js';

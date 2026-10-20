@@ -1,4 +1,4 @@
-import { usePrimeVue } from 'primevue';
+import { usePrimeVue } from 'openvue';
 
 import type { CuiTimelineLocale } from '@camera.ui/nvr';
 import type { ComputedRef } from 'vue';

@@ -1,6 +1,6 @@
 import type { PaginationQuery } from '@shared/types';
 import type { ChartData, ChartOptions } from 'chart.js';
-import type { ButtonProps, ChipProps, ColumnProps, DataTableProps } from 'primevue';
+import type { ButtonProps, ChipProps, ColumnProps, DataTableProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 interface TableHeaderBase {

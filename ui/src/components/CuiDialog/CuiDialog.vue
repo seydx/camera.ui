@@ -103,8 +103,8 @@ import { appRootElement } from '@/common/appRoot.js';
 import { asyncComponent } from '@/common/asyncComponent.js';
 
 import type { ContentProps, CustomDialogComponent, DeepShallowRef, DialogTemplates } from '@/composables/useCuiDialog.js';
-import type { ButtonProps } from 'primevue';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { ButtonProps } from 'openvue';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 
 const CuiMarkdownContent = asyncComponent(() => import('@/components/CuiMarkdownContent/CuiMarkdownContent.vue'));
 

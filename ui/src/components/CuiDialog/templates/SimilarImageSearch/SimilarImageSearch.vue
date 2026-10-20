@@ -17,7 +17,7 @@ import { READING_SLOTS } from './types.js';
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
 import type { FrameObject, SimilarQuery } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { Ref } from 'vue';
 import type { SimilarImageSearchProps } from './types.js';
 

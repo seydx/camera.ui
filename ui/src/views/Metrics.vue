@@ -277,7 +277,7 @@ import { DEFAULT_PROCESS_LOAD, MAX_METRICS_DATA_POINTS } from '@/composables/soc
 import type { TableHeader, TableHeaderChart } from '@/components/CuiChartTable/types.js';
 import type { PaginationQuery, PlacementInfo, ProcessInfo, StreamStatsRow } from '@shared/types';
 import type { ChartData, ChartOptions } from 'chart.js';
-import type { DataTablePassThroughOptions } from 'primevue';
+import type { DataTablePassThroughOptions } from 'openvue';
 
 ChartJS.register(DoughnutController, ArcElement, Tooltip);
 

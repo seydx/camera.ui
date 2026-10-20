@@ -55,8 +55,8 @@
 
 // @ts-nocheck
 
-import { findSingle, getHeight, getWidth, isVisible } from '@primeuix/utils/dom';
-import SpinnerIcon from '@primevue/icons/spinner';
+import { findSingle, getHeight, getWidth, isVisible } from '@openuxkit/utils/dom';
+import SpinnerIcon from '@openvue/icons/spinner';
 import BaseVirtualScroller from './BaseVirtualScroller.vue';
 
 export default {

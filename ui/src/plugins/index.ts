@@ -1,10 +1,10 @@
 import { VueQueryPlugin } from '@tanstack/vue-query';
-import PrimeVue from 'primevue/config';
-import ConfirmationService from 'primevue/confirmationservice';
-import DialogService from 'primevue/dialogservice';
-import FocusTrap from 'primevue/focustrap';
-import ToastService from 'primevue/toastservice';
-import Tooltip from 'primevue/tooltip';
+import PrimeVue from 'openvue/config';
+import ConfirmationService from 'openvue/confirmationservice';
+import DialogService from 'openvue/dialogservice';
+import FocusTrap from 'openvue/focustrap';
+import ToastService from 'openvue/toastservice';
+import Tooltip from 'openvue/tooltip';
 import { ViewTransitionsPlugin } from 'vue-view-transitions';
 
 import { isCancellationError, isNoTargetError } from '@/common/utils.js';

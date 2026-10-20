@@ -369,9 +369,9 @@ import { sensorProvidedForCamera } from '@/utils/sensorSlots.js';
 
 import type { SensorEditResult } from '@/components/CuiDialog/templates/SensorEdit/types.js';
 import type { VirtualSensorCreateResult } from '@/components/CuiDialog/templates/VirtualSensorCreate/types.js';
-import type { PassThrough } from '@primevue/core';
+import type { PassThrough } from '@openvue/core';
 import type { DiscoveredSensorListItem, SensorsNamespaceEvents, TransformedSensor } from '@shared/types';
-import type { DataTablePassThroughOptions, DataTableRowClickEvent } from 'primevue';
+import type { DataTablePassThroughOptions, DataTableRowClickEvent } from 'openvue';
 
 type SensorState = 'connected' | 'disconnected' | 'unavailable' | 'removed';
 

@@ -343,7 +343,7 @@ import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit, DBCamviewLayout, DBCamviewLayoutCamera, DBCamviewViewSize } from '@shared/types';
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 const usersQuery = new UsersQuery();

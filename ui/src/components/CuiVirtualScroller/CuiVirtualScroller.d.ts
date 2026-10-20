@@ -7,9 +7,9 @@
  * @module virtualscroller
  *
  */
-import type { DefineComponent, DesignToken, EmitFn, HintedString, PassThrough } from '@primevue/core';
-import type { ComponentHooks } from '@primevue/core/basecomponent';
-import type { PassThroughOptions } from 'primevue/passthrough';
+import type { DefineComponent, DesignToken, EmitFn, HintedString, PassThrough } from '@openvue/core';
+import type { ComponentHooks } from '@openvue/core/basecomponent';
+import type { PassThroughOptions } from 'openvue/passthrough';
 import { VNode } from 'vue';
 
 export declare type VirtualScrollerPassThroughOptionType =

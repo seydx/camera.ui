@@ -64,7 +64,7 @@ import type CuiConsole from '@/components/CuiConsole/CuiConsole.vue';
 import type { ContentComponentProps, DialogRefProps } from '@/composables/useCuiDialog.js';
 import type { EngineIssue, IConfig } from '@shared/types';
 import type { ITerminalOptions } from '@xterm/xterm';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { VersionsHandlerProps } from './types.js';
 
 const MIN_SERVER_VERSION = '2.0.0';

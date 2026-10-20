@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { Ref } from 'vue';
 import type { PluginPersonEmbeddingProps } from './types.js';
 

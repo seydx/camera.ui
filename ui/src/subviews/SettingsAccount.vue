@@ -392,9 +392,9 @@ import type { CreateApiTokenProps } from '@/components/CuiDialog/templates/Creat
 import type { TwoFactorBackupCodesProps } from '@/components/CuiDialog/templates/TwoFactorBackupCodes/types.js';
 import type { TwoFactorDisableProps } from '@/components/CuiDialog/templates/TwoFactorDisable/types.js';
 import type { TwoFactorRegenerateProps } from '@/components/CuiDialog/templates/TwoFactorRegenerate/types.js';
-import type { PassThrough } from '@primevue/core';
+import type { PassThrough } from '@openvue/core';
 import type { ApiTokenInfo, ClientKind } from '@shared/types';
-import type { DataTablePassThroughOptions } from 'primevue';
+import type { DataTablePassThroughOptions } from 'openvue';
 
 const authQuery = new AuthQuery();
 

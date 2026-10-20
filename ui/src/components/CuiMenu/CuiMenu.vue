@@ -85,7 +85,7 @@
 import { closeOpenMenu, registerOpenMenu, releaseOpenMenu } from '@/common/menuRegistry.js';
 import { CUI_MENU_DEFAULTS } from './types.js';
 
-import type { Popover } from 'primevue';
+import type { Popover } from 'openvue';
 import type { CuiMenuEmits, CuiMenuProps, MenuItem } from './types.js';
 
 const props = withDefaults(defineProps<CuiMenuProps>(), CUI_MENU_DEFAULTS);

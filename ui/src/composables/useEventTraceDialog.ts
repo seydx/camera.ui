@@ -3,7 +3,7 @@ import EventTraceDialog from '@/components/CuiDialog/templates/EventTrace/EventT
 import type { EventTraceProps } from '@/components/CuiDialog/templates/EventTrace/types.js';
 import type { RecordedEvent } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { Ref } from 'vue';
 
 export function useEventTraceDialog() {

@@ -335,7 +335,7 @@ import { INFO_SENSOR_TYPES, SENSOR_READONLY_TYPES, SENSOR_SHORTCUTABLE_TYPES } f
 import type { ReactiveSensor } from '@camera.ui/browser';
 import type { NvrPlayback } from '@camera.ui/nvr';
 import type { DBCamera, DBCameraShortcut, DBSensorShortcut, DBShortcut, SensorShortcutType } from '@shared/types';
-import type { Popover } from 'primevue';
+import type { Popover } from 'openvue';
 import type { CuiShortcutsProps, ResolvedSensorShortcut } from './types.js';
 
 const camerasQuery = new CamerasQuery();

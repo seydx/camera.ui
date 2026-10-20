@@ -1,4 +1,4 @@
-import type { ButtonProps, TooltipOptions } from 'primevue';
+import type { ButtonProps, TooltipOptions } from 'openvue';
 
 export interface CuiFloatingButtonProps {
   buttonProps?: ButtonProps;

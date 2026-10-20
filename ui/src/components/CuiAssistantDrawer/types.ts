@@ -1,4 +1,4 @@
-import type { DrawerProps } from 'primevue';
+import type { DrawerProps } from 'openvue';
 
 export const CUI_ASSISTANT_DRAWER_PROPS: DrawerProps = {
   position: 'right',

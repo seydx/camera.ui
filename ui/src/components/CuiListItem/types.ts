@@ -1,4 +1,4 @@
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 import type { RouteLocationAsPathGeneric, RouteLocationAsRelativeGeneric } from 'vue-router';
 
 export interface CuiListItemProps {

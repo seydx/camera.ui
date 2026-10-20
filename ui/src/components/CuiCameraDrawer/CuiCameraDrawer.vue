@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import type { PassThrough } from '@primevue/core';
-import type { DrawerPassThroughOptions, DrawerProps } from 'primevue';
+import type { PassThrough } from '@openvue/core';
+import type { DrawerPassThroughOptions, DrawerProps } from 'openvue';
 import type { CameraOptionsProps } from './component/types.js';
 
 const router = useRouter();

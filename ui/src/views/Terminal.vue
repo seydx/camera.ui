@@ -155,7 +155,7 @@ import CuiTerminalToolbar from '@/components/CuiTerminalToolbar/CuiTerminalToolb
 import { TOPNAVBAR_HEIGHT } from '@/components/CuiTopNavbar/types.js';
 
 import type { ITerminalInitOnlyOptions, ITerminalOptions } from '@xterm/xterm';
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 
 interface TerminalTab {
   id: string;

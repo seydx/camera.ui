@@ -318,7 +318,7 @@ import { TRAINING_LABELS } from './types';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { CustomDialogComponent } from '@/composables/useCuiDialog.js';
 import type { DBTrainingCandidate, DBTrainingCandidateBox } from '@shared/types';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { CSSProperties, Ref } from 'vue';
 import type { TrainingBoxEditorProps } from './types';
 

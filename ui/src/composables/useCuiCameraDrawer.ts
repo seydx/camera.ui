@@ -1,6 +1,6 @@
 import type { CameraOptionsProps } from '@/components/CuiCameraDrawer/component/types.js';
 import type { EventBusKey } from '@vueuse/core';
-import type { DrawerProps } from 'primevue';
+import type { DrawerProps } from 'openvue';
 
 interface DrawerClose {
   type: 'close';

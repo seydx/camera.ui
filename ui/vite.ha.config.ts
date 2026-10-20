@@ -1,4 +1,4 @@
-import { PrimeVueResolver } from '@primevue/auto-import-resolver';
+import { PrimeVueResolver } from '@openvue/auto-import-resolver';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import dotenv from 'dotenv';
@@ -182,7 +182,7 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   resolve: {
-    dedupe: ['vue', 'primevue', '@primevue/core', '@primeuix/utils', '@vueuse/core'],
+    dedupe: ['vue', 'openvue', '@openvue/core', '@openuxkit/utils', '@vueuse/core'],
     alias: [
       { find: 'virtual:pwa-register/vue', replacement: resolve(__dirname, './src/composables/pwa-register-stub.ts') },
       { find: /^firebase\/messaging$/, replacement: resolve(__dirname, './src/composables/firebase-messaging-stub.ts') },

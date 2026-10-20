@@ -127,7 +127,7 @@ import { ServerQuery } from '@/api/routes/server.js';
 import { TOPNAVBAR_HEIGHT } from '@/components/CuiTopNavbar/types.js';
 
 import type { Ace } from 'ace-builds';
-import type { ButtonProps } from 'primevue';
+import type { ButtonProps } from 'openvue';
 
 const configQuery = new ConfigQuery();
 const serverQuery = new ServerQuery();

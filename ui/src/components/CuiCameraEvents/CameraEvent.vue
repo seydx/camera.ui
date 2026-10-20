@@ -123,7 +123,7 @@ import { eventAnchorTime, segmentLabel } from '@/utils/eventAnchor.js';
 import { resolveEventIcons } from '@/utils/eventIcons.js';
 
 import type { CameraStreamEventProps } from '@/components/CuiDialog/templates/CameraStreamEvent/types.js';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { CameraEventProps } from './types.js';
 
 const props = defineProps<CameraEventProps>();

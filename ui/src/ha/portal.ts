@@ -1,7 +1,7 @@
-import { ZIndex } from '@primeuix/utils/zindex';
-import Popover from 'primevue/popover';
-import Portal from 'primevue/portal';
-import Tooltip from 'primevue/tooltip';
+import { ZIndex } from '@openuxkit/utils/zindex';
+import Popover from 'openvue/popover';
+import Portal from 'openvue/portal';
+import Tooltip from 'openvue/tooltip';
 import { createBlock, createCommentVNode, openBlock, renderSlot, Teleport } from 'vue';
 
 export function redirectOverlays(host: Element): void {

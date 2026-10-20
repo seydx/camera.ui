@@ -1,4 +1,4 @@
-import ProgressSpinner from 'primevue/progressspinner';
+import ProgressSpinner from 'openvue/progressspinner';
 
 const DefaultLoading = defineComponent({
   render() {

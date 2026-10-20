@@ -47,7 +47,7 @@
 import { CamerasQuery } from '@/api/routes/cameras.js';
 
 import type { PaginationQuery } from '@shared/types';
-import type { PageState } from 'primevue';
+import type { PageState } from 'openvue';
 import type { CuiCameraCarouselProps } from './types.js';
 
 const cameraQuery = new CamerasQuery();

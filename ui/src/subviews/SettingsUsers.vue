@@ -158,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { FilterMatchMode } from '@primevue/core/api';
+import { FilterMatchMode } from '@openvue/core/api';
 import TrashIcon from '~icons/mdi/delete';
 import EditIcon from '~icons/mdi/account-edit';
 
@@ -169,9 +169,9 @@ import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 
 import type { UserFormProps } from '@/components/CuiDialog/templates/UserForm/types.js';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { PassThrough } from '@primevue/core';
+import type { PassThrough } from '@openvue/core';
 import type { DBUser, PaginationQuery } from '@shared/types';
-import type { DataTableFilterMeta, DataTablePassThroughOptions } from 'primevue';
+import type { DataTableFilterMeta, DataTablePassThroughOptions } from 'openvue';
 
 const authQuery = new AuthQuery();
 const usersQuery = new UsersQuery();

@@ -1,5 +1,5 @@
-import { definePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@openvue/themes';
+import Aura from '@openvue/themes/aura';
 
 export default definePreset(Aura, {
   primitive: {

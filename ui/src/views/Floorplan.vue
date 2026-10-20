@@ -419,7 +419,7 @@ import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { ReactiveSensor } from '@camera.ui/browser';
 import type { DBFloorPlan, DBRoomCatalog, PutFloorPlanInput, SensorShortcutType } from '@shared/types';
-import type { Popover } from 'primevue';
+import type { Popover } from 'openvue';
 
 interface PlanDrop {
   kind: 'room' | 'camera' | 'sensor';

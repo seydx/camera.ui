@@ -115,7 +115,7 @@ import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { PreviewPart, RecordedEpisode } from '@camera.ui/nvr';
 import type { PrivacyZone } from '@camera.ui/sdk';
 import type { DBCamera } from '@shared/types';
-import type { DynamicDialogInstance } from 'primevue/dynamicdialogoptions';
+import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 
 const props = defineProps<{
   episode: RecordedEpisode;
