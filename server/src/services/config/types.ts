@@ -63,6 +63,7 @@ export interface IConfig {
   betaUpdates?: boolean;
   plugins: PluginsSettings;
   cors?: CorsConfig;
+  trustedProxies?: string[];
   workers?: WorkersConfig;
   worker?: WorkerConfig;
   mdns?: boolean;

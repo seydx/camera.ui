@@ -534,7 +534,7 @@ export class Server {
     return {
       bodyLimit: 1e8,
       forceCloseConnections: true,
-      trustProxy: true,
+      trustProxy: this.trustedProxies,
       http2: true,
       https: {
         rejectUnauthorized: false,
@@ -549,6 +549,20 @@ export class Server {
         querystringParser: this.qsParser.bind(this),
       },
     };
+  }
+
+  private get trustedProxies(): string[] {
+    const ingress = this.configService.INGRESS_TRUST_IP;
+    const trusted = ingress && isIP(ingress) ? ['loopback', ingress] : ['loopback'];
+    for (const value of this.configService.config.trustedProxies ?? []) {
+      const entry = trustEntry(value);
+      if (entry) {
+        trusted.push(entry);
+      } else {
+        this.logger.warn(`Ignoring trusted proxy ${JSON.stringify(value)}, it is not an IP address or CIDR range`);
+      }
+    }
+    return trusted;
   }
 
   private get socketOptions(): Partial<ServerOptions> {

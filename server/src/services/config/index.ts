@@ -621,6 +621,11 @@ export class ConfigService {
   private applyEnvOverrides(config: IConfig): IConfig {
     if (process.env.CAMERA_UI_PORT) config.port = parseInt(process.env.CAMERA_UI_PORT, 10);
     if (process.env.CAMERA_UI_INSECURE_PORT) config.insecurePort = parseInt(process.env.CAMERA_UI_INSECURE_PORT, 10);
+    if (process.env.CAMERA_UI_TRUSTED_PROXIES) {
+      config.trustedProxies = process.env.CAMERA_UI_TRUSTED_PROXIES.split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
+    }
 
     config.workers ??= {};
     if (process.env.CAMERA_UI_WORKERS_ENABLED !== undefined) config.workers.enabled = process.env.CAMERA_UI_WORKERS_ENABLED === 'true';

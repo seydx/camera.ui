@@ -58,6 +58,17 @@ export const patchConfigSchema = zod
     betaUpdates: zod.boolean().default(false),
     plugins: pluginsSchema,
     cors: corsSchema,
+    trustedProxies: zod
+      .union([zod.coerce.string().trim().array(), zod.string()])
+      .nullish()
+      .transform((value) =>
+        typeof value === 'string'
+          ? value
+              .split(',')
+              .map((entry) => entry.trim())
+              .filter(Boolean)
+          : (value ?? undefined),
+      ),
     workers: workersSchema,
     worker: workerSchema,
   })
