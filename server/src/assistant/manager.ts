@@ -631,7 +631,9 @@ export class AssistantManager {
     const hiddenTools = planned.filter((tool) => tool.lazy).map((tool) => ({ ...tool, lazy: false }));
     // a resumed run executes the interrupted calls before any discovery, their tools must be listed
     const fetched = resume.length ? fetchedThisTurn(params.messages) : undefined;
-    const tools = fetched ? offered.map((tool) => (tool.lazy && fetched.has(tool.name) ? { ...tool, lazy: false } : tool)) : offered;
+    const listed = fetched ? offered.map((tool) => (tool.lazy && fetched.has(tool.name) ? { ...tool, lazy: false } : tool)) : offered;
+    // an approval is bound to the hash of the lean schema, the resume checks it against these tools before any onConfig
+    const tools = leanTools(listed);
     const prompt = composePrompt(sections, routed ? { ...plan, demoted: 0, hidden: [], routed: picks } : plan);
     // a procedure names tools the router did not pick, the room for them comes off the history
     const skillRoom = routed && plan.skillsOnDemand ? Math.min(SKILL_TOOLS_TOKENS, Math.floor(plan.historyTokens * SKILL_TOOLS_SHARE)) : 0;

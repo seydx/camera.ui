@@ -1,5 +1,4 @@
 import { hasInterface, PluginInterface } from '@camera.ui/sdk';
-import { convertSchemaToJsonSchema } from '@tanstack/ai';
 
 import { PluginsService } from '../api/services/plugins.service.js';
 import { inject } from '../container.js';
@@ -8,6 +7,7 @@ import { DocsIndex } from './docs.js';
 import { ExternalMcpSource } from './external.js';
 import { PluginModelClient, pluginProviderName } from './plugin-models.js';
 import { PluginToolClient } from './plugin-tools.js';
+import { leanInputSchema } from './tool-schema.js';
 import { coreTools } from './tools/index.js';
 
 import type { AssistantModelSpec, AssistantModelStatus, AssistantToolResult, AssistantToolSpec } from '@camera.ui/sdk';
@@ -190,7 +190,7 @@ export class AssistantToolRegistry {
         group: toolGroup(tool),
         approval,
         adminOnly: Boolean(meta.adminOnly),
-        inputSchema: approval ? convertSchemaToJsonSchema(tool.inputSchema) : undefined,
+        inputSchema: approval ? leanInputSchema(tool.inputSchema) : undefined,
       };
     });
   }

@@ -1,5 +1,6 @@
 import { convertSchemaToJsonSchema } from '@tanstack/ai';
 
+import type { JSONSchema } from '@tanstack/ai';
 import type { CoreTool } from './tools/shared.js';
 
 const VALIDATION_KEYS = new Set(['additionalProperties', 'format', 'title', 'default', '$schema']);
@@ -15,6 +16,11 @@ export function leanTools(tools: CoreTool[]): CoreTool[] {
     const lean = '~standard' in schema ? leanStandardSchema(schema) : leanPlainSchema(schema);
     return { ...tool, inputSchema: lean };
   });
+}
+
+export function leanInputSchema(schema: unknown): JSONSchema | undefined {
+  // the approval binding hashes the schema the model got, a client declaring the tool has to use the same one
+  return leanJsonSchema(convertSchemaToJsonSchema(schema as never)) as JSONSchema | undefined;
 }
 
 export function leanJsonSchema(node: unknown): unknown {
@@ -44,7 +50,7 @@ function leanStandardSchema(schema: Record<string, unknown>): unknown {
   if (cached) return cached;
 
   const standard = schema['~standard'] as Record<string, unknown>;
-  const json = leanJsonSchema(convertSchemaToJsonSchema(schema as never));
+  const json = leanInputSchema(schema);
   const lean = Object.create(schema) as Record<string, unknown>;
   lean['~standard'] = { ...standard, jsonSchema: { input: () => json, output: () => json } };
   leaned.set(schema, lean);
