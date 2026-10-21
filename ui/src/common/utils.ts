@@ -325,3 +325,20 @@ export function extractErrorMessage(error: unknown, fallback?: string): string {
   }
   return fallback ?? String(error);
 }
+
+function isShallowEqual(a: object, b: object): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key]);
+}
+
+export function keepUnchangedItems<T extends object>(previous: T[] | undefined, next: T[], key: (item: T) => string): T[] {
+  if (!previous) return next;
+
+  const previousByKey = new Map(previous.map((item) => [key(item), item]));
+  const items = next.map((item) => {
+    const old = previousByKey.get(key(item));
+    return old && isShallowEqual(old, item) ? old : item;
+  });
+
+  return items.length === previous.length && items.every((item, index) => item === previous[index]) ? previous : items;
+}

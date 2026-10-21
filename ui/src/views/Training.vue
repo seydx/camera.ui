@@ -181,7 +181,7 @@
       </template>
     </div>
 
-    <CuiFloatingButtonGroup v-if="filtered.length || selectionMode" :force-visible="selectionMode" :scroll-y="scrollY">
+    <CuiFloatingButtonGroup v-if="filtered.length || selectionMode" :force-visible="selectionMode" :scroll-hidden="scrollHidden">
       <template v-if="!selectionMode">
         <CuiFloatingButton
           grouped
@@ -297,6 +297,7 @@ const loadMoreRef = useTemplateRef<HTMLElement>('loadMoreRef');
 const scrollRef = useTemplateRef<HTMLElement>('scrollRef');
 
 const { y: scrollY } = useScroll(scrollRef);
+const scrollHidden = useScrollHide(scrollY);
 
 const gridStyle = computed(() => ({ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint.value ? '220px' : '260px'}, 1fr))` }));
 

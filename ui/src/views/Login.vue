@@ -107,7 +107,7 @@
         </div>
 
         <div class="flex flex-col items-center mt-10">
-          <InputOtp v-if="!useBackupCode" v-model="otpCode" :length="OTP_LENGTH" integer-only size="large" @complete="onVerify2FA" />
+          <InputOtp v-if="!useBackupCode" v-model="otpCode" :length="OTP_LENGTH" integer-only size="large" />
           <InputText
             v-else
             v-model="backupCode"
@@ -384,6 +384,10 @@ function onCancel2FA(): void {
   backupCode.value = '';
   useBackupCode.value = false;
 }
+
+watch(otpCode, (code) => {
+  if (code.length === OTP_LENGTH) onVerify2FA();
+});
 
 watch(
   () => isOnline.value || isNeedsAuth.value,

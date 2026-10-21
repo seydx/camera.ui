@@ -22,6 +22,8 @@ import type { CuiFloatingButtonGroupProps } from './types.js';
 
 const props = withDefaults(defineProps<CuiFloatingButtonGroupProps>(), {
   direction: 'vertical',
+  // undefined when absent, not cast to false: then the window scroll decides
+  scrollHidden: undefined,
 });
 
 const { bottombarHeight } = useSharedCuiStates();
@@ -29,7 +31,8 @@ const { bottombarHeight } = useSharedCuiStates();
 const { direction, forceVisible } = toRefs(props);
 
 const { y: windowY } = useScroll(window, { throttle: 100 });
-const hidden = useScrollHide(() => props.scrollY ?? windowY.value);
+const windowHidden = useScrollHide(windowY);
+const hidden = computed(() => props.scrollHidden ?? windowHidden.value);
 
 const bottomPadding = computed(() => {
   const isBottomVisible = bottombarHeight.value > 0;

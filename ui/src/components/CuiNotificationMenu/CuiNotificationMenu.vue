@@ -68,71 +68,16 @@
             maxHeight: `234px`,
           }"
         >
-          <div v-for="notification in notifications" :key="notification.id" class="relative overflow-hidden">
-            <div
-              v-intersection-observer="(e) => initializeSwipe(notification.id, e)"
-              class="relative transition-all duration-200"
-              :style="{
-                left: swipeStates[notification.id]?.left || '0',
-                opacity: swipeStates[notification.id]?.opacity || 1,
-              }"
-            >
-              <Button severity="secondary" text class="cui-button p-2 block w-full" @click="openDialog(notification)">
-                <div class="flex gap-3">
-                  <div class="w-2 h-2 rounded-full mt-2" :style="{ backgroundColor: getColor(notification.severity) }" />
-                  <div v-if="imageSource(notification)" class="w-14 h-10 rounded-md overflow-hidden shrink-0 self-center bg-black">
-                    <CuiImage :src="imageSource(notification)" alt="" :image-style="{ objectFit: 'cover' }" image-container-class="w-full h-full" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center gap-2">
-                      <h4 class="text-sm truncate max-w-[200px]" :class="notification.seenAt == null ? 'font-semibold text-color' : 'font-medium text-muted'">
-                        {{ notification.title }}
-                      </h4>
-                      <div class="flex items-center gap-1.5 shrink-0">
-                        <span v-if="notification.seenAt == null" class="w-2 h-2 rounded-full bg-primary-500" />
-                        <span class="text-xs text-muted">{{ formatTimestamp(notification.createdAt) }}</span>
-                      </div>
-                    </div>
-                    <p class="text-xs text-muted mt-1 text-left line-clamp-2 overflow-hidden">{{ notification.subtitle || notification.body }}</p>
-                  </div>
-                </div>
-              </Button>
-            </div>
-            <div
-              class="absolute right-0 top-0 h-full flex items-center gap-1 pr-4"
-              :style="{
-                opacity: swipeStates[notification.id]?.deleteOpacity || 0,
-                pointerEvents: (swipeStates[notification.id]?.deleteOpacity || 0) > 0 ? 'auto' : 'none',
-              }"
-            >
-              <Button
-                v-if="notification.seenAt == null"
-                v-tooltip.left="{ value: $t('components.notification_menu.mark_read') }"
-                severity="secondary"
-                class="cui-icon-sm"
-                text
-                rounded
-                @click="markSeen(notification)"
-              >
-                <template #icon>
-                  <i-mdi:check width="100%" height="100%" />
-                </template>
-              </Button>
-              <Button
-                v-tooltip.left="{ value: $t('components.notification_menu.delete') }"
-                severity="danger"
-                class="cui-icon-sm"
-                text
-                rounded
-                @click="removeNotification(notification)"
-              >
-                <template #icon>
-                  <i-lucide:trash-2 width="100%" height="100%" />
-                </template>
-              </Button>
-            </div>
-            <Divider v-if="notifications.indexOf(notification) !== notifications.length - 1" class="my-0 py-1" />
-          </div>
+          <CuiNotificationItem
+            v-for="(notification, index) in notifications"
+            :key="notification.id"
+            :notification
+            :time="formatTimestamp(notification.createdAt)"
+            :divider="index !== notifications.length - 1"
+            @open="openDialog"
+            @mark-seen="markSeen"
+            @remove="removeNotification"
+          />
         </div>
 
         <div v-if="notifications.length === 0" class="text-center py-8 text-muted text-sm">
@@ -145,11 +90,12 @@
 
 <script setup lang="ts">
 import { Severity } from '@camera.ui/sdk';
-import { vIntersectionObserver } from '@vueuse/components';
 
 import { NotificationsQuery } from '@/api/routes/notifications.js';
 import { notificationImageUrl } from '@/common/utils.js';
 import NotificationDetail from '@/components/CuiDialog/templates/NotificationDetail/NotificationDetail.vue';
+import CuiNotificationItem from './CuiNotificationItem.vue';
+import { NotificationSwipeKey } from './types.js';
 
 import type { NotificationDetailProps } from '@/components/CuiDialog/templates/NotificationDetail/types.js';
 import type { IpcRendererEvent } from '@/types/electron';
@@ -159,7 +105,6 @@ import type { Popover } from 'openvue';
 const router = useRouter();
 const dialog = useCuiDialog();
 const { t } = useI18n();
-const { isTouch } = useSharedCuiUserAgent();
 const { isElectronApp, electron } = useElectron();
 
 const notificationsQuery = new NotificationsQuery();
@@ -169,7 +114,7 @@ const notificationsSocket = useNotificationsSocket();
 const { data: settings, isLoading: settingsLoading } = notificationsQuery.getSettingsQuery();
 
 const notificationsMenuRef = useTemplateRef<InstanceType<typeof Popover>>('notificationsMenuRef');
-const swipeStates = ref<Record<string, { left: string; opacity: number; deleteOpacity: number; isSwiping: boolean; resetFn: () => void; stopFn: () => void }>>({});
+const swipedId = ref<string>();
 const detailDialogOpen = ref(false);
 
 const notifications = computed(() => notificationsSocket.notifications.value);
@@ -177,77 +122,7 @@ const unreadCount = computed(() => notificationsSocket.unreadCount.value);
 const notificationsEnabled = computed(() => settings.value?.enabled ?? false);
 const settingsResolved = computed(() => !settingsLoading.value || settings.value !== undefined);
 
-function initializeSwipe(notificationId: string, [entry]: IntersectionObserverEntry[]) {
-  if (!entry.isIntersecting) {
-    swipeStates.value[notificationId]?.resetFn();
-    swipeStates.value[notificationId]?.stopFn();
-    delete swipeStates.value[notificationId];
-    return;
-  }
-
-  if (swipeStates.value[notificationId]) {
-    return;
-  }
-
-  const target = entry.target as HTMLElement;
-  const container = target.parentElement;
-
-  if (!container) {
-    return;
-  }
-
-  const stopOnClickOutside = onClickOutside(target, () => {
-    if (swipeStates.value[notificationId]) {
-      swipeStates.value[notificationId].resetFn();
-    }
-  });
-
-  let swipeTimeoutId: ReturnType<typeof setInterval>;
-  const swipeFn = isTouch.value ? useSwipe : usePointerSwipe;
-
-  const { direction, stop } = swipeFn(target, {
-    threshold: 10,
-    disableTextSelect: true,
-    onSwipe() {
-      for (const key in swipeStates.value) {
-        if (key !== notificationId) {
-          swipeStates.value[key]?.resetFn();
-        }
-      }
-
-      if (direction.value === 'left') {
-        const maxSwipe = 75;
-        swipeStates.value[notificationId] = {
-          left: `-${maxSwipe}px`,
-          opacity: 1,
-          deleteOpacity: 1,
-          isSwiping: true,
-          resetFn() {
-            this.left = '0';
-            this.opacity = 1;
-            this.deleteOpacity = 0;
-          },
-          stopFn: () => {
-            delete swipeStates.value[notificationId];
-            stop();
-            stopOnClickOutside();
-            clearTimeout(swipeTimeoutId);
-          },
-        };
-      } else {
-        swipeStates.value[notificationId]?.resetFn();
-      }
-    },
-    onSwipeEnd() {
-      clearTimeout(swipeTimeoutId);
-      swipeTimeoutId = setTimeout(() => {
-        if (swipeStates.value[notificationId]) {
-          swipeStates.value[notificationId].isSwiping = false;
-        }
-      }, 10);
-    },
-  });
-}
+provide(NotificationSwipeKey, swipedId);
 
 function toggleMenu(event: any) {
   notificationsMenuRef.value?.toggle(event);
@@ -291,42 +166,18 @@ function handleNotificationClick(notification: StoredNotification) {
 
 function removeNotification(notification?: StoredNotification) {
   if (notification) {
-    const swipeState = swipeStates.value[notification.id];
-    swipeState?.stopFn();
     notificationsSocket.removeNotification(notification);
   }
 }
 
 function clearNotifications(): void {
-  for (const key in swipeStates.value) {
-    swipeStates.value[key]?.stopFn();
-  }
   notificationsSocket.clearNotifications();
 }
 
-function getColor(severity: Severity | undefined): string {
-  switch (severity) {
-    case Severity.Info:
-      return 'rgb(33, 150, 243)';
-    case Severity.Warn:
-      return 'rgb(251, 140, 0)';
-    case Severity.Error:
-    case Severity.Critical:
-      return 'rgb(176, 0, 32)';
-    default:
-      return 'rgb(69, 69, 69)';
-  }
-}
-
 function openDialog(notification: StoredNotification) {
-  const swipeState = swipeStates.value[notification.id];
-  if (swipeState?.isSwiping) {
-    return;
-  }
-
   const detail = [notification.subtitle, notification.body].filter(Boolean).join('\n');
   const confirmText = !notification?.deepLink ? t('components.form.button.mark_as_read') : t('components.form.button.go_to_message');
-  const src = imageSource(notification);
+  const src = notificationImageUrl(notification.imageUrl);
   const videoSrc = notificationImageUrl(notification.videoUrl);
 
   detailDialogOpen.value = true;
@@ -362,15 +213,8 @@ function openDialog(notification: StoredNotification) {
   });
 }
 
-function imageSource(notification: StoredNotification): string | undefined {
-  return notificationImageUrl(notification.imageUrl);
-}
-
 function onHide() {
-  for (const key in swipeStates.value) {
-    swipeStates.value[key]?.resetFn();
-    swipeStates.value[key]?.stopFn();
-  }
+  swipedId.value = undefined;
 }
 
 function buildElectronUpdateNotification(): StoredNotification {

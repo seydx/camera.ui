@@ -96,7 +96,7 @@
           <div class="flex flex-col gap-3">
             <Card v-if="clustered.clusters.length" class="cui-card border-color-inner h-auto!" :pt="{ body: { class: 'pb-0' } }">
               <template #content>
-                <Accordion multiple>
+                <Accordion multiple @update:value="rememberOpened">
                   <AccordionPanel
                     v-for="(cluster, i) in clustered.clusters"
                     :key="cluster.clusterId"
@@ -156,7 +156,11 @@
                         },
                       }"
                     >
-                      <div class="grid w-full gap-3" :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }">
+                      <div
+                        v-if="openedPanels.has(cluster.clusterId)"
+                        class="grid w-full gap-3"
+                        :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }"
+                      >
                         <CuiFaceCard
                           v-for="face in cluster.faces"
                           :key="face.id"
@@ -182,7 +186,7 @@
 
             <Card v-if="clustered.ungrouped.length" class="cui-card border-color-inner h-auto!" :pt="{ body: { class: 'pb-0' } }">
               <template #content>
-                <Accordion>
+                <Accordion @update:value="rememberOpened">
                   <AccordionPanel value="__ungrouped__" class="border-b-0">
                     <AccordionHeader class="px-0 pt-0 pb-5">
                       <span class="flex items-center gap-3 w-full">
@@ -213,7 +217,11 @@
                       </span>
                     </AccordionHeader>
                     <AccordionContent :pt="{ content: { class: 'px-0 pb-5' } }">
-                      <div class="grid w-full gap-3" :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }">
+                      <div
+                        v-if="openedPanels.has('__ungrouped__')"
+                        class="grid w-full gap-3"
+                        :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }"
+                      >
                         <CuiFaceCard
                           v-for="face in clustered.ungrouped"
                           :key="face.id"
@@ -237,7 +245,7 @@
 
             <Card v-if="faceStore.ignoredFaces.value.length" class="cui-card border-color-inner h-auto!" :pt="{ body: { class: 'pb-0' } }">
               <template #content>
-                <Accordion>
+                <Accordion @update:value="rememberOpened">
                   <AccordionPanel value="__ignored__" class="border-b-0">
                     <AccordionHeader class="px-0 pt-0 pb-5">
                       <span class="flex items-center gap-3 w-full">
@@ -254,7 +262,11 @@
                       </span>
                     </AccordionHeader>
                     <AccordionContent :pt="{ content: { class: 'px-0 pb-5' } }">
-                      <div class="grid w-full gap-3" :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }">
+                      <div
+                        v-if="openedPanels.has('__ignored__')"
+                        class="grid w-full gap-3"
+                        :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint ? '120px' : '140px'}, 1fr))` }"
+                      >
                         <CuiFaceCard
                           v-for="face in faceStore.ignoredFaces.value"
                           :key="face.id"
@@ -445,6 +457,7 @@ const reindexAnchorRef = useTemplateRef<HTMLElement>('reindexAnchorRef');
 const { left: reindexAnchorLeft } = useElementBounding(reindexAnchorRef);
 const rescanning = ref(false);
 const layoutReady = ref(false);
+const openedPanels = ref(new Set<string>());
 
 const { status: reindexStatus, checking: reindexChecking } = useFacesReindex();
 const { y: windowScrollY } = useScroll(window, { throttle: 100 });
@@ -488,6 +501,11 @@ function groupSelectionState(faces: UnknownFace[]): 'none' | 'some' | 'all' {
   }
   if (count === 0) return 'none';
   return count === faces.length ? 'all' : 'some';
+}
+
+function rememberOpened(value: string | string[] | null | undefined): void {
+  if (!value) return;
+  for (const panel of Array.isArray(value) ? value : [value]) openedPanels.value.add(panel);
 }
 
 function toggleGroupSelection(faces: UnknownFace[]) {

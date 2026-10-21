@@ -127,7 +127,7 @@ import { ServerQuery } from '@/api/routes/server.js';
 import { TOPNAVBAR_HEIGHT } from '@/components/CuiTopNavbar/types.js';
 
 import type { Ace } from 'ace-builds';
-import type { ButtonProps } from 'openvue';
+import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
 
 const configQuery = new ConfigQuery();
 const serverQuery = new ServerQuery();
@@ -169,7 +169,7 @@ const content = ref('');
 const go2rtcContent = ref('');
 const mounted = ref(false);
 
-const items = ref<{ label: string; icon: any; buttonProps?: ButtonProps; command: () => void }[]>([
+const items = ref<{ label: string; icon: any; buttonProps?: CuiButtonAttrs; command: () => void }[]>([
   {
     label: t('components.dialog.title.confirm'),
     icon: SaveIcon,

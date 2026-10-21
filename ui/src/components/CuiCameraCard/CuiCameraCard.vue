@@ -71,8 +71,8 @@
             <div
               v-if="showPtz && !timelineState && !inStandby && !gridSearchActive && cameraDevice"
               key="ptz"
-              class="absolute top-0 left-0 right-0 z-7 pointer-events-none"
-              :style="{ bottom: showControl ? '48px' : '0px', transition: 'bottom 0.2s ease' }"
+              class="absolute top-0 left-0 right-0 z-7 pointer-events-none transition-[bottom] duration-200"
+              :style="{ bottom: showControl ? '48px' : '0px' }"
             >
               <CuiPTZControl :camera-device />
             </div>
@@ -148,7 +148,7 @@
                 text
                 severity="contrast"
                 :disabled="isLoading"
-                @click="ptzPresetMenuRef?.toggleMenu"
+                @click="toggleOverlay('ptzPreset', () => ptzPresetMenuRef?.toggleMenu($event))"
               >
                 <template #icon>
                   <i-material-symbols:bookmarks-rounded width="100%" height="100%" />
@@ -194,13 +194,11 @@
             </div>
           </Transition>
 
-          <VueZoomable
+          <CuiCameraZoomable
             ref="arBoxRef"
-            v-model:pan="panValue"
-            v-model:zoom="zoomValue"
+            :state="zoomState"
             data-native-pip-keep
             :disabled="resizable || (expandableCard && !isExpanded) || !isHoveredZoom || timelineState || liveResting || gridSearchActive || isDisabled"
-            :pan-enabled="zoomValue > 1"
             :enable-control-button="false"
             :dbl-click-enabled="false"
             :min-zoom="1"
@@ -354,7 +352,7 @@
                 @click="onCardClick"
               />
             </div>
-          </VueZoomable>
+          </CuiCameraZoomable>
 
           <div
             v-if="!liveResting && (showCameraName || liveIndicatorOverlay)"
@@ -421,7 +419,7 @@
                     severity="contrast"
                     class="control-bar-btn"
                     style="font-size: 12px; font-weight: 600"
-                    @click="speedPopoverRef?.toggle($event)"
+                    @click="toggleOverlay('speed', () => speedPopoverRef?.toggle($event))"
                   >
                     <template #icon>
                       <span>{{ nvr?.speed.value ?? 1 }}×</span>
@@ -514,14 +512,21 @@
                     severity="contrast"
                     class="control-bar-btn"
                     :class="{ '!text-primary': fullscreenMenuActive }"
-                    @click="fullscreenMenuRef?.toggleMenu($event)"
+                    @click="toggleOverlay('fullscreen', () => fullscreenMenuRef?.toggleMenu($event))"
                   >
                     <template #icon>
                       <i-lucide:more-vertical class="w-[18px] h-[18px]" />
                     </template>
                   </Button>
 
-                  <Button v-if="hasMoreMenuItems" fluid text severity="contrast" class="control-bar-btn" @click="morePopoverRef?.toggle($event)">
+                  <Button
+                    v-if="hasMoreMenuItems"
+                    fluid
+                    text
+                    severity="contrast"
+                    class="control-bar-btn"
+                    @click="toggleOverlay('more', () => morePopoverRef?.toggle($event))"
+                  >
                     <template #icon>
                       <i-lucide:more-vertical class="w-[18px] h-[18px]" />
                     </template>
@@ -551,6 +556,7 @@
               </div>
 
               <Popover
+                v-if="mountedOverlays.speed"
                 ref="speedPopoverRef"
                 class="more-menu-popover"
                 :append-to="popoverAppendTarget"
@@ -573,7 +579,14 @@
                 </div>
               </Popover>
 
-              <Popover ref="morePopoverRef" class="more-menu-popover" :append-to="popoverAppendTarget" @show="morePopoverOpen = true" @hide="morePopoverOpen = false">
+              <Popover
+                v-if="mountedOverlays.more"
+                ref="morePopoverRef"
+                class="more-menu-popover"
+                :append-to="popoverAppendTarget"
+                @show="morePopoverOpen = true"
+                @hide="morePopoverOpen = false"
+              >
                 <div class="flex flex-col">
                   <button
                     v-if="canSearchSimilar && controlBarLayout.search.inMenu"
@@ -679,8 +692,8 @@
           </Transition>
 
           <Transition name="fade-2">
-            <div v-if="zoomMinimapStyle" class="zoom-minimap" :class="{ 'zoom-minimap-raised': showControl, 'zoom-minimap-centered': showPtz }">
-              <div class="zoom-minimap-viewport" :style="zoomMinimapStyle" />
+            <div v-if="zoomedIn" class="zoom-minimap" :class="{ 'zoom-minimap-raised': showControl, 'zoom-minimap-centered': showPtz }">
+              <CuiCameraMinimapViewport class="zoom-minimap-viewport" :viewport-style="zoomMinimapStyle" />
             </div>
           </Transition>
         </div>
@@ -802,7 +815,7 @@
             text
             severity="contrast"
             class="cui-icon-lg not-hover:text-surface-400"
-            @click="castMenuRef?.toggleMenu"
+            @click="toggleOverlay('cast', () => castMenuRef?.toggleMenu($event))"
           >
             <template #icon>
               <i-mdi:cast width="100%" height="100%" />
@@ -817,7 +830,7 @@
             severity="contrast"
             class="cui-icon-lg"
             :class="streamMenuActive ? '!text-primary' : 'not-hover:text-surface-400'"
-            @click="streamMenuRef?.toggleMenu"
+            @click="toggleOverlay('stream', () => streamMenuRef?.toggleMenu($event))"
           >
             <template #icon>
               <i-lucide:more-vertical width="100%" height="100%" />
@@ -844,6 +857,7 @@
     </Card>
 
     <CuiMenu
+      v-if="mountedOverlays.stream"
       ref="streamMenuRef"
       :items="streamMenuItems"
       :popover="{
@@ -856,6 +870,7 @@
     ></CuiMenu>
 
     <CuiMenu
+      v-if="mountedOverlays.cast"
       ref="castMenuRef"
       :items="castMenuItems"
       :popover="{
@@ -868,33 +883,21 @@
     ></CuiMenu>
 
     <CuiMenu
+      v-if="mountedOverlays.fullscreen"
       ref="fullscreenMenuRef"
       :items="fullscreenMenuItems"
-      :popover="{
-        appendTo: popoverAppendTarget,
-        pt: {
-          content: {
-            class: 'p-0! rounded-xl! overflow-hidden!',
-          },
-        },
-      }"
+      :popover="appendedMenuPopover"
       @show="controlBarPopoverOpen = true"
       @hide="controlBarPopoverOpen = false"
     ></CuiMenu>
 
     <CuiMenu
+      v-if="mountedOverlays.ptzPreset"
       ref="ptzPresetMenuRef"
       :items="ptzPresetMenuItems"
       @show="controlBarPopoverOpen = true"
       @hide="controlBarPopoverOpen = false"
-      :popover="{
-        appendTo: popoverAppendTarget,
-        pt: {
-          content: {
-            class: 'p-0! rounded-xl! overflow-hidden!',
-          },
-        },
-      }"
+      :popover="appendedMenuPopover"
     ></CuiMenu>
   </div>
 </template>
@@ -911,7 +914,6 @@ import {
 } from '@camera.ui/browser';
 import { mergeWith } from '@camera.ui/common/utils';
 import { CuiTimeline, NvrPlaybackKey, NvrPlaybackMapKey } from '@camera.ui/nvr';
-import VueZoomable from 'vue-zoomable';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { castFn } from '@/api/routes/cast.js';
@@ -936,7 +938,7 @@ import type { Detection, DetectionLabel, FaceDetection, StreamingRole, TrackedDe
 import type { PassThrough } from '@openvue/core';
 import type { DBCamera } from '@shared/types';
 import type { CardPassThroughOptions, Popover } from 'openvue';
-import type { WatchHandle } from 'vue';
+import type { CSSProperties, WatchHandle } from 'vue';
 import type { ZoomableEvent } from 'vue-zoomable';
 import type { CuiCameraCardEmits, CuiCameraCardModels, CuiCameraCardProps } from './types.js';
 
@@ -954,6 +956,7 @@ const log = useLogger();
 const router = useRouter();
 const routerStore = useRouterStore();
 const drawer = useCuiCameraDrawer();
+const { mounted: mountedOverlays, toggleOverlay } = useLazyOverlays<'stream' | 'cast' | 'fullscreen' | 'ptzPreset' | 'speed' | 'more'>();
 const dialog = useCuiDialog();
 const toast = useCuiToast();
 const notificationsSocket = useNotificationsSocket();
@@ -1058,6 +1061,7 @@ const isAdapting = ref(false);
 const panValue = ref({ x: 0, y: 0 });
 let panAtPointerDown = { x: 0, y: 0 };
 const zoomValue = ref(1);
+const zoomState = { pan: panValue, zoom: zoomValue };
 const lastZoom = ref(1);
 const isConstraining = ref(false);
 const internalExpanded = ref(false);
@@ -1276,7 +1280,7 @@ const arStyle = computed(() => {
     return { width: '100%', height: '100%' };
   }
   return {
-    height: cameraStream.isFullscreen.value || zoomValue.value > 1 ? 'auto' : '100%',
+    height: cameraStream.isFullscreen.value || zoomedIn.value ? 'auto' : '100%',
     aspectRatio: cameraAspectRatio.value,
   };
 });
@@ -1392,37 +1396,7 @@ const videoContentSize = computed(() => ({
   height: arBoxSize.height.value || 0,
 }));
 
-const zoomMinimapStyle = computed(() => {
-  const zoom = zoomValue.value;
-  if (zoom <= 1) return null;
-
-  const pan = panValue.value;
-  const containerWidth = playerContainer.width.value;
-  const containerHeight = playerContainer.height.value;
-  if (!containerWidth || !containerHeight) return null;
-
-  const { width: videoWidth, height: videoHeight } = videoContentSize.value;
-  if (!videoWidth || !videoHeight) return null;
-
-  const scaledVideoWidth = videoWidth * zoom;
-  const scaledVideoHeight = videoHeight * zoom;
-
-  const canPanX = scaledVideoWidth > containerWidth;
-  const canPanY = scaledVideoHeight > containerHeight;
-
-  const widthPct = canPanX ? (containerWidth / scaledVideoWidth) * 100 : 100;
-  const heightPct = canPanY ? (containerHeight / scaledVideoHeight) * 100 : 100;
-
-  const leftPct = canPanX ? ((1 - containerWidth / scaledVideoWidth) / 2) * 100 - (pan.x / scaledVideoWidth) * 100 : 0;
-  const topPct = canPanY ? ((1 - containerHeight / scaledVideoHeight) / 2) * 100 - (pan.y / scaledVideoHeight) * 100 : 0;
-
-  return {
-    width: `${widthPct}%`,
-    height: `${heightPct}%`,
-    left: `${leftPct}%`,
-    top: `${topPct}%`,
-  };
-});
+const zoomedIn = computed(() => zoomValue.value > 1);
 
 const videoWrapperStyle = computed(() => {
   if (fillsCard.value)
@@ -1552,6 +1526,7 @@ const tapsForExpand = computed(() => cardClickAction.value === 'expand' && expan
 const cardIsTappable = computed(() => tapsForRedirect.value || tapsForExpand.value);
 const showOpenCameraButton = computed(() => cardClickAction.value !== 'redirect' && routerLink.value !== undefined);
 const popoverAppendTarget = computed<HTMLElement | 'body'>(() => topmostFullscreen.value ?? 'body');
+const appendedMenuPopover = computed(() => ({ appendTo: popoverAppendTarget.value, pt: { content: { class: 'p-0! rounded-xl! overflow-hidden!' } } }));
 
 const controlBarLayout = computed(() => {
   const full = isFullPlayer.value || cameraStream.isFullscreen.value;
@@ -1656,6 +1631,38 @@ function goBack() {
   } else {
     router.push('/home');
   }
+}
+
+function zoomMinimapStyle(): CSSProperties | null {
+  const zoom = zoomValue.value;
+  if (zoom <= 1) return null;
+
+  const pan = panValue.value;
+  const containerWidth = playerContainer.width.value;
+  const containerHeight = playerContainer.height.value;
+  if (!containerWidth || !containerHeight) return null;
+
+  const { width: videoWidth, height: videoHeight } = videoContentSize.value;
+  if (!videoWidth || !videoHeight) return null;
+
+  const scaledVideoWidth = videoWidth * zoom;
+  const scaledVideoHeight = videoHeight * zoom;
+
+  const canPanX = scaledVideoWidth > containerWidth;
+  const canPanY = scaledVideoHeight > containerHeight;
+
+  const widthPct = canPanX ? (containerWidth / scaledVideoWidth) * 100 : 100;
+  const heightPct = canPanY ? (containerHeight / scaledVideoHeight) * 100 : 100;
+
+  const leftPct = canPanX ? ((1 - containerWidth / scaledVideoWidth) / 2) * 100 - (pan.x / scaledVideoWidth) * 100 : 0;
+  const topPct = canPanY ? ((1 - containerHeight / scaledVideoHeight) / 2) * 100 - (pan.y / scaledVideoHeight) * 100 : 0;
+
+  return {
+    width: `${widthPct}%`,
+    height: `${heightPct}%`,
+    left: `${leftPct}%`,
+    top: `${topPct}%`,
+  };
 }
 
 function getMaxPan(zoom: number) {
@@ -1803,7 +1810,9 @@ function trackDetectionKinds(kinds: string[]) {
   for (const [kind, seen] of detectionKindLastSeen) {
     if (now - seen > DETECTION_INDICATOR_TIMEOUT) detectionKindLastSeen.delete(kind);
   }
-  activeDetectionKinds.value = [...detectionKindLastSeen.keys()];
+  const active = [...detectionKindLastSeen.keys()];
+  const current = activeDetectionKinds.value;
+  if (active.length !== current.length || active.some((kind, i) => kind !== current[i])) activeDetectionKinds.value = active;
 }
 
 function resumeStream() {
@@ -1994,6 +2003,8 @@ function holdLeaving(el: Element, edge: 'left' | 'right'): void {
   const group = node.parentElement;
   if (!group) return;
   node.style[edge] = `${edge === 'left' ? node.offsetLeft : group.clientWidth - node.offsetLeft - node.offsetWidth}px`;
+  // without a top the absolute leaver centers on the collapsing flex row and jumps up by half its height
+  node.style.top = `${node.offsetTop}px`;
 }
 
 function toggleTimeline() {
@@ -2037,7 +2048,7 @@ function timelineScroll(scrolling: boolean) {
 
 function openSpeedFromMore(event: Event) {
   morePopoverRef.value?.hide();
-  nextTick(() => speedPopoverRef.value?.toggle(event));
+  nextTick(() => toggleOverlay('speed', () => speedPopoverRef.value?.toggle(event)));
 }
 
 function openShareDialog() {
@@ -2688,6 +2699,7 @@ html.cui-native-pip #video-container.native-pip .ar-box {
   pointer-events: none;
   overflow: hidden;
   transition:
+    opacity 0.1s ease,
     bottom 0.2s ease,
     right 0.2s ease,
     transform 0.2s ease;

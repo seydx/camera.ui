@@ -364,6 +364,7 @@ import { CamerasQuery } from '@/api/routes/cameras.js';
 import { SensorsQuery } from '@/api/routes/sensors.js';
 import { asyncComponent } from '@/common/asyncComponent.js';
 import { sensorTypeIcon } from '@/common/sensorIcons.js';
+import { keepUnchangedItems } from '@/common/utils.js';
 import { useCardSelection } from '@/composables/useCardSelection.js';
 import { sensorProvidedForCamera } from '@/utils/sensorSlots.js';
 
@@ -504,10 +505,8 @@ const cameraById = computed(() => new Map((camerasData.value?.result ?? []).map(
 
 const liveSensorById = computed(() => new Map(liveSensors.value.map((sensor) => [sensor.id, sensor])));
 
-const rows = computed<SensorRow[]>(() => {
-  const query = searchQuery.value.toLowerCase().trim();
-
-  return sensors.value
+const allRows = computed<SensorRow[]>((previous) => {
+  const next = sensors.value
     .map((sensor) => {
       const state = sensorState(sensor);
       return {
@@ -525,24 +524,35 @@ const rows = computed<SensorRow[]>(() => {
         stateColor: STATE_COLORS[state],
       };
     })
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  return keepUnchangedItems(previous, next, rowKey);
+});
+
+const rows = computed<SensorRow[]>((previous) => {
+  const query = searchQuery.value.toLowerCase().trim();
+
+  const next = allRows.value
     .filter((row) => !uiSettings.value.sensors.hideAllCameraBound || !row.sensor.assignmentLocked)
     .filter((row) => !uiSettings.value.sensors.onlyEnabledCameraBound || isEnabledForItsCamera(row.sensor))
-    .filter((row) => !query || [row.label, row.typeLabel, row.nativeLabel, row.pluginLabel, row.assignedLabel].some((value) => value.toLowerCase().includes(query)))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .filter((row) => !query || [row.label, row.typeLabel, row.nativeLabel, row.pluginLabel, row.assignedLabel].some((value) => value.toLowerCase().includes(query)));
+
+  return keepUnchangedItems(previous, next, rowKey);
 });
 
 const isScanning = computed(() => sensorsSocket.isScanning.value);
 
-const discoveredRows = computed(() => {
+const discoveredRows = computed<DiscoveredSensorListItem[]>((previous) => {
   const query = searchQuery.value.toLowerCase().trim();
-  return sensorsSocket.sortedSensors.value.filter(
+  const next = sensorsSocket.sortedSensors.value.filter(
     (item) => !query || [item.name, item.id, item.pluginName, item.room ?? ''].some((value) => value.toLowerCase().includes(query)),
   );
+  return keepUnchangedItems(previous, next, discoveredKey);
 });
 
 const { selectionMode, selectedIds, selectedItems, allSelected, bulkBusy, enterSelectionMode, exitSelectionMode, toggleSelectAll, toggleSelection } = useCardSelection(
   () => rows.value,
-  (row) => row.sensor.id,
+  rowKey,
 );
 
 const {
@@ -558,6 +568,10 @@ const {
 } = useCardSelection(() => discoveredRows.value, discoveredKey);
 
 const deletableSelected = computed(() => selectedItems.value.filter((row) => canDelete(row.sensor)));
+
+function rowKey(row: SensorRow): string {
+  return row.sensor.id;
+}
 
 function discoveredKey(item: DiscoveredSensorListItem): string {
   return `${item.pluginId}:${item.id}`;

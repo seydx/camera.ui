@@ -2046,7 +2046,6 @@ export default {
     insecure_handoff_confirm: 'Fortfahren',
   },
   general: {
-    loading: 'Laden...',
     role_admin: 'Admin',
     role_user: 'Benutzer',
   },

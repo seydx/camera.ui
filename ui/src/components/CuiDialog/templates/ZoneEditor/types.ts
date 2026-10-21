@@ -11,6 +11,26 @@ export interface ZoneEditorProps {
   initialSelection?: number;
 }
 
+export interface ZoneEditorShapesProps {
+  polygons: EditorPolygon[];
+  lines: DetectionLine[];
+  showLines: boolean;
+  dashed: boolean;
+  selectedZone: number;
+  selectedLine: number;
+  width: number;
+  height: number;
+}
+
+export interface ZoneEditorShapesEmits {
+  (e: 'select-zone', index: number): void;
+  (e: 'drag-start', event: MouseEvent | TouchEvent, index: number): void;
+  (e: 'drag-move', event: MouseEvent | TouchEvent): void;
+  (e: 'drag-end'): void;
+  (e: 'select-line', index: number): void;
+  (e: 'line-handle-down', event: MouseEvent | TouchEvent, index: number, point: number): void;
+}
+
 export interface CoordsPosition {
   _id: string;
   zoneIndex: number;

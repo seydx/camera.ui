@@ -1,4 +1,3 @@
-import { PrimeVueResolver } from '@openvue/auto-import-resolver';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import dotenv from 'dotenv';
@@ -9,6 +8,8 @@ import IconsResolver from 'unplugin-icons/resolver';
 import Icons from 'unplugin-icons/vite';
 import Components from 'unplugin-vue-components/vite';
 import { defineConfig } from 'vite';
+
+import { openvueResolvers } from './vite-plugins/openvueResolvers.js';
 
 import type { AtRule, Plugin as PostcssPlugin, Rule } from 'postcss';
 import type { Plugin } from 'vite';
@@ -166,7 +167,7 @@ export default defineConfig({
       extensions: ['vue'],
       include: [/\.vue$/, /\.vue\?vue/],
       dts: false,
-      resolvers: [PrimeVueResolver(), IconsResolver()],
+      resolvers: [...openvueResolvers(), IconsResolver()],
     }),
     inlineExtractedCss(),
     preloadCardsChunk(),

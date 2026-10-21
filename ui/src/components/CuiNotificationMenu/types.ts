@@ -1,0 +1,15 @@
+import type { StoredNotification } from '@shared/types';
+
+export interface CuiNotificationItemProps {
+  notification: StoredNotification;
+  time: string;
+  divider: boolean;
+}
+
+export interface CuiNotificationItemEmits {
+  open: [notification: StoredNotification];
+  markSeen: [notification: StoredNotification];
+  remove: [notification: StoredNotification];
+}
+
+export const NotificationSwipeKey: InjectionKey<Ref<string | undefined>> = Symbol('NotificationSwipe');

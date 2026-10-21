@@ -130,7 +130,7 @@
             rounded
             class="cui-icon-md"
             :disabled="isLoading"
-            @click="menuRef?.toggleMenu"
+            @click="toggleMenu"
           >
             <template #icon>
               <div class="relative w-6 h-6">
@@ -163,6 +163,7 @@
     </Card>
 
     <CuiMenu
+      v-if="overlays.menu"
       ref="menuRef"
       :items
       :popover="{
@@ -201,6 +202,7 @@ const { statusWithPlacement } = usePlacementLabel();
 const { plugin } = toRefs(props);
 
 const { pluginsSocket, pluginUpdate, state, queued, updating, isLoading, items, togglePlugin, openDialog, handleInlineUpdate } = usePluginActions(plugin);
+const { mounted: overlays, toggleOverlay } = useLazyOverlays<'menu'>();
 
 const { data: pluginLogo } = pluginsQuery.getPluginLogoQuery(plugin.value.pluginName);
 
@@ -234,6 +236,10 @@ const compatWarnings = computed<string[]>(() => {
 });
 
 const statusTooltip = computed(() => statusWithPlacement(t(`components.plugin_card.status_${pluginsSocket.status.value}`), pluginsSocket.placement.value));
+
+function toggleMenu(event: MouseEvent): Promise<void> {
+  return toggleOverlay('menu', () => menuRef.value?.toggleMenu(event));
+}
 </script>
 
 <style scoped>

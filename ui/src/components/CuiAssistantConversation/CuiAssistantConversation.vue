@@ -301,6 +301,8 @@ const atBottom = ref(true);
 let welcomeRest: number | undefined;
 let keyboardFlips = 0;
 
+const mergedAnswers = new WeakMap<UIMessage, { sources: UIMessage[]; message: UIMessage }>();
+
 const { top: rootTop } = useElementBounding(rootRef);
 const { top: composerTop } = useElementBounding(computed(() => composerRef.value?.$el as HTMLElement | undefined));
 const modelId = ref(props.initialModelId ?? null);
@@ -338,13 +340,13 @@ const rows = computed<ConversationRow[]>(() => {
     const continuation = message.role === 'assistant' && isContinueMark(list[index - 1]);
     const last = out[out.length - 1];
     if (message.role === 'assistant' && !continuation && last?.message.role === 'assistant' && !last.continuation && last.lastIndex === index - 1) {
-      last.message = { ...last.message, parts: [...last.message.parts, ...message.parts] };
       last.ids.push(message.id);
       last.lastIndex = index;
       return;
     }
     out.push({ message, index, lastIndex: index, ids: [message.id], continuation });
   });
+  for (const row of out) if (row.lastIndex > row.index) row.message = mergedAnswer(list.slice(row.index, row.lastIndex + 1));
   return out;
 });
 
@@ -385,6 +387,15 @@ const greeting = computed(() => {
   if (hour < 18) return t('views.assistant.greeting_day');
   return t('views.assistant.greeting_evening');
 });
+
+function mergedAnswer(sources: UIMessage[]): UIMessage {
+  // same object while the sources are unchanged, so a finished answer skips the per-chunk re-render
+  const cached = mergedAnswers.get(sources[0]);
+  if (cached?.sources.length === sources.length && cached.sources.every((source, index) => source === sources[index])) return cached.message;
+  const message = { ...sources[0], parts: sources.flatMap((source) => source.parts) };
+  mergedAnswers.set(sources[0], { sources, message });
+  return message;
+}
 
 function rowUsage(row: ConversationRow): AssistantUsageEvent | undefined {
   for (const id of row.ids) if (chat.usage.value[id]) return chat.usage.value[id];
@@ -555,6 +566,7 @@ function refreshFromStore(thread: DBAssistantThread): boolean {
   return true;
 }
 
+// every update is a new frozen array, a deep watch would only walk the whole history per chunk
 watch(
   () => chat.messages.value,
   async () => {
@@ -562,7 +574,6 @@ watch(
     await nextTick();
     scrollToBottom();
   },
-  { deep: true },
 );
 
 watch(

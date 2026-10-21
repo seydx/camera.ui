@@ -46,7 +46,7 @@ const emit = defineEmits<CuiTopNavbarItemEmits>();
 
 const { type, label, active, disabled, badge, badgeSeverity, closeable, status, loading, menuOpen, primary } = toRefs(props);
 
-const buttonRef = useTemplateRef<{ $el: HTMLElement }>('buttonRef');
+const buttonRef = useTemplateRef<HTMLElement>('buttonRef');
 
 const isIconOnly = computed(() => !label.value && type.value === 'button');
 const itemClasses = computed(() => [
@@ -73,7 +73,7 @@ watch(
   (isActive) => {
     if (isActive) {
       nextTick(() => {
-        buttonRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        buttonRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       });
     }
   },

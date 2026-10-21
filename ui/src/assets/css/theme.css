@@ -260,7 +260,7 @@
 }
 
 [data-mode='light'],
-.ligh-mode {
+.light-mode {
   --divider-color: var(--p-surface-200);
   --border-color: var(--p-surface-200);
   --border-color-inner: var(--p-surface-300);
@@ -270,7 +270,6 @@
   --ground-background: var(--p-surface-50);
   --ground-background-val: 248, 250, 252;
   --navbar-background: #0d0d0d;
-  --navbar-border-color: #131313;
   --subnavbar-background: #f9fafc;
   --subnavbar-item-background: #f9fafc;
   --subnavbar-item-hover-background: #f9fcff;
@@ -281,13 +280,10 @@
   --sidebar-background: var(--p-surface-50);
   --card-background: var(--p-surface-0);
   --card-inner-background: var(--p-surface-50);
-  --expanded-row-background: #f7f8fa;
   --drawer-background: var(--p-surface-0);
-  --tooltip-background: var(--p-surface-800);
   --sidebar-view-background: #1a1a1a;
   --toggle-switch-background: #f3f7fc;
   --editor-background: #fff;
-  --subnavbar-gradient: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.03) 100%);
   --mask-background: rgba(0, 0, 0, 0.1);
 
   --progress-track-background: var(--p-surface-200);
@@ -309,18 +305,6 @@
   --text-info-color: var(--p-blue-600);
   --text-warning-color: var(--p-amber-600);
   --text-danger-color: var(--p-red-600);
-
-  --button-primary-background: var(--p-primary-500);
-  --button-primary-hover-background: var(--p-primary-600);
-  --button-primary-active-background: var(--p-primary-700);
-
-  --button-secondary-background: transparent;
-  --button-secondary-hover-background: var(--p-slate-100);
-  --button-secondary-active-background: var(--p-slate-200);
-
-  --button-contrast-background: transparent;
-  --button-contrast-hover-background: var(--p-slate-100);
-  --button-contrast-active-background: var(--p-slate-200);
 
   --table-row-odd-background: var(--p-surface-50);
 
@@ -382,21 +366,17 @@
   --ground-background: var(--p-surface-1000);
   --ground-background-val: 13, 13, 13;
   --navbar-background: #0d0d0d;
-  --navbar-border-color: #131313;
   --subnavbar-background: #0d0d0d;
   --subnavbar-item-background: #0d0d0d;
   --subnavbar-item-hover-background: #161616;
   --subnavbar-item-active-background: #1d1d1d;
-  --subnavbar-gradient: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(255, 255, 255, 0.03) 100%);
   --topnavbar-background: #131313;
   --topnavbar-border-color: #232323;
   --topbar-background: var(--p-surface-900);
   --sidebar-background: var(--p-surface-950);
   --card-background: var(--p-surface-900);
   --card-inner-background: var(--p-surface-925);
-  --expanded-row-background: #131313;
   --drawer-background: var(--p-surface-900);
-  --tooltip-background: var(--p-surface-800);
   --sidebar-view-background: #1a1a1a;
   --toggle-switch-background: #1f1f1f;
   --editor-background: #121212;
@@ -421,18 +401,6 @@
   --text-info-color: var(--p-blue-400);
   --text-warning-color: var(--p-amber-400);
   --text-danger-color: var(--p-red-400);
-
-  --button-primary-background: var(--p-primary-500);
-  --button-primary-hover-background: var(--p-primary-600);
-  --button-primary-active-background: var(--p-primary-700);
-
-  --button-secondary-background: transparent;
-  --button-secondary-hover-background: var(--p-surface-900);
-  --button-secondary-active-background: var(--p-surface-850);
-
-  --button-contrast-background: transparent;
-  --button-contrast-hover-background: var(--p-surface-800);
-  --button-contrast-active-background: var(--p-surface-700);
 
   --table-row-odd-background: var(--p-surface-850);
 

@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full">
-    <CuiDataTable :loading="isLoading" :value="cameras?.result.filter((camera) => !skipCameras?.includes(camera.name))" striped-rows :show-headers="false">
+    <CuiDataTable :loading="isLoading" :value="visibleCameras" striped-rows :show-headers="false">
       <template #loading><ProgressSpinner class="w-[30px] h-[30px] m-0" stroke-width="5" /></template>
 
       <Column v-if="activeCamera" header-class="p-2" class="px-4">
@@ -56,6 +56,7 @@ const pagination = ref<PaginationQuery>({ page: 1, pageSize: -1 });
 const { data: cameras, isBusy: camerasLoading } = cameraQuery.getCamerasQuery(pagination);
 
 const isLoading = computed(() => camerasLoading.value);
+const visibleCameras = computed(() => cameras.value?.result.filter((camera) => !skipCameras.value?.includes(camera.name)));
 
 function getStatusSeverity(status: StreamStatus): 'success' | 'warn' | 'danger' | 'secondary' | 'contrast' {
   switch (status) {

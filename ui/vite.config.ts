@@ -1,4 +1,3 @@
-import { PrimeVueResolver } from '@openvue/auto-import-resolver';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import dotenv from 'dotenv';
@@ -12,6 +11,7 @@ import Markdown from 'unplugin-vue-markdown/vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { openvueResolvers } from './vite-plugins/openvueResolvers.js';
 import { workerViteClientGuard } from './vite-plugins/workerViteClientGuard.js';
 
 import type { ManifestOptions } from 'vite-plugin-pwa';
@@ -289,7 +289,7 @@ export default defineConfig(({ command }) => ({
       extensions: ['vue', 'md'],
       include: [/\.vue$/, /\.vue\?vue/, /\.md$/],
       dts: resolve(__dirname, 'src', 'types', 'components.d.ts'),
-      resolvers: [PrimeVueResolver(), IconsResolver()],
+      resolvers: [...openvueResolvers(), IconsResolver()],
     }),
     ...(IS_MOBILE
       ? []

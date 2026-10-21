@@ -1,7 +1,8 @@
-import type { ButtonProps, PopoverProps } from 'openvue';
+import type { PopoverProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
 
 import type { CuiAvatarProps } from '../CuiAvatar/types.js';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 export interface MenuItem {
   key?: string;
@@ -20,7 +21,7 @@ export interface MenuItem {
   avatarProps?: CuiAvatarProps & HTMLAttributes;
   labelProps?: HTMLAttributes;
   descriptionProps?: HTMLAttributes;
-  buttonProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
   badge?: string;
   badgeProps?: HTMLAttributes;
   loading?: boolean;

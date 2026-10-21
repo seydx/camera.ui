@@ -1,7 +1,8 @@
 import type { PaginationQuery } from '@shared/types';
 import type { ChartData, ChartOptions } from 'chart.js';
-import type { ButtonProps, ChipProps, ColumnProps, DataTableProps } from 'openvue';
+import type { ChipProps, ColumnProps, DataTableProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 interface TableHeaderBase {
   type: TableHeaderType;
@@ -27,7 +28,7 @@ export interface TableHeaderActionButton {
   disabled?: (item: any) => boolean;
   tooltip?: (item: any) => string | undefined;
   action: (item: any) => void;
-  buttonProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
 }
 
 export interface TableHeaderAction extends TableHeaderBase {
@@ -37,7 +38,7 @@ export interface TableHeaderAction extends TableHeaderBase {
   disabled?: (item: any) => boolean;
   tooltip?: (item: any) => string | undefined;
   action?: (item: any) => void;
-  buttonProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
   buttons?: TableHeaderActionButton[];
 }
 

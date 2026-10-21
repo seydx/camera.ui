@@ -177,6 +177,7 @@ import EyeIcon from '~icons/mdi/eye';
 import EyeOffIcon from '~icons/mdi/eye-off';
 import PlusIcon from '~icons/typcn/plus';
 
+import { keepUnchangedItems } from '@/common/utils.js';
 import AddCameraDialog from '@/components/CuiDialog/templates/AddCamera/AddCamera.vue';
 import ConfirmCameraDialog from '@/components/CuiDialog/templates/ConfirmCamera/ConfirmCamera.vue';
 import ConnectionSchemaDialog from '@/components/CuiDialog/templates/ConnectionSchema/ConnectionSchema.vue';
@@ -211,8 +212,20 @@ const tablePtOptions: PassThrough<DataTablePassThroughOptions> = {
 
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 const sortedDevices = computed(() => camerasSocket.sortedDevices.value);
-const addedDevices = computed(() => sortedDevices.value.filter((d) => d.type === 'camera'));
-const discoveredDevices = computed(() => sortedDevices.value.filter((d) => d.type === 'discovered'));
+const addedDevices = computed<DeviceListItem[]>((previous) =>
+  keepUnchangedItems(
+    previous,
+    sortedDevices.value.filter((d) => d.type === 'camera'),
+    (d) => d.id,
+  ),
+);
+const discoveredDevices = computed<DeviceListItem[]>((previous) =>
+  keepUnchangedItems(
+    previous,
+    sortedDevices.value.filter((d) => d.type === 'discovered'),
+    (d) => d.id,
+  ),
+);
 const isLoading = computed(() => camerasSocket.isLoading.value);
 const isScanning = computed(() => camerasSocket.isScanning.value);
 const hiddenDevices = computed(() => camerasSocket.hiddenDevices.value);

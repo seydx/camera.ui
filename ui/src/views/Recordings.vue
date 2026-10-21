@@ -127,7 +127,7 @@
             :gap="8"
             :has-more="gridHasMore"
             :load-more="gridLoadMore"
-            :item-key="(item: UngroupedItem) => item.key"
+            :item-key="itemKey"
             class="flex-1 min-h-0"
             :style="{ '--cui-scroll-end': 'calc(var(--cui-bottom-gap) - 8px)' }"
           >
@@ -146,8 +146,7 @@
                 @select="toggleSelection(item.event.id)"
                 @scroll-to-event="(ts: number) => openRecordingDialog(item.event, ts)"
                 @open-trace="(atMs?: number) => openTraceDialog(item.event, atMs)"
-                @mouseenter="hoveredEventId = item.segIndex !== undefined ? item.event.id : null"
-                @mouseleave="hoveredEventId = null"
+                @segment-hover="hoveredEventId = $event"
               />
             </template>
           </CuiRecordingsGrid>
@@ -157,7 +156,7 @@
             :items="SKELETON_ITEMS"
             :min-item-width="smBreakpoint ? 160 : 180"
             :gap="8"
-            :item-key="(index: number) => index"
+            :item-key="skeletonKey"
             class="flex-1 min-h-0 pointer-events-none"
           >
             <template #item>
@@ -215,7 +214,7 @@
       </Button>
     </div>
 
-    <CuiFloatingButtonGroup v-if="availableCameras.length" :force-visible="selectionMode" :scroll-y="gridRef?.scrollY ?? 0">
+    <CuiFloatingButtonGroup v-if="availableCameras.length" :force-visible="selectionMode" :scroll-hidden="scrollHidden">
       <template v-if="!selectionMode">
         <CuiFloatingButton
           v-if="isAdmin && listedEvents.length && !isSimilarActive"
@@ -430,11 +429,11 @@ const sidebarOpen = computed(() => {
 
 const sidebarIsOverlay = computed(() => mdBreakpoint.value);
 
-const reindexScrollHidden = useScrollHide(() => gridRef.value?.scrollY ?? 0);
+const scrollHidden = useScrollHide(() => gridRef.value?.scrollY ?? 0);
 
 const reindexHidden = computed(() => {
   if (sidebarOpen.value && sidebarIsOverlay.value) return true;
-  return reindexScrollHidden.value && !reindexStatus.value?.running;
+  return scrollHidden.value && !reindexStatus.value?.running;
 });
 
 const mainPaddingLeft = computed(() => {
@@ -879,6 +878,14 @@ function vehicleAttributeLabels(f: RecordingsFilterState): Record<string, string
   if (f.vehicleColors.length) labels.color = f.vehicleColors;
   if (f.vehicleTypes.length) labels.vehicle_type = f.vehicleTypes;
   return labels;
+}
+
+function itemKey(item: UngroupedItem): string {
+  return item.key;
+}
+
+function skeletonKey(index: number): number {
+  return index;
 }
 
 function openTraceDialog(event: RecordedEvent, atMs?: number): void {

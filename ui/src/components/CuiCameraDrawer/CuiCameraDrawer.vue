@@ -1,5 +1,5 @@
 <template>
-  <Drawer v-model:visible="visible" v-bind="drawerProps" class="border-0 md:border-l-[1px]" :pt="drawerPt" @hide="onHide">
+  <Drawer v-model:visible="visible" v-bind="drawerProps" class="border-0 md:border-l-[1px]" @hide="onHide">
     <template #container="{ closeCallback }">
       <div class="w-full h-full p-safe !pb-0 md:!pl-0 non-draggable-region">
         <div class="w-full h-full border-0 md:border-r-[1px] border-color overflow-y-auto pb-safe">
@@ -11,8 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PassThrough } from '@openvue/core';
-import type { DrawerPassThroughOptions, DrawerProps } from 'openvue';
+import type { DrawerProps } from 'openvue';
 import type { CameraOptionsProps } from './component/types.js';
 
 const router = useRouter();
@@ -22,10 +21,6 @@ const eventBus = drawer.getEventBus();
 const visible = ref(false);
 const cameraOptions = ref<CameraOptionsProps | undefined>();
 const drawerProps = ref<DrawerProps | undefined>();
-
-const drawerPt = computed<PassThrough<DrawerPassThroughOptions> | undefined>(() => {
-  return DEFAULT_DRAWER_PROPS.pt;
-});
 
 function onHide() {
   visible.value = false;

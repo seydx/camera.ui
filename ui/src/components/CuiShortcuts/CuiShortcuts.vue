@@ -35,7 +35,12 @@
         </template>
       </Button>
 
-      <Popover :ref="(el: any) => previewMenuRef(el, shortcut._id)" class="shadow-lg cui-rounded-corner overflow-hidden" :pt="{ content: { class: 'p-0' } }">
+      <Popover
+        v-if="mountedPopovers.has(shortcut._id)"
+        :ref="(el: any) => previewMenuRef(el, shortcut._id)"
+        class="shadow-lg cui-rounded-corner overflow-hidden"
+        :pt="{ content: { class: 'p-0' } }"
+      >
         <div class="snapshot-hover-container flex items-center justify-center relative">
           <ProgressSpinner v-if="!cameras?.result.find((cam) => cam._id === shortcut.cameraId)" stroke-width="5" class="w-[30px] h-[30px]" />
           <CuiCameraCard
@@ -95,7 +100,7 @@
       </Button>
 
       <Popover
-        v-if="resolved.shortcut.sensorType === 'securitySystem'"
+        v-if="resolved.shortcut.sensorType === 'securitySystem' && mountedPopovers.has(resolved.shortcut._id)"
         :ref="(el: any) => securitySystemMenuRef(el, resolved.shortcut._id)"
         class="shadow-lg cui-rounded-corner"
         :pt="{ content: { class: 'p-2' } }"
@@ -141,7 +146,12 @@
         </div>
       </Popover>
 
-      <Popover :ref="(el: any) => previewMenuRef(el, resolved.shortcut._id)" class="shadow-lg cui-rounded-corner" :pt="{ content: { class: 'p-2' } }">
+      <Popover
+        v-if="mountedPopovers.has(resolved.shortcut._id)"
+        :ref="(el: any) => previewMenuRef(el, resolved.shortcut._id)"
+        class="shadow-lg cui-rounded-corner"
+        :pt="{ content: { class: 'p-2' } }"
+      >
         <div class="sensor-tooltip">
           <div class="sensor-tooltip-name">{{ resolved.sensor?.displayName.value ?? $t(`components.camera_options.sensor_type_${resolved.shortcut.sensorType}`) }}</div>
           <div
@@ -252,15 +262,7 @@
             <div class="shortcut-menu-sensors">
               <template v-if="availableSensorsForShortcuts.length > 0">
                 <template v-for="(sensor, index) in availableSensorsForShortcuts" :key="sensor.id">
-                  <CuiListItem
-                    :disabled="isSensorAlreadyAdded(sensor)"
-                    @click="!isSensorAlreadyAdded(sensor) && addSensor(sensor)"
-                    :button-props="{
-                      pt: {
-                        root: { class: 'p-0!' },
-                      },
-                    }"
-                  >
+                  <CuiListItem :disabled="isSensorAlreadyAdded(sensor)" @click="!isSensorAlreadyAdded(sensor) && addSensor(sensor)" :button-props="{ class: 'p-0!' }">
                     <template #prepend>
                       <div class="sensor-menu-icon">
                         <i-lucide:door-closed v-if="sensor.type === SensorType.Contact" class="w-5 h-5" />
@@ -387,6 +389,7 @@ const camerasMenuOpen = ref(false);
 const addMenuTab = ref<'cameras' | 'sensors'>('cameras');
 const longPressTriggeredMap = ref<{ [key: string]: boolean }>({});
 const removingShortcuts = ref<Set<string>>(new Set());
+const mountedPopovers = ref(new Set<string>());
 
 const shortcutContainerSize = useElementSize(shortcutContainerRef);
 
@@ -569,12 +572,16 @@ function getBatteryStatusLabel(sensor: ReactiveSensor | undefined): string {
   return `${level}%${chargingLabel}`;
 }
 
-function onSensorClick(resolved: ResolvedSensorShortcut): void {
+async function onSensorClick(resolved: ResolvedSensorShortcut): Promise<void> {
   if (SENSOR_READONLY_TYPES.has(resolved.shortcut.sensorType)) return;
   if (!canControlSensors) return;
 
   // synthetic event so the PrimeVue popover anchors to the shortcut icon
   if (resolved.shortcut.sensorType === 'securitySystem') {
+    if (!mountedPopovers.value.has(resolved.shortcut._id)) {
+      mountedPopovers.value.add(resolved.shortcut._id);
+      await nextTick();
+    }
     const popover = securitySystemMenuRefs.value[resolved.shortcut._id];
     const target = shortcutElementRefs.value[resolved.shortcut._id] as HTMLElement | undefined;
     if (popover && target) {
@@ -592,6 +599,7 @@ function onHover(id: string, isHovering: boolean): void {
   camerasQuery.toggleQueryActivator('getCamerasQuery', isHovering);
 
   isHoveringMap.value[id] = isDragging.value ? false : isHovering;
+  mountedPopovers.value.add(id);
 
   // only on hover in, a delayed leave would close the popover that just opened
   if (isHovering) {
@@ -631,6 +639,7 @@ function onMouseUpCallback(isLongPress: boolean, shortcut: DBCameraShortcut) {
 function onSensorHover(id: string, isHovering: boolean): void {
   if (isDragging.value) return;
   isHoveringMap.value[id] = isDragging.value ? false : isHovering;
+  mountedPopovers.value.add(id);
 
   if (isHovering) {
     Object.entries(isHoveringMap.value).forEach(([key, value]) => {
@@ -1026,7 +1035,8 @@ watch(
       }
     });
   },
-  { deep: true },
+  // post: a popover mounts on the first hover, its ref exists only after the render
+  { deep: true, flush: 'post' },
 );
 
 watch(visible, (isVisible) => {

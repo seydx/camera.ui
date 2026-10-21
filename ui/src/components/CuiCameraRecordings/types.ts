@@ -10,3 +10,7 @@ export interface CuiCameraRecordingsProps {
 export interface CuiCameraRecordingsEmits {
   scrollToEvent: [timestamp: number];
 }
+
+export interface CuiCameraRecordingsToolbarProps {
+  compact: boolean;
+}

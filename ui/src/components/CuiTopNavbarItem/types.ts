@@ -1,4 +1,4 @@
-import type { ButtonProps } from 'openvue';
+import type { BadgeProps } from 'openvue';
 
 export type TopNavbarItemType = 'button' | 'tab' | 'dropdown';
 
@@ -11,11 +11,11 @@ export interface CuiTopNavbarItemProps {
   primary?: boolean;
   type?: TopNavbarItemType;
   status?: TopNavbarItemStatus;
-  label?: ButtonProps['label'];
-  disabled?: ButtonProps['disabled'];
-  badge?: ButtonProps['badge'];
-  badgeSeverity?: ButtonProps['badgeSeverity'];
-  loading?: ButtonProps['loading'];
+  label?: string;
+  disabled?: boolean;
+  badge?: string;
+  badgeSeverity?: BadgeProps['severity'];
+  loading?: boolean;
 }
 
 export interface CuiTopNavbarItemEmits {

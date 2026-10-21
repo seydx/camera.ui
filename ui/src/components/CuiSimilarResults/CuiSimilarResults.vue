@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <CuiRecordingsGrid v-if="items.length" :items :min-item-width="180" :gap="8" :item-key="(item: SimilarResultItem) => item.key" class="flex-1 min-h-0 px-3">
+    <CuiRecordingsGrid v-if="items.length" :items :min-item-width="180" :gap="8" :item-key="itemKey" class="flex-1 min-h-0 px-3">
       <template #item="{ item }">
         <RecordingCard
           :event="item.event"
@@ -98,6 +98,10 @@ function rangeOf(match: SimilarMatch): [number, number] | undefined {
   if (!found) return undefined;
   if (match.kind) return SIMILAR_SCORE_RANGES[match.kind];
   return found.mode === 'face' && found.label ? undefined : SIMILAR_SCORE_RANGES[found.mode];
+}
+
+function itemKey(item: SimilarResultItem): string {
+  return item.key;
 }
 
 function openTrace(event: RecordedEvent, atMs?: number): void {

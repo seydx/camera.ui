@@ -343,8 +343,8 @@ import type { MenuItem } from '@/components/CuiMenu/types.js';
 import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit, DBCamviewLayout, DBCamviewLayoutCamera, DBCamviewViewSize } from '@shared/types';
-import type { ButtonProps } from 'openvue';
 import type { HTMLAttributes } from 'vue';
+import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
 
 const usersQuery = new UsersQuery();
 const camerasQuery = new CamerasQuery();
@@ -488,7 +488,7 @@ const detectionsEnabled = computed(() => uiSettings.value.camview.detections !==
 
 const activityMode = computed(() => uiSettings.value.camview.activityMode);
 
-const cameraButtons = computed<{ label: string; icon: any; buttonProps?: ButtonProps; command: () => void }[]>(() => [
+const cameraButtons = computed<{ label: string; icon: any; buttonProps?: CuiButtonAttrs; command: () => void }[]>(() => [
   {
     label: isFullscreen.value ? t('components.form.tooltip.fullscreen_off') : t('components.form.tooltip.fullscreen_on'),
     icon: isFullscreen.value ? FullscreenOffIcon : FullscreenOnIcon,

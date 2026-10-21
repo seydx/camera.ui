@@ -1,11 +1,11 @@
-import type { ButtonProps } from 'openvue';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 export interface CuiActionButtonProps {
   label?: string;
   icon?: any;
   iconClass?: string;
-  buttonProps?: ButtonProps;
-  tooltipProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
+  tooltipProps?: CuiButtonAttrs;
   actionText: string;
   actionDuration?: number;
 }

@@ -8,25 +8,6 @@
   width: 100%;
 }
 
-.p-toast-close-button {
-  right: unset;
-  margin: unset;
-}
-
-.p-toast-message-icon {
-  display: none !important;
-}
-
-.p-toast-message-content {
-  display: flex;
-  align-items: center;
-}
-
-.p-toast-message-content,
-.p-toast-message-text {
-  gap: unset;
-}
-
 .p-progressspinner-circle {
   stroke: var(--primary-500) !important;
 }
@@ -111,10 +92,6 @@
 
 .p-toggleswitch.p-disabled .p-toggleswitch-handle {
   background: var(--p-toggleswitch-handle-background);
-}
-
-.p-dialog-maximized > .p-dialog-footer {
-  padding-bottom: calc(var(--safe-area-inset-bottom) + 1.25rem);
 }
 
 @property --keyboard-inset {

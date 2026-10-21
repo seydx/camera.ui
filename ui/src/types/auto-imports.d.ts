@@ -309,6 +309,7 @@ declare global {
   const useKeyModifier: typeof import('@vueuse/core').useKeyModifier
   const useKeyboardInset: typeof import('../composables/useKeyboardInset').useKeyboardInset
   const useLastChanged: typeof import('@vueuse/core').useLastChanged
+  const useLazyOverlays: typeof import('../composables/useLazyOverlays').useLazyOverlays
   const useLink: typeof import('vue-router').useLink
   const useLiveAnnouncer: typeof import('@vueuse/core').useLiveAnnouncer
   const useLocalStorage: typeof import('@vueuse/core').useLocalStorage
@@ -901,6 +902,7 @@ declare module 'vue' {
     readonly useKeyModifier: UnwrapRef<typeof import('@vueuse/core')['useKeyModifier']>
     readonly useKeyboardInset: UnwrapRef<typeof import('../composables/useKeyboardInset')['useKeyboardInset']>
     readonly useLastChanged: UnwrapRef<typeof import('@vueuse/core')['useLastChanged']>
+    readonly useLazyOverlays: UnwrapRef<typeof import('../composables/useLazyOverlays')['useLazyOverlays']>
     readonly useLink: UnwrapRef<typeof import('vue-router')['useLink']>
     readonly useLiveAnnouncer: UnwrapRef<typeof import('@vueuse/core')['useLiveAnnouncer']>
     readonly useLocalStorage: UnwrapRef<typeof import('@vueuse/core')['useLocalStorage']>

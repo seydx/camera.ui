@@ -63,6 +63,7 @@ export interface RecordingCardEmits {
   scrollToEvent: [timestamp: number];
   select: [];
   openTrace: [atMs?: number];
+  segmentHover: [eventId: string | null];
 }
 
 export interface FaceTarget {

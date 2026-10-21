@@ -5,8 +5,9 @@ import { randomLetter } from '@/common/utils.js';
 import CuiDialog from '@/components/CuiDialog/CuiDialog.vue';
 
 import type { DeepPartial } from '@shared/types';
-import type { ButtonProps, DialogProps } from 'openvue';
+import type { DialogProps } from 'openvue';
 import type { DynamicDialogInstance, DynamicDialogOptions, DynamicDialogTemplates } from 'openvue/dynamicdialogoptions';
+import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
 import type { DialogTabConfig } from './useCuiDialogStepper.js';
 
 export type DeepMaybeRef<T> =
@@ -32,8 +33,8 @@ export interface ContentBaseProps {
   hideCancelButton?: boolean;
   loading?: boolean;
   disabled?: boolean;
-  confirmButtonProps?: ButtonProps;
-  cancelButtonProps?: ButtonProps;
+  confirmButtonProps?: CuiButtonAttrs;
+  cancelButtonProps?: CuiButtonAttrs;
   dialogContentClass?: any;
   dialogContentStyle?: any;
   stayActive?: boolean;

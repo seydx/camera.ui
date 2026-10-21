@@ -1,6 +1,7 @@
 import '@/plugins/logger.js';
 
 import '@/assets/css/tailwind.css';
+import '@camera.ui/nvr/style.css';
 
 import '@/assets/css/extras.css';
 import '@/assets/css/inter.css';

@@ -1,12 +1,12 @@
-import { ZIndex } from '@openuxkit/utils/zindex';
 import Popover from 'openvue/popover';
 import Portal from 'openvue/portal';
-import Tooltip from 'openvue/tooltip';
 import { createBlock, createCommentVNode, openBlock, renderSlot, Teleport } from 'vue';
+
+import { setTooltipContainer } from '@/plugins/tooltip.js';
 
 export function redirectOverlays(host: Element): void {
   redirectPortals(host);
-  redirectTooltips(host);
+  setTooltipContainer(host);
   acceptShadowClicks();
 }
 
@@ -26,43 +26,6 @@ function redirectPortals(host: Element): void {
       createBlock(Teleport, { key: 1, to: props.appendTo === 'body' ? host : props.appendTo }, [renderSlot(ctx.$slots as never, 'default')], 8, ['to'])
     );
   };
-}
-
-interface TooltipInstance {
-  remove(el: HTMLElement): void;
-  getTooltipElement(el: HTMLElement): HTMLElement | null;
-  $haPatched?: boolean;
-}
-
-type TooltipHost = HTMLElement & { _$instances?: { tooltip?: TooltipInstance }; $_ptooltipId?: string | null };
-
-function redirectTooltips(host: Element): void {
-  const directive = Tooltip as unknown as { created?: (el: TooltipHost, ...rest: unknown[]) => void };
-  const created = directive.created;
-  directive.created = function (this: unknown, el: TooltipHost, ...rest: unknown[]): void {
-    created?.call(this, el, ...rest);
-    const instance = el._$instances?.tooltip;
-    if (!instance || instance.$haPatched) return;
-    instance.$haPatched = true;
-    instance.remove = function (this: TooltipInstance, target: TooltipHost | null): void {
-      if (!target) return;
-      const tooltipElement = this.getTooltipElement(target);
-      if (tooltipElement?.parentElement) {
-        ZIndex.clear(tooltipElement);
-        tooltipElement.remove();
-      }
-      target.$_ptooltipId = null;
-    };
-  };
-
-  const observer = new MutationObserver((records) => {
-    for (const record of records) {
-      for (const node of Array.from(record.addedNodes)) {
-        if (node instanceof HTMLElement && node.classList.contains('p-tooltip')) host.appendChild(node);
-      }
-    }
-  });
-  observer.observe(document.body, { childList: true });
 }
 
 function acceptShadowClicks(): void {

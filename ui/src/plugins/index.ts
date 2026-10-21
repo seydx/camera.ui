@@ -1,10 +1,6 @@
 import { VueQueryPlugin } from '@tanstack/vue-query';
 import PrimeVue from 'openvue/config';
-import ConfirmationService from 'openvue/confirmationservice';
-import DialogService from 'openvue/dialogservice';
 import FocusTrap from 'openvue/focustrap';
-import ToastService from 'openvue/toastservice';
-import Tooltip from 'openvue/tooltip';
 import { ViewTransitionsPlugin } from 'vue-view-transitions';
 
 import { isCancellationError, isNoTargetError } from '@/common/utils.js';
@@ -12,7 +8,9 @@ import { isRestoreActive } from '@/composables/useBackupRestore.js';
 import { restarting } from '@/composables/useServerRestart.js';
 import { i18n } from '@/i18n/index.js';
 import Pinia from '@/stores/index.js';
+import { setupOpenvueStyles } from './openvueStyles.js';
 import CameraUiPreset from './preset.js';
+import { tooltip } from './tooltip.js';
 
 import type { VueQueryPluginOptions } from '@tanstack/vue-query';
 import type { App } from 'vue';
@@ -87,15 +85,9 @@ function buildPrimeVueOptions() {
 }
 
 export function registerUiPlugins(app: App): void {
-  app.directive('tooltip', Tooltip).directive('focustrap', FocusTrap);
+  app.directive('tooltip', tooltip).directive('focustrap', FocusTrap);
 
-  app
-    .use(ToastService)
-    .use(ConfirmationService)
-    .use(DialogService)
-    .use(PrimeVue, buildPrimeVueOptions())
-    .use(i18n)
-    .use(ViewTransitionsPlugin())
-    .use(VueQueryPlugin, buildVueQueryOptions())
-    .use(Pinia);
+  app.use(PrimeVue, buildPrimeVueOptions()).use(i18n).use(ViewTransitionsPlugin()).use(VueQueryPlugin, buildVueQueryOptions()).use(Pinia);
+  // the primevue install drops every theme listener, so this comes after it
+  setupOpenvueStyles();
 }

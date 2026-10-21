@@ -1,3 +1,5 @@
+import nvr from '@camera.ui/nvr/style.css?inline';
+
 import extras from '@/assets/css/extras.css?inline';
 import main from '@/assets/css/main.css?inline';
 import markdown from '@/assets/css/markdown.css?inline';
@@ -7,7 +9,7 @@ import theme from '@/assets/css/theme.css?inline';
 import transitions from '@/assets/css/transitions.css?inline';
 import utils from '@/assets/css/utils.css?inline';
 
-const APP_CSS = ['@layer theme, base, primevue, components, utilities;', tailwind, extras, main, markdown, overrides, theme, transitions, utils].join('\n');
+const APP_CSS = ['@layer theme, base, primevue, components, utilities;', tailwind, extras, main, markdown, overrides, theme, transitions, utils, nvr].join('\n');
 
 function componentCss(): string {
   return typeof window.__CUI_HA_CSS__ === 'string' ? window.__CUI_HA_CSS__ : '';

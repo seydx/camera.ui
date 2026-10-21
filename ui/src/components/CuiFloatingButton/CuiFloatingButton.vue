@@ -4,8 +4,8 @@
     :class="[
       {
         'fixed right-safe-offset-5 z-10': !grouped,
-        'scale-0 opacity-0': !grouped && !forceVisible && y > 10,
-        'scale-100 opacity-100': !grouped && (forceVisible || y <= 10),
+        'scale-0 opacity-0': !grouped && !forceVisible && !atTop,
+        'scale-100 opacity-100': !grouped && (forceVisible || atTop),
         'scale-110': isHovered,
       },
     ]"
@@ -36,6 +36,7 @@ const { buttonProps, tooltipProps, label, icon, iconProps, grouped, forceVisible
 const isHovered = ref(false);
 
 const { y } = useScroll(window, { throttle: 100 });
+const atTop = computed(() => y.value <= 10);
 
 const bottomPadding = computed(() => {
   const isBottomVisible = bottombarHeight.value > 0;
@@ -54,7 +55,7 @@ watch(
   y,
   () => {
     if (grouped?.value) return;
-    if (forceVisible?.value || y.value <= 10) {
+    if (forceVisible?.value || atTop.value) {
       emit('expand');
     } else {
       emit('shrink');

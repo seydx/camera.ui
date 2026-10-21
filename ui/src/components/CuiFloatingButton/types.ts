@@ -1,8 +1,9 @@
-import type { ButtonProps, TooltipOptions } from 'openvue';
+import type { TooltipValue } from '@/plugins/tooltip.js';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 export interface CuiFloatingButtonProps {
-  buttonProps?: ButtonProps;
-  tooltipProps?: TooltipOptions;
+  buttonProps?: CuiButtonAttrs;
+  tooltipProps?: TooltipValue;
   label?: string;
   icon?: any;
   iconProps?: Record<string, any>;

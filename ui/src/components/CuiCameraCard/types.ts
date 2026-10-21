@@ -4,7 +4,7 @@ import type { EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit } from '@shared/types';
 import type { CardProps } from 'openvue';
-import type { HTMLAttributes } from 'vue';
+import type { CSSProperties, HTMLAttributes, Ref } from 'vue';
 
 export type VideoModeExtended = VideoStreamingMode | 'loading' | 'reconnecting' | 'error' | 'adapting';
 
@@ -147,3 +147,16 @@ export const CAMERA_CARD_DEFAULTS: InferDefaults<CuiCameraCardProps> = {
   subcontrol: true,
   subcontrolPtzButton: true,
 };
+
+export interface CuiCameraZoomState {
+  pan: Ref<{ x: number; y: number }>;
+  zoom: Ref<number>;
+}
+
+export interface CuiCameraZoomableProps {
+  state: CuiCameraZoomState;
+}
+
+export interface CuiCameraMinimapViewportProps {
+  viewportStyle: () => CSSProperties | null;
+}

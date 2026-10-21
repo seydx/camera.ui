@@ -109,22 +109,15 @@
                   <i-tabler:photo class="w-[18px] h-[18px]" />
                 </template>
               </Button>
-              <span class="text-xs font-mono text-white tabular-nums shrink-0 ml-1">{{ clock(playheadMs - event.startTime) }}</span>
-              <div
-                ref="scrubRef"
-                class="flex-1 h-6 flex items-center cursor-pointer touch-none select-none"
-                @pointerdown="onScrubDown"
-                @pointermove="onScrubMove"
-                @pointerup="onScrubUp"
-                @pointercancel="onScrubUp"
-              >
-                <div class="relative w-full h-1.5 rounded-full bg-white/25">
-                  <div v-for="mark in scrubMarks" :key="mark" class="absolute top-0 bottom-0 w-px bg-white/60" :style="{ left: `${mark}%` }" />
-                  <div class="absolute inset-y-0 left-0 rounded-full bg-primary-500" :style="{ width: `${playedPct}%` }" />
-                  <div class="scrub-knob" :style="{ left: `${playedPct}%` }" />
-                </div>
-              </div>
-              <span class="text-xs font-mono text-white/70 tabular-nums shrink-0">{{ clock(windowEndMs - event.startTime) }}</span>
+              <EventTraceScrubber
+                :frames
+                :start-ms="event.startTime"
+                :end-ms="windowEndMs"
+                :playhead="currentPlayheadMs"
+                @scrub-down="onScrubDown"
+                @scrub-move="applyScrub"
+                @scrub-up="onScrubUp"
+              />
             </template>
             <template v-else-if="selected">
               <span class="font-mono text-sm text-white ml-1">+{{ relativeSeconds(selected.tick.tMs) }}s</span>
@@ -318,6 +311,7 @@ import { detectionStyle } from '@/common/detectionLabels.js';
 import { extractErrorMessage, randomLetter } from '@/common/utils.js';
 import { buildStoredZip } from '@/utils/zipStore.js';
 import { boxIntersectsPolygon, boxMatchesZone } from '@/utils/zoneGeometry.js';
+import EventTraceScrubber from './EventTraceScrubber.vue';
 import { isShownRead } from './reads.js';
 
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
@@ -392,11 +386,11 @@ const ATTRIBUTE_COLORS: Record<string, string> = {
 
 const stageCanvasRef = useTemplateRef<HTMLCanvasElement>('stageCanvasRef');
 const playerRef = useTemplateRef<HTMLElement>('playerRef');
-const scrubRef = useTemplateRef<HTMLElement>('scrubRef');
 const stripRef = useTemplateRef<HTMLElement>('stripRef');
 const stageRef = useTemplateRef<HTMLElement>('stageRef');
 const frameRef = useTemplateRef<HTMLElement>('frameRef');
 const thumbCanvases = new Map<number, HTMLCanvasElement>();
+const drawnThumbs = new WeakMap<HTMLCanvasElement, ImageBitmap>();
 const selectedTick = shallowRef<TraceTick>();
 const stagePicture = shallowRef<ImageBitmap>();
 const stageIsOwnFrame = ref(false);
@@ -517,14 +511,6 @@ const windowEndMs = computed(() => {
   const last = frames.value[frames.value.length - 1]?.tick.tMs ?? props.event.startTime;
   return last + OPEN_EVENT_TAIL_MS;
 });
-const playedPct = computed(() => scrubFraction(playheadMs.value) * 100);
-const scrubMarks = computed(() => {
-  const marks = new Set<number>();
-  for (const frame of frames.value) {
-    if (frame.tick.world.length > 0) marks.add(Math.round(scrubFraction(frame.tick.tMs) * 1000) / 10);
-  }
-  return [...marks];
-});
 
 const onStripScroll = useThrottleFn(loadVisible, 150, true);
 
@@ -592,7 +578,10 @@ function setThumbCanvas(index: number, el: unknown): void {
   if (el instanceof HTMLCanvasElement) {
     thumbCanvases.set(index, el);
     const frame = frames.value[index];
-    if (frame?.thumb) drawThumb(el, frame.thumb);
+    // the inline ref runs on every render, so draw only a new canvas or picture
+    if (!frame?.thumb || drawnThumbs.get(el) === frame.thumb) return;
+    drawThumb(el, frame.thumb);
+    drawnThumbs.set(el, frame.thumb);
   } else {
     thumbCanvases.delete(index);
   }
@@ -823,13 +812,6 @@ function formatTime(tMs: number): string {
   return new Date(tMs).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function clock(ms: number): string {
-  const total = Math.max(ms, 0) / 1000;
-  const minutes = Math.floor(total / 60);
-  const seconds = total - minutes * 60;
-  return `${minutes}:${seconds.toFixed(1).padStart(4, '0')}`;
-}
-
 function frameSource(tick: TraceTick): string {
   const parts: string[] = [];
   if (tick.src) parts.push(tick.src);
@@ -917,12 +899,6 @@ function rawFinding(label: string, confidence: number, box: BoundingBox): string
   return t('views.recordings.trace.hint_not_confirmed', { label });
 }
 
-function scrubFraction(tMs: number): number {
-  const span = windowEndMs.value - props.event.startTime;
-  if (span <= 0) return 0;
-  return Math.min(Math.max((tMs - props.event.startTime) / span, 0), 1);
-}
-
 function nearestFrameIndex(tMs: number): number {
   let best = -1;
   let bestDistance = Infinity;
@@ -978,33 +954,23 @@ function jumpTo(tMs: number): void {
   else nvrController.scrub(tMs * 1000, true);
 }
 
-function scrubPosition(e: PointerEvent): number {
-  const rect = scrubRef.value!.getBoundingClientRect();
-  const fraction = Math.min(Math.max((e.clientX - rect.left) / Math.max(rect.width, 1), 0), 1);
-  return props.event.startTime + fraction * (windowEndMs.value - props.event.startTime);
+function currentPlayheadMs(): number {
+  // read by the scrubber, so the 10 Hz playhead re-renders only the scrubber and not the whole trace
+  return playheadMs.value;
 }
 
-function onScrubDown(e: PointerEvent): void {
-  if (!scrubRef.value) return;
-  scrubRef.value.setPointerCapture(e.pointerId);
+function onScrubDown(tMs: number): void {
   scrubbing.value = true;
   wasPlayingBeforeScrub = nvrController.mode.value === 'play';
-  applyScrub(scrubPosition(e), true);
+  applyScrub(tMs, true);
 }
 
-function onScrubMove(e: PointerEvent): void {
-  if (!scrubbing.value) return;
-  applyScrub(scrubPosition(e));
-}
-
-function onScrubUp(e: PointerEvent): void {
-  if (!scrubbing.value) return;
+function onScrubUp(tMs: number): void {
   scrubbing.value = false;
-  const at = scrubPosition(e);
-  playheadMs.value = at;
+  playheadMs.value = tMs;
   ended.value = false;
-  if (wasPlayingBeforeScrub) nvrController.play(at * 1000);
-  else nvrController.scrub(at * 1000, true);
+  if (wasPlayingBeforeScrub) nvrController.play(tMs * 1000);
+  else nvrController.scrub(tMs * 1000, true);
 }
 
 function applyScrub(tMs: number, force = false): void {
@@ -1244,17 +1210,6 @@ onMounted(() => {
 
 .control-bar-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12) !important;
-}
-
-.scrub-knob {
-  position: absolute;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border-radius: 9999px;
-  background: #fff;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
 }
 
 .tile {

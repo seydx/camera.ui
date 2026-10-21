@@ -394,6 +394,7 @@
     "useKeyModifier": true,
     "useKeyboardInset": true,
     "useLastChanged": true,
+    "useLazyOverlays": true,
     "useLink": true,
     "useLiveAnnouncer": true,
     "useLocalStorage": true,

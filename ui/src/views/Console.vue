@@ -220,7 +220,7 @@ function toggleLevel(level: LogLevel): void {
 
 function openMobileSearch(): void {
   mobileSearchActive.value = true;
-  nextTick(() => mobileSearchInput.value?.$el?.querySelector('input')?.focus());
+  nextTick(() => mobileSearchInput.value?.$el?.focus());
 }
 
 function closeMobileSearch(): void {

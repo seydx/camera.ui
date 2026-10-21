@@ -1,4 +1,4 @@
-import type { ButtonProps } from 'openvue';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 export interface CuiNavItemProps {
   label: string;
@@ -14,7 +14,7 @@ export interface CuiNavItemProps {
   avatarSize?: number;
   showLogout?: boolean;
   darkMode?: boolean;
-  buttonProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
   showTooltip?: boolean;
   fallbackActivePath?: string;
   activeColor?: string;

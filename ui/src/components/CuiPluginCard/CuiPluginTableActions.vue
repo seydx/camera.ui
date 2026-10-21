@@ -24,13 +24,14 @@
       </template>
     </Button>
 
-    <Button severity="secondary" text rounded class="cui-icon-md" :disabled="isLoading" @click="menuRef?.toggleMenu">
+    <Button severity="secondary" text rounded class="cui-icon-md" :disabled="isLoading" @click="toggleMenu">
       <template #icon>
         <i-mdi:dots-vertical width="100%" height="100%" />
       </template>
     </Button>
 
     <CuiMenu
+      v-if="overlays.menu"
       ref="menuRef"
       :items
       :popover="{
@@ -57,8 +58,13 @@ const props = defineProps<{ plugin: CameraUiPlugin }>();
 const { plugin } = toRefs(props);
 
 const { pluginUpdate, queued, updating, isLoading, items, openDialog, handleInlineUpdate } = usePluginActions(plugin);
+const { mounted: overlays, toggleOverlay } = useLazyOverlays<'menu'>();
 
 const menuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('menuRef');
+
+function toggleMenu(event: MouseEvent): Promise<void> {
+  return toggleOverlay('menu', () => menuRef.value?.toggleMenu(event));
+}
 </script>
 
 <style scoped></style>

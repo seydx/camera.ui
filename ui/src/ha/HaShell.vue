@@ -1,6 +1,5 @@
 <template>
   <CuiToast />
-  <ConfirmPopup />
   <DynamicDialog />
   <Teleport v-for="mount in mountList" :key="mount.id" :to="mount.el">
     <component :is="mount.component" v-bind="mount.props" />

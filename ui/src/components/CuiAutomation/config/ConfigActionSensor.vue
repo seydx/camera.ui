@@ -30,7 +30,7 @@
             option-label="value"
             option-value="value"
             :allow-empty="false"
-            class="cui-select-button-small shrink-0"
+            class="shrink-0"
             @update:model-value="(v) => setVariableMode(prop.value, v === 'variable')"
           >
             <template #option="{ option }">

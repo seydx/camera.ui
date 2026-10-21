@@ -1,12 +1,12 @@
-import type { ButtonProps } from 'openvue';
 import type { RouteLocationAsPathGeneric, RouteLocationAsRelativeGeneric } from 'vue-router';
+import type { CuiButtonAttrs } from '../CuiButton/types.js';
 
 export interface CuiListItemProps {
   active?: boolean;
   disabled?: boolean;
   to?: string | RouteLocationAsRelativeGeneric | RouteLocationAsPathGeneric;
   activeClass?: string;
-  buttonProps?: ButtonProps;
+  buttonProps?: CuiButtonAttrs;
   tooltip?: string;
   size?: 'default' | 'large';
   divider?: boolean;

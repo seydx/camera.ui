@@ -10,8 +10,6 @@
   <div class="app" v-else :style="bottomVars">
     <CuiToast />
 
-    <ConfirmPopup />
-
     <DynamicDialog />
 
     <CuiCameraDrawer />

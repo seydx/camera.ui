@@ -88,7 +88,7 @@
     </div>
 
     <CuiMenu
-      v-if="fluid && menuMounted"
+      v-if="fluid && overlays.menu"
       ref="cardMenuRef"
       :items="cardMenuItems"
       :popover="{
@@ -131,12 +131,12 @@ const { openEpisodePlayer } = useEpisodePlayerDialog();
 const { openEpisodeTrace } = useEpisodeTraceDialog();
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
 const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
+const { mounted: overlays, toggleOverlay } = useLazyOverlays<'menu'>();
 const preview = inject(EventHoverPreviewKey, undefined);
 
 const cardRef = useTemplateRef<HTMLElement>('cardRef');
 const previewCanvasRef = useTemplateRef<HTMLCanvasElement>('previewCanvasRef');
 const cardMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('cardMenuRef');
-const menuMounted = ref(false);
 const mosaicUrl = ref<string | undefined>(undefined);
 const mosaicState = ref<'loading' | 'loaded' | 'empty'>('loading');
 const isDownloading = ref(false);
@@ -263,11 +263,7 @@ function openEpisode(): void {
 
 async function openCardMenu(event: MouseEvent): Promise<void> {
   stopPreview();
-  if (!menuMounted.value) {
-    menuMounted.value = true;
-    await nextTick();
-  }
-  cardMenuRef.value?.toggleMenu(event);
+  await toggleOverlay('menu', () => cardMenuRef.value?.toggleMenu(event));
 }
 
 function openTrace(): void {

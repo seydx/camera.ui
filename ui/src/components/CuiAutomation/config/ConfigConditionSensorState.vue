@@ -23,7 +23,6 @@
         option-label="label"
         option-value="value"
         :allow-empty="false"
-        class="cui-select-button-small"
         @update:model-value="update('logic', $event)"
       />
     </div>
@@ -47,7 +46,7 @@
             option-label="value"
             option-value="value"
             :allow-empty="false"
-            class="cui-select-button-small shrink-0"
+            class="shrink-0"
             @update:model-value="(v) => setVariableMode(idx, v === 'variable')"
           >
             <template #option="{ option }">

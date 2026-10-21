@@ -1,5 +1,5 @@
 import type { PluginConfig, SchemaConfig } from '@camera.ui/sdk';
-import type { ButtonProps } from 'openvue';
+import type { CuiButtonProps } from '../CuiButton/types.js';
 
 export interface CuiSchemaProps {
   schemaForm: SchemaConfig;
@@ -7,7 +7,7 @@ export interface CuiSchemaProps {
   disableButton?: boolean;
   saveButton?: boolean;
   saveButtonLabel?: string;
-  saveButtonColor?: ButtonProps['severity'];
+  saveButtonColor?: CuiButtonProps['severity'];
   showButton?: boolean;
   groupsAsCards?: boolean;
   groupDescriptions?: Record<string, string>;

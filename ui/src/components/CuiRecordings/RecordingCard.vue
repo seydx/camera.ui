@@ -140,7 +140,7 @@
     </div>
 
     <CuiMenu
-      v-if="menuMounted"
+      v-if="overlays.menu"
       ref="cardMenuRef"
       :items="cardMenuItems"
       :popover="{
@@ -197,6 +197,7 @@ const router = useRouter();
 const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
 const dialog = useCuiDialog();
+const { mounted: overlays, toggleOverlay } = useLazyOverlays<'menu'>();
 const { pictures, state: pictureState } = useEventPictures(
   () => props.event,
   () => [
@@ -220,7 +221,6 @@ const rootRef = useTemplateRef<HTMLElement>('rootRef');
 const previewCanvasRef = useTemplateRef('previewCanvasRef');
 const footerRef = useTemplateRef<HTMLElement>('footerRef');
 const cardMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('cardMenuRef');
-const menuMounted = ref(false);
 const previewBlocked = ref(false);
 
 const longPress = useLongPressPreview(
@@ -476,11 +476,13 @@ function startPreview(immediate = false): void {
 }
 
 function handleMouseEnter(): void {
+  emit('segmentHover', props.segIndex !== undefined ? props.event.id : null);
   if (longPress.blocksMouseEnter()) return;
   startPreview();
 }
 
 function handleMouseLeave(): void {
+  emit('segmentHover', null);
   previewBlocked.value = false;
   if (!preview) return;
   isPreviewActive.value = false;
@@ -498,11 +500,7 @@ function handleClick(): void {
 
 async function openCardMenu(event: MouseEvent): Promise<void> {
   stopPreview();
-  if (!menuMounted.value) {
-    menuMounted.value = true;
-    await nextTick();
-  }
-  cardMenuRef.value?.toggleMenu(event);
+  await toggleOverlay('menu', () => cardMenuRef.value?.toggleMenu(event));
 }
 
 function openFaceReassignDialog(): void {

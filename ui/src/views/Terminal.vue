@@ -155,7 +155,7 @@ import CuiTerminalToolbar from '@/components/CuiTerminalToolbar/CuiTerminalToolb
 import { TOPNAVBAR_HEIGHT } from '@/components/CuiTopNavbar/types.js';
 
 import type { ITerminalInitOnlyOptions, ITerminalOptions } from '@xterm/xterm';
-import type { ButtonProps } from 'openvue';
+import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
 
 interface TerminalTab {
   id: string;
@@ -202,7 +202,7 @@ const options = computed<ITerminalOptions & ITerminalInitOnlyOptions>(() => {
   };
 });
 
-const items = ref<{ label: string; icon: any; buttonProps?: ButtonProps; command: () => void }[]>([
+const items = ref<{ label: string; icon: any; buttonProps?: CuiButtonAttrs; command: () => void }[]>([
   {
     label: t('components.form.tooltip.clear'),
     icon: TrashIcon,

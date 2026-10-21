@@ -103,8 +103,8 @@ import { appRootElement } from '@/common/appRoot.js';
 import { asyncComponent } from '@/common/asyncComponent.js';
 
 import type { ContentProps, CustomDialogComponent, DeepShallowRef, DialogTemplates } from '@/composables/useCuiDialog.js';
-import type { ButtonProps } from 'openvue';
 import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
+import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
 
 const CuiMarkdownContent = asyncComponent(() => import('@/components/CuiMarkdownContent/CuiMarkdownContent.vue'));
 
@@ -219,7 +219,7 @@ const confirmLabel = computed(() => {
   }
 });
 
-const cancelProps = computed<ButtonProps>(() => {
+const cancelProps = computed<CuiButtonAttrs>(() => {
   return {
     ...cancelButtonProps?.value,
     label: cancelLabel.value,
@@ -230,7 +230,7 @@ const cancelProps = computed<ButtonProps>(() => {
   };
 });
 
-const confirmProps = computed<ButtonProps>(() => {
+const confirmProps = computed<CuiButtonAttrs>(() => {
   return {
     ...confirmButtonProps?.value,
     label: confirmLabel.value,
