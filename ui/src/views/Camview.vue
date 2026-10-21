@@ -60,6 +60,18 @@
         </CuiTopNavbarItem>
 
         <CuiTopNavbarItem
+          v-if="!editMode && currentView && canSearchObjects"
+          v-tooltip.bottom="{ value: $t('components.similar.search') }"
+          :active="similarPicking"
+          :disabled="rearrangeMode"
+          @click="similarPicking = !similarPicking"
+        >
+          <template #icon>
+            <i-tabler:zoom-scan width="100%" height="100%" />
+          </template>
+        </CuiTopNavbarItem>
+
+        <CuiTopNavbarItem
           v-if="!editMode && currentView"
           v-tooltip.bottom="{ value: timelineState ? $t('components.form.tooltip.hide_timeline') : $t('components.form.tooltip.show_timeline') }"
           :active="timelineState"
@@ -173,6 +185,19 @@
         </div>
       </div>
 
+      <div v-if="similarPanelShown" class="h-full shrink-0 pt-2 pr-2 pb-[var(--cui-bottom-gap)]" :style="{ width: `${SIMILAR_PANEL_WIDTH}px` }">
+        <CuiMultiSimilarResults
+          v-model:breadth="similarBreadth"
+          :picks="similarPicks"
+          :items="similarMatches"
+          :license-required="similarLicenseRequired"
+          class="cui-card pt-3"
+          @open="openSimilarMatch"
+          @remove="removeSimilarPick"
+          @close="closeSimilarSearch"
+        />
+      </div>
+
       <Transition
         :name="lgBreakpoint ? 'slide-left' : 'slide-up'"
         @before-enter="timelineSpaceOccupied = true"
@@ -181,10 +206,12 @@
       >
         <CuiTimeline
           v-if="timelineState && !fullscreenCameraId"
+          ref="cuiTimelineRef"
           :camera-ids="timelineCameraIds"
           :event-camera-ids="viewCameraIds"
           :camera-names="cameraNameMap"
           :initial-timestamp="timelineInitialTimestamp"
+          :only-events="similarPicks.length ? similarKeys : undefined"
           @event-select="onTimelineEventSelect"
           :loading="timelineAnimating"
           :type="lgBreakpoint ? 'vertical' : 'horizontal'"
@@ -220,7 +247,7 @@
       :pt="{ root: { style: 'pointer-events: none' } }"
       :style="{
         bottom: speedDialBottom,
-        right: !lgBreakpoint ? '0.5rem' : `calc(${timelineSpaceOccupied ? 400 : 0}px + 0.5rem)`,
+        right: !lgBreakpoint ? '0.5rem' : `calc(${sideWidth}px + 0.5rem)`,
         transition: 'bottom 0.25s ease-out, right 0.25s ease-out',
       }"
     >
@@ -267,6 +294,35 @@
         </Button>
       </template>
     </SpeedDial>
+
+    <button
+      v-if="similarPillShown"
+      type="button"
+      class="camview-similar-pill absolute left-1/2 -translate-x-1/2 z-11"
+      :style="{ bottom: speedDialBottom }"
+      :disabled="!similarPicks.length"
+      @click="similarSheet = true"
+    >
+      <template v-for="pick in similarPicks.slice(-3)" :key="pick.id">
+        <img v-if="pick.request.crop" :src="pick.request.crop" alt="" class="camview-similar-pill-crop" />
+      </template>
+      <i-tabler:zoom-scan v-if="!similarPicks.length" class="w-4 h-4 shrink-0" />
+      <span class="truncate">{{ similarPicks.length ? t('views.camview.similar_show') : t('components.similar.pick_hint') }}</span>
+      <i-svg-spinners:ring-resize v-if="similarPicks.some((pick) => pick.searching)" class="w-4 h-4 shrink-0" />
+    </button>
+
+    <CuiBottomSheet v-if="!lgBreakpoint" v-model="similarSheet" height="70vh" max-height="85vh">
+      <CuiMultiSimilarResults
+        v-model:breadth="similarBreadth"
+        :picks="similarPicks"
+        :items="similarMatches"
+        :license-required="similarLicenseRequired"
+        class="h-full"
+        @open="openSimilarMatch"
+        @remove="removeSimilarPick"
+        @close="closeSimilarSearch"
+      />
+    </CuiBottomSheet>
 
     <CuiMenu
       ref="menuRef"
@@ -329,10 +385,13 @@ import StreamingModeWebrtcIcon from '~icons/simple-icons/webrtc';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { UsersQuery } from '@/api/routes/users.js';
+import { asyncComponent } from '@/common/asyncComponent.js';
 import { deepToRaw } from '@/common/utils.js';
 import CuiCameraViewDnD from '@/components/CuiCameraViewDnD/CuiCameraViewDnD.vue';
 import AudioVisualizerDialog from '@/components/CuiDialog/templates/AudioVisualizer/AudioVisualizer.vue';
 import CamviewFormDialog from '@/components/CuiDialog/templates/CamviewForm/CamviewForm.vue';
+import { SimilarGridKey } from '@/components/CuiSimilarPicker/types.js';
+import { SIMILAR_PANEL_WIDTH } from '@/components/CuiSimilarResults/types.js';
 import { TOPNAVBAR_HEIGHT } from '@/components/CuiTopNavbar/types.js';
 
 import type { CuiCameraCardModels, CuiCameraCardProps } from '@/components/CuiCameraCard/types.js';
@@ -340,11 +399,15 @@ import type { CardState } from '@/components/CuiCameraViewDnD/types.js';
 import type { CamviewFormProps } from '@/components/CuiDialog/templates/CamviewForm/types.js';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
+import type { SimilarPick } from '@/components/CuiMultiSimilarResults/types.js';
+import type { SimilarResultOpen } from '@/components/CuiSimilarResults/types.js';
 import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { StreamingRole } from '@camera.ui/sdk';
 import type { DBCamera, DBCamviewCardFit, DBCamviewLayout, DBCamviewLayoutCamera, DBCamviewViewSize } from '@shared/types';
 import type { HTMLAttributes } from 'vue';
 import type { CuiButtonAttrs } from '@/components/CuiButton/types.js';
+
+const CuiBottomSheet = asyncComponent(() => import('@/components/CuiBottomSheet/CuiBottomSheet.vue'));
 
 const usersQuery = new UsersQuery();
 const camerasQuery = new CamerasQuery();
@@ -365,6 +428,17 @@ const timelineLocaleSettings = useTimelineLocale();
 const dialog = useCuiDialog();
 const { bottombarHeight } = useSharedCuiStates();
 const { smBreakpoint, lgBreakpoint, mdBreakpoint } = useSharedCuiBreakpoint();
+const { openOnCamera } = useSimilarSearchRoute();
+const { plugin: nvrPlugin } = usePlugin('@camera.ui/camera-ui-nvr');
+const {
+  picks: similarPicks,
+  items: similarMatches,
+  breadth: similarBreadth,
+  licenseRequired: similarLicenseRequired,
+  add: addSimilarPick,
+  remove: removeSimilarPick,
+  clear: clearSimilarPicks,
+} = useMultiSimilarSearch();
 
 const authStore = useAuthStore();
 const { user } = storeToRefs(authStore);
@@ -384,6 +458,7 @@ const menuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('menuRef');
 const newViewMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('newViewMenuRef');
 const cardFitMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('cardFitMenuRef');
 const viewDndRef = useTemplateRef<InstanceType<typeof CuiCameraViewDnD>>('viewDndRef');
+const cuiTimelineRef = useTemplateRef<InstanceType<typeof CuiTimeline>>('cuiTimelineRef');
 const viewForm = ref<DBCamviewLayout>({} as DBCamviewLayout);
 const editView = ref(false);
 const newView = ref(false);
@@ -398,6 +473,8 @@ const cards = ref<CardState[]>([]);
 const cardFitOverride = ref<DBCamviewCardFit>();
 const expandedCameraId = ref<string | null>(null);
 const fullscreenCameraId = ref<string | null>(null);
+const similarPicking = ref(false);
+const similarSheet = ref(false);
 const cameraCardModels = reactive<CuiCameraCardModels>({
   sourceRole: sourceRole.value,
   activityMode: uiSettings.value.camview.activityMode,
@@ -457,6 +534,8 @@ const speedDialBottom = computed(() => {
   return bottombarHeight.value > 0 ? '0.5rem' : 'var(--cui-bottom-gap)';
 });
 
+const sideWidth = computed(() => (timelineSpaceOccupied.value ? 400 : 0) + (similarPanelShown.value ? SIMILAR_PANEL_WIDTH : 0));
+
 const contentContainerStyle = computed<HTMLAttributes['style']>(() => {
   if (!views.value?.result.length) {
     return {
@@ -466,7 +545,7 @@ const contentContainerStyle = computed<HTMLAttributes['style']>(() => {
     };
   } else if (lgBreakpoint.value) {
     return {
-      width: timelineSpaceOccupied.value ? 'calc(100% - 400px)' : '100%',
+      width: sideWidth.value ? `calc(100% - ${sideWidth.value}px)` : '100%',
       height: '100%',
       paddingBottom: gridEndGap.value,
       overflowY: 'scroll',
@@ -583,6 +662,18 @@ const cameraNameMap = computed(() => {
   return map;
 });
 
+const canSearchObjects = computed(
+  () =>
+    Boolean(nvrPlugin.value) &&
+    hasPermission(undefined, 'admin') &&
+    (cameras.value?.result ?? []).some((camera) => viewCameraIds.value.includes(camera._id) && Boolean(camera.assignments?.object)),
+);
+
+const similarOpen = computed(() => !editMode.value && (similarPicking.value || similarPicks.value.length > 0));
+const similarPanelShown = computed(() => lgBreakpoint.value && similarOpen.value);
+const similarPillShown = computed(() => !lgBreakpoint.value && similarOpen.value && !similarSheet.value);
+const similarKeys = computed(() => similarMatches.value.map((match) => match.key));
+
 // 'low' for every tile, parallel 4K decodes blow past the iOS Safari memory budget
 const { master } = useMultiNvrPlayback(viewCameraIds, { sourceRole: 'low', activeIds: playbackCameraIds });
 
@@ -623,6 +714,8 @@ const addViewItems = computed<MenuItem[]>(() => {
     },
   ];
 });
+
+provide(SimilarGridKey, { active: similarPicking, pick: addSimilarPick });
 
 function openDialog(type: 'newView' | 'editView' | 'intercom' | 'removeView') {
   switch (type) {
@@ -794,6 +887,25 @@ function onTimelineEventSelect(payload: { timestamp: number; cameraId?: string }
   viewDndRef.value?.expandCameraById(payload.cameraId);
 }
 
+function closeSimilarSearch(): void {
+  similarPicking.value = false;
+  similarSheet.value = false;
+  clearSimilarPicks();
+}
+
+async function openSimilarMatch({ event, camera, timestamp }: SimilarResultOpen, pick: SimilarPick): Promise<void> {
+  if (!viewCameraIds.value.includes(event.cameraId)) {
+    if (camera) openOnCamera(camera.name, timestamp, pick.request);
+    return;
+  }
+  // frozen tiles would pause again on the jump
+  similarPicking.value = false;
+  similarSheet.value = false;
+  timelineState.value = true;
+  await nextTick();
+  cuiTimelineRef.value?.scrollToEvent(timestamp, event.cameraId);
+}
+
 function saveView(view: DBCamviewLayout): void {
   uiSettings.value.camview.viewid = view._id;
   newView.value = false;
@@ -856,6 +968,10 @@ watch(timelineState, (active) => {
 });
 
 watch(activityMode, (mode) => (cameraCardModels.activityMode = mode));
+
+watch([editMode, rearrangeMode, () => currentView.value?._id], () => {
+  similarPicking.value = false;
+});
 
 watch(
   () => currentView.value?._id,
@@ -954,5 +1070,35 @@ watch(
 
 :deep(.p-speeddial-open) .p-speeddial-list {
   pointer-events: auto;
+}
+
+.camview-similar-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 7rem);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.7);
+  color: #fff;
+  font-size: 0.875rem;
+}
+
+.camview-similar-pill:disabled {
+  cursor: default;
+}
+
+.camview-similar-pill-crop {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgb(255 255 255 / 0.15);
+}
+
+.camview-similar-pill-crop + .camview-similar-pill-crop {
+  margin-left: -8px;
+  box-shadow: -2px 0 0 rgb(0 0 0 / 0.7);
 }
 </style>

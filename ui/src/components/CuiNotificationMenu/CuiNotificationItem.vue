@@ -5,7 +5,7 @@
         <div class="flex gap-3">
           <div class="w-2 h-2 rounded-full mt-2" :style="{ backgroundColor: getColor(notification.severity) }" />
           <div v-if="imageSrc" class="w-14 h-10 rounded-md overflow-hidden shrink-0 self-center bg-black">
-            <CuiImage :src="imageSrc" alt="" :image-style="{ objectFit: 'cover' }" image-container-class="w-full h-full" />
+            <CuiImage v-if="seen" :src="imageSrc" alt="" :image-style="{ objectFit: 'cover' }" image-container-class="w-full h-full" />
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex justify-between items-center gap-2">
@@ -74,6 +74,8 @@ let swipeBound = false;
 let swiping = false;
 let swipeTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
+const seen = ref(false);
+
 const open = computed(() => swipedId.value === props.notification.id);
 const imageSrc = computed(() => notificationImageUrl(props.notification.imageUrl));
 
@@ -82,6 +84,8 @@ function onIntersection([entry]: IntersectionObserverEntry[]) {
     closeSwipe();
     return;
   }
+
+  seen.value = true;
 
   if (swipeBound) {
     return;

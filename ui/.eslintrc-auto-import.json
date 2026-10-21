@@ -414,6 +414,7 @@
     "useMouse": true,
     "useMouseInElement": true,
     "useMousePressed": true,
+    "useMultiSimilarSearch": true,
     "useMutation": true,
     "useMutationObserver": true,
     "useNavLayout": true,

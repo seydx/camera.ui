@@ -20,6 +20,17 @@ export interface CuiSimilarResultsEmits {
   shown: [keys: string[]];
 }
 
+export interface SimilarResultsGridProps<T extends SimilarResultItem> {
+  items: T[];
+  scaled: boolean;
+  searching: boolean;
+  searched: boolean;
+}
+
+export interface SimilarResultsGridEmits<T extends SimilarResultItem> {
+  open: [match: SimilarResultOpen, item: T];
+}
+
 export const SIMILAR_PANEL_WIDTH = 280;
 
 export interface SimilarResultItem {
@@ -27,6 +38,8 @@ export interface SimilarResultItem {
   event: RecordedEvent;
   segIndex?: number;
   score?: number;
+  kind: SimilarMode;
+  time: number;
 }
 
 export const SIMILAR_SCORE_RANGES: Partial<Record<SimilarMode, [number, number]>> = {

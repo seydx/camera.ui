@@ -1452,6 +1452,10 @@ const router = createRouter({
       return savedPosition;
     }
 
+    if (to.fullPath === from.fullPath) {
+      return { top: 0, left: 0, behavior: 'smooth' };
+    }
+
     if (from.path === to.path || to.path === '/') {
       return { top: 0, left: 0 };
     }

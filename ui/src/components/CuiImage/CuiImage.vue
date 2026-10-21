@@ -109,10 +109,9 @@ defineExpose({
 
 <style scoped>
 .cui-image-spinner {
-  width: 50%;
   height: 50%;
-  max-width: 30px;
   max-height: 30px;
+  aspect-ratio: 1;
   border: 3px solid color-mix(in srgb, var(--text-color) 25%, transparent);
   border-top-color: var(--p-primary-color);
   border-radius: 50%;

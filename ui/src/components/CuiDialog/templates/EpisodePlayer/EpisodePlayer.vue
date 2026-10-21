@@ -51,8 +51,12 @@
 
       <div class="absolute inset-0 z-[3] bg-black pointer-events-none transition-opacity duration-300" :class="transitioning ? 'opacity-100' : 'opacity-0'" />
 
-      <div v-if="showSpinner || transitioning" class="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
+      <div v-if="showSpinner" class="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
         <ProgressSpinner class="w-[30px] h-[30px] m-0" stroke-width="5" />
+      </div>
+
+      <div v-else-if="notice" class="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
+        <span class="text-sm font-medium p-2 bg-black/60 rounded-xl text-white">{{ notice }}</span>
       </div>
 
       <Transition name="fade-2">
@@ -149,7 +153,7 @@
         @pointerdown="onStripPointerDown"
         @pointermove="onStripPointerMove"
         @pointerup="onStripPointerUp"
-        @pointercancel="onStripPointerUp"
+        @pointercancel="onStripPointerCancel"
       >
         <div
           v-for="(block, i) in blocks"
@@ -186,29 +190,24 @@
 </template>
 
 <script setup lang="ts">
-import { playheadUs, useMultiNvrPlayback } from '@camera.ui/nvr';
+import { createNvrPlayback, playheadUs } from '@camera.ui/nvr';
 import VueZoomable from 'vue-zoomable';
 import DownloadIcon from '~icons/tabler/download';
 import TraceIcon from '~icons/tabler/list-search';
 
 import { extractErrorMessage, randomLetter } from '@/common/utils.js';
 import { SIMILAR_PANEL_WIDTH } from '@/components/CuiSimilarResults/types.js';
+import { awaitingPicture, noticeKey, playStep, showsPosition } from './playback.js';
 
 import type CameraStreamEventView from '@/components/CuiDialog/templates/CameraStreamEvent/CameraStreamEvent.vue';
 import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
 import type { SimilarResultOpen } from '@/components/CuiSimilarResults/types.js';
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
+import type { NvrPlayback } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
 import type { DynamicDialogInstance } from 'openvue/dynamicdialogoptions';
 import type { Ref } from 'vue';
-import type { EpisodePlayerProps } from './types.js';
-
-interface TimelineBlock {
-  cameraId: string;
-  startMs: number;
-  endMs: number;
-  offsetMs: number;
-}
+import type { EpisodePlayerProps, PlayStep, TimelineBlock } from './types.js';
 
 const props = defineProps<EpisodePlayerProps>();
 
@@ -233,7 +232,7 @@ const PRELOAD_AHEAD_MS = 4000;
 const similarPanelWidth = `${SIMILAR_PANEL_WIDTH}px`;
 const HANDOFF_WAIT_MS = 1200;
 const TRANSITION_MAX_MS = 1500;
-const PRELOAD_RESYNC_MS = 3000;
+const LEAD_RESYNC_MS = 1500;
 const JUMP_FRAME_TOLERANCE_MS = 5000;
 const JUMP_FRAME_TIMEOUT_MS = 10_000;
 
@@ -253,6 +252,7 @@ const stripRef = useTemplateRef('stripRef');
 const blockIndex = ref(0);
 const playheadMs = ref(firstBlockMs);
 const angleCameraId = ref<string | null>(null);
+const mode = ref<NvrPlayback['mode']['value']>('idle');
 
 const muted = ref(true);
 const ended = ref(false);
@@ -305,9 +305,9 @@ const claimReleases: (() => void)[] = [];
 let playbackStarted = false;
 let wasPlayingBeforeScrub = false;
 let lastScrubSent = 0;
+let scrubPosMs = 0;
 let handoffStartedAt = 0;
 let transitionStartedAt = 0;
-const preloadResynced = new Set<string>();
 const MAX_ZOOM = 5;
 const zoomId = randomLetter();
 
@@ -342,21 +342,20 @@ const zoomMinimapStyle = computed(() => {
   };
 });
 
-const preloadCameraId = computed(() => {
+const preloadBlock = computed(() => {
   const block = currentBlock.value;
   const next = blocks[blockIndex.value + 1];
-  if (!block || !next || next.cameraId === activeCameraId.value) return undefined;
-  return block.endMs - playheadMs.value <= PRELOAD_AHEAD_MS ? next.cameraId : undefined;
+  if (mode.value !== 'play' || !block || !next || next.cameraId === activeCameraId.value) return undefined;
+  return block.endMs - playheadMs.value <= PRELOAD_AHEAD_MS ? next : undefined;
 });
 
-const activeIds = computed(() => {
-  const ids = new Set([activeCameraId.value, visibleCameraId.value]);
-  if (preloadCameraId.value) ids.add(preloadCameraId.value);
-  if (angleCameraId.value) ids.add(angleCameraId.value);
-  return [...ids];
-});
+const leadId = computed(() => angleCameraId.value ?? activeCameraId.value);
+const drivenIds = computed(() => (angleCameraId.value ? [activeCameraId.value, angleCameraId.value] : [activeCameraId.value]));
+const keptIds = computed(() => new Set([...drivenIds.value, visibleCameraId.value, preloadBlock.value?.cameraId]));
 
-const { master, controllers } = useMultiNvrPlayback(ref(memberCameraIds), { activeIds, sourceRole: 'auto' });
+const controllers = new Map(memberCameraIds.map((id) => [id, createNvrPlayback(id, { sourceRole: 'auto' })]));
+const leadCtrl = computed(() => controllers.get(leadId.value));
+const visibleCtrl = computed(() => controllers.get(visibleCameraId.value));
 
 const {
   picking: similarPicking,
@@ -366,23 +365,32 @@ const {
   close: closeSimilarPick,
   pick: onSimilarPick,
 } = useSimilarPick({
-  capture: () => controllers.value.get(visibleCameraId.value)?.captureSnapshot(),
+  capture: () => visibleCtrl.value?.captureSnapshot(),
   privacyZones: () => visibleCamera.value?.zones?.privacy ?? [],
   onPick: (request) => {
     similarRequest.value = request;
   },
   onClose: (end) => {
-    if (pausedForPick && end === 'leave') master.resume();
+    if (pausedForPick && end === 'leave') resume();
     pausedForPick = false;
   },
 });
 
-const isPlaying = computed(() => master.mode.value === 'play');
+const isPlaying = computed(() => mode.value === 'play');
 const visibleCamera = computed(() => props.cameraById.get(visibleCameraId.value));
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 const canSearchSimilar = computed(() => Boolean(isAdmin.value && nvrPluginRef.value && visibleCamera.value?.assignments?.object));
 const showControl = computed(() => isHovered.value || initialHover.value);
-const showSpinner = computed(() => !scrubbing.value && (master.loading.value || master.mode.value === 'idle'));
+const showSpinner = computed(() => {
+  if (scrubbing.value) return false;
+  if (mode.value === 'idle' || transitioning.value) return true;
+  return Boolean(leadCtrl.value && awaitingPicture(leadCtrl.value));
+});
+
+const notice = computed(() => {
+  const key = visibleCtrl.value && noticeKey(visibleCtrl.value);
+  return key ? t(key) : '';
+});
 
 const stageAspect = computed(() => {
   return props.cameraById.get(visibleCameraId.value)?.interfaceSettings.aspectRatio.replace(':', '/') ?? '16/9';
@@ -627,15 +635,108 @@ function setPosition(posMs: number): void {
   const index = blockAt(bounded);
   const block = blocks[index];
   if (!block) return;
+  if (block.cameraId !== currentBlock.value?.cameraId) angleCameraId.value = null;
   blockIndex.value = index;
   playheadMs.value = clamp(block.startMs + (bounded - block.offsetMs), block.startMs, block.endMs);
 }
 
-function ctrlReady(id: string): boolean {
-  const ctrl = controllers.value.get(id);
-  if (!ctrl) return true;
-  const tsMs = playheadUs(ctrl) / 1000;
-  return !ctrl.loading.value && tsMs > 0 && Math.abs(tsMs - playheadMs.value) < 6000;
+function drivenControllers(): NvrPlayback[] {
+  return drivenIds.value.flatMap((id) => controllers.get(id) ?? []);
+}
+
+function freezeOthers(): void {
+  // a camera that left the story holds its last frame until the next one shows
+  for (const [id, ctrl] of controllers) {
+    if (!drivenIds.value.includes(id) && ctrl.mode.value === 'play') ctrl.pause();
+  }
+}
+
+function playAt(posMs: number): void {
+  setPosition(posMs);
+  mode.value = 'play';
+  ended.value = false;
+  for (const ctrl of drivenControllers()) ctrl.play(playheadMs.value * 1000);
+  freezeOthers();
+}
+
+function scrubAt(posMs: number): void {
+  setPosition(posMs);
+  mode.value = 'scrub';
+  ended.value = false;
+  for (const ctrl of drivenControllers()) ctrl.scrub(playheadMs.value * 1000, true);
+  freezeOthers();
+}
+
+function pause(): void {
+  const lead = leadCtrl.value;
+  const block = currentBlock.value;
+  if (lead && block) followLead(lead, block);
+  mode.value = 'pause';
+  for (const ctrl of drivenControllers()) {
+    if (ctrl.mode.value === 'play') ctrl.pause();
+  }
+}
+
+function resume(): void {
+  mode.value = 'play';
+  ended.value = false;
+  for (const ctrl of drivenControllers()) {
+    if (ctrl.mode.value === 'pause') ctrl.resume();
+    else if (ctrl.mode.value !== 'play') ctrl.play(playheadMs.value * 1000);
+  }
+}
+
+function stopAll(): void {
+  mode.value = 'idle';
+  for (const ctrl of controllers.values()) ctrl.stop();
+}
+
+function finish(): void {
+  beginHandoffTransition();
+  scrubAt(0);
+  ended.value = true;
+}
+
+function followLead(lead: NvrPlayback, block: TimelineBlock): PlayStep {
+  const positionMs = playheadUs(lead) / 1000;
+  const step = playStep(lead, positionMs, block, blocks[blockIndex.value + 1]);
+  if (step === 'follow') playheadMs.value = clamp(positionMs, block.startMs, block.endMs);
+  return step;
+}
+
+function tick(): void {
+  trySyncVisibleCamera();
+  const lead = leadCtrl.value;
+  const block = currentBlock.value;
+  if (scrubbing.value || mode.value !== 'play' || !lead || !block) return;
+
+  const step = followLead(lead, block);
+  if (step === 'continue') {
+    blockIndex.value += 1;
+  } else if (step === 'switch') {
+    beginHandoffTransition();
+    playAt(blocks[blockIndex.value + 1].offsetMs);
+  } else if (step === 'end') {
+    finish();
+  }
+}
+
+function syncLead(): void {
+  // the lead changed without a new position (angle on or off) and catches up with the playhead
+  const lead = leadCtrl.value;
+  if (!lead || mode.value === 'idle') return;
+  const atUs = playheadMs.value * 1000;
+  const drifted = Math.abs(playheadUs(lead) - atUs) > LEAD_RESYNC_MS * 1000;
+  if (mode.value === 'play') {
+    if (lead.mode.value !== 'play' || drifted) lead.play(atUs);
+  } else if (lead.mode.value === 'idle' || drifted) {
+    lead.scrub(atUs, true);
+  }
+}
+
+function leadShowsPlayhead(): boolean {
+  const lead = leadCtrl.value;
+  return !lead || showsPosition(lead, playheadUs(lead) / 1000, playheadMs.value);
 }
 
 function beginHandoffTransition(): void {
@@ -644,12 +745,11 @@ function beginHandoffTransition(): void {
 }
 
 function trySyncVisibleCamera(): void {
-  const target = angleCameraId.value ?? activeCameraId.value;
-  if (visibleCameraId.value !== target) {
-    if (!ctrlReady(target) && performance.now() - handoffStartedAt <= HANDOFF_WAIT_MS) return;
-    visibleCameraId.value = target;
+  const shows = leadShowsPlayhead();
+  if (visibleCameraId.value !== leadId.value && (shows || performance.now() - handoffStartedAt > HANDOFF_WAIT_MS)) {
+    visibleCameraId.value = leadId.value;
   }
-  if (transitioning.value && (ctrlReady(visibleCameraId.value) || performance.now() - transitionStartedAt > TRANSITION_MAX_MS)) {
+  if (transitioning.value && ((shows && visibleCameraId.value === leadId.value) || performance.now() - transitionStartedAt > TRANSITION_MAX_MS)) {
     transitioning.value = false;
   }
 }
@@ -661,22 +761,14 @@ function toggleAngle(): void {
     const angle = availableAngle.value;
     if (!angle) return;
     angleCameraId.value = angle;
-    const ctrl = controllers.value.get(angle);
-    if (ctrl && master.mode.value === 'play') ctrl.play(playheadMs.value * 1000);
   }
-  handoffStartedAt = performance.now();
+  syncLead();
   beginHandoffTransition();
-  trySyncVisibleCamera();
 }
 
 function seekTo(posMs: number, forcePlay = false): void {
-  setPosition(posMs);
-  ended.value = false;
-  if (forcePlay || master.mode.value === 'play') {
-    master.play(playheadMs.value * 1000);
-  } else {
-    master.scrub(playheadMs.value * 1000, true);
-  }
+  if (forcePlay || mode.value === 'play') playAt(posMs);
+  else scrubAt(posMs);
 }
 
 function openSimilarMatch({ event, camera, timestamp }: SimilarResultOpen): void {
@@ -688,7 +780,7 @@ function openSimilarMatch({ event, camera, timestamp }: SimilarResultOpen): void
   if (!camera || !similarRequest.value) return;
   matchView.value = { camera, timestamp, request: similarRequest.value };
   similarRequest.value = undefined;
-  master.stop();
+  stopAll();
   if (dialogTitle) dialogTitle.value = camera.name;
 }
 
@@ -704,8 +796,8 @@ function toggleSimilarPick(): void {
     closeSimilarPick();
     return;
   }
-  if (master.mode.value === 'play') {
-    master.pause();
+  if (mode.value === 'play') {
+    pause();
     pausedForPick = true;
   }
   similarFrameMs = playheadMs.value;
@@ -718,7 +810,7 @@ async function followSimilarJump(): Promise<void> {
   try {
     const target = playheadMs.value;
     await until(() => {
-      const ctrl = controllers.value.get(visibleCameraId.value);
+      const ctrl = visibleCtrl.value;
       return Boolean(ctrl && ctrl.frameTimestamp.value > 0 && Math.abs(ctrl.frameTimestamp.value / 1000 - target) < JUMP_FRAME_TOLERANCE_MS);
     }).toBe(true, { timeout: JUMP_FRAME_TIMEOUT_MS });
     if (!similarPicking.value) return;
@@ -731,20 +823,19 @@ async function followSimilarJump(): Promise<void> {
 
 function togglePlay(): void {
   if (similarPicking.value) closeSimilarPick('stop');
-  const mode = master.mode.value;
-  if (mode === 'play') {
-    master.pause();
+  if (mode.value === 'play') {
+    pause();
     return;
   }
   if (ended.value) {
-    seekTo(0, true);
+    playAt(0);
     return;
   }
-  if (mode === 'pause') {
-    master.resume();
+  if (mode.value === 'pause') {
+    resume();
     return;
   }
-  seekTo(positionMs.value, true);
+  playAt(positionMs.value);
 }
 
 function jumpBlock(dir: 1 | -1): void {
@@ -776,7 +867,8 @@ function onStripPointerDown(e: PointerEvent): void {
   if (!stripRef.value) return;
   stripRef.value.setPointerCapture(e.pointerId);
   scrubbing.value = true;
-  wasPlayingBeforeScrub = master.mode.value === 'play';
+  transitioning.value = false;
+  wasPlayingBeforeScrub = mode.value === 'play';
   applyScrub(stripPositionFromEvent(e), true);
 }
 
@@ -787,19 +879,30 @@ function onStripPointerMove(e: PointerEvent): void {
 
 function onStripPointerUp(e: PointerEvent): void {
   if (!scrubbing.value) return;
+  endScrub(stripPositionFromEvent(e));
+}
+
+function onStripPointerCancel(): void {
+  if (!scrubbing.value) return;
+  // a cancelled pointer carries no usable position
+  endScrub(scrubPosMs);
+}
+
+function endScrub(posMs: number): void {
   scrubbing.value = false;
-  setPosition(stripPositionFromEvent(e));
-  ended.value = false;
-  if (wasPlayingBeforeScrub) master.play(playheadMs.value * 1000);
-  else master.scrub(playheadMs.value * 1000, true);
+  if (wasPlayingBeforeScrub) playAt(posMs);
+  else scrubAt(posMs);
 }
 
 function applyScrub(posMs: number, force = false): void {
-  setPosition(posMs);
+  scrubPosMs = posMs;
   const now = performance.now();
-  if (!force && now - lastScrubSent < 120) return;
+  if (!force && now - lastScrubSent < 120) {
+    setPosition(posMs);
+    return;
+  }
   lastScrubSent = now;
-  master.scrub(playheadMs.value * 1000, true);
+  scrubAt(posMs);
 }
 
 async function handleDownload(): Promise<void> {
@@ -826,24 +929,10 @@ function resolveGoTo(): string | undefined {
   return `/cameras/${camera.name}?startTs=${Math.floor(playheadMs.value)}`;
 }
 
-function resyncPreload(): void {
-  const preload = preloadCameraId.value;
-  for (const id of preloadResynced) {
-    if (id !== preload) preloadResynced.delete(id);
-  }
-  if (!preload || master.mode.value !== 'play' || preloadResynced.has(preload)) return;
-  const ctrl = controllers.value.get(preload);
-  if (!ctrl?.isActive.value || ctrl.loading.value) return;
-  const ctrlMs = playheadUs(ctrl) / 1000;
-  if (ctrlMs <= 0 || Math.abs(ctrlMs - playheadMs.value) <= PRELOAD_RESYNC_MS) return;
-  preloadResynced.add(preload);
-  ctrl.play(playheadMs.value * 1000);
-}
-
 watch(visibleCameraId, resetZoom);
 
 watchEffect(() => {
-  for (const [id, ctrl] of controllers.value) {
+  for (const [id, ctrl] of controllers) {
     ctrl.muted.value = muted.value || id !== visibleCameraId.value;
   }
 });
@@ -851,22 +940,24 @@ watchEffect(() => {
 watch(availableAngle, (next) => {
   if (angleCameraId.value && next !== angleCameraId.value) {
     angleCameraId.value = null;
-    trySyncVisibleCamera();
+    syncLead();
   }
 });
 
-watch(activeCameraId, (next) => {
-  angleCameraId.value = null;
+watch(leadId, () => {
   handoffStartedAt = performance.now();
-  const ctrl = controllers.value.get(next);
-  if (ctrl?.isActive.value) {
-    if (ctrlReady(next)) {
-      visibleCameraId.value = next;
-      return;
-    }
-    if (master.mode.value === 'play') ctrl.play(playheadMs.value * 1000);
-  }
   trySyncVisibleCamera();
+});
+
+watch(keptIds, (kept) => {
+  for (const [id, ctrl] of controllers) {
+    if (!kept.has(id) && ctrl.mode.value !== 'idle') ctrl.stop();
+  }
+});
+
+watch(preloadBlock, (next) => {
+  if (!next || drivenIds.value.includes(next.cameraId)) return;
+  controllers.get(next.cameraId)?.scrub(next.startMs * 1000, true);
 });
 
 watch(
@@ -874,7 +965,7 @@ watch(
   (proxy) => {
     if (!proxy || playbackStarted) return;
     playbackStarted = true;
-    master.play(playheadMs.value * 1000);
+    playAt(positionMs.value);
   },
   { immediate: true },
 );
@@ -893,47 +984,19 @@ watch(
   { immediate: true },
 );
 
-watch(
-  () => master.mode.value,
-  (mode) => {
-    if (similarPicking.value && (mode === 'play' || mode === 'idle')) closeSimilarPick('stop');
-  },
-);
+watch(mode, (value) => {
+  if (similarPicking.value && (value === 'play' || value === 'idle')) closeSimilarPick('stop');
+});
 
 watch([playheadMs, visibleCameraId], ([ms], [, previousCamera]) => {
-  if (!similarPicking.value || master.mode.value === 'play') return;
+  if (!similarPicking.value || mode.value === 'play') return;
   if (visibleCameraId.value !== previousCamera || Math.abs(ms - similarFrameMs) > 1000) followSimilarJump();
 });
 
-useIntervalFn(() => {
-  trySyncVisibleCamera();
-  resyncPreload();
-  if (scrubbing.value || master.mode.value === 'idle') return;
-  const us = playheadUs(master);
-  if (us <= 0) return;
-  const tMs = us / 1000;
-  const block = currentBlock.value;
-  if (!block) return;
-
-  if (master.mode.value === 'play' && tMs >= block.endMs) {
-    const next = blocks[blockIndex.value + 1];
-    beginHandoffTransition();
-    if (!next) {
-      ended.value = true;
-      setPosition(0);
-      master.scrub(playheadMs.value * 1000, true);
-      return;
-    }
-    blockIndex.value += 1;
-    playheadMs.value = next.startMs;
-    master.seek(next.startMs * 1000);
-    return;
-  }
-  playheadMs.value = clamp(tMs, block.startMs, block.endMs);
-}, 250);
+useIntervalFn(tick, 250);
 
 onMounted(() => {
-  for (const [id, ctrl] of controllers.value) {
+  for (const [id, ctrl] of controllers) {
     const el = stageEls.get(id);
     if (el) claimReleases.push(ctrl.claimContainer(el));
   }
@@ -941,7 +1004,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  master.stop();
+  stopAll();
   for (const release of claimReleases) release();
 });
 

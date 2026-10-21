@@ -283,7 +283,7 @@
 
                 <CuiHeatmap v-if="heatmapEnabled && camera && !isDisabled" :camera-id="camera._id" />
 
-                <CuiSimilarPicker v-if="similarPicking && camera" :camera :frame="similarFrame" @pick="onSimilarPick" @close="closeSimilarPick" />
+                <CuiSimilarPicker v-if="similarPicking && camera" :camera :frame="similarFrame" :point="similarPoint" @pick="onSimilarPick" @close="closeSimilarPick" />
               </div>
 
               <div
@@ -330,7 +330,8 @@
                 class="absolute inset-0 cursor-[inherit] z-0"
                 :image-style="{ objectFit: 'fill' }"
                 :class="{
-                  'cursor-pointer': cardIsTappable,
+                  'cursor-pointer': cardIsTappable && !gridPicking,
+                  'cursor-crosshair': gridPicking,
                   'pointer-events-none': !cardIsTappable,
                 }"
                 @pointerdown="onCardPointerDown"
@@ -346,7 +347,8 @@
                 :data-player-id="randomId"
                 class="w-full h-full cursor-[inherit] relative z-1"
                 :class="{
-                  'cursor-pointer': cardIsTappable,
+                  'cursor-pointer': cardIsTappable && !gridPicking,
+                  'cursor-crosshair': gridPicking,
                 }"
                 @pointerdown="onCardPointerDown"
                 @click="onCardClick"
@@ -923,6 +925,7 @@ import { randomLetter } from '@/common/utils.js';
 import ShareForm from '@/components/CuiDialog/templates/ShareForm/ShareForm.vue';
 import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
 import { useCameraPtz } from '@/components/CuiPTZControl/useCameraPtz.js';
+import { SimilarGridKey } from '@/components/CuiSimilarPicker/types.js';
 import { isCapacitor } from '@/connection/runtime.js';
 import { resolveEventIcons } from '@/utils/eventIcons.js';
 import { maskPrivacyZones } from '@/utils/privacyMask.js';
@@ -932,6 +935,7 @@ import type CuiBBoxPlayground from '@/components/CuiBBoxPlayground/CuiBBoxPlaygr
 import type { ShareFormProps } from '@/components/CuiDialog/templates/ShareForm/types.js';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
+import type { SimilarPickPoint } from '@/components/CuiSimilarPicker/types.js';
 import type { VideoStreamingMode } from '@camera.ui/browser';
 import type { NvrPlayback } from '@camera.ui/nvr';
 import type { Detection, DetectionLabel, FaceDetection, StreamingRole, TrackedDetection } from '@camera.ui/sdk';
@@ -1050,6 +1054,7 @@ const morePopoverRef = useTemplateRef<InstanceType<typeof Popover>>('morePopover
 const nvrMap = inject(NvrPlaybackMapKey, undefined);
 const nvrDirect = inject(NvrPlaybackKey, undefined);
 const gridSearch = inject(GridSearchKey, undefined);
+const similarGrid = inject(SimilarGridKey, undefined);
 
 const isHovered = useElementHover(() => (control.value ? playerContainerRef.value : null), { delayLeave: 1000 });
 const isHoveredZoom = useElementHover(playerContainerRef, { delayLeave: 0 });
@@ -1082,6 +1087,7 @@ const embeddedTimelineStart = ref<number>();
 const bboxEnabled = ref(false);
 const controlBarPopoverOpen = ref(false);
 const morePopoverOpen = ref(false);
+const similarPoint = shallowRef<SimilarPickPoint>();
 
 let isUserChangingResolution = false;
 let classifierWatchers: WatchHandle[] = [];
@@ -1102,10 +1108,14 @@ const {
 } = useSimilarPick({
   capture: () => (nvrPlaybackVisible.value ? nvr.value?.captureSnapshot() : cameraStream.captureScreenshot()),
   privacyZones: () => cameraPrivacyZones.value,
-  onPick: (request) => props.onSearchSimilar?.(request),
+  onPick: (request) => {
+    props.onSearchSimilar?.(request);
+    if (similarGrid && camera.value) similarGrid.pick(camera.value, request);
+  },
   onClose: (end) => {
     const paused = pausedForPick;
     pausedForPick = undefined;
+    similarPoint.value = undefined;
     if (end !== 'leave') return;
     if (paused === 'live') cameraStream.play();
     else if (paused === 'playback') nvr.value?.resume();
@@ -1308,9 +1318,9 @@ const hovered = computed(() => (isHovered.value || initialHover.value) && contro
 const isDisabled = computed(() => camera.value?.disabled === true);
 const liveResting = computed(() => inStandby.value && !nvrPlaybackVisible.value);
 const liveStreamFailed = computed(() => !nvrPlaybackVisible.value && !isDisabled.value && !liveResting.value && streamStatus.value === 'error');
-const canSearchSimilar = computed(
-  () => props.onSearchSimilar !== undefined && hasPermission(undefined, 'admin') && Boolean(camera.value?.assignments?.object) && !isDisabled.value,
-);
+const canPickObject = computed(() => hasPermission(undefined, 'admin') && Boolean(camera.value?.assignments?.object) && !isDisabled.value);
+const canSearchSimilar = computed(() => props.onSearchSimilar !== undefined && canPickObject.value);
+const gridPicking = computed(() => Boolean(similarGrid?.active.value) && canPickObject.value);
 const isSnoozed = computed(() => camera.value?.detectionSettings?.snooze === true);
 const isLoading = computed(() => {
   if (isDisabled.value) return false;
@@ -1608,12 +1618,14 @@ function onCardPointerDown() {
   panAtPointerDown = { ...panValue.value };
 }
 
-function onCardClick() {
+function onCardClick(event: MouseEvent) {
   const dx = panValue.value.x - panAtPointerDown.x;
   const dy = panValue.value.y - panAtPointerDown.y;
   if (Math.hypot(dx, dy) > 5) return;
 
-  if (tapsForRedirect.value) {
+  if (gridPicking.value && !liveResting.value) {
+    pickAtClick(event);
+  } else if (tapsForRedirect.value) {
     router.push(routerLink.value!);
   } else if (tapsForExpand.value && !liveResting.value) {
     toggleExpand();
@@ -2042,6 +2054,13 @@ function toggleSimilarPick() {
   startSimilarPick();
 }
 
+function pickAtClick(event: MouseEvent) {
+  const rect = videoBoxRef.value?.getBoundingClientRect();
+  if (!rect?.width || !rect.height) return;
+  similarPoint.value = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+  toggleSimilarPick();
+}
+
 function timelineScroll(scrolling: boolean) {
   timelineScrolling.value = scrolling;
 }
@@ -2102,6 +2121,10 @@ async function followSimilarJump(): Promise<void> {
     followingJump = false;
   }
 }
+
+watch(gridPicking, (active) => {
+  if (!active) closeSimilarPick();
+});
 
 watch(nvrMode, (mode) => {
   if (!similarPicking.value) return;

@@ -2462,6 +2462,7 @@ export default {
       no_dnds_configured: 'No DNDs configured',
       no_views_configured: 'No views configured',
       no_cameras: 'No cameras available',
+      similar_show: 'Show matches',
       title: 'Camview',
     },
     config: {

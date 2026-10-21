@@ -2481,6 +2481,7 @@ export default {
       no_dnds_configured: 'Keine DNDs konfiguriert',
       no_views_configured: 'Keine Ansichten konfiguriert',
       no_cameras: 'Keine Kameras verfügbar',
+      similar_show: 'Treffer zeigen',
       title: 'Camview',
     },
     config: {

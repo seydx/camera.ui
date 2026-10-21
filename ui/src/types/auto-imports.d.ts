@@ -329,6 +329,7 @@ declare global {
   const useMouse: typeof import('@vueuse/core').useMouse
   const useMouseInElement: typeof import('@vueuse/core').useMouseInElement
   const useMousePressed: typeof import('@vueuse/core').useMousePressed
+  const useMultiSimilarSearch: typeof import('../composables/useMultiSimilarSearch').useMultiSimilarSearch
   const useMutation: typeof import('@tanstack/vue-query').useMutation
   const useMutationObserver: typeof import('@vueuse/core').useMutationObserver
   const useNavLayout: typeof import('../composables/useNavLayout').useNavLayout
@@ -922,6 +923,7 @@ declare module 'vue' {
     readonly useMouse: UnwrapRef<typeof import('@vueuse/core')['useMouse']>
     readonly useMouseInElement: UnwrapRef<typeof import('@vueuse/core')['useMouseInElement']>
     readonly useMousePressed: UnwrapRef<typeof import('@vueuse/core')['useMousePressed']>
+    readonly useMultiSimilarSearch: UnwrapRef<typeof import('../composables/useMultiSimilarSearch')['useMultiSimilarSearch']>
     readonly useMutation: UnwrapRef<typeof import('@tanstack/vue-query')['useMutation']>
     readonly useMutationObserver: UnwrapRef<typeof import('@vueuse/core')['useMutationObserver']>
     readonly useNavLayout: UnwrapRef<typeof import('../composables/useNavLayout')['useNavLayout']>

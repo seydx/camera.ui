@@ -37,7 +37,7 @@ import { frameObjectText } from '@/common/eventLabels.js';
 import { drawOutline } from '@/utils/objectMask.js';
 
 import type { BoundingBox } from '@camera.ui/sdk';
-import type { CuiSimilarPickerEmits, CuiSimilarPickerProps } from './types.js';
+import type { CuiSimilarPickerEmits, CuiSimilarPickerProps, SimilarPickPoint } from './types.js';
 
 const props = defineProps<CuiSimilarPickerProps>();
 
@@ -59,6 +59,7 @@ const outlineCanvas = useTemplateRef<HTMLCanvasElement>('outlineCanvas');
 const clickAt = shallowRef<{ x: number; y: number }>();
 const barVisible = ref(true);
 let barTimer: ReturnType<typeof setTimeout> | undefined;
+let pointPicked = false;
 
 const busy = computed(() => !props.frame || status.value === 'scanning' || status.value === 'reading');
 
@@ -98,7 +99,10 @@ async function onClick(event: MouseEvent): Promise<void> {
   if (!canPick.value) return;
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   if (!rect.width || !rect.height) return;
-  const point = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+  await pickPoint({ x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height });
+}
+
+async function pickPoint(point: SimilarPickPoint): Promise<void> {
   clickAt.value = point;
   const found = await pickAt(point.x, point.y);
   if (found?.query) emit('pick', { ...found, query: found.query });
@@ -106,10 +110,17 @@ async function onClick(event: MouseEvent): Promise<void> {
 
 watch(
   () => props.frame,
-  (frame) => {
+  async (frame) => {
     clickAt.value = undefined;
-    if (frame) load(frame);
-    else clear();
+    if (!frame) {
+      clear();
+      return;
+    }
+    await load(frame);
+    // the click that opened the picker picks on its first picture only
+    if (!props.point || pointPicked) return;
+    pointPicked = true;
+    if (frame === props.frame && status.value === 'waiting') pickPoint(props.point);
   },
   { immediate: true },
 );
