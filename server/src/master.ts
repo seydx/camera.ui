@@ -8,6 +8,7 @@ import { Database } from './api/database/index.js';
 import { Server } from './api/index.js';
 import { BackupSchedulerService } from './api/services/backupScheduler.service.js';
 import { MoveService } from './api/services/move.service.js';
+import { updatesService } from './api/services/updates.service.js';
 import { CertificateGeneration } from './api/utils/cert.js';
 import { AssistantManager } from './assistant/manager.js';
 import { AutomationEngine } from './automations/engine.js';
@@ -279,6 +280,7 @@ export class CameraUi {
 
     await this.pluginManager.initializeInstalledPlugins();
     this.setStatus('ready');
+    updatesService().reportRestartFailures();
 
     sendIPCMessage({
       type: 'START_OUTPUT',

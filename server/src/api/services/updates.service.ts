@@ -2,10 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 import { APP_SERVER_NAME, IS_ELECTRON, sleep } from '@camera.ui/common/utils';
+import { Severity } from '@camera.ui/sdk';
 import { pathExists, readJson, remove, writeJson } from 'fs-extra/esm';
 import { coerce, satisfies } from 'semver';
 
 import { inject, tryInject } from '../../container.js';
+import { SystemNotificationTypeId } from '../../manager/types.js';
 import { ConfigService } from '../../services/config/index.js';
 import { assertServerUpdateSpace } from '../../utils/disk-space.js';
 import { serverTarget } from '../../utils/engines.js';
@@ -132,6 +134,10 @@ function leftBehindMessage(target: ServerTarget, workers: UpdatesLeftBehindWorke
     : `camera.ui ${target.version} does not say which workers it accepts, ${names} might no longer connect. Update them first or confirm the update.`;
 }
 
+function failedNames(items: UpdatesActivityItem[]): string[] {
+  return items.filter((item) => item.status === 'error').map((item) => (item.kind === 'server' ? 'camera.ui' : (item.displayName ?? item.name)));
+}
+
 function reachableWorker(worker: WorkerInfo): boolean {
   return worker.state === 'online' || worker.state === 'outdated';
 }
@@ -150,6 +156,7 @@ export class UpdatesService {
   private lastRun: UpdatesRunState | null = null;
   private manual = new Map<string, UpdatesActivityItem>();
   private manualCleanupTimers = new Map<string, NodeJS.Timeout>();
+  private restartFailures: string[] = [];
   private serverInstallActive = false;
   private lastCheckAt = 0;
 
@@ -210,10 +217,19 @@ export class UpdatesService {
   }
 
   public noteWorkerUpdateResult(result: WorkerUpdateResult, name: string): void {
-    this.notifyActivity('worker', `worker:${result.agentId}`, name, result.ok ? 'success' : 'error', { error: result.reason });
+    const id = `worker:${result.agentId}`;
+    if (!result.ok && !this.runItem(id)) {
+      this.notifyFailed([name], id);
+    }
+    this.notifyActivity('worker', id, name, result.ok ? 'success' : 'error', { error: result.reason });
     if (!this.isRunActive()) {
       this.refreshUpdateStates();
     }
+  }
+
+  public reportRestartFailures(): void {
+    this.notifyFailed(this.restartFailures, 'restart');
+    this.restartFailures = [];
   }
 
   public status(): UpdatesStatus {
@@ -435,6 +451,7 @@ export class UpdatesService {
     }
 
     this.finishRun();
+    this.notifyFailed(failedNames(run.items), run.id);
     await this.startStopped(stopped);
     await this.refreshUpdateStates();
   }
@@ -586,6 +603,23 @@ export class UpdatesService {
     this.emitStatus();
   }
 
+  private notifyFailed(names: string[], tag: string): void {
+    if (names.length === 0) return;
+    tryInject('proxy')
+      ?.notificationManager.notify({
+        source: { kind: 'system', id: SystemNotificationTypeId.UpdateFailed },
+        notification: {
+          title: 'Update failed',
+          body: `${names.join(', ')} could not be updated.`,
+          severity: Severity.Warn,
+          tag: `${SystemNotificationTypeId.UpdateFailed}:${tag}`,
+          deepLink: '/updates',
+          adminOnly: true,
+        },
+      })
+      .catch(() => {});
+  }
+
   private runItem(id: string): UpdatesActivityItem | undefined {
     if (!this.run?.active) return undefined;
     return this.run.items.find((item) => item.id === id);
@@ -675,6 +709,8 @@ export class UpdatesService {
         serverItem.error = updated ? undefined : 'The server restarted without the update applied';
         serverItem.installedVersion = ConfigService.VERSION;
       }
+      // the notifier plugins are not up yet, the master reports these once they are
+      this.restartFailures = failedNames(stamp.items);
 
       this.lastRun = {
         id: stamp.runId ?? randomUUID(),

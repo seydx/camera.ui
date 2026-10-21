@@ -11,6 +11,7 @@ import type { HealthResponse } from '../../api/types/index.js';
 import type { ProxyService } from '../tunnel/index.js';
 import type { DirectOverrideStatus, RemoteAccessStatus, RemoteTestResult } from '../types.js';
 import type { CloudflareManagedService, ManagedTunnelStatus } from './cloudflare-managed.js';
+import type { TunnelConnections } from './tunnelConnections.js';
 
 type ActiveMode = 'cloudflare' | 'cloudflareQuick' | 'customDomain' | null;
 
@@ -110,6 +111,16 @@ export class RemoteAccessService {
       override: { ...this.override },
       cloudflareError: this.cloudflareService.lastError ?? (this.override.fallback ? this.fallbackReason : null),
     };
+  }
+
+  public async reachableFromOutside(): Promise<boolean | null> {
+    const cfg = this.remoteConfig;
+    if (this.cloudflareService.managed.busy) return null;
+    // a custom domain sits behind the user's own proxy, nothing to check from inside
+    if (cfg.directEnabled && cfg.directMode === 'customDomain') return null;
+    if (cfg.directEnabled && this.configuredConnections().registered) return true;
+    if (cfg.enabled && this.remoteService.isCloudConnected()) return (await this.proxyService.getStatus()).connected;
+    return cfg.directEnabled ? false : null;
   }
 
   public async test(mode: DBRemoteDirectMode): Promise<RemoteTestResult> {
@@ -213,9 +224,7 @@ export class RemoteAccessService {
 
   private async targetWorks(target: string | null): Promise<boolean> {
     if (this.remoteConfig.directMode === 'cloudflare') {
-      const cloudflare = this.cloudflareService;
-      const connections = this.remoteConfig.cloudflare?.mode === 'managed' ? cloudflare.managed.connections : cloudflare.connections;
-      return connections.whenRegistered(TUNNEL_REGISTER_TIMEOUT_MS, true);
+      return this.configuredConnections().whenRegistered(TUNNEL_REGISTER_TIMEOUT_MS, true);
     }
     if (!target) return false;
     if (await this.waitReachable(target)) return true;
@@ -387,6 +396,11 @@ export class RemoteAccessService {
         details: { url: base },
       };
     }
+  }
+
+  private configuredConnections(): TunnelConnections {
+    const cloudflare = this.cloudflareService;
+    return this.remoteConfig.cloudflare?.mode === 'managed' ? cloudflare.managed.connections : cloudflare.connections;
   }
 
   private configuredTargetUrl(): string | null {

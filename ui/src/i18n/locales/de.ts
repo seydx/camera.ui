@@ -3447,6 +3447,9 @@ export default {
           system_worker_update_available: 'Worker-Updates verfügbar',
           system_cloud_reauth_required: 'Cloud-Anmeldung erforderlich',
           system_backup_failed: 'Geplantes Backup fehlgeschlagen',
+          system_worker_offline: 'Worker offline / wieder online',
+          system_remote_offline: 'Fernzugriff ausgefallen / wieder da',
+          system_update_failed: 'Update fehlgeschlagen',
         },
       },
       instances: {

@@ -3424,6 +3424,9 @@ export default {
           system_worker_update_available: 'Worker updates available',
           system_cloud_reauth_required: 'Cloud sign-in required',
           system_backup_failed: 'Scheduled backup failed',
+          system_worker_offline: 'Worker offline / back online',
+          system_remote_offline: 'Remote access down / restored',
+          system_update_failed: 'Update failed',
         },
       },
       permissions: {

@@ -2,6 +2,7 @@ import { API_EVENT } from '@camera.ui/sdk';
 
 import { RemoteService } from '../api/services/remote.service.js';
 import { inject, provide } from '../container.js';
+import { RemoteNotices } from './notices.js';
 import { PushService } from './push.js';
 import { RemoteAccessService } from './services/index.js';
 import { ProxyService } from './tunnel/index.js';
@@ -22,6 +23,7 @@ export class RemoteAccessManager {
   private proxyService: ProxyService;
   private pushService: PushService;
   private remoteAccessService: RemoteAccessService;
+  private notices: RemoteNotices;
 
   constructor() {
     provide('remoteAccessManager', this);
@@ -37,6 +39,7 @@ export class RemoteAccessManager {
     this.pushService.on('connected', () => this.deliverPushToken());
     this.proxyService = new ProxyService(this.pushService, this.logger);
     this.remoteAccessService = new RemoteAccessService(this.logger, this.proxyService);
+    this.notices = new RemoteNotices(() => this.remoteAccessService.reachableFromOutside());
 
     this.api.setMaxListeners(this.api.getMaxListeners() + 1);
     this.api.once(API_EVENT.SHUTDOWN, () => {
@@ -50,10 +53,12 @@ export class RemoteAccessManager {
 
   public async start(): Promise<void> {
     this.syncPush();
+    this.notices.start();
     await this.remoteAccessService.start();
   }
 
   public stop(): void {
+    this.notices.stop();
     this.remoteAccessService.stop();
     this.pushService.disconnect();
     this.proxyService.disconnect();

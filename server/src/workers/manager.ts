@@ -35,6 +35,7 @@ import {
   SELF_STALL_MS,
 } from './lifecycle/timing.js';
 import { versionStanding } from './lifecycle/update.js';
+import { WorkerNotices } from './notices.js';
 import { hostPort, loopbackTarget, StreamTunnels, withHostPort } from './stream-tunnel.js';
 import { MIN_WORKER_PROTOCOL, parseWorkloadKey, WORKER_PROTOCOL, WorkerCapability, workloadKey } from './types.js';
 import { WorkerUpdates } from './updates.js';
@@ -185,6 +186,7 @@ export class WorkerManager {
   private failures = new Map<string, string>();
   private answered = new Set<string>();
   private rehome = new Map<string, Rehome>();
+  private notices = new WorkerNotices();
   private shutdown?: Shutdown;
 
   private listeners = new Map<string, Promise<() => Promise<void>>>();
@@ -348,6 +350,7 @@ export class WorkerManager {
       this.step(agentId, { type: 'released', now: mono() });
     }
     this.holds.clear();
+    this.notices.clear();
 
     clearInterval(this.probeInterval);
     this.probeInterval = undefined;
@@ -1497,6 +1500,7 @@ export class WorkerManager {
           );
         }
         this.forOwnersOn(agentId, { type: 'resumed', now });
+        this.notices.online(agentId, name);
         for (const owner of this.owners.values()) {
           if (owner.waitingFor === agentId) {
             owner.reconsider(`worker ${name} is online`);
@@ -1591,10 +1595,11 @@ export class WorkerManager {
       case 'stopped':
       case 'went to sleep':
         this.logger.log(`Worker ${name} ${reason}${moving}`);
-        break;
+        return;
       default:
         this.logger.warn(`Worker ${name} ${reason}${moving}`);
     }
+    this.notices.lost(agentId, name, reason, { moved: moved.length, waiting: waiting.length });
   }
 
   private conflict(agentId: string, boots: [string, string]): void {
@@ -1860,6 +1865,7 @@ export class WorkerManager {
     clearTimeout(this.updateTimers.get(agentId));
     this.updateTimers.delete(agentId);
     this.lastUpdateAt.delete(agentId);
+    this.notices.forget(agentId);
   }
 
   private waitReason(agentId: string, presence: Presence): string {
