@@ -268,6 +268,7 @@ export class BackupSchedulerService {
           body: message,
           severity: Severity.Warn,
           tag: SystemNotificationTypeId.BackupFailed,
+          deepLink: '/settings/backup',
           adminOnly: true,
         },
       })

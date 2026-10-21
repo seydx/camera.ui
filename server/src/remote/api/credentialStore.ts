@@ -88,6 +88,7 @@ export class CloudCredentialStore {
           body: 'This server was signed out of cameraui.com. Reconnect it under Settings, Remote.',
           severity: Severity.Warn,
           tag: SystemNotificationTypeId.CloudReauth,
+          deepLink: '/settings/remote',
           adminOnly: true,
         },
       })
