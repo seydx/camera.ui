@@ -2767,6 +2767,7 @@ export default {
       unknown: 'Unbekannt',
       unknown_faces: 'Unbekannte Gesichter',
       no_faces_yet: 'Noch keine Gesichter registriert.',
+      unavailable: 'Gesichter nicht verfügbar, das NVR-Plugin läuft nicht.',
       no_known_faces: 'Noch keine bekannten Gesichter registriert.',
       no_unknown_faces: 'Keine unbekannten Gesichter erkannt.',
       no_ungrouped_faces: 'Keine ungruppierten Gesichter.',

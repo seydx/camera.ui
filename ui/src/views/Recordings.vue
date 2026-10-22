@@ -280,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { useClipReindex, useDetectionEvents, useEventStore, useSemanticSearch, useSimilarSearch } from '@camera.ui/nvr';
+import { useClipReindex, useDetectionEvents, useEventStore, useNvrDataEpoch, useSemanticSearch, useSimilarSearch } from '@camera.ui/nvr';
 import SelectAllIcon from '~icons/fluent/select-all-on-20-filled';
 import CloseIcon from '~icons/mdi/close';
 import ReindexIcon from '~icons/mdi/database-refresh-outline';
@@ -350,6 +350,8 @@ const {
   search: runSimilarSearch,
   clear: clearSimilar,
 } = useSimilarSearch();
+
+const nvrDataEpoch = useNvrDataEpoch();
 
 const { data: assistantStatus } = assistantQuery.getAssistantStatusQuery();
 const { data: camerasData } = camerasQuery.getCamerasQuery({ page: 1, pageSize: -1 });
@@ -990,7 +992,7 @@ watch(
 );
 
 watch(
-  [similarRequests, () => JSON.stringify(similarOptions.value), similarAvailable],
+  [similarRequests, () => JSON.stringify(similarOptions.value), similarAvailable, nvrDataEpoch],
   ([requests, , available]) => {
     if (!requests.length) clearSimilar();
     else if (available)
@@ -1012,6 +1014,10 @@ watch(
     if (semanticHasSearched.value && semanticText.value) searchSemantic(false);
   },
 );
+
+watch(nvrDataEpoch, () => {
+  if (semanticText.value) searchSemantic(true);
+});
 
 watch(
   () => filters.value.cameraIds,

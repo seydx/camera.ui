@@ -252,7 +252,7 @@ async function onConfirm(): Promise<void | null> {
   await download({ url: res.url, filename: res.filename });
 }
 
-watchDebounced([selectedCameraIds, daySlices, quality], runEstimate, { debounce: 350, immediate: true, deep: true });
+watchDebounced([selectedCameraIds, daySlices, quality, () => Boolean(nvrPluginRef.value)], runEstimate, { debounce: 350, immediate: true, deep: true });
 
 watchEffect(() => {
   if (dialogRefProps.disabled) {

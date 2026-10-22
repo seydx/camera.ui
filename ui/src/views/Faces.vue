@@ -30,8 +30,13 @@
     </template>
 
     <template v-else>
+      <div v-if="!faceStore.isAvailable.value" class="flex flex-1 min-h-0 flex-col items-center justify-center w-full gap-4">
+        <i-mdi:face-recognition class="w-12 h-12 text-muted" />
+        <span class="text-muted text-sm">{{ $t('views.faces.unavailable') }}</span>
+      </div>
+
       <div
-        v-if="!faceStore.knownFaces.value.length && !faceStore.unknownFaces.value.length && !faceStore.ignoredFaces.value.length"
+        v-else-if="!faceStore.knownFaces.value.length && !faceStore.unknownFaces.value.length && !faceStore.ignoredFaces.value.length"
         class="flex flex-1 min-h-0 flex-col items-center justify-center w-full gap-4"
       >
         <i-mdi:face-recognition class="w-12 h-12 text-muted" />

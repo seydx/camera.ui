@@ -90,19 +90,24 @@ async function loadCheck(nvr: Promisify<NVRInterface>) {
   }
 }
 
-onMounted(async () => {
-  const nvr = plugin.value as unknown as Promisify<NVRInterface> | undefined;
-  if (nvr) loadCheck(nvr);
+watch(
+  plugin,
+  async (proxy) => {
+    const nvr = proxy as unknown as Promisify<NVRInterface> | undefined;
+    if (!nvr) return;
+    loadCheck(nvr);
 
-  try {
-    const known = await nvr?.listKnownFaceMeta();
-    knownNames.value = (known ?? []).map((profile) => profile.name);
-  } catch {
-    // the select stays empty, unknown-option still works
-  } finally {
-    namesLoading.value = false;
-  }
-});
+    try {
+      const known = await nvr.listKnownFaceMeta();
+      knownNames.value = (known ?? []).map((profile) => profile.name);
+    } catch {
+      // the select stays empty, unknown-option still works
+    } finally {
+      namesLoading.value = false;
+    }
+  },
+  { immediate: true },
+);
 
 defineExpose<CustomDialogComponent>({
   onConfirm: async () => selected.value,

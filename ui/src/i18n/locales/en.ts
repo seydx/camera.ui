@@ -2747,6 +2747,7 @@ export default {
       unknown: 'Unknown',
       unknown_faces: 'Unknown Faces',
       no_faces_yet: 'No faces enrolled yet.',
+      unavailable: 'Faces are unavailable, the NVR plugin is not running.',
       no_known_faces: 'No known faces enrolled yet.',
       no_unknown_faces: 'No unknown faces detected.',
       no_ungrouped_faces: 'No ungrouped faces.',

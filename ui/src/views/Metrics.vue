@@ -1151,6 +1151,12 @@ onUnmounted(() => {
   border-radius: 0.5rem;
 }
 
+@media (max-width: 639px) {
+  .metrics-tabs :deep(.p-tab) {
+    flex: 1;
+  }
+}
+
 .metrics-tabs :deep(.p-tab-active) {
   background: var(--p-content-hover-background);
 }

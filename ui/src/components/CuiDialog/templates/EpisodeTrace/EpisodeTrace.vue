@@ -423,8 +423,9 @@ watch(selectedIndex, resetStageZoom);
 watch(
   nvrPluginRef,
   (proxy) => {
-    if (!proxy || loadStarted) return;
+    if (!proxy || (loadStarted && status.value !== 'unavailable')) return;
     loadStarted = true;
+    status.value = 'loading';
     load(proxy as unknown as EpisodeTracePlugin);
   },
   { immediate: true },

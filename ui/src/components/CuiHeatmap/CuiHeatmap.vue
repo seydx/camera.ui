@@ -91,5 +91,9 @@ function heatColor(t: number): [number, number, number] {
   }
 }
 
+watch(nvrPluginRef, (nvrPlugin) => {
+  if (nvrPlugin) load();
+});
+
 onMounted(() => load());
 </script>
