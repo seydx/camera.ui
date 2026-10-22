@@ -4,5 +4,5 @@ import type { DBCamera } from '@shared/types';
 export interface CameraStreamEventProps {
   camera: DBCamera;
   eventTimestamp?: number;
-  similarRequest?: SimilarSearchRequest;
+  similarPick?: { camera: DBCamera; request: SimilarSearchRequest };
 }

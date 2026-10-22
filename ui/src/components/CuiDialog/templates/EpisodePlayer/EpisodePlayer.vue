@@ -1,6 +1,6 @@
 <template>
-  <CameraStreamEvent v-if="matchView" ref="matchViewRef" :camera="matchView.camera" :event-timestamp="matchView.timestamp" :similar-request="matchView.request" />
-  <div v-else class="episode-player-container" :class="{ 'with-similar': similarRequest && !mdBreakpoint }">
+  <CameraStreamEvent v-if="matchView" ref="matchViewRef" :camera="matchView.camera" :event-timestamp="matchView.timestamp" :similar-pick="matchView.pick" />
+  <div v-else class="episode-player-container" :class="{ 'with-similar': findOpen && !mdBreakpoint }">
     <div
       ref="stageRef"
       class="relative w-full bg-black"
@@ -34,17 +34,26 @@
           ref="stageContentRef"
           :data-zoomable-content="zoomId"
           class="relative shrink-0"
-          :class="{ 'w-full h-full': !mdBreakpoint }"
+          :class="{ 'w-full h-full': !mdBreakpoint, 'cursor-crosshair': findArmed }"
           :style="mdBreakpoint ? stageContentStyle : undefined"
+          @pointerdown="onStagePointerDown"
+          @pointermove="longPress.move"
+          @pointerup="longPress.up"
+          @pointercancel="longPress.up"
+          @contextmenu="onStageContextMenu"
+          @click="onStageClick"
         >
           <div v-for="id in memberCameraIds" v-show="id === visibleCameraId" :key="id" :ref="(el) => setStageEl(id, el as HTMLElement | null)" class="absolute inset-0" />
           <CuiSimilarPicker
-            v-if="similarPicking && visibleCamera"
+            v-if="frozen && visibleCamera"
             class="z-[3]"
             :camera="visibleCamera"
-            :frame="similarFrame"
-            @pick="onSimilarPick"
-            @close="closeSimilarPick"
+            :frame="still"
+            :point="stillPoint"
+            still
+            continuable
+            @pick="pickFrozen"
+            @continue="releaseFrozen(true)"
           />
         </div>
       </VueZoomable>
@@ -66,7 +75,7 @@
       </Transition>
 
       <Transition name="fade-2">
-        <div v-if="showControl && !similarPicking" class="absolute top-0 left-0 right-0 p-3 z-[3] flex items-center gap-2 pointer-events-none">
+        <div v-if="showControl && !frozen" class="absolute top-0 left-0 right-0 p-3 z-[3] flex items-center gap-2 pointer-events-none">
           <span class="text-sm font-semibold p-2 bg-black/60 rounded-xl text-white truncate">{{ activeCameraName }}</span>
           <span class="ml-auto text-sm font-medium p-2 bg-black/60 rounded-xl text-white tabular-nums shrink-0">{{ clockLabel }}</span>
         </div>
@@ -98,14 +107,14 @@
             <div class="flex-1" />
 
             <Button
-              v-if="canSearchSimilar"
+              v-if="canFind"
               v-tooltip.top="{ value: t('components.similar.search') }"
               fluid
               text
               severity="contrast"
               class="control-bar-btn"
-              :class="{ '!text-primary': similarPicking }"
-              @click="toggleSimilarPick"
+              :class="{ '!text-primary': findOpen }"
+              @click="find.toggleView()"
             >
               <template #icon>
                 <i-tabler:zoom-scan class="w-[18px] h-[18px]" />
@@ -177,15 +186,7 @@
       <p class="flex-1 min-w-0 text-xs text-muted text-wrap">{{ episode.description.description }}</p>
     </div>
 
-    <CuiSimilarResults
-      v-if="similarRequest"
-      :request="similarRequest"
-      :class="mdBreakpoint ? 'similar-below' : 'similar-side'"
-      :safe-bottom="mdBreakpoint"
-      @open="openSimilarMatch"
-      @close="similarRequest = undefined"
-      @show-all="showAllSimilar"
-    />
+    <CuiFindObjectView v-if="findOpen" layout="grid" :class="mdBreakpoint ? 'similar-below' : 'similar-side'" @open="openFindMatch" @show-all="showAllSimilar" />
   </div>
 </template>
 
@@ -196,10 +197,14 @@ import DownloadIcon from '~icons/tabler/download';
 import TraceIcon from '~icons/tabler/list-search';
 
 import { extractErrorMessage, randomLetter } from '@/common/utils.js';
+import { FindObjectKey } from '@/components/CuiFindObjectView/types.js';
 import { SIMILAR_PANEL_WIDTH } from '@/components/CuiSimilarResults/types.js';
+import { frozenReaction } from '@/utils/frozenPicture.js';
+import { createLongPress } from '@/utils/longPress.js';
 import { awaitingPicture, noticeKey, playStep, showsPosition } from './playback.js';
 
 import type CameraStreamEventView from '@/components/CuiDialog/templates/CameraStreamEvent/CameraStreamEvent.vue';
+import type { FindPick } from '@/components/CuiFindObjectView/types.js';
 import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
 import type { SimilarResultOpen } from '@/components/CuiSimilarResults/types.js';
 import type { DialogRefProps } from '@/composables/useCuiDialog.js';
@@ -234,7 +239,6 @@ const HANDOFF_WAIT_MS = 1200;
 const TRANSITION_MAX_MS = 1500;
 const LEAD_RESYNC_MS = 1500;
 const JUMP_FRAME_TOLERANCE_MS = 5000;
-const JUMP_FRAME_TIMEOUT_MS = 10_000;
 
 const memberCameraIds = [...new Set(props.episode.members.map((m) => m.cameraId))];
 const angleBlocks = (props.episode.blocks ?? []).filter((block) => block.secondAngle);
@@ -266,14 +270,15 @@ const isDownloading = ref(false);
 const initialHover = ref(true);
 const transitioning = ref(false);
 const dragging = ref(false);
-const similarRequest = shallowRef<SimilarSearchRequest>();
-const matchView = shallowRef<{ camera: DBCamera; timestamp: number; request: SimilarSearchRequest }>();
+const matchView = shallowRef<{ camera: DBCamera; timestamp: number; pick: Pick<FindPick, 'camera' | 'request'> }>();
 const matchViewRef = useTemplateRef<InstanceType<typeof CameraStreamEventView>>('matchViewRef');
-let pausedForPick = false;
-let similarFrameMs = 0;
-let followingJump = false;
+let panAtPointerDown = { x: 0, y: 0 };
 
-useDialogSidePanel(() => Boolean(similarRequest.value), SIMILAR_PANEL_WIDTH);
+const find = useFindObject();
+const findOpen = computed(() => find.segment.value === 'find');
+
+provide(FindObjectKey, find);
+useDialogSidePanel(() => findOpen.value, SIMILAR_PANEL_WIDTH);
 
 const stageSize = useElementSize(stageRef);
 const isHovered = useElementHover(stageRef, { delayLeave: 1000 });
@@ -357,29 +362,47 @@ const controllers = new Map(memberCameraIds.map((id) => [id, createNvrPlayback(i
 const leadCtrl = computed(() => controllers.get(leadId.value));
 const visibleCtrl = computed(() => controllers.get(visibleCameraId.value));
 
-const {
-  picking: similarPicking,
-  frame: similarFrame,
-  start: startSimilarPick,
-  retake: retakeSimilarPick,
-  close: closeSimilarPick,
-  pick: onSimilarPick,
-} = useSimilarPick({
-  capture: () => visibleCtrl.value?.captureSnapshot(),
-  privacyZones: () => visibleCamera.value?.zones?.privacy ?? [],
-  onPick: (request) => {
-    similarRequest.value = request;
-  },
-  onClose: (end) => {
-    if (pausedForPick && end === 'leave') resume();
-    pausedForPick = false;
-  },
-});
-
 const isPlaying = computed(() => mode.value === 'play');
 const visibleCamera = computed(() => props.cameraById.get(visibleCameraId.value));
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
-const canSearchSimilar = computed(() => Boolean(isAdmin.value && nvrPluginRef.value && visibleCamera.value?.assignments?.object));
+const canFind = computed(() => find.available.value && Boolean(visibleCamera.value?.assignments?.object));
+
+const {
+  frozen,
+  still,
+  point: stillPoint,
+  freezeAt,
+  follow: followFrozen,
+  release: releaseFrozen,
+  stillPosition,
+  pick: pickFrozen,
+} = useFrozenPicture({
+  camera: () => visibleCamera.value,
+  box: () => stageContentRef.value,
+  capture: () => visibleCtrl.value?.captureSnapshot(),
+  position: () => ({ from: 'playback', atMs: playheadMs.value }),
+  privacyZones: () => visibleCamera.value?.zones?.privacy ?? [],
+  pause: () => {
+    if (mode.value === 'play') pause();
+  },
+  resume,
+  settled: () => {
+    const ctrl = visibleCtrl.value;
+    return Boolean(!scrubbing.value && ctrl && ctrl.frameTimestamp.value > 0 && Math.abs(ctrl.frameTimestamp.value / 1000 - playheadMs.value) < JUMP_FRAME_TOLERANCE_MS);
+  },
+  find,
+});
+
+const canLongPress = computed(() => canFind.value && !frozen.value);
+const findArmed = computed(() => canLongPress.value && find.armed.value);
+
+const longPress = createLongPress({
+  onPress: ({ clientX, clientY }) => {
+    if (!canLongPress.value) return;
+    freezeAt(clientX, clientY);
+    find.openView();
+  },
+});
 const showControl = computed(() => isHovered.value || initialHover.value);
 const showSpinner = computed(() => {
   if (scrubbing.value) return false;
@@ -771,58 +794,41 @@ function seekTo(posMs: number, forcePlay = false): void {
   else scrubAt(posMs);
 }
 
-function openSimilarMatch({ event, camera, timestamp }: SimilarResultOpen): void {
+function openFindMatch({ event, camera, timestamp }: SimilarResultOpen, pick: FindPick): void {
+  releaseFrozen(false);
   const block = blocks.find((b) => b.cameraId === event.cameraId && timestamp >= b.startMs && timestamp <= b.endMs);
   if (block) {
-    seekTo(block.offsetMs + timestamp - block.startMs);
+    seekTo(block.offsetMs + timestamp - block.startMs, true);
     return;
   }
-  if (!camera || !similarRequest.value) return;
-  matchView.value = { camera, timestamp, request: similarRequest.value };
-  similarRequest.value = undefined;
+  if (!camera) return;
+  matchView.value = { camera, timestamp, pick };
   stopAll();
   if (dialogTitle) dialogTitle.value = camera.name;
 }
 
-function showAllSimilar(): void {
-  if (!similarRequest.value) return;
-  const request = similarRequest.value;
+function showAllSimilar(requests: SimilarSearchRequest[]): void {
   dialogRef.value.close();
-  openSimilarSearch(request);
+  openSimilarSearch(requests);
 }
 
-function toggleSimilarPick(): void {
-  if (similarPicking.value) {
-    closeSimilarPick();
-    return;
-  }
-  if (mode.value === 'play') {
-    pause();
-    pausedForPick = true;
-  }
-  similarFrameMs = playheadMs.value;
-  startSimilarPick();
+function onStagePointerDown(event: PointerEvent): void {
+  panAtPointerDown = { ...panValue.value };
+  if (canLongPress.value) longPress.down(event);
 }
 
-async function followSimilarJump(): Promise<void> {
-  if (followingJump) return;
-  followingJump = true;
-  try {
-    const target = playheadMs.value;
-    await until(() => {
-      const ctrl = visibleCtrl.value;
-      return Boolean(ctrl && ctrl.frameTimestamp.value > 0 && Math.abs(ctrl.frameTimestamp.value / 1000 - target) < JUMP_FRAME_TOLERANCE_MS);
-    }).toBe(true, { timeout: JUMP_FRAME_TIMEOUT_MS });
-    if (!similarPicking.value) return;
-    similarFrameMs = playheadMs.value;
-    await retakeSimilarPick();
-  } finally {
-    followingJump = false;
-  }
+function onStageContextMenu(event: MouseEvent): void {
+  if (canFind.value && (event as PointerEvent).pointerType === 'touch') event.preventDefault();
+}
+
+function onStageClick(event: MouseEvent): void {
+  if (longPress.takeClick()) return;
+  if (Math.hypot(panValue.value.x - panAtPointerDown.x, panValue.value.y - panAtPointerDown.y) > 5) return;
+  if (findArmed.value) freezeAt(event.clientX, event.clientY);
 }
 
 function togglePlay(): void {
-  if (similarPicking.value) closeSimilarPick('stop');
+  releaseFrozen(false);
   if (mode.value === 'play') {
     pause();
     return;
@@ -984,14 +990,15 @@ watch(
   { immediate: true },
 );
 
-watch(mode, (value) => {
-  if (similarPicking.value && (value === 'play' || value === 'idle')) closeSimilarPick('stop');
-});
-
-watch([playheadMs, visibleCameraId], ([ms], [, previousCamera]) => {
-  if (!similarPicking.value || mode.value === 'play') return;
-  if (visibleCameraId.value !== previousCamera || Math.abs(ms - similarFrameMs) > 1000) followSimilarJump();
-});
+watch(
+  () => (frozen.value ? { mode: mode.value, movedMs: playheadMs.value - stillPosition().atMs, cameraId: visibleCameraId.value } : undefined),
+  (state, previous) => {
+    if (!state) return;
+    const reaction = frozenReaction({ mode: state.mode, liveRunning: false, stillFrom: 'playback', movedMs: state.movedMs });
+    if (reaction === 'release') releaseFrozen(false);
+    else if (reaction === 'follow' || (previous && state.cameraId !== previous.cameraId)) followFrozen();
+  },
+);
 
 useIntervalFn(tick, 250);
 
@@ -1034,14 +1041,13 @@ defineExpose({
   right: 0;
   bottom: 0;
   width: v-bind(similarPanelWidth);
-  padding-top: 0.5rem;
   border-left: 1px solid var(--border-color);
 }
 
 .similar-below {
   flex: 1 1 0;
   min-height: 0;
-  padding-top: 0.5rem;
+  padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid var(--border-color);
 }
 

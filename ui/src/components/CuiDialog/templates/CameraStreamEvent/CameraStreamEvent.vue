@@ -1,6 +1,6 @@
 <template>
-  <div class="camera-stream-event-container" :class="{ 'with-similar': similarRequest && !mdBreakpoint }">
-    <div class="stream-wrapper" :class="{ 'stream-kept': similarRequest && mdBreakpoint }">
+  <div class="camera-stream-event-container">
+    <div class="stream-wrapper">
       <CuiCameraCard
         ref="cameraCardRef"
         :key="camera.name"
@@ -17,7 +17,6 @@
         :subcontrol-ptz-button="false"
         :control-pip-button="false"
         :control-microphone-button="false"
-        :on-search-similar="nvrPluginRef ? searchSimilar : undefined"
       />
 
       <Transition
@@ -38,31 +37,21 @@
       </Transition>
     </div>
 
-    <CuiSimilarResults
-      v-if="similarRequest"
-      :request="similarRequest"
-      :class="mdBreakpoint ? 'similar-below' : 'similar-side'"
-      :safe-bottom="mdBreakpoint"
-      @open="openSimilarMatch"
-      @close="similarRequest = undefined"
-      @show-all="showAllSimilar"
-      @shown="(keys: string[]) => (similarShown = keys)"
-    />
-
     <CuiTimeline
-      v-show="!(similarRequest && mdBreakpoint)"
       ref="cuiTimelineRef"
       :key="camera.name"
+      v-model:segment="timelineSegment"
+      :views="timelineViews"
+      :find-count="findCount"
       :camera-ids="[camera._id]"
       :initial-timestamp="eventTimestamp"
       :loading="!isContentReady"
       :type="mdBreakpoint ? 'vertical' : 'horizontal'"
       :ignore-bottom-safe-area="mdBreakpoint"
-      :show-segments="false"
       :show-zoom="false"
       :show-date="false"
       :md-breakpoint="mdBreakpoint"
-      :only-events="similarRequest ? similarShown : undefined"
+      :only-events="findKeys"
       class="flex w-full border-t-[1px] border-color shrink-0"
       :class="mdBreakpoint ? 'h-full' : 'h-[200px]'"
       :card-class="{
@@ -71,7 +60,11 @@
       flat-card
       :locale-settings="timelineLocaleSettings"
       @scrolling="onTimelineScroll"
-    />
+    >
+      <template #find="{ layout }">
+        <CuiFindObjectView :layout @open="openFindMatch" @show-all="showAllSimilar" />
+      </template>
+    </CuiTimeline>
   </div>
 </template>
 
@@ -82,7 +75,7 @@ import TraceIcon from '~icons/tabler/list-search';
 import SparklesIcon from '~icons/tabler/sparkles';
 
 import { extractErrorMessage } from '@/common/utils.js';
-import { SIMILAR_PANEL_WIDTH } from '@/components/CuiSimilarResults/types.js';
+import { FindObjectKey } from '@/components/CuiFindObjectView/types.js';
 
 import type CuiCameraCard from '@/components/CuiCameraCard/CuiCameraCard.vue';
 import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
@@ -111,8 +104,6 @@ const dialogRefProps = inject<DialogRefProps>('dialogRefProps')!;
 const headerToggles = inject<Record<number, boolean>>('dialogHeaderToggles', {});
 const dialogTitle = inject<Ref<string> | undefined>('dialogTitle', undefined);
 
-const similarPanelWidth = `${SIMILAR_PANEL_WIDTH}px`;
-
 const cameraCardRef = useTemplateRef<InstanceType<typeof CuiCameraCard>>('cameraCardRef');
 const cuiTimelineRef = useTemplateRef<InstanceType<typeof CuiTimeline>>('cuiTimelineRef');
 const camera = shallowRef(props.camera);
@@ -120,10 +111,12 @@ const eventTimestamp = ref(props.eventTimestamp);
 const isContentReady = ref(false);
 const qualityRole = ref<StreamingRole>();
 const isDownloading = ref(false);
-const similarRequest = shallowRef<SimilarSearchRequest | undefined>(props.similarRequest);
-const similarShown = ref<string[]>();
 
-useDialogSidePanel(() => Boolean(similarRequest.value), SIMILAR_PANEL_WIDTH);
+const find = useFindObject({ views: ['timeline'], searchable: () => Boolean(camera.value?.assignments?.object) });
+const { segment: timelineSegment, views: timelineViews, keys: findKeys, count: findCount } = find;
+
+provide(FindObjectKey, find);
+if (props.similarPick) find.add(props.similarPick.camera, props.similarPick.request);
 
 let playbackStarted = false;
 
@@ -174,11 +167,8 @@ async function handleDownload(): Promise<void> {
   }
 }
 
-function searchSimilar(request: SimilarSearchRequest): void {
-  similarRequest.value = request;
-}
-
-function openSimilarMatch({ event, camera: matchCamera, timestamp }: SimilarResultOpen): void {
+function openFindMatch({ event, camera: matchCamera, timestamp }: SimilarResultOpen): void {
+  find.releaseAll(false);
   if (event.cameraId === camera.value._id) {
     cuiTimelineRef.value?.scrollToEvent(timestamp);
     return;
@@ -190,11 +180,9 @@ function openSimilarMatch({ event, camera: matchCamera, timestamp }: SimilarResu
   nvrController.play(timestamp * 1000);
 }
 
-function showAllSimilar(): void {
-  if (!similarRequest.value) return;
-  const request = similarRequest.value;
+function showAllSimilar(requests: SimilarSearchRequest[]): void {
   dialogRef.value.close();
-  openSimilarSearch(request);
+  openSimilarSearch(requests);
 }
 
 function onTimelineScroll(scrolling: boolean) {
@@ -259,36 +247,11 @@ defineExpose({
   contain: inline-size;
 }
 
-.with-similar {
-  padding-right: v-bind(similarPanelWidth);
-}
-
-.similar-side {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: v-bind(similarPanelWidth);
-  padding-top: 0.5rem;
-  border-left: 1px solid var(--border-color);
-}
-
-.similar-below {
-  flex: 1 1 0;
-  min-height: 0;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-color);
-}
-
 .stream-wrapper {
   position: relative;
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.stream-kept {
-  flex-grow: 0;
 }
 
 .stream-wrapper > :first-child {

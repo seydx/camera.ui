@@ -10,11 +10,13 @@ export interface CuiSimilarPickerProps {
   camera: DBCamera;
   frame?: Blob;
   point?: SimilarPickPoint;
+  still?: boolean;
+  continuable?: boolean;
 }
 
 export interface CuiSimilarPickerEmits {
   pick: [object: FrameObject & { query: SimilarQuery }];
-  close: [];
+  continue: [];
 }
 
 export interface SimilarSearchRequest {
@@ -23,9 +25,4 @@ export interface SimilarSearchRequest {
   crop?: string;
 }
 
-export interface SimilarGridState {
-  active: Ref<boolean>;
-  pick: (camera: DBCamera, request: SimilarSearchRequest) => void;
-}
-
-export const SimilarGridKey: InjectionKey<SimilarGridState> = Symbol('SimilarGridState');
+export const TOUCH_SLOP_PX = 16;

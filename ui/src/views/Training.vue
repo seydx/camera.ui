@@ -298,6 +298,7 @@ const scrollRef = useTemplateRef<HTMLElement>('scrollRef');
 
 const { y: scrollY } = useScroll(scrollRef);
 const scrollHidden = useScrollHide(scrollY);
+const { registerScrollToTop } = useCuiTopbarSlots();
 
 const gridStyle = computed(() => ({ gridTemplateColumns: `repeat(auto-fill, minmax(${smBreakpoint.value ? '220px' : '260px'}, 1fr))` }));
 
@@ -389,6 +390,8 @@ const { selectionMode, selectedIds, allSelected, bulkBusy, enterSelectionMode, e
 const selectedVerifiedIds = computed(() => [...selectedIds.value].filter((id) => candidates.data.value?.find((c) => c.id === id)?.status === 'verified'));
 
 const readyIds = computed(() => byCamera.value.filter((c) => c.status === 'verified' && !isLocked(c)).map((c) => c.id));
+
+registerScrollToTop(() => scrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' }));
 
 function cameraName(cameraId: string): string {
   return camerasData.value?.result?.find((c) => c._id === cameraId)?.name ?? cameraId;

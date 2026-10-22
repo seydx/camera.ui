@@ -1,4 +1,3 @@
-import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
 import type { CameraActivityMode, VideoStreamingMode } from '@camera.ui/browser';
 import type { EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { StreamingRole } from '@camera.ui/sdk';
@@ -81,7 +80,6 @@ export interface CuiCameraCardProps {
   eventDescription?: EventDescription;
   currentEvent?: RecordedEvent;
   onOpenTrace?: () => void;
-  onSearchSimilar?: (request: SimilarSearchRequest) => void;
 
   pipSourceRole?: StreamingRole;
   pipCamera?: string;

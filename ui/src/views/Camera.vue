@@ -40,7 +40,6 @@
             :current-event="currentTraceEvent"
             @open-trace="openTraceAtPlayhead"
             :pip-camera="pipCameraQuery"
-            :on-search-similar="nvrPluginRef ? showSimilarResults : undefined"
             @open-camera="openPipCamera"
             :camera-name-overlay="false"
             show-shortcuts
@@ -82,16 +81,7 @@
 
               <TabPanels class="camera-tab-panels px-0 pb-0 flex-1 min-h-0">
                 <TabPanel value="0" class="!overflow-hidden">
-                  <CuiSimilarResults
-                    v-if="similarRequest"
-                    :request="similarRequest"
-                    class="h-full"
-                    @open="openSimilarMatch"
-                    @close="closeSimilarResults"
-                    @show-all="showAllSimilar"
-                    @shown="(keys: string[]) => (similarShown = keys)"
-                  />
-                  <CuiCameraRecordings v-else-if="cameraId" :camera-id="cameraId" :camera-name="cameraName" :camera="camera" @scroll-to-event="onScrollToEvent" />
+                  <CuiCameraRecordings v-if="cameraId" :camera-id="cameraId" :camera-name="cameraName" :camera="camera" @scroll-to-event="onScrollToEvent" />
                 </TabPanel>
                 <TabPanel value="1">
                   <CuiCameraTable :active-camera="cameraName" />
@@ -131,16 +121,7 @@
         </TabList>
         <TabPanels class="mobile-sheet-panels px-0 pb-0 flex-1 min-h-0">
           <TabPanel value="0" class="h-full !overflow-hidden">
-            <CuiSimilarResults
-              v-if="similarRequest"
-              :request="similarRequest"
-              class="h-full"
-              @open="openSimilarMatch"
-              @close="closeSimilarResults"
-              @show-all="showAllSimilar"
-              @shown="(keys: string[]) => (similarShown = keys)"
-            />
-            <CuiCameraRecordings v-else-if="cameraId" :camera-id="cameraId" :camera-name="cameraName" :camera="camera" compact @scroll-to-event="onScrollToEvent" />
+            <CuiCameraRecordings v-if="cameraId" :camera-id="cameraId" :camera-name="cameraName" :camera="camera" compact @scroll-to-event="onScrollToEvent" />
           </TabPanel>
           <TabPanel value="1" class="h-full overflow-auto">
             <CuiCameraTable :active-camera="cameraName" />
@@ -156,14 +137,16 @@
       <CuiTimeline
         ref="cuiTimelineRef"
         :key="cameraName"
+        v-model:segment="timelineSegment"
         :camera-ids="cameraId ? [cameraId] : []"
         :loading="!isContentReady"
         :flat-card="smBreakpoint || horizontalTimeline"
         :type="!horizontalTimeline ? 'vertical' : 'horizontal'"
-        :show-segments="!smBreakpoint && !horizontalTimeline"
+        :views="timelineViews"
+        :find-count="findCount"
         :show-zoom="true"
         :initial-timestamp="startTs"
-        :only-events="similarRequest ? similarShown : undefined"
+        :only-events="findKeys"
         :class="{
           'absolute bottom-0 left-0 w-full h-[200px]': horizontalTimeline,
           'h-full': !horizontalTimeline,
@@ -172,8 +155,8 @@
           'h-[200px]': horizontalTimeline,
         }"
         :transparent="horizontalTimeline"
-        :dark-mode="horizontalTimeline"
-        :overlay-class="horizontalTimeline ? 'timeline-overlay !z-0' : undefined"
+        :dark-mode="cameraCardIsFullscreen"
+        :overlay-class="cameraCardIsFullscreen ? 'timeline-overlay !z-0' : undefined"
         :locale-settings="timelineLocaleSettings"
         :trim-mode="exportMode || deleteMode"
         :trim-variant="deleteMode ? 'delete' : 'export'"
@@ -190,7 +173,7 @@
         @toggle-delete-mode="toggleDeleteMode"
       >
         <template #bottom-right>
-          <div class="flex gap-2 items-center" :class="horizontalTimeline ? 'flex-row-reverse' : 'flex-col-reverse'">
+          <div class="flex gap-2 items-center empty:hidden" :class="horizontalTimeline ? 'flex-row-reverse' : 'flex-col-reverse'">
             <Button
               v-if="smBreakpoint && !exportMode && !deleteMode"
               v-tooltip.left="{ value: $t('components.player.intercom') }"
@@ -270,7 +253,7 @@
               </template>
             </Button>
 
-            <template v-if="smBreakpoint || horizontalTimeline">
+            <template v-if="(smBreakpoint || horizontalTimeline) && timelineSegment === 'timeline'">
               <Button
                 v-tooltip.left="{ value: $t('components.form.tooltip.zoom_in') }"
                 rounded
@@ -300,6 +283,10 @@
             </template>
           </div>
         </template>
+
+        <template #find="{ layout }">
+          <CuiFindObjectView :layout @open="openFindMatch" @show-all="openSimilarSearch" />
+        </template>
       </CuiTimeline>
     </Teleport>
   </div>
@@ -311,11 +298,12 @@ import { CuiTimeline, playheadUs, useEventStore, useNvrPlayback } from '@camera.
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { asyncComponent } from '@/common/asyncComponent.js';
 import { extractErrorMessage } from '@/common/utils.js';
+import { FindObjectKey } from '@/components/CuiFindObjectView/types.js';
 import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
 import { boxOverlapsRegions } from '@/components/CuiGridSearch/utils.js';
 
 import type CuiCameraPipCard from '@/components/CuiCameraPipCard/CuiCameraPipCard.vue';
-import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
+import type { FindPick } from '@/components/CuiFindObjectView/types.js';
 import type { SimilarResultOpen } from '@/components/CuiSimilarResults/types.js';
 import type { EventDescription, RecordedEvent } from '@camera.ui/nvr';
 import type { BoundingBox, StreamingRole } from '@camera.ui/sdk';
@@ -359,7 +347,6 @@ const timelineRef = useTemplateRef('timelineRef');
 const cameraColumnRef = useTemplateRef('cameraColumnRef');
 const cameraPaneRef = useTemplateRef('cameraPaneRef');
 const cameraShare = useLocalStorage('cui-camera-view-share', CAMERA_SHARE_DEFAULT);
-const similarRequest = shallowRef<SimilarSearchRequest | undefined>(cameraSearch());
 const isContentReady = ref(!routerStore.isTransitioning);
 const wasTimelineActive = ref(false);
 const showMobileSheet = ref(false);
@@ -372,10 +359,10 @@ const trimExporting = ref(false);
 const rangeDeleting = ref(false);
 const exportMode = ref(false);
 const deleteMode = ref(false);
-const similarShown = ref<string[]>();
 const cameraTab = ref('0');
 
 let splitFrom: { y: number; height: number } | undefined;
+let routeSearch = cameraSearch();
 
 const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 
@@ -383,6 +370,12 @@ const cameraId = computed(() => camera.value?._id);
 
 const cameraCardIsFullscreen = computed(() => Boolean(cameraCardRef.value?.isFullscreen));
 const horizontalTimeline = computed(() => xmdBreakpoint.value || cameraCardIsFullscreen.value);
+
+const find = useFindObject({
+  shown: () => !horizontalTimeline.value || Boolean(cameraCardRef.value?.timelineState),
+  searchable: () => Boolean(camera.value?.assignments?.object),
+});
+const { segment: timelineSegment, views: timelineViews, keys: findKeys, count: findCount } = find;
 
 const currentDescription = computed<EventDescription | undefined>(() => cuiTimelineRef.value?.currentEventDescription);
 
@@ -417,6 +410,7 @@ const trimDurationMs = computed(() => {
 const timelapseDisabled = computed(() => trimDurationMs.value < 60 * 60 * 1000);
 
 provide(GridSearchKey, { active: gridSearchActive, regions: gridSearchRegions });
+provide(FindObjectKey, find);
 
 function openPipCamera(name: string): void {
   const query: Record<string, string> = { pip: cameraName.value };
@@ -488,31 +482,21 @@ function onSplitEnd(): void {
   splitFrom = undefined;
 }
 
+function openCardTimeline(): void {
+  if (cameraCardRef.value?.timelineState === false) cameraCardRef.value.toggleTimeline();
+}
+
 function onScrollToEvent(timestamp: number) {
   cuiTimelineRef.value?.scrollToEvent(timestamp);
 }
 
-function showSimilarResults(request: SimilarSearchRequest): void {
-  similarRequest.value = request;
-  similarShown.value = undefined;
-}
-
-function closeSimilarResults(): void {
-  similarRequest.value = undefined;
-  similarShown.value = undefined;
-  forgetCameraSearch();
-}
-
-function openSimilarMatch({ event, camera: matchCamera, timestamp }: SimilarResultOpen): void {
+function openFindMatch({ event, camera: matchCamera, timestamp }: SimilarResultOpen, pick: FindPick): void {
   if (event.cameraId === cameraId.value) {
+    find.releaseAll(false);
     onScrollToEvent(timestamp);
     return;
   }
-  if (matchCamera && similarRequest.value) openOnCamera(matchCamera.name, timestamp, similarRequest.value);
-}
-
-function showAllSimilar(): void {
-  if (similarRequest.value) openSimilarSearch(similarRequest.value);
+  if (matchCamera) openOnCamera(matchCamera.name, timestamp, pick.request);
 }
 
 async function onTrimExport() {
@@ -634,19 +618,30 @@ watch(
 );
 
 watch(cameraName, () => {
-  similarRequest.value = cameraSearch();
-  if (!similarRequest.value) similarShown.value = undefined;
+  routeSearch = cameraSearch();
+  find.endSearch();
 });
 
 watch(
-  similarRequest,
-  (request) => {
-    if (!request) return;
-    cameraTab.value = '0';
-    if (smBreakpoint.value) showMobileSheet.value = true;
+  () => (camera.value?.name === cameraName.value ? camera.value : undefined),
+  (loaded) => {
+    if (!loaded || !routeSearch) return;
+    find.add(loaded, routeSearch);
+    routeSearch = undefined;
   },
   { immediate: true },
 );
+
+watch(
+  () => find.picks.value.length,
+  (count) => {
+    if (!count && !routeSearch) forgetCameraSearch();
+  },
+);
+
+watch([timelineSegment, cameraCardRef], ([segment]) => {
+  if (segment === 'find' && horizontalTimeline.value) openCardTimeline();
+});
 
 watch(
   cameraName,
@@ -655,7 +650,7 @@ watch(
       nextTick(() => {
         nextTick(() => {
           try {
-            cameraCardRef.value?.toggleTimeline();
+            openCardTimeline();
           } catch {}
         });
       });

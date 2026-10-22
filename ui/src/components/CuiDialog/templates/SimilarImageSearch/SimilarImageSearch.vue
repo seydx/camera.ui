@@ -2,7 +2,7 @@
   <div class="flex flex-col items-center gap-3">
     <div v-if="camera" class="relative max-w-full overflow-hidden rounded-md">
       <img :src="imageUrl" alt="" class="block max-w-full max-h-[65vh]" />
-      <CuiSimilarPicker :camera="camera" :frame="image" @pick="onPick" @close="dialogRef.close()" />
+      <CuiSimilarPicker :camera="camera" :frame="image" @pick="onPick" />
     </div>
     <p v-else-if="!isLoading" class="text-sm text-muted text-center">{{ t('components.similar.image_no_camera') }}</p>
   </div>

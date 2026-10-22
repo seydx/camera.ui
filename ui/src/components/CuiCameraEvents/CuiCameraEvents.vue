@@ -62,18 +62,16 @@
 </template>
 
 <script setup lang="ts">
-import { EventHoverPreviewKey, useDetectionEvents, useEventHoverPreview } from '@camera.ui/nvr';
+import { useDetectionEvents } from '@camera.ui/nvr';
+
+import { provideEventHoverPreview } from '@/composables/provideEventHoverPreview.js';
 
 import type { DBCamera } from '@shared/types';
 import type { CuiCameraEventsProps } from './types.js';
 
 const props = defineProps<CuiCameraEventsProps>();
 
-if (typeof VideoDecoder !== 'undefined') {
-  const hoverPreview = useEventHoverPreview({ cacheSize: 20 });
-  provide(EventHoverPreviewKey, hoverPreview);
-  tryOnScopeDispose(() => hoverPreview.dispose());
-}
+provideEventHoverPreview(20);
 
 const EVENT_CARD_WIDTH = 152; // 140px card + 12px margin
 const EVENT_CARD_HEIGHT = 172; // 140px thumbnail + 8px mt-2 + 16px text + 8px padding

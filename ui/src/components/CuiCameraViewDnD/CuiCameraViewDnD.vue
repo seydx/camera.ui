@@ -23,7 +23,12 @@
             :dropped-cameras
             mode="normal"
             :index="expandedIdx"
-            :camera-card-props="{ ...activeCameraCardProps(cards[expandedIdx]?.lastDroppedCamera), expanded: true }"
+            :camera-card-props="{
+              ...activeCameraCardProps(cards[expandedIdx]?.lastDroppedCamera),
+              expanded: true,
+              detectionIndicatorOverlay: false,
+              detectionIconsOverlay: false,
+            }"
             :camera-card-models
             @expand="(camera: DBCamera, expanded: boolean) => toggleFullScreenCard(camera, expandedIdx!, expanded)"
             @fullscreen="(camera: DBCamera, active: boolean) => emit('fullscreen', camera, active)"
@@ -91,7 +96,6 @@
 </template>
 
 <script setup lang="ts">
-import { NvrPlaybackKey } from '@camera.ui/nvr';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -112,7 +116,6 @@ const emit = defineEmits<CuiCameraViewDnDEmits>();
 
 const { isTouch } = useSharedCuiUserAgent();
 const { smBreakpoint, lgBreakpoint } = useSharedCuiBreakpoint();
-const nvrMaster = inject(NvrPlaybackKey, undefined);
 
 const { editMode, rearrangeMode, viewSize, cards, cameraCardProps } = toRefs(props);
 
@@ -147,15 +150,7 @@ const expandedIdx = computed(() => fullScreenCard.value ?? collapsingCard.value)
 const activeCameraCardProps = computed(() => {
   return (camera: DBCamera | undefined) => {
     const p = { ...toRaw(cameraCardProps.value) };
-    if (camera) {
-      const basePath = `/cameras/${camera.name}`;
-      if (nvrMaster?.isActive.value) {
-        const tsMs = Math.floor(nvrMaster.currentTimestamp.value / 1000);
-        p.routerLink = `${basePath}?startTs=${tsMs}`;
-      } else {
-        p.routerLink = basePath;
-      }
-    }
+    if (camera) p.routerLink = `/cameras/${camera.name}`;
     return p;
   };
 });

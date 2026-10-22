@@ -4,13 +4,13 @@ export function useSimilarSearchRoute() {
   const router = useRouter();
   const route = useRoute();
 
-  const request = computed<SimilarSearchRequest | undefined>(() => {
-    if (!route.query.similar || !hasPermission(undefined, 'admin')) return undefined;
-    const state = window.history.state as { similar?: SimilarSearchRequest } | null;
-    return state?.similar?.query ? state.similar : undefined;
+  const requests = computed<SimilarSearchRequest[]>(() => {
+    if (!route.query.similar || !hasPermission(undefined, 'admin')) return [];
+    const state = window.history.state as { similar?: SimilarSearchRequest | SimilarSearchRequest[] } | null;
+    return [state?.similar ?? []].flat().filter((request) => request.query);
   });
 
-  function openSimilarSearch(next: SimilarSearchRequest): void {
+  function openSimilarSearch(next: SimilarSearchRequest | SimilarSearchRequest[]): void {
     router.push({
       path: '/recordings',
       query: { similar: Date.now().toString(36) },
@@ -42,5 +42,5 @@ export function useSimilarSearchRoute() {
     window.history.replaceState({ ...window.history.state, similar: undefined }, '');
   }
 
-  return { request, openSimilarSearch, closeSimilarSearch, openOnCamera, cameraSearch, forgetCameraSearch };
+  return { requests, openSimilarSearch, closeSimilarSearch, openOnCamera, cameraSearch, forgetCameraSearch };
 }

@@ -60,6 +60,7 @@ import { runtimeBase } from '@/common/base.js';
 import { attemptChunkReload } from '@/common/chunkReload.js';
 import { dropParkedPage, holdPageAt, isPageHeld, pageScrollY, settlePage } from '@/common/pageScroll.js';
 import { isCapacitor, isInCloudSession, useConnection } from '@/connection/index.js';
+import { scrollPageToTop } from '@/composables/useCuiTopbarSlots.js';
 import Home from '@/views/Home.vue';
 import Login from '@/views/Login.vue';
 
@@ -1453,7 +1454,8 @@ const router = createRouter({
     }
 
     if (to.fullPath === from.fullPath) {
-      return { top: 0, left: 0, behavior: 'smooth' };
+      scrollPageToTop();
+      return false;
     }
 
     if (from.path === to.path || to.path === '/') {

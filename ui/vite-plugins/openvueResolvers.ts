@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 import type { ComponentResolver } from 'unplugin-vue-components/types';
 
-const CUI_BUTTON = resolve(__dirname, '..', 'src', 'components', 'CuiButton', 'CuiButton');
+const CUI_BUTTON = resolve(import.meta.dirname, '..', 'src', 'components', 'CuiButton', 'CuiButton');
 
 export function openvueResolvers(): ComponentResolver[] {
   return PrimeVueResolver().map((resolver) => {

@@ -115,6 +115,7 @@ declare global {
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
   const pausableWatch: typeof import('@vueuse/core').pausableWatch
   const provide: typeof import('vue').provide
+  const provideEventHoverPreview: typeof import('../composables/provideEventHoverPreview').provideEventHoverPreview
   const provideLocal: typeof import('@vueuse/core').provideLocal
   const reactify: typeof import('@vueuse/core').reactify
   const reactifyObject: typeof import('@vueuse/core').reactifyObject
@@ -147,6 +148,7 @@ declare global {
   const resolveComponent: typeof import('vue').resolveComponent
   const restarting: typeof import('../composables/useServerRestart').restarting
   const saveCredentials: typeof import('../composables/useBiometricCredentials').saveCredentials
+  const scrollPageToTop: typeof import('../composables/useCuiTopbarSlots').scrollPageToTop
   const setActivePinia: typeof import('pinia').setActivePinia
   const setHostMenuBadge: typeof import('../composables/useHostMenu').setHostMenuBadge
   const setHostMenuState: typeof import('../composables/useHostMenu').setHostMenuState
@@ -285,10 +287,12 @@ declare global {
   const useFileDialog: typeof import('@vueuse/core').useFileDialog
   const useFileDownload: typeof import('../composables/useFileDownload').useFileDownload
   const useFileSystemAccess: typeof import('@vueuse/core').useFileSystemAccess
+  const useFindObject: typeof import('../composables/useFindObject').useFindObject
   const useFloorplanSocket: typeof import('../composables/sockets/useFloorplanSocket').useFloorplanSocket
   const useFocus: typeof import('@vueuse/core').useFocus
   const useFocusWithin: typeof import('@vueuse/core').useFocusWithin
   const useFps: typeof import('@vueuse/core').useFps
+  const useFrozenPicture: typeof import('../composables/useFrozenPicture').useFrozenPicture
   const useFullscreen: typeof import('@vueuse/core').useFullscreen
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
@@ -329,7 +333,6 @@ declare global {
   const useMouse: typeof import('@vueuse/core').useMouse
   const useMouseInElement: typeof import('@vueuse/core').useMouseInElement
   const useMousePressed: typeof import('@vueuse/core').useMousePressed
-  const useMultiSimilarSearch: typeof import('../composables/useMultiSimilarSearch').useMultiSimilarSearch
   const useMutation: typeof import('@tanstack/vue-query').useMutation
   const useMutationObserver: typeof import('@vueuse/core').useMutationObserver
   const useNavLayout: typeof import('../composables/useNavLayout').useNavLayout
@@ -398,7 +401,6 @@ declare global {
   const useSharedMediaQuery: typeof import('../composables/useSharedComposables').useSharedMediaQuery
   const useSharedMouse: typeof import('../composables/useSharedComposables').useSharedMouse
   const useSharedWindowSize: typeof import('../composables/useSharedComposables').useSharedWindowSize
-  const useSimilarPick: typeof import('../composables/useSimilarPick').useSimilarPick
   const useSimilarSearchRoute: typeof import('../composables/useSimilarSearchRoute').useSimilarSearchRoute
   const useSlots: typeof import('vue').useSlots
   const useSnapshot: typeof import('@camera.ui/browser').useSnapshot
@@ -522,6 +524,12 @@ declare global {
   export type { DownloadOptions } from '../composables/useFileDownload'
   import('../composables/useFileDownload')
   // @ts-ignore
+  export type { UseFindObjectOptions } from '../composables/useFindObject'
+  import('../composables/useFindObject')
+  // @ts-ignore
+  export type { FrozenStillPosition, UseFrozenPictureOptions } from '../composables/useFrozenPicture'
+  import('../composables/useFrozenPicture')
+  // @ts-ignore
   export type { KeyboardInsetTransition } from '../composables/useKeyboardInset'
   import('../composables/useKeyboardInset')
   // @ts-ignore
@@ -542,9 +550,6 @@ declare global {
   // @ts-ignore
   export type { ResizableZoomOptions } from '../composables/useResizableZoom'
   import('../composables/useResizableZoom')
-  // @ts-ignore
-  export type { SimilarPickEnd, UseSimilarPickOptions } from '../composables/useSimilarPick'
-  import('../composables/useSimilarPick')
   // @ts-ignore
   export type { UseTabSwipeOptions } from '../composables/useTabSwipe'
   import('../composables/useTabSwipe')
@@ -710,6 +715,7 @@ declare module 'vue' {
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
     readonly pausableWatch: UnwrapRef<typeof import('@vueuse/core')['pausableWatch']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
+    readonly provideEventHoverPreview: UnwrapRef<typeof import('../composables/provideEventHoverPreview')['provideEventHoverPreview']>
     readonly provideLocal: UnwrapRef<typeof import('@vueuse/core')['provideLocal']>
     readonly reactify: UnwrapRef<typeof import('@vueuse/core')['reactify']>
     readonly reactifyObject: UnwrapRef<typeof import('@vueuse/core')['reactifyObject']>
@@ -742,6 +748,7 @@ declare module 'vue' {
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly restarting: UnwrapRef<typeof import('../composables/useServerRestart')['restarting']>
     readonly saveCredentials: UnwrapRef<typeof import('../composables/useBiometricCredentials')['saveCredentials']>
+    readonly scrollPageToTop: UnwrapRef<typeof import('../composables/useCuiTopbarSlots')['scrollPageToTop']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setHostMenuBadge: UnwrapRef<typeof import('../composables/useHostMenu')['setHostMenuBadge']>
     readonly setHostMenuState: UnwrapRef<typeof import('../composables/useHostMenu')['setHostMenuState']>
@@ -879,10 +886,12 @@ declare module 'vue' {
     readonly useFileDialog: UnwrapRef<typeof import('@vueuse/core')['useFileDialog']>
     readonly useFileDownload: UnwrapRef<typeof import('../composables/useFileDownload')['useFileDownload']>
     readonly useFileSystemAccess: UnwrapRef<typeof import('@vueuse/core')['useFileSystemAccess']>
+    readonly useFindObject: UnwrapRef<typeof import('../composables/useFindObject')['useFindObject']>
     readonly useFloorplanSocket: UnwrapRef<typeof import('../composables/sockets/useFloorplanSocket')['useFloorplanSocket']>
     readonly useFocus: UnwrapRef<typeof import('@vueuse/core')['useFocus']>
     readonly useFocusWithin: UnwrapRef<typeof import('@vueuse/core')['useFocusWithin']>
     readonly useFps: UnwrapRef<typeof import('@vueuse/core')['useFps']>
+    readonly useFrozenPicture: UnwrapRef<typeof import('../composables/useFrozenPicture')['useFrozenPicture']>
     readonly useFullscreen: UnwrapRef<typeof import('@vueuse/core')['useFullscreen']>
     readonly useGamepad: UnwrapRef<typeof import('@vueuse/core')['useGamepad']>
     readonly useGeolocation: UnwrapRef<typeof import('@vueuse/core')['useGeolocation']>
@@ -923,7 +932,6 @@ declare module 'vue' {
     readonly useMouse: UnwrapRef<typeof import('@vueuse/core')['useMouse']>
     readonly useMouseInElement: UnwrapRef<typeof import('@vueuse/core')['useMouseInElement']>
     readonly useMousePressed: UnwrapRef<typeof import('@vueuse/core')['useMousePressed']>
-    readonly useMultiSimilarSearch: UnwrapRef<typeof import('../composables/useMultiSimilarSearch')['useMultiSimilarSearch']>
     readonly useMutation: UnwrapRef<typeof import('@tanstack/vue-query')['useMutation']>
     readonly useMutationObserver: UnwrapRef<typeof import('@vueuse/core')['useMutationObserver']>
     readonly useNavLayout: UnwrapRef<typeof import('../composables/useNavLayout')['useNavLayout']>
@@ -992,7 +1000,6 @@ declare module 'vue' {
     readonly useSharedMediaQuery: UnwrapRef<typeof import('../composables/useSharedComposables')['useSharedMediaQuery']>
     readonly useSharedMouse: UnwrapRef<typeof import('../composables/useSharedComposables')['useSharedMouse']>
     readonly useSharedWindowSize: UnwrapRef<typeof import('../composables/useSharedComposables')['useSharedWindowSize']>
-    readonly useSimilarPick: UnwrapRef<typeof import('../composables/useSimilarPick')['useSimilarPick']>
     readonly useSimilarSearchRoute: UnwrapRef<typeof import('../composables/useSimilarSearchRoute')['useSimilarSearchRoute']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
     readonly useSnapshot: UnwrapRef<typeof import('@camera.ui/browser')['useSnapshot']>

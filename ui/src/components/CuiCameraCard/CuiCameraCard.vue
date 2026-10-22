@@ -78,25 +78,34 @@
             </div>
           </TransitionGroup>
 
-          <Teleport :to="topmostFullscreen" :disabled="!timelineAtScreenBottom">
+          <Teleport :to="timelineHost" :disabled="!timelineHost">
             <Transition name="fade">
               <div v-show="timelineVisible" :id="timelineContainerId" class="timeline-container absolute top-0 left-0 right-0 z-5" :style="timelineContainerStyle">
                 <CuiTimeline
                   v-if="embeddedTimelineShown"
+                  ref="embeddedTimelineRef"
                   :camera-ids="embeddedTimelineCameraIds"
                   :initial-timestamp="embeddedTimelineStart"
                   type="horizontal"
                   flat-card
                   transparent
-                  dark-mode
-                  :show-segments="false"
-                  overlay-class="timeline-overlay !z-0"
+                  :dark-mode="cameraStream.isFullscreen.value"
+                  :segment="find?.segment.value"
+                  :views="embeddedTimelineViews"
+                  :find-count="find?.count.value"
+                  :only-events="find?.keys.value"
+                  :overlay-class="cameraStream.isFullscreen.value ? 'timeline-overlay !z-0' : undefined"
                   :locale-settings="timelineLocale"
                   :md-breakpoint="mdBreakpoint"
                   class="absolute bottom-0 left-0 w-full h-[200px]"
                   card-class="h-[200px]"
                   @scrolling="timelineScroll"
-                />
+                  @update:segment="setFindSegment"
+                >
+                  <template #find="{ layout }">
+                    <CuiFindObjectView :layout @open="openEmbeddedMatch" @show-all="openSimilarSearch" />
+                  </template>
+                </CuiTimeline>
               </div>
             </Transition>
           </Teleport>
@@ -104,17 +113,18 @@
           <TransitionGroup
             tag="div"
             name="overlay-actions"
-            class="absolute top-[10px] z-9 flex items-center gap-1.5 pointer-events-none"
+            class="absolute top-[10px] h-8 z-9 flex items-center gap-1 pointer-events-none"
             :class="backButton ? 'left-16' : 'left-4'"
             @before-leave="(el: Element) => holdLeaving(el, 'left')"
           >
             <div
               v-for="chip in detectionIconChips"
               :key="chip.kind"
-              class="w-8 h-8 rounded-full flex items-center justify-center"
+              class="rounded-full flex items-center justify-center"
+              :class="isFullPlayer ? 'w-7 h-7' : 'w-6 h-6'"
               :style="{ background: 'color-mix(in srgb, var(--primary-500) 90%, transparent)' }"
             >
-              <component :is="chip.icon" class="w-4 h-4 text-white" />
+              <component :is="chip.icon" class="text-white" :class="isFullPlayer ? 'w-4 h-4' : 'w-3.5 h-3.5'" />
             </div>
           </TransitionGroup>
 
@@ -255,7 +265,7 @@
 
               <div class="absolute inset-0 z-3 pointer-events-none">
                 <CuiBBoxPlayground
-                  v-if="boundingBoxOverlay && !inStandby && !nvrPlaybackVisible && !isDisabled && !similarPicking"
+                  v-if="boundingBoxOverlay && !inStandby && !nvrPlaybackVisible && !isDisabled && !frozen"
                   ref="detectionCanvasRef"
                   :classes="bboxClasses"
                 />
@@ -283,7 +293,23 @@
 
                 <CuiHeatmap v-if="heatmapEnabled && camera && !isDisabled" :camera-id="camera._id" />
 
-                <CuiSimilarPicker v-if="similarPicking && camera" :camera :frame="similarFrame" :point="similarPoint" @pick="onSimilarPick" @close="closeSimilarPick" />
+                <CuiSimilarPicker
+                  v-if="frozen && camera"
+                  :camera
+                  :frame="still"
+                  :point="stillPoint"
+                  still
+                  continuable
+                  @pick="pickFrozen"
+                  @continue="releaseFrozen(true)"
+                />
+
+                <div v-if="findUnavailable" class="find-unavailable">
+                  <span class="find-unavailable-pill">
+                    <i-tabler:zoom-cancel class="w-4 h-4 shrink-0" />
+                    <span class="truncate">{{ $t('components.similar.no_object_detection') }}</span>
+                  </span>
+                </div>
               </div>
 
               <div
@@ -330,11 +356,15 @@
                 class="absolute inset-0 cursor-[inherit] z-0"
                 :image-style="{ objectFit: 'fill' }"
                 :class="{
-                  'cursor-pointer': cardIsTappable && !gridPicking,
-                  'cursor-crosshair': gridPicking,
-                  'pointer-events-none': !cardIsTappable,
+                  'cursor-pointer': cardIsTappable && !findArmed,
+                  'cursor-crosshair': findArmed,
+                  'pointer-events-none': !cardIsTappable && !canFind,
                 }"
                 @pointerdown="onCardPointerDown"
+                @pointermove="onCardPointerMove"
+                @pointerup="onCardPointerUp"
+                @pointercancel="onCardPointerUp"
+                @contextmenu="onCardContextMenu"
                 @click="onCardClick"
               />
 
@@ -347,10 +377,14 @@
                 :data-player-id="randomId"
                 class="w-full h-full cursor-[inherit] relative z-1"
                 :class="{
-                  'cursor-pointer': cardIsTappable && !gridPicking,
-                  'cursor-crosshair': gridPicking,
+                  'cursor-pointer': cardIsTappable && !findArmed,
+                  'cursor-crosshair': findArmed,
                 }"
                 @pointerdown="onCardPointerDown"
+                @pointermove="onCardPointerMove"
+                @pointerup="onCardPointerUp"
+                @pointercancel="onCardPointerUp"
+                @contextmenu="onCardContextMenu"
                 @click="onCardClick"
               />
             </div>
@@ -433,14 +467,14 @@
 
                 <div class="flex items-center gap-0.5 pointer-events-auto">
                   <Button
-                    v-if="canSearchSimilar && controlBarLayout.search.inline"
+                    v-if="canFind && controlBarLayout.search.inline"
                     v-tooltip.top="{ value: $t('components.similar.search') }"
                     fluid
                     text
                     severity="contrast"
                     class="control-bar-btn"
-                    :class="{ '!text-primary': similarPicking }"
-                    @click="toggleSimilarPick"
+                    :class="{ '!text-primary': findViewOpen }"
+                    @click="toggleFindView"
                   >
                     <template #icon>
                       <i-tabler:zoom-scan class="w-[18px] h-[18px]" />
@@ -548,7 +582,7 @@
                     text
                     severity="contrast"
                     class="control-bar-btn"
-                    @click="$router.push(routerLink!)"
+                    @click="openCamera"
                   >
                     <template #icon>
                       <i-fluent:open-32-filled class="w-[18px] h-[18px]" />
@@ -591,11 +625,11 @@
               >
                 <div class="flex flex-col">
                   <button
-                    v-if="canSearchSimilar && controlBarLayout.search.inMenu"
+                    v-if="canFind && controlBarLayout.search.inMenu"
                     class="more-menu-item"
-                    :class="{ 'more-menu-item-active': similarPicking }"
+                    :class="{ 'more-menu-item-active': findViewOpen }"
                     @click="
-                      toggleSimilarPick();
+                      toggleFindView();
                       morePopoverRef?.hide();
                     "
                   >
@@ -699,6 +733,8 @@
             </div>
           </Transition>
         </div>
+
+        <div ref="timelineDockRef" class="timeline-dock" :style="{ height: timelineDocked ? `${HORIZONTAL_TIMELINE_HEIGHT}px` : '0px' }" />
 
         <div
           v-if="toolbar"
@@ -915,7 +951,7 @@ import {
   useTopmostFullscreenElement,
 } from '@camera.ui/browser';
 import { mergeWith } from '@camera.ui/common/utils';
-import { CuiTimeline, NvrPlaybackKey, NvrPlaybackMapKey } from '@camera.ui/nvr';
+import { CuiTimeline, NvrPlaybackKey, NvrPlaybackMapKey, playheadUs } from '@camera.ui/nvr';
 
 import { CamerasQuery } from '@/api/routes/cameras.js';
 import { castFn } from '@/api/routes/cast.js';
@@ -923,21 +959,24 @@ import { startIntercomService, stopIntercomService } from '@/common/intercomServ
 import { enterNativePip, nativePipActive, registerAutoPipCandidate, unregisterAutoPipCandidate } from '@/common/pipService.js';
 import { randomLetter } from '@/common/utils.js';
 import ShareForm from '@/components/CuiDialog/templates/ShareForm/ShareForm.vue';
+import { FindObjectKey } from '@/components/CuiFindObjectView/types.js';
 import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
 import { useCameraPtz } from '@/components/CuiPTZControl/useCameraPtz.js';
-import { SimilarGridKey } from '@/components/CuiSimilarPicker/types.js';
 import { isCapacitor } from '@/connection/runtime.js';
 import { resolveEventIcons } from '@/utils/eventIcons.js';
+import { frozenReaction } from '@/utils/frozenPicture.js';
+import { createLongPress } from '@/utils/longPress.js';
 import { maskPrivacyZones } from '@/utils/privacyMask.js';
 import { CAMERA_CARD_DEFAULTS } from './types.js';
 
 import type CuiBBoxPlayground from '@/components/CuiBBoxPlayground/CuiBBoxPlayground.vue';
 import type { ShareFormProps } from '@/components/CuiDialog/templates/ShareForm/types.js';
+import type { FindPick } from '@/components/CuiFindObjectView/types.js';
 import type CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
-import type { SimilarPickPoint } from '@/components/CuiSimilarPicker/types.js';
+import type { SimilarResultOpen } from '@/components/CuiSimilarResults/types.js';
 import type { VideoStreamingMode } from '@camera.ui/browser';
-import type { NvrPlayback } from '@camera.ui/nvr';
+import type { NvrPlayback, TimelineSegment } from '@camera.ui/nvr';
 import type { Detection, DetectionLabel, FaceDetection, StreamingRole, TrackedDetection } from '@camera.ui/sdk';
 import type { PassThrough } from '@openvue/core';
 import type { DBCamera } from '@shared/types';
@@ -1031,8 +1070,8 @@ const UNIFIED_MAX_ZOOM = 5;
 const PLAYER_TINY_BREAKPOINT = 200;
 const PLAYER_FULL_BREAKPOINT = 350;
 const HORIZONTAL_TIMELINE_HEIGHT = 200;
-const JUMP_FRAME_TIMEOUT_MS = 10_000;
 const STREAM_WAKE_TIMEOUT_MS = 10_000;
+const EMBEDDED_TIMELINE_VIEWS: TimelineSegment[] = ['timeline'];
 
 const randomId = randomLetter();
 const speedOptions = [0.25, 0.5, 1, 2, 4, 8];
@@ -1044,7 +1083,9 @@ const castMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('castMenuRef');
 const ptzPresetMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('ptzPresetMenuRef');
 const fullscreenMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('fullscreenMenuRef');
 const detectionCanvasRef = useTemplateRef<InstanceType<typeof CuiBBoxPlayground>>('detectionCanvasRef');
+const embeddedTimelineRef = useTemplateRef<InstanceType<typeof CuiTimeline>>('embeddedTimelineRef');
 const playerContainerRef = useTemplateRef('playerContainerRef');
+const timelineDockRef = useTemplateRef<HTMLElement>('timelineDockRef');
 const nativePipMode = ref(false);
 const arBoxRef = useTemplateRef<HTMLElement>('arBoxRef');
 const videoBoxRef = useTemplateRef<HTMLElement>('videoBoxRef');
@@ -1054,7 +1095,8 @@ const morePopoverRef = useTemplateRef<InstanceType<typeof Popover>>('morePopover
 const nvrMap = inject(NvrPlaybackMapKey, undefined);
 const nvrDirect = inject(NvrPlaybackKey, undefined);
 const gridSearch = inject(GridSearchKey, undefined);
-const similarGrid = inject(SimilarGridKey, undefined);
+const find = inject(FindObjectKey, undefined);
+const { openOnCamera, openSimilarSearch } = useSimilarSearchRoute();
 
 const isHovered = useElementHover(() => (control.value ? playerContainerRef.value : null), { delayLeave: 1000 });
 const isHoveredZoom = useElementHover(playerContainerRef, { delayLeave: 0 });
@@ -1087,38 +1129,38 @@ const embeddedTimelineStart = ref<number>();
 const bboxEnabled = ref(false);
 const controlBarPopoverOpen = ref(false);
 const morePopoverOpen = ref(false);
-const similarPoint = shallowRef<SimilarPickPoint>();
 
 let isUserChangingResolution = false;
 let classifierWatchers: WatchHandle[] = [];
 let isUnmounting = false;
 let releaseNvrContainer: (() => void) | null = null;
-let pausedForPick: 'live' | 'playback' | undefined;
-let similarFrameAt = 0;
-let followingJump = false;
 let micRequest = 0;
 
 const {
-  picking: similarPicking,
-  frame: similarFrame,
-  start: startSimilarPick,
-  retake: retakeSimilarPick,
-  close: closeSimilarPick,
-  pick: onSimilarPick,
-} = useSimilarPick({
+  frozen,
+  still,
+  point: stillPoint,
+  freezeAt,
+  follow: followFrozen,
+  release: releaseFrozen,
+  stillPosition,
+  pick: pickFrozen,
+} = useFrozenPicture({
+  camera: () => camera.value,
+  box: () => videoBoxRef.value,
   capture: () => (nvrPlaybackVisible.value ? nvr.value?.captureSnapshot() : cameraStream.captureScreenshot()),
+  position: () => ({ from: nvrPlaybackVisible.value ? 'playback' : 'live', atMs: nvrCurrentTimestamp.value / 1000 }),
   privacyZones: () => cameraPrivacyZones.value,
-  onPick: (request) => {
-    props.onSearchSimilar?.(request);
-    if (similarGrid && camera.value) similarGrid.pick(camera.value, request);
-  },
-  onClose: (end) => {
-    const paused = pausedForPick;
-    pausedForPick = undefined;
-    similarPoint.value = undefined;
-    if (end !== 'leave') return;
-    if (paused === 'live') cameraStream.play();
-    else if (paused === 'playback') nvr.value?.resume();
+  pause: pauseForFreeze,
+  resume: resumeAfterFreeze,
+  settled: () => !nvrLoading.value && !timelineScrolling.value,
+});
+
+const longPress = createLongPress({
+  onPress: ({ clientX, clientY }) => {
+    if (!canLongPress.value) return;
+    freezeAt(clientX, clientY);
+    find?.openView();
   },
 });
 
@@ -1319,8 +1361,14 @@ const isDisabled = computed(() => camera.value?.disabled === true);
 const liveResting = computed(() => inStandby.value && !nvrPlaybackVisible.value);
 const liveStreamFailed = computed(() => !nvrPlaybackVisible.value && !isDisabled.value && !liveResting.value && streamStatus.value === 'error');
 const canPickObject = computed(() => hasPermission(undefined, 'admin') && Boolean(camera.value?.assignments?.object) && !isDisabled.value);
-const canSearchSimilar = computed(() => props.onSearchSimilar !== undefined && canPickObject.value);
-const gridPicking = computed(() => Boolean(similarGrid?.active.value) && canPickObject.value);
+const canFind = computed(() => Boolean(find?.pickable.value) && canPickObject.value && control.value);
+const canLongPress = computed(() => canFind.value && !frozen.value && !liveResting.value && !gridSearchActive.value);
+const findViewOpen = computed(() => find?.segment.value === 'find');
+const findUnavailable = computed(() => Boolean(find?.armed.value) && control.value && !isDisabled.value && !camera.value?.assignments?.object);
+// a fullscreen tile shows Find in its own timeline while the page's timeline is gone
+const findArmed = computed(() => canLongPress.value && Boolean(find?.armed.value || (embeddedTimelineShown.value && findViewOpen.value)));
+const embeddedTimelineViews = computed(() => (find ? find.views.value.filter((view) => view !== 'find' || canFind.value) : EMBEDDED_TIMELINE_VIEWS));
+const liveRunning = computed(() => !nvrPlaybackVisible.value && !cameraStream.paused.value);
 const isSnoozed = computed(() => camera.value?.detectionSettings?.snooze === true);
 const isLoading = computed(() => {
   if (isDisabled.value) return false;
@@ -1373,12 +1421,17 @@ const timelineAtScreenBottom = computed(() => {
   const videoHeight = (windowWidth.value * arParsed.value.h) / arParsed.value.w;
   return windowHeight.value - videoHeight >= 2 * HORIZONTAL_TIMELINE_HEIGHT;
 });
-const timelineOverVideo = computed(() => timelineVisible.value && !timelineAtScreenBottom.value);
-const timelineContainerStyle = computed(() =>
-  timelineAtScreenBottom.value
-    ? { top: 'auto', bottom: 'var(--safe-area-inset-bottom, 0px)', height: `${HORIZONTAL_TIMELINE_HEIGHT}px` }
-    : { bottom: showControl.value ? '48px' : '0px', transition: 'bottom 0.2s ease' },
-);
+const timelineOverVideo = computed(() => timelineVisible.value && cameraStream.isFullscreen.value && !timelineAtScreenBottom.value);
+const timelineDocked = computed(() => timelineVisible.value && !cameraStream.isFullscreen.value);
+const timelineHost = computed(() => {
+  if (timelineAtScreenBottom.value) return topmostFullscreen.value;
+  return cameraStream.isFullscreen.value ? undefined : timelineDockRef.value;
+});
+const timelineContainerStyle = computed(() => {
+  if (timelineAtScreenBottom.value) return { top: 'auto', bottom: 'var(--safe-area-inset-bottom, 0px)', height: `${HORIZONTAL_TIMELINE_HEIGHT}px` };
+  if (!cameraStream.isFullscreen.value) return { bottom: '0px' };
+  return { bottom: showControl.value ? '48px' : '0px', transition: 'bottom 0.2s ease' };
+});
 const embeddedTimelineShown = computed(() => embeddedTimeline.value && timelineVisible.value && Boolean(cameraId.value));
 const embeddedTimelineCameraIds = computed(() => (cameraId.value ? [cameraId.value] : []));
 
@@ -1602,7 +1655,7 @@ const hasMoreMenuItems = computed(() => {
     (l.expand.inMenu && expandableCard.value && !tapsForExpand.value) ||
     (l.microphone.inMenu && controlMicrophoneButton.value) ||
     (l.pip.inMenu && controlPipButton.value) ||
-    (l.search.inMenu && canSearchSimilar.value)
+    (l.search.inMenu && canFind.value)
   );
 });
 
@@ -1614,22 +1667,41 @@ function assistantPrompt(): string {
   return t('components.player.ask_assistant_prompt_playback', { camera: cameraName.value, time });
 }
 
-function onCardPointerDown() {
+function onCardPointerDown(event: PointerEvent) {
   panAtPointerDown = { ...panValue.value };
+  if (canLongPress.value) longPress.down(event);
+}
+
+function onCardPointerMove(event: PointerEvent) {
+  longPress.move(event);
+}
+
+function onCardPointerUp(event: PointerEvent) {
+  longPress.up(event);
+}
+
+function onCardContextMenu(event: MouseEvent) {
+  if (canFind.value && (event as PointerEvent).pointerType === 'touch') event.preventDefault();
 }
 
 function onCardClick(event: MouseEvent) {
+  if (longPress.takeClick()) return;
   const dx = panValue.value.x - panAtPointerDown.x;
   const dy = panValue.value.y - panAtPointerDown.y;
   if (Math.hypot(dx, dy) > 5) return;
 
-  if (gridPicking.value && !liveResting.value) {
-    pickAtClick(event);
+  if (findArmed.value) {
+    freezeAt(event.clientX, event.clientY);
   } else if (tapsForRedirect.value) {
-    router.push(routerLink.value!);
+    openCamera();
   } else if (tapsForExpand.value && !liveResting.value) {
     toggleExpand();
   }
+}
+
+function openCamera() {
+  const link = routerLink.value!;
+  router.push(nvrDirect?.isActive.value ? `${link}?startTs=${Math.floor(playheadUs(nvrDirect) / 1000)}` : link);
 }
 
 function toggleFullscreen() {
@@ -1960,7 +2032,7 @@ async function togglePictureInPicture() {
 }
 
 function togglePlay() {
-  if (similarPicking.value) closeSimilarPick('stop');
+  releaseFrozen(false);
   if (nvrMode.value !== 'idle') {
     if (nvrMode.value === 'play') {
       nvr.value?.pause();
@@ -2038,27 +2110,31 @@ function toggleFastForward() {
   nvr.value.seek(nvr.value.currentTimestamp.value + 30_000_000);
 }
 
-function toggleSimilarPick() {
-  if (similarPicking.value) {
-    closeSimilarPick();
-    return;
-  }
-  if (nvrMode.value === 'play') {
-    nvr.value?.pause();
-    pausedForPick = 'playback';
-  } else if (!nvrPlaybackVisible.value && !cameraStream.paused.value) {
-    cameraStream.pause();
-    pausedForPick = 'live';
-  }
-  similarFrameAt = nvrCurrentTimestamp.value;
-  startSimilarPick();
+function toggleFindView() {
+  find?.toggleView();
 }
 
-function pickAtClick(event: MouseEvent) {
-  const rect = videoBoxRef.value?.getBoundingClientRect();
-  if (!rect?.width || !rect.height) return;
-  similarPoint.value = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
-  toggleSimilarPick();
+function setFindSegment(segment: TimelineSegment) {
+  if (find) find.segment.value = segment;
+}
+
+function openEmbeddedMatch({ event, camera: matchCamera, timestamp }: SimilarResultOpen, pick: FindPick) {
+  if (event.cameraId === cameraId.value) {
+    find?.releaseAll(false);
+    embeddedTimelineRef.value?.scrollToEvent(timestamp, event.cameraId);
+    return;
+  }
+  if (matchCamera) openOnCamera(matchCamera.name, timestamp, pick.request);
+}
+
+function pauseForFreeze() {
+  if (nvrMode.value === 'play') nvr.value?.pause();
+  else if (liveRunning.value) cameraStream.pause();
+}
+
+function resumeAfterFreeze() {
+  if (nvrPlaybackVisible.value) nvr.value?.resume();
+  else if (cameraStream.paused.value) cameraStream.play();
 }
 
 function timelineScroll(scrolling: boolean) {
@@ -2104,48 +2180,15 @@ watch(
   { immediate: true },
 );
 
-async function followSimilarJump(): Promise<void> {
-  const player = nvr.value;
-  if (followingJump || !player) return;
-  followingJump = true;
-  try {
-    await until(() => player.frameTimestamp.value > 0).toBe(true, { timeout: JUMP_FRAME_TIMEOUT_MS });
-    if (!similarPicking.value) return;
-    if (player.mode.value === 'play') {
-      player.pause();
-      pausedForPick = 'playback';
-    }
-    similarFrameAt = nvrCurrentTimestamp.value;
-    await retakeSimilarPick();
-  } finally {
-    followingJump = false;
-  }
-}
-
-watch(gridPicking, (active) => {
-  if (!active) closeSimilarPick();
-});
-
-watch(nvrMode, (mode) => {
-  if (!similarPicking.value) return;
-  if (mode === 'play') followSimilarJump();
-  else if (mode === 'idle' && !cameraStream.paused.value) closeSimilarPick('stop');
-});
-
 watch(
-  () => cameraStream.paused.value,
-  (paused) => {
-    if (!paused && similarPicking.value && !nvrPlaybackVisible.value) closeSimilarPick('stop');
+  () => (frozen.value ? { mode: nvrMode.value, liveRunning: liveRunning.value, ...stillPosition(), nowMs: nvrCurrentTimestamp.value / 1000 } : undefined),
+  (state) => {
+    if (!state) return;
+    const reaction = frozenReaction({ mode: state.mode, liveRunning: state.liveRunning, stillFrom: state.from, movedMs: state.nowMs - state.atMs });
+    if (reaction === 'release') releaseFrozen(false);
+    else if (reaction === 'follow') followFrozen();
   },
 );
-
-watch(nvrCurrentTimestamp, (ts) => {
-  if (!similarPicking.value || !nvrPlaybackVisible.value || nvrMode.value === 'play' || followingJump) return;
-  if (Math.abs(ts - similarFrameAt) <= 1_000_000) return;
-  similarFrameAt = ts;
-  if (pausedForPick === 'live') pausedForPick = undefined;
-  retakeSimilarPick();
-});
 
 watch(
   [nvr, () => cameraStream.paused.value && !nvrPlaybackVisible.value],
@@ -2341,9 +2384,17 @@ watch(cameraStream.isFullscreen, (fullscreen) => {
   if (!toolbar.value || !toolbarShortcutsButton.value || !showShortcuts.value) toggleShortcuts(false);
 });
 
+watch(toolbarTimelineButton, (shown) => {
+  if (!shown && !cameraStream.isFullscreen.value) timelineState.value = false;
+});
+
 watch(embeddedTimelineShown, (shown) => {
   if (!shown) return;
   embeddedTimelineStart.value = nvrPlaybackVisible.value && nvrCurrentTimestamp.value > 0 ? Math.floor(nvrCurrentTimestamp.value / 1000) : undefined;
+});
+
+watch(findViewOpen, (open) => {
+  if (open && canFind.value && embeddedTimeline.value && cameraStream.isFullscreen.value && !timelineState.value) timelineState.value = true;
 });
 
 watch(resizable, () => {
@@ -2456,6 +2507,7 @@ defineExpose({
   toggleTimeline,
   timelineState,
   timelineOverVideo,
+  timelineDocked,
   timelineScroll,
   captureScreenshot,
 });
@@ -2640,8 +2692,38 @@ html.cui-native-pip #video-container.native-pip .ar-box {
   border-radius: 4px !important;
 }
 
+.find-unavailable {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.find-unavailable-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .control-bar-docked .control-bar-gradient {
   display: none;
+}
+
+.timeline-dock {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: height 0.2s ease;
 }
 
 .timeline-container::after {

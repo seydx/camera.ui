@@ -1,7 +1,10 @@
 <template>
   <div class="similar-search-bar">
-    <div class="similar-search-crop">
-      <img v-if="crop" :src="crop" alt="" class="w-full h-full object-contain" />
+    <div v-if="crops.length > 1" class="flex shrink-0">
+      <img v-for="crop in crops.slice(0, 3)" :key="crop" :src="crop" alt="" class="similar-search-stack" />
+    </div>
+    <div v-else class="similar-search-crop">
+      <img v-if="crops[0]" :src="crops[0]" alt="" class="w-full h-full object-contain" />
       <i-tabler:zoom-scan v-else class="w-5 h-5 text-muted" />
     </div>
 
@@ -39,8 +42,9 @@ const { t } = useI18n();
 
 const title = computed(() => {
   if (props.licenseRequired) return t('views.recordings.similar_license');
-  const result = props.result;
+  const [result] = props.results;
   if (!result) return props.searching ? t('views.recordings.similar_searching') : t('views.recordings.similar_failed');
+  if (props.results.length > 1) return t('views.recordings.similar_several', { count: props.results.length });
   switch (result.mode) {
     case 'face':
       return result.label ? t('views.recordings.similar_face', { name: result.label }) : t('views.recordings.similar_unknown_face');
@@ -56,11 +60,12 @@ const title = computed(() => {
 });
 
 const subtitle = computed(() => {
-  const result = props.result;
-  if (props.licenseRequired || !result || result.mode === 'none') return '';
+  const results = props.results.filter((result) => result.mode !== 'none');
+  if (props.licenseRequired || !results.length) return '';
   const count = t('views.recordings.similar_count', props.count);
-  if (result.matches.some((match) => match.kind)) return `${count} · ${t('views.recordings.similar_surest_first')}`;
-  return result.mode === 'appearance' || result.mode === 'person' ? `${count} · ${t('views.recordings.similar_best_first')}` : count;
+  const modes = new Set(results.map((result) => result.mode));
+  if (modes.size > 1 || results.some((result) => result.matches.some((match) => match.kind))) return `${count} · ${t('views.recordings.similar_surest_first')}`;
+  return modes.has('appearance') || modes.has('person') ? `${count} · ${t('views.recordings.similar_best_first')}` : count;
 });
 </script>
 
@@ -74,6 +79,19 @@ const subtitle = computed(() => {
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   background: var(--card-background);
+}
+
+.similar-search-stack {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgb(0 0 0 / 0.3);
+  box-shadow: 0 0 0 2px var(--card-background);
+}
+
+.similar-search-stack + .similar-search-stack {
+  margin-left: -10px;
 }
 
 .similar-search-crop {

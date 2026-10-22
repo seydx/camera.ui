@@ -110,10 +110,10 @@
         >
           <SimilarSearchBar
             v-if="isSimilarActive"
-            :crop="similarRequest?.crop"
-            :object-label="similarRequest?.objectLabel"
-            :result="similarResult"
-            :count="similarItems.length"
+            :crops="similarCrops"
+            :object-label="similarRequests[0]?.objectLabel"
+            :results="similarResults"
+            :count="similarMatches.length"
             :searching="similarSearching || !similarAvailable"
             :license-required="similarLicenseRequired"
             @close="closeSimilarSearch"
@@ -280,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { EventHoverPreviewKey, useClipReindex, useDetectionEvents, useEventHoverPreview, useEventStore, useSemanticSearch, useSimilarSearch } from '@camera.ui/nvr';
+import { useClipReindex, useDetectionEvents, useEventStore, useSemanticSearch, useSimilarSearch } from '@camera.ui/nvr';
 import SelectAllIcon from '~icons/fluent/select-all-on-20-filled';
 import CloseIcon from '~icons/mdi/close';
 import ReindexIcon from '~icons/mdi/database-refresh-outline';
@@ -301,6 +301,8 @@ import { boxOverlapsRegions } from '@/components/CuiGridSearch/utils.js';
 import CuiMenu from '@/components/CuiMenu/CuiMenu.vue';
 import RecordingsFilterSidebar from '@/components/CuiRecordings/RecordingsFilterSidebar.vue';
 import { buildUngroupedItems, newestFirst } from '@/components/CuiRecordings/ungrouped.js';
+import { mergeSimilarItems, similarItems } from '@/components/CuiSimilarResults/utils.js';
+import { provideEventHoverPreview } from '@/composables/provideEventHoverPreview.js';
 
 import type { CameraStreamEventProps } from '@/components/CuiDialog/templates/CameraStreamEvent/types.js';
 import type { SimilarImageSearchProps } from '@/components/CuiDialog/templates/SimilarImageSearch/types.js';
@@ -320,18 +322,14 @@ const { bottombarHeight } = useSharedCuiStates();
 const { status: reindexStatus, checking: reindexChecking } = useClipReindex();
 
 const { openEventTrace } = useEventTraceDialog();
-const { request: similarRequest, closeSimilarSearch } = useSimilarSearchRoute();
+const { requests: similarRequests, closeSimilarSearch } = useSimilarSearchRoute();
 const eventStore = useEventStore('@camera.ui/camera-ui-nvr');
 const toast = useCuiToast();
 const { t, locale } = useI18n();
 const { smBreakpoint, xlBreakpoint, mdBreakpoint } = useSharedCuiBreakpoint();
 const { registerScrollToTop } = useCuiTopbarSlots();
 
-if (typeof VideoDecoder !== 'undefined') {
-  const hoverPreview = useEventHoverPreview({ cacheSize: 20 });
-  provide(EventHoverPreviewKey, hoverPreview);
-  tryOnScopeDispose(() => hoverPreview.dispose());
-}
+provideEventHoverPreview(20);
 
 const {
   result: semanticResult,
@@ -345,7 +343,7 @@ const {
 } = useSemanticSearch();
 
 const {
-  result: similarResult,
+  results: similarResults,
   isSearching: similarSearching,
   isAvailable: similarAvailable,
   licenseRequired: similarLicenseRequired,
@@ -553,24 +551,13 @@ const semanticCount = computed<number | string>(() => {
   return more ? `${semanticEvents.value.length}+` : semanticEvents.value.length;
 });
 
-const isSimilarActive = computed(() => Boolean(similarRequest.value));
+const isSimilarActive = computed(() => similarRequests.value.length > 0);
 
-const similarEvents = computed(() => new Map((similarResult.value?.events ?? []).map((event) => [event.id, event])));
+const similarCrops = computed(() => similarRequests.value.flatMap((request) => (request.crop ? [request.crop] : [])));
 
-const similarItems = computed<UngroupedItem[]>(() => {
-  const items: UngroupedItem[] = [];
-  const seen = new Set<string>();
-  for (const match of similarResult.value?.matches ?? []) {
-    const event = similarEvents.value.get(match.eventId);
-    if (!event) continue;
-    const segIndex = match.segment >= 0 && event.segments[match.segment] ? match.segment : undefined;
-    const key = segIndex === undefined ? event.id : `${event.id}:seg:${segIndex}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    items.push({ event, key, segIndex });
-  }
-  return items;
-});
+const similarMatches = computed<UngroupedItem[]>(() =>
+  mergeSimilarItems(similarResults.value.map((result) => similarItems(result, 100))).map(({ event, key, segIndex }) => ({ event, key, segIndex })),
+);
 
 const similarOptions = computed<SimilarOptions>(() => {
   const f = filters.value;
@@ -592,8 +579,7 @@ const listLoading = computed(() => (isSimilarActive.value ? similarSearching.val
 
 const showEmptyState = computed(() => {
   if (isSimilarActive.value) {
-    const result = similarResult.value;
-    return Boolean(result) && result?.mode !== 'none' && !similarItems.value.length && !similarSearching.value;
+    return similarResults.value.some((result) => result.mode !== 'none') && !similarMatches.value.length && !similarSearching.value;
   }
   return !listedEvents.value.length && !isLoading.value && !semanticSearching.value;
 });
@@ -657,7 +643,7 @@ const episodeGridItems = computed<UngroupedItem[]>(() => {
   return items;
 });
 const gridItems = computed<UngroupedItem[]>(() => {
-  if (isSimilarActive.value) return similarItems.value;
+  if (isSimilarActive.value) return similarMatches.value;
   if (isSemanticActive.value) return semanticItems.value;
   if (episodesOnly.value) return [...episodeGridItems.value].sort(newestFirst);
   const items: UngroupedItem[] =
@@ -1004,10 +990,14 @@ watch(
 );
 
 watch(
-  [similarRequest, () => JSON.stringify(similarOptions.value), similarAvailable],
-  ([request, , available]) => {
-    if (!request) clearSimilar();
-    else if (available) runSimilarSearch(request.query, similarOptions.value);
+  [similarRequests, () => JSON.stringify(similarOptions.value), similarAvailable],
+  ([requests, , available]) => {
+    if (!requests.length) clearSimilar();
+    else if (available)
+      runSimilarSearch(
+        requests.map((request) => request.query),
+        similarOptions.value,
+      );
   },
   { immediate: true },
 );

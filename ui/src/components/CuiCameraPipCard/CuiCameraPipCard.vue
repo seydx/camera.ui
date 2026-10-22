@@ -247,14 +247,14 @@ const mainControlVisible = computed(() => {
   return mainCard?.showControl ?? false;
 });
 
-const mainTimelineOverVideo = computed(() => activeCard.value?.timelineOverVideo ?? false);
+const mainTimelineShown = computed(() => Boolean(activeCard.value?.timelineOverVideo || activeCard.value?.timelineDocked));
 const mainFullscreen = computed(() => activeCard.value?.isFullscreen ?? false);
 const overlayInFullscreen = computed(() => mainFullscreen.value && showPip.value);
 
 const pipBottomOffset = computed(() => {
   const base = toolbar.value && !mainFullscreen.value ? 68 : 8; // 60px toolbar + 8px gap, or just 8px
   const raised = mainControlVisible.value ? 48 : 0; // control bar ~48px
-  const timeline = mainTimelineOverVideo.value ? HORIZONTAL_TIMELINE_HEIGHT : 0;
+  const timeline = mainTimelineShown.value ? HORIZONTAL_TIMELINE_HEIGHT : 0;
   return `${base + raised + timeline}px`;
 });
 

@@ -4,6 +4,14 @@ const slotCounts = reactive(new Map<TopbarPosition, number>());
 
 const scrollToTopHandler = shallowRef<(() => void) | undefined>();
 
+export function scrollPageToTop(): void {
+  if (scrollToTopHandler.value) {
+    scrollToTopHandler.value();
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
 export function useCuiTopbarSlots() {
   const registerSlot = (position: TopbarPosition) => {
     slotCounts.set(position, (slotCounts.get(position) || 0) + 1);
@@ -30,18 +38,10 @@ export function useCuiTopbarSlots() {
     });
   };
 
-  const scrollToTop = () => {
-    if (scrollToTopHandler.value) {
-      scrollToTopHandler.value();
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   return {
     hasSlot,
     registerSlot,
     registerScrollToTop,
-    scrollToTop,
+    scrollToTop: scrollPageToTop,
   };
 }

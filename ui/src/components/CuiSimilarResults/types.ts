@@ -1,11 +1,5 @@
-import type { SimilarSearchRequest } from '@/components/CuiSimilarPicker/types.js';
-import type { RecordedEvent, SimilarMode } from '@camera.ui/nvr';
+import type { RecordedEvent, SimilarMode, TimelineFindLayout } from '@camera.ui/nvr';
 import type { DBCamera } from '@shared/types';
-
-export interface CuiSimilarResultsProps {
-  request: SimilarSearchRequest;
-  safeBottom?: boolean;
-}
 
 export interface SimilarResultOpen {
   event: RecordedEvent;
@@ -13,18 +7,13 @@ export interface SimilarResultOpen {
   timestamp: number;
 }
 
-export interface CuiSimilarResultsEmits {
-  open: [match: SimilarResultOpen];
-  close: [];
-  showAll: [];
-  shown: [keys: string[]];
-}
-
 export interface SimilarResultsGridProps<T extends SimilarResultItem> {
   items: T[];
   scaled: boolean;
   searching: boolean;
   searched: boolean;
+  layout?: TimelineFindLayout;
+  activeKey?: string;
 }
 
 export interface SimilarResultsGridEmits<T extends SimilarResultItem> {
@@ -32,6 +21,8 @@ export interface SimilarResultsGridEmits<T extends SimilarResultItem> {
 }
 
 export const SIMILAR_PANEL_WIDTH = 280;
+
+export const SIMILAR_CARD_GAP = 8;
 
 export interface SimilarResultItem {
   key: string;

@@ -45,13 +45,14 @@
 </template>
 
 <script setup lang="ts">
-import { EventHoverPreviewKey, useDetectionEvents, useEventHoverPreview } from '@camera.ui/nvr';
+import { useDetectionEvents } from '@camera.ui/nvr';
 import { DETECTION_ATTRIBUTES } from '@camera.ui/sdk';
 
 import { GridSearchKey } from '@/components/CuiGridSearch/types.js';
 import { boxOverlapsRegions } from '@/components/CuiGridSearch/utils.js';
 import CuiRecordingsGrid from '@/components/CuiRecordings/CuiRecordingsGrid.vue';
 import { buildUngroupedItems } from '@/components/CuiRecordings/ungrouped.js';
+import { provideEventHoverPreview } from '@/composables/provideEventHoverPreview.js';
 import CuiCameraRecordingsToolbar from './CuiCameraRecordingsToolbar.vue';
 
 import type { UngroupedItem } from '@/components/CuiRecordings/ungrouped.js';
@@ -66,11 +67,7 @@ const { openEventTrace } = useEventTraceDialog();
 
 const gridSearch = inject(GridSearchKey, undefined);
 
-if (typeof VideoDecoder !== 'undefined') {
-  const hoverPreview = useEventHoverPreview({ cacheSize: 10 });
-  provide(EventHoverPreviewKey, hoverPreview);
-  tryOnScopeDispose(() => hoverPreview.dispose());
-}
+provideEventHoverPreview(10);
 
 const ATTR_SET = new Set<string>(DETECTION_ATTRIBUTES);
 const REGION_FILL_ITEMS = 12;

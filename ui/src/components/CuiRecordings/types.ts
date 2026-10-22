@@ -100,9 +100,9 @@ export interface RecordingsFilterSidebarEmits {
 }
 
 export interface SimilarSearchBarProps {
-  crop?: string;
+  crops: string[];
   objectLabel?: string;
-  result?: SimilarResult;
+  results: SimilarResult[];
   count: number;
   searching: boolean;
   licenseRequired: boolean;

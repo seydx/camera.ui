@@ -16,8 +16,8 @@ import { workerViteClientGuard } from './vite-plugins/workerViteClientGuard.js';
 
 import type { ManifestOptions } from 'vite-plugin-pwa';
 
-dotenv.config({ path: resolve(__dirname, '..', '.env.local'), quiet: true });
-dotenv.config({ path: resolve(__dirname, '..', '.env'), quiet: true });
+dotenv.config({ path: resolve(import.meta.dirname, '..', '.env.local'), quiet: true });
+dotenv.config({ path: resolve(import.meta.dirname, '..', '.env'), quiet: true });
 
 for (const key of ['AUTH_SERVICE_URL', 'BILLING_SERVICE_URL', 'CLOUD_SERVICE_URL', 'PROXY_SERVICE_URL', 'SHARE_SERVICE_URL', 'PROXY_TUNNEL_ENDPOINT']) {
   if (process.env[key] != null && process.env[`VITE_${key}`] == null) {
@@ -25,13 +25,13 @@ for (const key of ['AUTH_SERVICE_URL', 'BILLING_SERVICE_URL', 'CLOUD_SERVICE_URL
   }
 }
 
-process.chdir(__dirname);
+process.chdir(import.meta.dirname);
 
 const API_PORT = parseInt(process.env.CAMERA_UI_PORT!);
 const UI_PORT = parseInt(process.env.CAMERA_UI_UI_PORT!);
 const IS_MOBILE = process.env.CAMERA_UI_MOBILE === '1';
 const DEV_LOCAL_SERVER = process.env.CAMERA_UI_DEV_LOCAL_SERVER ?? '';
-const UI_VERSION: string = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version;
+const UI_VERSION: string = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version;
 
 const processEnv = { ...process.env };
 delete processEnv.Path;
@@ -208,9 +208,9 @@ const stripPwaTagsForMobile = {
 };
 
 export default defineConfig(({ command }) => ({
-  root: resolve(__dirname),
+  root: resolve(import.meta.dirname),
   base: command === 'build' || IS_MOBILE ? './' : '/',
-  envDir: resolve(__dirname, '..'),
+  envDir: resolve(import.meta.dirname, '..'),
   plugins: [
     ...(IS_MOBILE ? [stripPwaTagsForMobile] : []),
     workerViteClientGuard(UI_PORT),
@@ -235,16 +235,16 @@ export default defineConfig(({ command }) => ({
       vueTemplate: true,
       eslintrc: {
         enabled: true,
-        filepath: resolve(__dirname, '.eslintrc-auto-import.json'),
+        filepath: resolve(import.meta.dirname, '.eslintrc-auto-import.json'),
         globalsPropValue: true,
       },
       dirs: [
-        resolve(__dirname, 'src/composables'),
-        resolve(__dirname, 'src/composables/sockets'),
-        resolve(__dirname, 'src/connection/composables'),
-        resolve(__dirname, 'src/stores'),
+        resolve(import.meta.dirname, 'src/composables'),
+        resolve(import.meta.dirname, 'src/composables/sockets'),
+        resolve(import.meta.dirname, 'src/connection/composables'),
+        resolve(import.meta.dirname, 'src/stores'),
       ],
-      dts: resolve(__dirname, 'src', 'types', 'auto-imports.d.ts'),
+      dts: resolve(import.meta.dirname, 'src', 'types', 'auto-imports.d.ts'),
       imports: [
         'vue',
         '@vueuse/core',
@@ -288,14 +288,14 @@ export default defineConfig(({ command }) => ({
     Components({
       extensions: ['vue', 'md'],
       include: [/\.vue$/, /\.vue\?vue/, /\.md$/],
-      dts: resolve(__dirname, 'src', 'types', 'components.d.ts'),
+      dts: resolve(import.meta.dirname, 'src', 'types', 'components.d.ts'),
       resolvers: [...openvueResolvers(), IconsResolver()],
     }),
     ...(IS_MOBILE
       ? []
       : [
           VitePWA({
-            outDir: resolve(__dirname, '..', 'server', 'dist', 'interface'),
+            outDir: resolve(import.meta.dirname, '..', 'server', 'dist', 'interface'),
             injectRegister: null,
             registerType: 'prompt',
             manifestFilename: 'manifest.webmanifest',
@@ -333,14 +333,14 @@ export default defineConfig(({ command }) => ({
   resolve: {
     dedupe: ['vue', 'openvue', '@openvue/core', '@openuxkit/utils', '@vueuse/core', 'vue-i18n', '@camera.ui/browser', '@camera.ui/logger', '@camera.ui/sdk'],
     alias: [
-      ...(IS_MOBILE ? [{ find: 'virtual:pwa-register/vue', replacement: resolve(__dirname, './src/composables/pwa-register-stub.ts') }] : []),
-      { find: /^firebase\/messaging$/, replacement: resolve(__dirname, './src/composables/firebase-messaging-stub.ts') },
-      { find: '@/ui', replacement: resolve(__dirname, './src') },
-      { find: '@', replacement: resolve(__dirname, './src') },
-      { find: '@shared', replacement: resolve(__dirname, '../shared') },
-      { find: /^@nats-io\/transport-node$/, replacement: resolve(__dirname, './node_modules/@camera.ui/rpc/dist/browser.js') },
-      { find: /^@nats-io\/nats-core$/, replacement: resolve(__dirname, './node_modules/@camera.ui/rpc/externals/nats.js/core/src/mod.ts') },
-      { find: /^@nats-io\/nats-core\/internal$/, replacement: resolve(__dirname, './node_modules/@camera.ui/rpc/externals/nats.js/core/src/internal_mod.ts') },
+      ...(IS_MOBILE ? [{ find: 'virtual:pwa-register/vue', replacement: resolve(import.meta.dirname, './src/composables/pwa-register-stub.ts') }] : []),
+      { find: /^firebase\/messaging$/, replacement: resolve(import.meta.dirname, './src/composables/firebase-messaging-stub.ts') },
+      { find: '@/ui', replacement: resolve(import.meta.dirname, './src') },
+      { find: '@', replacement: resolve(import.meta.dirname, './src') },
+      { find: '@shared', replacement: resolve(import.meta.dirname, '../shared') },
+      { find: /^@nats-io\/transport-node$/, replacement: resolve(import.meta.dirname, './node_modules/@camera.ui/rpc/dist/browser.js') },
+      { find: /^@nats-io\/nats-core$/, replacement: resolve(import.meta.dirname, './node_modules/@camera.ui/rpc/externals/nats.js/core/src/mod.ts') },
+      { find: /^@nats-io\/nats-core\/internal$/, replacement: resolve(import.meta.dirname, './node_modules/@camera.ui/rpc/externals/nats.js/core/src/internal_mod.ts') },
     ],
     extensions: ['.js', '.json', '.jsx', '.mjs', '.ts', '.tsx', '.vue'],
   },
@@ -348,10 +348,10 @@ export default defineConfig(({ command }) => ({
     chunkSizeWarningLimit: 500,
     sourcemap: false,
     emptyOutDir: true,
-    outDir: IS_MOBILE ? resolve(__dirname, 'dist-mobile') : resolve(__dirname, '..', 'server', 'dist', 'interface'),
+    outDir: IS_MOBILE ? resolve(import.meta.dirname, 'dist-mobile') : resolve(import.meta.dirname, '..', 'server', 'dist', 'interface'),
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
+        main: resolve(import.meta.dirname, 'index.html'),
       },
       output: {
         format: 'es',
@@ -386,7 +386,7 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
-  publicDir: resolve(__dirname, 'public'),
+  publicDir: resolve(import.meta.dirname, 'public'),
   server: {
     port: UI_PORT,
     host: '0.0.0.0',
