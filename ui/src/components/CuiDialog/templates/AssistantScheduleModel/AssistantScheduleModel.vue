@@ -2,7 +2,7 @@
   <div class="flex w-full flex-col field-gap">
     <label for="assistantScheduleModel" class="cui-label">{{ $t('views.settings.assistant_schedule_model_label') }}</label>
     <Select v-model="modelId" input-id="assistantScheduleModel" :options="models" option-label="name" option-value="_id" show-clear fluid :placeholder="fallback" />
-    <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.assistant_schedule_model_hint') }}</Message>
+    <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ hint }}</Message>
   </div>
 </template>
 

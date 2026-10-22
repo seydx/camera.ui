@@ -295,7 +295,7 @@ export class AssistantManager {
       plugins: new PluginsService()
         .listPlugins()
         .filter((plugin) => hasInterface(plugin.contract, PluginInterface.AssistantTools))
-        .map((plugin) => ({ id: plugin.id, name: plugin.displayName })),
+        .map((plugin) => ({ id: plugin.id, name: plugin.displayName, pluginName: plugin.pluginName })),
       modelProviders: this.registry.modelProviders,
       tools: this.registry.describe(role).filter((tool) => settings.terminalEnabled ?? tool.group !== TERMINAL_GROUP),
       external: this.registry.externalStatus(this.externalServers(this.settings())),
@@ -429,7 +429,7 @@ export class AssistantManager {
 
   public async ask(request: AssistantAskRequest): Promise<AssistantAskResult> {
     const settings = this.settings();
-    const entry = this.pluginModel(request.pluginId);
+    const entry = this.pluginModel(request.pluginId, request.modelId);
     await this.ensureModel(entry);
     if (!entry) return { ok: false, reason: 'not_allowed', message: `Plugin ${request.pluginId} may not use the assistant model, allow it under Settings, Assistant` };
     if (!settings.enabled || !entryConfigured(entry)) return { ok: false, reason: 'unconfigured', message: 'The assistant model is not configured' };
@@ -1064,10 +1064,11 @@ export class AssistantManager {
     }
   }
 
-  private pluginModel(pluginId: string): DBAssistantModel | undefined {
+  private pluginModel(pluginId: string, modelId?: string): DBAssistantModel | undefined {
     const settings = this.settings();
     const access = settings.plugins.find((row) => row.pluginId === pluginId);
-    return access ? (settings.models.find((entry) => entry._id === access.modelId) ?? defaultEntry(settings)) : undefined;
+    if (!access) return undefined;
+    return settings.models.find((entry) => entry._id === modelId) ?? settings.models.find((entry) => entry._id === access.modelId) ?? defaultEntry(settings);
   }
 
   private chatAdapter(model: AssistantSettings, entry: DBAssistantModel, language = 'en'): AssistantAdapter {

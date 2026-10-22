@@ -482,7 +482,7 @@
                         :value="profileName(schedule.profileId) ?? $t('views.settings.assistant_schedule_profile_missing')"
                         class="text-[10px]"
                       />
-                      <Tag v-if="scheduleModelChoice(schedule)" severity="secondary" :value="modelName(scheduleModelChoice(schedule))" class="text-[10px]" />
+                      <Tag v-if="modelChoice(schedule.modelId)" severity="secondary" :value="modelName(modelChoice(schedule.modelId))" class="text-[10px]" />
                     </div>
                     <div class="basis-full text-muted line-clamp-2">{{ schedule.prompt }}</div>
                     <div class="basis-full text-xs text-muted">
@@ -591,6 +591,54 @@
                   />
                 </div>
               </div>
+            </div>
+          </template>
+        </Card>
+      </div>
+
+      <div v-if="textAlerts">
+        <span class="card-title">{{ $t('views.settings.assistant_text_alerts') }}</span>
+        <Card class="cui-card">
+          <template #content>
+            <div class="flex flex-col gap-6">
+              <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.assistant_text_alerts_info') }}</Message>
+
+              <div v-if="textAlerts.length" class="flex flex-col divide-y divide-(--border-color)">
+                <div v-for="alert in textAlerts" :key="alert.id" class="flex items-start gap-3 py-3 text-sm">
+                  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1" :class="{ 'opacity-60': !alert.enabled }">
+                    <span class="max-w-full basis-full truncate font-medium text-color md:basis-auto">{{ alert.title }}</span>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <Tag severity="secondary" :value="textAlertCameras(alert)" class="text-[10px]" />
+                      <Tag
+                        v-if="alert.expiresAt"
+                        severity="info"
+                        :value="$t('views.settings.assistant_text_alert_until', { time: formatDateTime(alert.expiresAt) })"
+                        class="text-[10px]"
+                      />
+                      <Tag v-if="textAlertModelLabel(alert)" :severity="nvrModelAccess ? 'secondary' : 'warn'" :value="textAlertModelLabel(alert)" class="text-[10px]" />
+                    </div>
+                    <div class="basis-full text-muted line-clamp-2">{{ alert.text }}</div>
+                    <div v-if="!alert.enabled" class="basis-full text-xs text-muted">{{ $t('views.settings.assistant_schedule_paused') }}</div>
+                  </div>
+                  <div class="shrink-0">
+                    <Button
+                      v-tooltip.top="{ value: $t('views.settings.assistant_schedule_actions') }"
+                      type="button"
+                      severity="secondary"
+                      text
+                      rounded
+                      class="cui-icon-md"
+                      @click="openTextAlertMenu($event, alert)"
+                    >
+                      <template #icon>
+                        <i-mdi:dots-vertical width="100%" height="100%" />
+                      </template>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <span v-else class="text-sm text-muted">{{ $t('views.settings.assistant_text_alerts_empty') }}</span>
             </div>
           </template>
         </Card>
@@ -720,6 +768,7 @@
 </template>
 
 <script setup lang="ts">
+import { useTextAlerts } from '@camera.ui/nvr';
 import { LANGUAGES } from '@shared/types';
 import ModelIcon from '~icons/mdi/brain';
 import CopyIcon from '~icons/mdi/content-copy';
@@ -732,6 +781,7 @@ import StarIcon from '~icons/mdi/star-outline';
 
 import { axiosInstance } from '@/api/index.js';
 import { AssistantQuery } from '@/api/routes/assistant.js';
+import { CamerasQuery } from '@/api/routes/cameras.js';
 import { ASSISTANT_PROVIDERS, capabilityTags, defaultModel, modelInput } from '@/common/assistantModels.js';
 import { copyToClipboard, deepToRaw, randomId } from '@/common/utils.js';
 import { toolDisplayName } from '@/components/CuiAssistantToolCall/types.js';
@@ -743,6 +793,7 @@ import type { AssistantScheduleRow } from '@/api/routes/assistant.js';
 import type { AssistantModelFormProps } from '@/components/CuiDialog/templates/AssistantModel/types.js';
 import type { AssistantScheduleModelProps } from '@/components/CuiDialog/templates/AssistantScheduleModel/types.js';
 import type { MenuItem } from '@/components/CuiMenu/types.js';
+import type { TextAlert } from '@camera.ui/nvr';
 import type { PassThrough } from '@openvue/core';
 import type {
   AssistantInfo,
@@ -762,6 +813,7 @@ type SchedulePreset = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'hourly' | 
 type ToolSource = { key: string; label: string; serverId?: string; tools: AssistantToolInfo[] };
 
 const NO_PLUGIN_ACCESS = 'none';
+const NVR_PLUGIN_NAME = '@camera.ui/camera-ui-nvr';
 const DELETE_ITEM: MenuItem = {
   icon: DeleteIcon,
   iconProps: { class: 'text-red-500' },
@@ -786,10 +838,12 @@ const usageTablePt: PassThrough<DataTablePassThroughOptions> = {
 };
 
 const assistantQuery = new AssistantQuery();
+const camerasQuery = new CamerasQuery();
 
 const toast = useCuiToast();
 const dialog = useCuiDialog();
 const { t, locale } = useI18n();
+const { alerts: textAlerts, setEnabled: setTextAlertEnabled, setModel: setTextAlertModel, remove: removeTextAlert } = useTextAlerts(NVR_PLUGIN_NAME);
 
 const { data: usageRows, isLoading: usageLoading } = assistantQuery.usageAllQuery();
 const { data: info } = assistantQuery.getAssistantInfoQuery();
@@ -800,6 +854,7 @@ const createScheduleMutation = assistantQuery.createScheduleMutation();
 const patchScheduleMutation = assistantQuery.patchScheduleMutation();
 const deleteScheduleMutation = assistantQuery.deleteScheduleMutation();
 const runScheduleMutation = assistantQuery.runScheduleMutation();
+const { data: cameras } = camerasQuery.getCamerasQuery({ page: 1, pageSize: -1 });
 
 const form = ref<AssistantMaskedSettings | null>(null);
 const scheduleForm = ref<{
@@ -830,6 +885,11 @@ const rowMenuRef = useTemplateRef<InstanceType<typeof CuiMenu>>('rowMenuRef');
 
 const models = computed(() => info.value?.settings.models ?? []);
 const defaultEntry = computed(() => (info.value ? defaultModel(info.value.settings) : undefined));
+const nvrModelAccess = computed(() => {
+  const nvr = info.value?.plugins.find((plugin) => plugin.pluginName === NVR_PLUGIN_NAME);
+  return info.value?.settings.plugins.find((row) => row.pluginId === nvr?.id);
+});
+const nvrModel = computed(() => models.value.find((model) => model._id === nvrModelAccess.value?.modelId) ?? defaultEntry.value);
 const pluginOptions = computed(() => [
   { label: t('views.settings.assistant_plugin_no_access'), value: NO_PLUGIN_ACCESS },
   ...models.value.map((model) => ({ label: model.name, value: model._id })),
@@ -848,6 +908,7 @@ const toolSources = computed(() => {
 });
 
 const usage = computed(() => usageRows.value?.map((row) => ({ ...row, key: `${row.userId}-${row.month}-${row.provider}-${row.model}` })));
+const cameraNames = computed(() => new Map((cameras.value?.result ?? []).map((camera) => [camera._id, camera.name])));
 
 const status = computed(() => info.value?.status);
 
@@ -1114,6 +1175,55 @@ function openScheduleMenu(event: Event, schedule: AssistantScheduleRow): void {
   rowMenuRef.value?.toggleMenu(event);
 }
 
+function textAlertCameras(alert: TextAlert): string {
+  if (!alert.cameraIds.length) return t('views.settings.assistant_text_alert_all_cameras');
+  return alert.cameraIds.map((cameraId) => cameraNames.value.get(cameraId) ?? cameraId).join(', ');
+}
+
+function openTextAlertMenu(event: Event, alert: TextAlert): void {
+  rowMenuItems.value = [
+    alert.enabled
+      ? { label: t('views.settings.assistant_schedule_pause'), icon: PauseIcon, onClick: () => changeTextAlert(() => setTextAlertEnabled(alert.id, false)) }
+      : { label: t('views.settings.assistant_schedule_resume'), icon: PlayIcon, onClick: () => changeTextAlert(() => setTextAlertEnabled(alert.id, true)) },
+    { label: t('views.settings.assistant_schedule_model_change'), icon: ModelIcon, onClick: () => openTextAlertModelDialog(alert) },
+    { ...DELETE_ITEM, label: t('views.settings.assistant_text_alert_delete'), onClick: () => changeTextAlert(() => removeTextAlert(alert.id)) },
+  ];
+  rowMenuRef.value?.toggleMenu(event);
+}
+
+async function changeTextAlert(change: () => Promise<void>): Promise<void> {
+  try {
+    await change();
+  } catch (err) {
+    toast.add({ severity: 'error', detail: err, life: 3000 });
+  }
+}
+
+function textAlertModelFallback(): string | undefined {
+  return nvrModelAccess.value ? defaultModelLabel(nvrModel.value) : t('views.settings.assistant_plugin_no_access');
+}
+
+function textAlertModelLabel(alert: TextAlert): string | undefined {
+  if (!nvrModelAccess.value) return t('views.settings.assistant_plugin_no_access');
+  return modelName(modelChoice(alert.modelId)) ?? defaultModelLabel(nvrModel.value);
+}
+
+function openTextAlertModelDialog(alert: TextAlert): void {
+  dialog.openComponentDialog<AssistantScheduleModelProps>(AssistantScheduleModel, {
+    data: {
+      title: alert.title,
+      confirmText: t('components.form.button.save'),
+      contentProps: {
+        models: toRaw(models.value).filter((model) => model.capabilities?.vision !== false),
+        modelId: alert.modelId,
+        fallback: textAlertModelFallback(),
+        hint: t('views.settings.assistant_text_alert_model_hint'),
+      },
+    },
+    onConfirm: ({ modelId }: { modelId: string | null }) => changeTextAlert(() => setTextAlertModel(alert.id, modelId)),
+  });
+}
+
 function openModelDialog(entry?: AssistantModelView): void {
   const before = new Set(models.value.map((model) => model._id));
   dialog.openComponentDialog<AssistantModelFormProps>(AssistantModelDialog, {
@@ -1185,14 +1295,17 @@ function usageModelLabel(row: AssistantUsageRow): string {
   return models.value.find((model) => model.provider === row.provider && model.model === row.model)?.name ?? row.model;
 }
 
-function scheduleModelChoice(schedule: AssistantScheduleRow): string | null {
-  return models.value.some((model) => model._id === schedule.modelId) ? (schedule.modelId ?? null) : null;
+function modelChoice(modelId: string | null | undefined): string | null {
+  return models.value.some((model) => model._id === modelId) ? (modelId ?? null) : null;
+}
+
+function defaultModelLabel(model: AssistantModelView | undefined): string | undefined {
+  return model ? t('views.settings.assistant_schedule_model_default', { name: model.name }) : undefined;
 }
 
 function scheduleModelFallback(profileId: string | null | undefined): string | undefined {
   const profile = profiles.value?.find((entry) => entry._id === profileId);
-  const name = (models.value.find((model) => model._id === profile?.modelId) ?? defaultEntry.value)?.name;
-  return name ? t('views.settings.assistant_schedule_model_default', { name }) : undefined;
+  return defaultModelLabel(models.value.find((model) => model._id === profile?.modelId) ?? defaultEntry.value);
 }
 
 function openScheduleModelDialog(schedule: AssistantScheduleRow): void {
@@ -1200,7 +1313,12 @@ function openScheduleModelDialog(schedule: AssistantScheduleRow): void {
     data: {
       title: schedule.title,
       confirmText: t('components.form.button.save'),
-      contentProps: { models: toRaw(models.value), modelId: schedule.modelId, fallback: scheduleModelFallback(schedule.profileId) },
+      contentProps: {
+        models: toRaw(models.value),
+        modelId: schedule.modelId,
+        fallback: scheduleModelFallback(schedule.profileId),
+        hint: t('views.settings.assistant_schedule_model_hint'),
+      },
     },
     onConfirm: ({ modelId }: { modelId: string | null }) => {
       patchScheduleMutation.mutate({ scheduleId: schedule._id, patch: { modelId } });

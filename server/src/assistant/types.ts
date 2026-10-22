@@ -72,6 +72,7 @@ export interface AssistantAskRequest {
   images?: { data: Uint8Array; mimeType: string }[];
   outputSchema?: JSONSchema;
   timeoutMs?: number;
+  modelId?: string;
 }
 
 export interface AssistantStatus {
@@ -124,7 +125,7 @@ export interface AssistantModelProviderInfo {
 export interface AssistantInfo {
   settings: AssistantMaskedSettings;
   status: AssistantStatus;
-  plugins: { id: string; name: string }[];
+  plugins: { id: string; name: string; pluginName: string }[];
   modelProviders: AssistantModelProviderInfo[];
   tools: AssistantToolInfo[];
   external: AssistantExternalStatus[];
