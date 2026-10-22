@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 
 import type { AuthConfig } from './interfaces/config.js';
 
@@ -13,6 +13,10 @@ export function generateCredentials(): AuthConfig {
   const password = passwordBytes.toString('base64').replace(/[+/=@:]/g, '');
 
   return { user, password };
+}
+
+export function workerConnId(agentId: string, secret: string): string {
+  return createHmac('sha256', secret).update(agentId).digest('hex').slice(0, 32);
 }
 
 export async function safeAsync<R>(promise?: Promise<R>): Promise<R | null> {

@@ -1,5 +1,3 @@
-import { createHmac } from 'node:crypto';
-
 export interface CoreManagerNamespaces {
   coreManagerSubject: string;
   coreManagerRpc: string;
@@ -251,9 +249,5 @@ export class NamespaceManager {
 
   static sharedWorkerLogs(): string {
     return 'workers.logs';
-  }
-
-  static workerConnId(agentId: string, secret: string): string {
-    return createHmac('sha256', secret).update(agentId).digest('hex').slice(0, 32);
   }
 }

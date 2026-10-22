@@ -11,6 +11,7 @@ import { processes } from 'systeminformation';
 import { WorkersService } from '../api/services/workers.service.js';
 import { inject } from '../container.js';
 import { NamespaceManager } from '../rpc/namespaces.js';
+import { workerConnId } from '../rpc/utils.js';
 import { MASTER_API_PORT, workerName } from '../services/config/defaults.js';
 import { ConfigService } from '../services/config/index.js';
 import { assertServerUpdateSpace } from '../utils/disk-space.js';
@@ -272,7 +273,7 @@ export class WorkerAgent implements WorkerAgentRPC {
 
     this.proxy = createRPCClient({
       name: `worker-agent-${this.agentId}`,
-      connId: secret ? NamespaceManager.workerConnId(this.agentId, secret) : undefined,
+      connId: secret ? workerConnId(this.agentId, secret) : undefined,
       servers: this.natsServer.endpoints.filter((ep) => ep.startsWith('nats://')),
       timeout: 10_000,
       auth: {

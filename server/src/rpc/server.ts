@@ -11,9 +11,9 @@ import { inject, provide, tryInject } from '../container.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
 import { isLeafDialError, LeafConnection } from './leafConnection.js';
-import { NamespaceManager, SUBJECT_TOKEN } from './namespaces.js';
+import { SUBJECT_TOKEN } from './namespaces.js';
 import { RepeatedLines } from './repeatedLines.js';
-import { generateCredentials } from './utils.js';
+import { generateCredentials, workerConnId } from './utils.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess, ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -912,7 +912,7 @@ function workerLeafUser(worker: LeafNodeUser, workers: LeafNodeUser[]): NatsUser
   const others = workers.filter(({ agentId }) => agentId !== worker.agentId && SUBJECT_TOKEN.test(agentId));
   const otherAgents = others.map(({ agentId }) => agentId);
   const otherPrivate = others.flatMap(({ agentId, password }) => {
-    const connId = NamespaceManager.workerConnId(agentId, password);
+    const connId = workerConnId(agentId, password);
     return [`rpc.workers.${agentId}.>`, `workers.${agentId}.>`, `rpc.reply.${connId}.>`, `_INBOX.${connId}.>`];
   });
 
