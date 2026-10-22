@@ -1,5 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
-
 import { GOP_REGEX, SOURCE_BACKCHANNEL_REGEX, SOURCE_HANDSHAKE_TIMEOUT_REGEX, SOURCE_TIMEOUT_REGEX } from '../api/utils/regex.js';
 
 import type { RTSPUrlOptions, SnapshotUrlOptions } from '@camera.ui/sdk';
@@ -78,13 +76,6 @@ export function go2rtcStreamUrls(sourceName: string, source: GeneratedSource, ur
 
 export function stripStreamToken(url: string): string {
   return CUI_STREAM_URL_REGEX.test(url) ? url.replace(STREAM_TOKEN_QUERY_REGEX, '') : url;
-}
-
-export function streamTokenMatches(given: unknown, expected: string): boolean {
-  if (typeof given !== 'string' || !given) {
-    return false;
-  }
-  return timingSafeEqual(createHash('sha256').update(given).digest(), createHash('sha256').update(expected).digest());
 }
 
 function withStreamToken(url: string, token: string): string {

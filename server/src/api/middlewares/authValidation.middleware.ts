@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { createHmac } from 'node:crypto';
 
 import { inject } from '../../container.js';
-import { streamTokenMatches } from '../../utils/camera.js';
+import { streamTokenMatches } from '../../utils/utils.js';
 import { AuthService } from '../services/auth.service.js';
 import { UsersService } from '../services/users.service.js';
 import { API_TOKEN_PREFIX } from '../types/index.js';
