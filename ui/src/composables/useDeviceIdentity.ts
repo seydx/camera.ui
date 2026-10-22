@@ -1,8 +1,10 @@
 import { uuidv4 } from '@camera.ui/common/utils';
 
+import { keychainId } from '@/common/deviceId.js';
 import { isCapacitor } from '@/connection/runtime.js';
 
 const DEVICE_ID_KEY = 'cui_device_id';
+const SESSION_ID_KEY = 'cui.device.sessionId';
 
 let _cachedId: string | null = null;
 let _cachedName: string | null = null;
@@ -12,9 +14,11 @@ export async function getDeviceId(): Promise<string> {
 
   if (isCapacitor) {
     try {
+      const { Capacitor } = await import('@capacitor/core');
       const { Device } = await import('@capacitor/device');
-      const info = await Device.getId();
-      _cachedId = info.identifier;
+      const { identifier } = await Device.getId();
+      // identifierForVendor changes with a reinstall, the keychain keeps the first one
+      _cachedId = Capacitor.getPlatform() === 'ios' ? await keychainId(SESSION_ID_KEY, identifier) : identifier;
       return _cachedId;
     } catch {
       // fall back to localStorage

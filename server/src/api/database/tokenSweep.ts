@@ -6,7 +6,7 @@ type Tokens = DB<DBToken, string>;
 export async function sweepExpiredTokens(db: Tokens, now = Date.now()): Promise<number> {
   const expired: string[] = [];
   for (const { key, value } of db.getRange()) {
-    if (isExpired(value, now)) expired.push(key);
+    if (isExpiredToken(value, now)) expired.push(key);
   }
   if (!expired.length) return 0;
 
@@ -14,7 +14,7 @@ export async function sweepExpiredTokens(db: Tokens, now = Date.now()): Promise<
     let removed = 0;
     for (const key of expired) {
       const row = db.get(key);
-      if (!row || !isExpired(row, now)) continue;
+      if (!row || !isExpiredToken(row, now)) continue;
       db.remove(key);
       removed++;
     }
@@ -22,7 +22,7 @@ export async function sweepExpiredTokens(db: Tokens, now = Date.now()): Promise<
   });
 }
 
-function isExpired(row: DBToken, now: number): boolean {
+export function isExpiredToken(row: DBToken, now = Date.now()): boolean {
   if (row.type === 'api' || !(row.refresh_token_expires_at > 0)) return false;
   return Math.max(row.refresh_token_expires_at, row.access_token_expires_at ?? 0) < now;
 }

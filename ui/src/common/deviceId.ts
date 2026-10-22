@@ -12,12 +12,7 @@ export async function getPushDeviceId(): Promise<string> {
       const { Device } = await import('@capacitor/device');
       return (await Device.getId()).identifier;
     }
-    const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
-    const existing = await SecureStorage.get(PUSH_ID_KEY);
-    if (typeof existing === 'string' && existing) return existing;
-    const id = uuidv4();
-    await SecureStorage.set(PUSH_ID_KEY, id);
-    return id;
+    return keychainId(PUSH_ID_KEY);
   }
   let id = localStorage.getItem(WEB_PUSH_ID_KEY);
   if (!id) {
@@ -25,4 +20,12 @@ export async function getPushDeviceId(): Promise<string> {
     localStorage.setItem(WEB_PUSH_ID_KEY, id);
   }
   return id;
+}
+
+export async function keychainId(key: string, initial = uuidv4()): Promise<string> {
+  const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
+  const existing = await SecureStorage.get(key);
+  if (typeof existing === 'string' && existing) return existing;
+  await SecureStorage.set(key, initial);
+  return initial;
 }

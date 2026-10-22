@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import { inject } from '../../container.js';
 import { INGRESS_DEVICE_PREFIX } from '../../services/config/constants.js';
+import { isExpiredToken } from '../database/tokenSweep.js';
 import { verifyUserPassword } from '../middlewares/authValidation.middleware.js';
 import { AuthService } from '../services/auth.service.js';
 import { ServerService } from '../services/server.service.js';
@@ -655,6 +656,7 @@ export class AuthController {
     const currentToken = authorization?.[0] === 'Bearer' ? authorization[1] : undefined;
 
     return tokens
+      .filter((t) => !isExpiredToken(t))
       .map((t) => ({
         id: t.id,
         device: t.device,
