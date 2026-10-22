@@ -1,8 +1,11 @@
 import { killTree } from '@camera.ui/common/node';
+import { IS_DEV } from '@camera.ui/common/utils';
 import { execSync } from 'node:child_process';
 
 import type { Job } from '@seydx/win-job';
 import type { ConfigService } from '../services/config/index.js';
+
+export const DETACHED_IN_DEV = IS_DEV && process.platform !== 'win32';
 
 let processTree: Job | undefined;
 

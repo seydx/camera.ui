@@ -10,6 +10,7 @@ import { stripVTControlCharacters } from 'node:util';
 import { inject, provide, tryInject } from '../container.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
+import { DETACHED_IN_DEV } from '../utils/tracked-processes.js';
 import { isLeafDialError, LeafConnection } from './leafConnection.js';
 import { SUBJECT_TOKEN } from './namespaces.js';
 import { RepeatedLines } from './repeatedLines.js';
@@ -666,7 +667,7 @@ export class NATS {
 
   private spawnNats(args: string[]): ChildProcessWithoutNullStreams {
     // GOGC 400 saves most GC cycles on frames above 64 KB, only for nats and not the Go plugins
-    return spawn(this.configService.NATS_BINARY, args, { windowsHide: true, env: { GOGC: '400', ...process.env } });
+    return spawn(this.configService.NATS_BINARY, args, { windowsHide: true, detached: DETACHED_IN_DEV, env: { GOGC: '400', ...process.env } });
   }
 
   private setupProcess(natsProcess: ChildProcess, args: string[], configFile: string, name: string, resolve: () => void, reject: (error: Error) => void): void {

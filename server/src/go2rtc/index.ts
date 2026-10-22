@@ -8,6 +8,7 @@ import { inject, provide, tryInject } from '../container.js';
 import { RUNTIME_STATUS } from '../services/config/types.js';
 import { isShuttingDown } from '../shutdown-state.js';
 import { exitInfo } from '../utils/process-exit.js';
+import { DETACHED_IN_DEV } from '../utils/tracked-processes.js';
 
 import type { Logger } from '@camera.ui/common/logger';
 import type { ChildProcess } from 'node:child_process';
@@ -78,6 +79,7 @@ export class Go2Rtc {
       this.go2rtcProcess = spawn(command, args, {
         env: Object.assign({}, process.env),
         stdio: 'pipe',
+        detached: DETACHED_IN_DEV,
         windowsHide: true,
       });
 

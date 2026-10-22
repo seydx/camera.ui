@@ -168,11 +168,12 @@ export class ProxyServer {
       await safeAsync(this.notificationManager.destroy());
       await safeAsync(this.trainingCandidateManager.destroy());
     }
-    await safeAsync(this.server.stop());
     // no proxy when startup failed before initialize(), e.g. during pairing
+    // before the server stops, or the final flush waits a second for a nats that is gone
     if (this.proxy) {
       await safeAsync(this.proxy.disconnect());
     }
+    await safeAsync(this.server.stop());
     this.logger.debug('Proxy server closed');
   }
 }
