@@ -50,7 +50,7 @@
     "@fastify/cors": "^11.3.1",
     "@fastify/helmet": "^13.2.0",
     "@fastify/http-proxy": "^11.6.5",
-    "@fastify/multipart": "^10.1.5",
+    "@fastify/multipart": "^10.1.6",
     "@fastify/static": "^10.1.7",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
