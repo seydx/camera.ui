@@ -4,20 +4,25 @@ import { bounceToCloudFrontend, getCurrentServerId, isCapacitor } from '@/connec
 
 const log = useLogger('PushHandler');
 
-const MUTE_MINUTES: Record<string, number> = {
-  MUTE_1H: 60,
-  MUTE_8H: 480,
-};
+const MUTE_ACTIONS = ['MUTE_CAMERA_1H', 'MUTE_ALL_1H'];
+const MUTE_MINUTES = 60;
 
-async function setDeviceMute(muteMinutes: number, muteToken: string): Promise<void> {
+async function muteFromAction(actionId: string, data: Record<string, string>): Promise<void> {
+  const body: Record<string, unknown> = { token: data.mute_token, mute_minutes: MUTE_MINUTES };
+  // no keys: the push came through an older NVR plugin, both actions mute the whole device
+  if (data.mute_keys) {
+    if (actionId === 'MUTE_ALL_1H') body.all_cameras = true;
+    else body.mute_keys = data.mute_keys.split(',');
+  }
+
   try {
     const res = await fetch(`${CLOUD_SERVICE_URL}/api/v1/notifications/mute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: muteToken, mute_minutes: muteMinutes }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
-    log.info(`push notifications snoozed for ${muteMinutes}m`);
+    log.info(`push notifications snoozed for ${MUTE_MINUTES}m (${actionId})`);
   } catch (err) {
     log.warn('failed to snooze push notifications:', err);
   }
@@ -44,9 +49,8 @@ export function usePushHandler(): void {
     await FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
       const data = (event.notification?.data ?? {}) as unknown as Record<string, string>;
 
-      const muteMinutes = MUTE_MINUTES[event.actionId];
-      if (muteMinutes) {
-        if (data.mute_token) setDeviceMute(muteMinutes, data.mute_token);
+      if (MUTE_ACTIONS.includes(event.actionId)) {
+        if (data.mute_token) muteFromAction(event.actionId, data);
         return;
       }
 
