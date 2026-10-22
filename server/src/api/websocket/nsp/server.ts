@@ -249,7 +249,7 @@ export class ServerNamespace {
     try {
       const state = await checkForUpdate(APP_SERVER_NAME, ConfigService.VERSION, 'beta', this.configService.config.betaUpdates ?? false);
       const hasUpdate = state.updateAvailable || state.betaUpdateAvailable;
-      this.serverEngineIssue = hasUpdate && state.latestVersion ? await serverNodeIssue(state.latestVersion) : undefined;
+      this.serverEngineIssue = hasUpdate ? serverNodeIssue() : undefined;
       this.serverUpdate = state;
     } catch {
       // keep the last known state

@@ -60,7 +60,7 @@ export async function requestServerUpdate(version?: string): Promise<AsyncGenera
 
   // the desktop app ships its own Node.js
   if (!IS_ELECTRON) {
-    const issue = await serverNodeIssue(version ?? 'latest');
+    const issue = serverNodeIssue();
     if (issue) {
       throw new Error(`Node.js ${issue.required} is required, this machine runs ${process.version}. Update Node.js first.`);
     }

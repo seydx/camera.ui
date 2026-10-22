@@ -20,6 +20,7 @@ import { CertificateGeneration } from '../../api/utils/cert.js';
 import { CUSTOM_CERT_FILENAME, CUSTOM_KEY_FILENAME, HOST_CERT_FILENAME, HOST_KEY_FILENAME, ROOT_CERT_FILENAME, ROOT_KEY_FILENAME } from '../../api/utils/constants.js';
 import { customCertificatePaths } from '../../api/utils/custom-cert.js';
 import { inject, provide, tryInject } from '../../container.js';
+import { MIN_NODE_VERSION } from '../../utils/engines.js';
 import { announceUpdateChannel } from '../../utils/ipc.js';
 import { execSafePath } from '../../utils/path.js';
 import { newBackupKey, parseBackupKey } from './backup-archive.js';
@@ -72,7 +73,7 @@ export class ConfigService {
   }
 
   static readonly NODE_VERSION = process.version;
-  static readonly MIN_NODE_VERSION = ConfigService.extractVersion(packageJson.engines.node)!;
+  static readonly MIN_NODE_VERSION = MIN_NODE_VERSION;
 
   static readonly SERVER_PATH = resolve(join(__dirname, '../../../'));
   static readonly INTERFACE_SOURCE_PATH =
@@ -298,17 +299,6 @@ export class ConfigService {
   public static resolveHomePath(homePath?: string): string {
     if (homePath) return resolve(homePath);
     return IS_DEV ? join(__dirname, '..', '..', '..', '..', '.camera.ui') : join(getUserHomeDir(), '.camera.ui');
-  }
-
-  public static extractVersion(str: string): string | null {
-    const regex = /(?:[>=^]*)(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)/;
-    const matches = regex.exec(str);
-
-    if (matches?.[1]) {
-      return matches[1];
-    } else {
-      return null;
-    }
   }
 
   public reissueSslCertificate(): void {

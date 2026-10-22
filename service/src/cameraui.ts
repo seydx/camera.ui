@@ -34,7 +34,8 @@ import type { BasePlatform } from './installer/base.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const MIN_NODE_VERSION = '24.5.0';
+const MIN_NODE_VERSION = '22.18.0';
+const RECOMMENDED_NODE_VERSION = '24.22.1';
 
 const WORKER_STATUS_FILE = 'worker-status.json';
 const WORKER_STATUS_FRESH_MS = 60_000;
@@ -268,19 +269,18 @@ export class CameraUiCLI {
   }
 
   private nodeVersionCheck(): void {
-    const [major, minor, patch] = process.versions.node.split('.').map(Number);
-    const [minMajor, minMinor, minPatch] = MIN_NODE_VERSION.split('.').map(Number);
-
-    if (major < 22) {
+    if (nodeOlderThan('22.0.0')) {
       this.logger(`ERROR: Node.js ${MIN_NODE_VERSION} or newer is required. Current: ${process.version}.`, 'fail');
       process.exit(1);
     }
 
-    if ((major - minMajor || minor - minMinor || patch - minPatch) < 0) {
+    if (nodeOlderThan(MIN_NODE_VERSION)) {
       this.logger(
         `WARNING: camera.ui needs Node.js ${MIN_NODE_VERSION} or newer, this machine runs ${process.version}. Server updates wait until Node.js is updated.`,
         'warn',
       );
+    } else if (nodeOlderThan(RECOMMENDED_NODE_VERSION)) {
+      this.logger(`Node.js ${RECOMMENDED_NODE_VERSION} or newer is recommended, this machine runs ${process.version}.`, 'warn');
     }
   }
 
@@ -916,6 +916,12 @@ export class CameraUiCLI {
       }
     }, plan.delayMs);
   }
+}
+
+function nodeOlderThan(version: string): boolean {
+  const [major, minor, patch] = process.versions.node.split('.').map(Number);
+  const [minMajor, minMinor, minPatch] = version.split('.').map(Number);
+  return (major - minMajor || minor - minMinor || patch - minPatch) < 0;
 }
 
 function launch() {
