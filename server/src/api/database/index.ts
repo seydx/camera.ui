@@ -7,7 +7,7 @@ import { readFile, unlink } from 'node:fs/promises';
 import semver from 'semver';
 
 import { inject, provide } from '../../container.js';
-import { INGRESS_USERNAME, MIN_DATABASE_VERSION } from '../../services/config/constants.js';
+import { DEFAULT_MASTER_USERNAME, INGRESS_USERNAME, MIN_DATABASE_VERSION } from '../../services/config/constants.js';
 import { isMovedAway, readMoveRecord } from '../../services/config/move.js';
 import { isHostAddress } from '../../services/config/platform-values.js';
 import { dropsIngressAccount, isIngressAccount } from '../../services/config/restore.js';
@@ -482,8 +482,15 @@ export class Database {
   }
 
   private async ensureMaster(): Promise<void> {
-    for (const { value: user } of this.usersDB.getRange()) {
-      if (user.role === 'master') return;
+    const users = [...this.usersDB.getRange()];
+    if (users.some(({ value: user }) => user.role === 'master')) return;
+
+    // a second account of this name would leave the login to chance
+    const named = users.find(({ value: user }) => user.username === DEFAULT_MASTER_USERNAME);
+    if (named) {
+      this.logger.attention(`No master found! "${DEFAULT_MASTER_USERNAME}" becomes the master and keeps its password.`);
+      await this.commit(this.usersDB, named.key, (current) => (current ? { ...current, role: 'master' as const } : undefined));
+      return;
     }
 
     this.logger.attention('No master found! Creating new master...');
@@ -521,7 +528,7 @@ export class Database {
     return {
       _id: randomUUID(),
       avatar: 'logo-256.png',
-      username: 'admin',
+      username: DEFAULT_MASTER_USERNAME,
       password: hashPassword('admin'),
       role: 'master',
       firstLogin: true,

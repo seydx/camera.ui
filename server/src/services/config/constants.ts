@@ -27,6 +27,8 @@ export const PROCESS_IDENTIFIER = '--id=camera.ui';
 
 export const INGRESS_USERNAME = 'homeassistant';
 
+export const DEFAULT_MASTER_USERNAME = 'admin';
+
 export const MIN_DATABASE_VERSION = '2.1.1';
 
 export const INGRESS_DEVICE_PREFIX = 'ingress_';
