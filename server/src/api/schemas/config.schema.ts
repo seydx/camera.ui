@@ -69,6 +69,12 @@ export const patchConfigSchema = zod
               .filter(Boolean)
           : (value ?? undefined),
       ),
+    cloudflaredProtocol: zod
+      .string()
+      .trim()
+      .toLowerCase()
+      .nullish()
+      .transform((value) => value ?? undefined),
     workers: workersSchema,
     worker: workerSchema,
   })

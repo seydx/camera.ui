@@ -46,6 +46,7 @@ const ENVIRONMENT_SETTINGS: Record<string, string> = {
   CAMERA_UI_PORT: 'port',
   CAMERA_UI_INSECURE_PORT: 'insecurePort',
   CAMERA_UI_TRUSTED_PROXIES: 'trustedProxies',
+  CAMERA_UI_CLOUDFLARED_PROTOCOL: 'cloudflaredProtocol',
   CAMERA_UI_WORKERS_ENABLED: 'workers.enabled',
   CAMERA_UI_WORKERS_ADDRESS: 'workers.address',
   CAMERA_UI_WORKERS_PORT: 'workers.port',
@@ -125,7 +126,6 @@ export class ConfigService {
 
   readonly UI_PORT = parseInt(process.env.CAMERA_UI_UI_PORT!);
   readonly INGRESS_TRUST_IP = process.env.CAMERA_UI_INGRESS_TRUST ?? undefined;
-  readonly CLOUDFLARED_PROTOCOL = process.env.CAMERA_UI_CLOUDFLARED_PROTOCOL?.trim().toLowerCase();
   readonly STREAM_URL_TOKEN = randomBytes(32).toString('base64url');
 
   private logger: LoggerService;
@@ -626,6 +626,7 @@ export class ConfigService {
         .map((p) => p.trim())
         .filter(Boolean);
     }
+    if (process.env.CAMERA_UI_CLOUDFLARED_PROTOCOL) config.cloudflaredProtocol = process.env.CAMERA_UI_CLOUDFLARED_PROTOCOL;
 
     config.workers ??= {};
     if (process.env.CAMERA_UI_WORKERS_ENABLED !== undefined) config.workers.enabled = process.env.CAMERA_UI_WORKERS_ENABLED === 'true';

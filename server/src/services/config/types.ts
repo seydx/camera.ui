@@ -63,6 +63,7 @@ export interface IConfig {
   plugins: PluginsSettings;
   cors?: CorsConfig;
   trustedProxies?: string[];
+  cloudflaredProtocol?: string;
   workers?: WorkersConfig;
   worker?: WorkerConfig;
   mdns?: boolean;

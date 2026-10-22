@@ -192,7 +192,7 @@ export class CloudflareService {
   }
 
   private protocolArgs(): string[] {
-    return ['--protocol', edgeProtocol(this.configService.CLOUDFLARED_PROTOCOL, this.logger)];
+    return ['--protocol', edgeProtocol(this.configService.config.cloudflaredProtocol, this.logger)];
   }
 
   private writeConfig(name: string, lines: string[]): string {

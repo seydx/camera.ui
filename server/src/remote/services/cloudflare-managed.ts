@@ -256,7 +256,7 @@ export class CloudflareManagedService {
     ].join('\n');
     await writeFile(this.configPath(tunnelId), yaml, { mode: 0o600 });
 
-    const protocol = edgeProtocol(this.configService.CLOUDFLARED_PROTOCOL, this.logger);
+    const protocol = edgeProtocol(this.configService.config.cloudflaredProtocol, this.logger);
     const args = ['tunnel', '--protocol', protocol, '--no-autoupdate', '--config', this.configPath(tunnelId), 'run', tunnelId];
     const env = { ...process.env, TUNNEL_ORIGIN_CERT: this.certPath() };
     const proc = spawn(this.cloudflaredBinaryPath(), args, { stdio: ['ignore', 'pipe', 'pipe'], env, windowsHide: true });

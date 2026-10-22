@@ -27,8 +27,8 @@ export function edgeProtocol(requested: string | undefined, logger: Logger): str
   const valid = EDGE_PROTOCOLS.includes(requested);
   if (reportedProtocol !== requested) {
     reportedProtocol = requested;
-    if (valid) logger.log(`Cloudflare: connecting to the edge over ${requested} (CAMERA_UI_CLOUDFLARED_PROTOCOL)`);
-    else logger.warn(`Cloudflare: CAMERA_UI_CLOUDFLARED_PROTOCOL=${requested} is not one of ${EDGE_PROTOCOLS.join(', ')}, using ${DEFAULT_EDGE_PROTOCOL}`);
+    if (valid) logger.log(`Cloudflare: connecting to the edge over ${requested} (cloudflaredProtocol)`);
+    else logger.warn(`Cloudflare: cloudflaredProtocol ${requested} is not one of ${EDGE_PROTOCOLS.join(', ')}, using ${DEFAULT_EDGE_PROTOCOL}`);
   }
 
   return valid ? requested : DEFAULT_EDGE_PROTOCOL;
