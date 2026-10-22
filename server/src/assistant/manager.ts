@@ -297,7 +297,7 @@ export class AssistantManager {
         .filter((plugin) => hasInterface(plugin.contract, PluginInterface.AssistantTools))
         .map((plugin) => ({ id: plugin.id, name: plugin.displayName, pluginName: plugin.pluginName })),
       modelProviders: this.registry.modelProviders,
-      tools: this.registry.describe(role).filter((tool) => settings.terminalEnabled ?? tool.group !== TERMINAL_GROUP),
+      tools: this.registry.describe(role).filter((tool) => settings.terminalEnabled || tool.group !== TERMINAL_GROUP),
       external: this.registry.externalStatus(this.externalServers(this.settings())),
     };
   }
