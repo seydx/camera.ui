@@ -222,6 +222,7 @@ declare module 'vue' {
     CuiTerminalToolbar: typeof import('./../components/CuiTerminalToolbar/CuiTerminalToolbar.vue')['default']
     CuiThemeSwitch: typeof import('./../components/CuiThemeSwitch/CuiThemeSwitch.vue')['default']
     CuiToast: typeof import('./../components/CuiToast/CuiToast.vue')['default']
+    CuiToggleRow: typeof import('./../components/CuiToggleRow/CuiToggleRow.vue')['default']
     CuiTopbar: typeof import('./../components/CuiTopbar/CuiTopbar.vue')['default']
     CuiTopbarSlot: typeof import('./../components/CuiTopbar/CuiTopbarSlot.vue')['default']
     CuiTopNavbar: typeof import('./../components/CuiTopNavbar/CuiTopNavbar.vue')['default']

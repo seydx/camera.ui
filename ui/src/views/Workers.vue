@@ -20,15 +20,9 @@
         <Card class="cui-card">
           <template #content>
             <div class="flex flex-col gap-6">
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label class="cui-label-switch">{{ $t('views.workers.enable_workers') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                    {{ $t('views.workers.enable_workers_description') }}
-                  </Message>
-                </div>
-                <ToggleSwitch :model-value="workersEnabled" :disabled="configSaving" class="ml-auto shrink-0" @update:model-value="handleToggle" />
-              </div>
+              <CuiToggleRow :label="$t('views.workers.enable_workers')" :hint="$t('views.workers.enable_workers_description')">
+                <ToggleSwitch :model-value="workersEnabled" :disabled="configSaving" @update:model-value="handleToggle" />
+              </CuiToggleRow>
 
               <template v-if="workersEnabled">
                 <div class="flex flex-col field-gap">

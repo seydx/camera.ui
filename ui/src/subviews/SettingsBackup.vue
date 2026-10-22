@@ -236,13 +236,13 @@
             </div>
 
             <div v-else class="flex flex-col gap-6">
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col gap-1 min-w-0">
-                  <span class="text-sm">{{ $t('views.settings.scheduled_backup_info') }}</span>
-                  <span class="text-xs text-muted">{{ lastRunText }}</span>
-                </div>
-                <ToggleSwitch v-model="schedulerForm.enabled" :disabled="schedulerSaving" class="ml-auto shrink-0" />
-              </div>
+              <CuiToggleRow :label="$t('components.form.label.enabled')">
+                <template #hint>
+                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.scheduled_backup_info') }}</Message>
+                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ lastRunText }}</Message>
+                </template>
+                <ToggleSwitch v-model="schedulerForm.enabled" :disabled="schedulerSaving" />
+              </CuiToggleRow>
 
               <template v-if="schedulerForm.enabled">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

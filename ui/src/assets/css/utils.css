@@ -87,7 +87,7 @@
 .cui-label-checkbox,
 .cui-label-switch {
   @apply text-sm font-semibold;
-  color: var(--text-secondary-color);
+  color: var(--text-color-faded);
   font-variation-settings: 'wght' 600;
 }
 

@@ -76,36 +76,16 @@
           </Field>
 
           <div class="w-full flex flex-col gap-2">
-            <Field
-              v-slot="{ field, errors }"
-              :model-value="cameraForm.disabled"
-              :value="true"
-              :unchecked-value="false"
-              type="checkbox"
-              name="disabled"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
-            >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="disabled" class="cui-label-switch">{{ $t('components.form.label.disabled') }}</label>
-
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.disable_camera') }}</Message>
-
-                  <Transition name="fade">
-                    <ErrorMessage name="disabled" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
-
+            <Field v-slot="{ field, errors }" :model-value="cameraForm.disabled" :value="true" :unchecked-value="false" type="checkbox" name="disabled">
+              <CuiToggleRow :label="$t('components.form.label.disabled')" :hint="$t('components.form.hint.disable_camera')" label-for="disabled" error-name="disabled">
                 <ToggleSwitch
                   :model-value="cameraForm.disabled"
                   v-bind="field"
                   :invalid="errors.length > 0"
                   :loading="isLoading"
-                  class="ml-auto shrink-0"
                   @value-change="(e) => (cameraForm.disabled = e)"
                 />
-              </div>
+              </CuiToggleRow>
             </Field>
           </div>
 
@@ -361,33 +341,25 @@
               :unchecked-value="false"
               type="checkbox"
               name="detectionSettings.snooze"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
             >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="detectionSettings.snooze" class="cui-label-switch">{{ $t('components.form.label.snooze') }}</label>
-
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.snooze_camera') }}</Message>
-
-                  <Transition name="fade">
-                    <ErrorMessage name="detectionSettings.snooze" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
-
+              <CuiToggleRow
+                :label="$t('components.form.label.snooze')"
+                :hint="$t('components.form.hint.snooze_camera')"
+                label-for="detectionSettings.snooze"
+                error-name="detectionSettings.snooze"
+              >
                 <ToggleSwitch
                   :model-value="cameraForm.detectionSettings?.snooze"
                   v-bind="field"
                   :invalid="errors.length > 0"
                   :loading="isLoading"
-                  class="ml-auto shrink-0"
                   @value-change="
                     (e) => {
                       if (cameraForm.detectionSettings) cameraForm.detectionSettings.snooze = e;
                     }
                   "
                 />
-              </div>
+              </CuiToggleRow>
             </Field>
           </div>
 
@@ -549,29 +521,21 @@
             :unchecked-value="false"
             type="checkbox"
             name="detectionSettings.object.suppressStatic"
-            as="div"
-            class="flex flex-col field-gap cui-toggle-switch"
           >
-            <div class="flex items-center gap-4">
-              <div class="flex flex-col field-switch-gap">
-                <label for="detectionSettings.object.suppressStatic" class="cui-label-switch">{{ $t('components.form.label.suppress_static') }}</label>
-
-                <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.suppress_static') }}</Message>
-
-                <Transition name="fade">
-                  <ErrorMessage name="detectionSettings.object.suppressStatic" class="cui-input-switch-error" />
-                </Transition>
-              </div>
-
+            <CuiToggleRow
+              :label="$t('components.form.label.suppress_static')"
+              :hint="$t('components.form.hint.suppress_static')"
+              label-for="detectionSettings.object.suppressStatic"
+              error-name="detectionSettings.object.suppressStatic"
+            >
               <ToggleSwitch
                 :model-value="cameraForm.detectionSettings.object.suppressStatic ?? true"
                 v-bind="field"
                 :invalid="errors.length > 0"
                 :loading="isLoading"
-                class="ml-auto shrink-0"
                 @value-change="(e) => (cameraForm.detectionSettings.object.suppressStatic = e)"
               />
-            </div>
+            </CuiToggleRow>
           </Field>
 
           <div class="mt-2 flex items-center justify-between">
@@ -984,28 +948,21 @@
             :unchecked-value="false"
             type="checkbox"
             name="recordingSettings.enabled"
-            as="div"
-            class="flex flex-col field-gap cui-toggle-switch"
           >
-            <div class="flex items-center gap-4">
-              <div class="flex flex-col field-switch-gap">
-                <label for="recordingSettings.enabled" class="cui-label-switch">{{ $t('components.form.label.recording_enabled') }}</label>
-
-                <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.recording_enabled') }}</Message>
-
-                <Transition name="fade">
-                  <ErrorMessage name="recordingSettings.enabled" class="cui-input-switch-error" />
-                </Transition>
-              </div>
+            <CuiToggleRow
+              :label="$t('components.form.label.recording_enabled')"
+              :hint="$t('components.form.hint.recording_enabled')"
+              label-for="recordingSettings.enabled"
+              error-name="recordingSettings.enabled"
+            >
               <ToggleSwitch
                 :model-value="cameraForm.recordingSettings?.enabled ?? true"
                 v-bind="field"
                 :invalid="errors.length > 0"
                 :loading="isLoading"
-                class="ml-auto shrink-0"
                 @value-change="(e) => updateRecordingSettings({ enabled: e })"
               />
-            </div>
+            </CuiToggleRow>
           </Field>
 
           <template v-if="cameraForm.recordingSettings?.enabled ?? true">
@@ -1109,26 +1066,21 @@
             :unchecked-value="false"
             type="checkbox"
             name="notificationSettings.enabled"
-            as="div"
-            class="flex flex-col field-gap cui-toggle-switch"
           >
-            <div class="flex items-center gap-4">
-              <div class="flex flex-col field-switch-gap">
-                <label for="notificationSettings.enabled" class="cui-label-switch">{{ $t('components.form.label.notify_enabled') }}</label>
-                <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.notify_enabled') }}</Message>
-                <Transition name="fade">
-                  <ErrorMessage name="notificationSettings.enabled" class="cui-input-switch-error" />
-                </Transition>
-              </div>
+            <CuiToggleRow
+              :label="$t('components.form.label.notify_enabled')"
+              :hint="$t('components.form.hint.notify_enabled')"
+              label-for="notificationSettings.enabled"
+              error-name="notificationSettings.enabled"
+            >
               <ToggleSwitch
                 :model-value="cameraForm.notificationSettings?.enabled ?? true"
                 v-bind="field"
                 :invalid="errors.length > 0"
                 :loading="isLoading"
-                class="ml-auto shrink-0"
                 @value-change="(e) => updateNotificationSettings({ enabled: e })"
               />
-            </div>
+            </CuiToggleRow>
           </Field>
 
           <template v-if="cameraForm.notificationSettings?.enabled ?? true">
@@ -1139,26 +1091,21 @@
               :unchecked-value="false"
               type="checkbox"
               name="notificationSettings.video"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
             >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="notificationSettings.video" class="cui-label-switch">{{ $t('components.form.label.notify_video') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.notify_video') }}</Message>
-                  <Transition name="fade">
-                    <ErrorMessage name="notificationSettings.video" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
+              <CuiToggleRow
+                :label="$t('components.form.label.notify_video')"
+                :hint="$t('components.form.hint.notify_video')"
+                label-for="notificationSettings.video"
+                error-name="notificationSettings.video"
+              >
                 <ToggleSwitch
                   :model-value="cameraForm.notificationSettings?.video ?? false"
                   v-bind="field"
                   :invalid="errors.length > 0"
                   :loading="isLoading"
-                  class="ml-auto shrink-0"
                   @value-change="(e) => updateNotificationSettings({ video: e })"
                 />
-              </div>
+              </CuiToggleRow>
             </Field>
 
             <Field v-slot="{ errors }" :model-value="cameraForm.notificationSettings?.audio" name="notificationSettings.audio" as="div" class="flex flex-col field-gap">
@@ -1286,32 +1233,25 @@
             :unchecked-value="false"
             type="checkbox"
             name="ptzAutotrack.enabled"
-            as="div"
-            class="flex flex-col field-gap cui-toggle-switch"
           >
-            <div class="flex items-center gap-4">
-              <div class="flex flex-col field-switch-gap">
-                <label for="ptzAutotrack.enabled" class="cui-label-switch">{{ $t('components.form.label.ptz_autotrack_enabled') }}</label>
-
-                <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.ptz_autotrack') }}</Message>
-
-                <Transition name="fade">
-                  <ErrorMessage name="ptzAutotrack.enabled" class="cui-input-switch-error" />
-                </Transition>
-              </div>
+            <CuiToggleRow
+              :label="$t('components.form.label.ptz_autotrack_enabled')"
+              :hint="$t('components.form.hint.ptz_autotrack')"
+              label-for="ptzAutotrack.enabled"
+              error-name="ptzAutotrack.enabled"
+            >
               <ToggleSwitch
                 :model-value="cameraForm.ptzAutotrack?.enabled"
                 v-bind="field"
                 :invalid="errors.length > 0"
                 :loading="isLoading"
-                class="ml-auto shrink-0"
                 @value-change="
                   (e) => {
                     if (cameraForm.ptzAutotrack) cameraForm.ptzAutotrack.enabled = e;
                   }
                 "
               />
-            </div>
+            </CuiToggleRow>
           </Field>
 
           <template v-if="cameraForm.ptzAutotrack?.enabled">
@@ -1458,34 +1398,25 @@
               :unchecked-value="false"
               type="checkbox"
               name="ptzAutotrack.returnToHome"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
             >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="ptzAutotrack.returnToHome" class="cui-label-switch">{{ $t('components.form.label.ptz_autotrack_return_home') }}</label>
-
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                    $t('components.form.hint.ptz_autotrack_return_home')
-                  }}</Message>
-
-                  <Transition name="fade">
-                    <ErrorMessage name="ptzAutotrack.returnToHome" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
+              <CuiToggleRow
+                :label="$t('components.form.label.ptz_autotrack_return_home')"
+                :hint="$t('components.form.hint.ptz_autotrack_return_home')"
+                label-for="ptzAutotrack.returnToHome"
+                error-name="ptzAutotrack.returnToHome"
+              >
                 <ToggleSwitch
                   :model-value="cameraForm.ptzAutotrack?.returnToHome"
                   v-bind="field"
                   :invalid="errors.length > 0"
                   :loading="isLoading"
-                  class="ml-auto shrink-0"
                   @value-change="
                     (e) => {
                       if (cameraForm.ptzAutotrack) cameraForm.ptzAutotrack.returnToHome = e;
                     }
                   "
                 />
-              </div>
+              </CuiToggleRow>
             </Field>
 
             <Field
@@ -1555,34 +1486,29 @@
               <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('components.form.hint.ptz_autotrack_max_target_size') }}</Message>
             </Field>
 
-            <Field :model-value="cameraForm.ptzAutotrack?.activeHours" name="ptzAutotrack.activeHours" as="div" class="flex flex-col field-gap">
-              <div class="flex flex-row items-center gap-3">
-                <div class="flex flex-col">
-                  <label class="cui-label-switch">{{ $t('components.form.label.ptz_autotrack_active_hours') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                    $t('components.form.hint.ptz_autotrack_active_hours')
-                  }}</Message>
-                </div>
-                <ToggleSwitch :model-value="ptzActiveHoursEnabled" :loading="isLoading" class="ml-auto shrink-0" @value-change="togglePtzActiveHours" />
-              </div>
-
-              <div v-if="ptzActiveHoursEnabled" class="flex flex-row items-center gap-2">
-                <DatePicker
-                  :model-value="ptzActiveHoursTime('from')"
-                  time-only
-                  fluid
-                  :loading="isLoading"
-                  @update:model-value="(e) => setPtzActiveHours('from', e as Date | null)"
-                />
-                <span class="cui-input-hint shrink-0">{{ $t('components.form.label.until') }}</span>
-                <DatePicker
-                  :model-value="ptzActiveHoursTime('to')"
-                  time-only
-                  fluid
-                  :loading="isLoading"
-                  @update:model-value="(e) => setPtzActiveHours('to', e as Date | null)"
-                />
-              </div>
+            <Field :model-value="cameraForm.ptzAutotrack?.activeHours" name="ptzAutotrack.activeHours">
+              <CuiToggleRow :label="$t('components.form.label.ptz_autotrack_active_hours')" :hint="$t('components.form.hint.ptz_autotrack_active_hours')">
+                <ToggleSwitch :model-value="ptzActiveHoursEnabled" :loading="isLoading" @value-change="togglePtzActiveHours" />
+                <template #below>
+                  <div v-if="ptzActiveHoursEnabled" class="flex flex-row items-center gap-2">
+                    <DatePicker
+                      :model-value="ptzActiveHoursTime('from')"
+                      time-only
+                      fluid
+                      :loading="isLoading"
+                      @update:model-value="(e) => setPtzActiveHours('from', e as Date | null)"
+                    />
+                    <span class="cui-input-hint shrink-0">{{ $t('components.form.label.until') }}</span>
+                    <DatePicker
+                      :model-value="ptzActiveHoursTime('to')"
+                      time-only
+                      fluid
+                      :loading="isLoading"
+                      @update:model-value="(e) => setPtzActiveHours('to', e as Date | null)"
+                    />
+                  </div>
+                </template>
+              </CuiToggleRow>
             </Field>
           </template>
         </div>
@@ -1843,31 +1769,21 @@
               :unchecked-value="false"
               type="checkbox"
               name="frameWorkerSettings.mainStreamAnalysis"
-              as="div"
-              class="flex flex-col field-gap cui-toggle-switch"
             >
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="frameWorkerSettings.mainStreamAnalysis" class="cui-label-switch">{{ $t('components.form.label.main_stream_analysis') }}</label>
-
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                    $t('components.form.hint.main_stream_analysis')
-                  }}</Message>
-
-                  <Transition name="fade">
-                    <ErrorMessage name="frameWorkerSettings.mainStreamAnalysis" class="cui-input-switch-error" />
-                  </Transition>
-                </div>
-
+              <CuiToggleRow
+                :label="$t('components.form.label.main_stream_analysis')"
+                :hint="$t('components.form.hint.main_stream_analysis')"
+                label-for="frameWorkerSettings.mainStreamAnalysis"
+                error-name="frameWorkerSettings.mainStreamAnalysis"
+              >
                 <ToggleSwitch
                   :model-value="cameraForm.frameWorkerSettings.mainStreamAnalysis"
                   v-bind="field"
                   :invalid="errors.length > 0"
                   :loading="isLoading"
-                  class="ml-auto shrink-0"
                   @value-change="(e) => (cameraForm.frameWorkerSettings.mainStreamAnalysis = e)"
                 />
-              </div>
+              </CuiToggleRow>
             </Field>
           </div>
         </div>

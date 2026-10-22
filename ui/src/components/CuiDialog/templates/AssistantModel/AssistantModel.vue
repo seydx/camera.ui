@@ -93,30 +93,23 @@
       <InputText id="assistantModelName" v-model.trim="name" :placeholder="model.trim() || $t('views.settings.assistant_model_name_placeholder')" maxlength="40" fluid />
     </div>
 
-    <div class="flex items-center gap-4 cui-toggle-switch">
-      <div class="flex flex-col field-switch-gap">
-        <label for="assistantModelUsers" class="cui-label-switch">{{ $t('views.settings.assistant_model_users') }}</label>
-        <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.assistant_model_users_info') }}</Message>
-      </div>
-      <ToggleSwitch v-model="userAccess" input-id="assistantModelUsers" class="ml-auto shrink-0" />
-    </div>
+    <div class="flex flex-col gap-2">
+      <CuiToggleRow :label="$t('views.settings.assistant_model_users')" :hint="$t('views.settings.assistant_model_users_info')" label-for="assistantModelUsers">
+        <ToggleSwitch v-model="userAccess" input-id="assistantModelUsers" />
+      </CuiToggleRow>
 
-    <div class="flex items-center gap-4 cui-toggle-switch">
-      <div class="flex flex-col field-switch-gap">
-        <label for="assistantModelRouting" class="cui-label-switch">{{ $t('views.settings.assistant_model_routing') }}</label>
-        <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.assistant_model_routing_info') }}</Message>
-      </div>
-      <ToggleSwitch v-model="toolRouting" input-id="assistantModelRouting" class="ml-auto shrink-0" />
-    </div>
+      <CuiToggleRow :label="$t('views.settings.assistant_model_routing')" :hint="$t('views.settings.assistant_model_routing_info')" label-for="assistantModelRouting">
+        <ToggleSwitch v-model="toolRouting" input-id="assistantModelRouting" />
+      </CuiToggleRow>
 
-    <div v-if="entry" class="flex items-center gap-4 cui-toggle-switch">
-      <div class="flex flex-col field-switch-gap">
-        <label for="assistantModelImages" class="cui-label-switch">{{ $t('views.settings.assistant_send_images') }}</label>
-        <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-          entry.capabilities?.vision === false ? $t('views.settings.assistant_send_images_no_vision') : $t('views.settings.assistant_send_images_info')
-        }}</Message>
-      </div>
-      <ToggleSwitch v-model="sendImages" input-id="assistantModelImages" class="ml-auto shrink-0" />
+      <CuiToggleRow
+        v-if="entry"
+        :label="$t('views.settings.assistant_send_images')"
+        :hint="entry.capabilities?.vision === false ? $t('views.settings.assistant_send_images_no_vision') : $t('views.settings.assistant_send_images_info')"
+        label-for="assistantModelImages"
+      >
+        <ToggleSwitch v-model="sendImages" input-id="assistantModelImages" />
+      </CuiToggleRow>
     </div>
   </div>
 </template>

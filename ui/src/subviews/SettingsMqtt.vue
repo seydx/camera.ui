@@ -28,13 +28,9 @@
           <Card class="cui-card">
             <template #content>
               <div class="flex flex-col gap-6">
-                <div class="flex items-center gap-4 cui-toggle-switch">
-                  <div class="flex flex-col field-switch-gap">
-                    <label for="enabled" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.mqtt_enabled_info') }}</Message>
-                  </div>
-                  <ToggleSwitch v-model="mqttForm.enabled" class="ml-auto shrink-0" />
-                </div>
+                <CuiToggleRow :label="$t('components.form.label.enabled')" :hint="$t('views.settings.mqtt_enabled_info')" label-for="enabled">
+                  <ToggleSwitch v-model="mqttForm.enabled" />
+                </CuiToggleRow>
 
                 <div class="flex flex-col field-gap">
                   <label for="mode" class="cui-label">{{ $t('views.settings.mqtt_mode_label') }}</label>
@@ -146,15 +142,13 @@
                 </div>
 
                 <template v-if="mqttForm.mode === 'external' && mqttForm.protocol === 'mqtts'">
-                  <div class="flex items-center gap-4 cui-toggle-switch">
-                    <div class="flex flex-col field-switch-gap">
-                      <label for="rejectUnauthorized" class="cui-label-switch">{{ $t('views.settings.mqtt_tls_reject_unauthorized') }}</label>
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                        $t('views.settings.mqtt_tls_reject_unauthorized_info')
-                      }}</Message>
-                    </div>
-                    <ToggleSwitch v-model="mqttForm.tls.rejectUnauthorized" class="ml-auto shrink-0" />
-                  </div>
+                  <CuiToggleRow
+                    :label="$t('views.settings.mqtt_tls_reject_unauthorized')"
+                    :hint="$t('views.settings.mqtt_tls_reject_unauthorized_info')"
+                    label-for="rejectUnauthorized"
+                  >
+                    <ToggleSwitch v-model="mqttForm.tls.rejectUnauthorized" />
+                  </CuiToggleRow>
 
                   <div class="flex flex-col field-gap">
                     <label for="tlsCa" class="cui-label">{{ $t('views.settings.mqtt_tls_ca_label') }}</label>
@@ -172,13 +166,9 @@
                   </div>
                 </template>
 
-                <div class="flex items-center gap-4 cui-toggle-switch">
-                  <div class="flex flex-col field-switch-gap">
-                    <label for="haDiscovery" class="cui-label-switch">{{ $t('views.settings.mqtt_ha_discovery') }}</label>
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.mqtt_ha_discovery_info') }}</Message>
-                  </div>
-                  <ToggleSwitch v-model="mqttForm.haDiscovery.enabled" class="ml-auto shrink-0" />
-                </div>
+                <CuiToggleRow :label="$t('views.settings.mqtt_ha_discovery')" :hint="$t('views.settings.mqtt_ha_discovery_info')" label-for="haDiscovery">
+                  <ToggleSwitch v-model="mqttForm.haDiscovery.enabled" />
+                </CuiToggleRow>
 
                 <Field
                   v-if="mqttForm.haDiscovery.enabled"

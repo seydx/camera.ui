@@ -12,19 +12,9 @@
               </div>
 
               <div class="w-full flex flex-col gap-2">
-                <div class="flex flex-col field-gap cui-toggle-switch">
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label class="cui-label-switch">{{ $t('components.form.label.system_preference') }}</label>
-
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                        $t('components.form.hint.system_preference')
-                      }}</Message>
-                    </div>
-
-                    <ToggleSwitch v-model="autoMode" class="ml-auto shrink-0" />
-                  </div>
-                </div>
+                <CuiToggleRow :label="$t('components.form.label.system_preference')" :hint="$t('components.form.hint.system_preference')">
+                  <ToggleSwitch v-model="autoMode" />
+                </CuiToggleRow>
               </div>
             </div>
           </template>
@@ -72,19 +62,9 @@
               </div>
 
               <div class="w-full flex flex-col gap-2">
-                <div class="flex flex-col field-gap cui-toggle-switch">
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label class="cui-label-switch">{{ $t('components.form.label.navbar_stay_collapsed') }}</label>
-
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                        $t('components.form.hint.navbar_stay_collapsed')
-                      }}</Message>
-                    </div>
-
-                    <ToggleSwitch v-model="uiSettings.interface.navbarStayCollapsed" class="ml-auto shrink-0" />
-                  </div>
-                </div>
+                <CuiToggleRow :label="$t('components.form.label.navbar_stay_collapsed')" :hint="$t('components.form.hint.navbar_stay_collapsed')">
+                  <ToggleSwitch v-model="uiSettings.interface.navbarStayCollapsed" />
+                </CuiToggleRow>
               </div>
             </div>
           </template>
@@ -96,33 +76,18 @@
         <Card class="cui-card">
           <template #content>
             <div class="w-full flex flex-col gap-2">
-              <div class="flex flex-col field-gap cui-toggle-switch">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label class="cui-label-switch">{{ $t('components.form.label.nav_settings_in_nav') }}</label>
+              <CuiToggleRow :label="$t('components.form.label.nav_settings_in_nav')" :hint="$t('components.form.hint.nav_settings_in_nav')">
+                <ToggleSwitch :model-value="settingsInNav" @update:model-value="(value: boolean) => setSettingsInNav(value)" />
+              </CuiToggleRow>
 
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                      $t('components.form.hint.nav_settings_in_nav')
-                    }}</Message>
-                  </div>
-
-                  <ToggleSwitch :model-value="settingsInNav" class="ml-auto shrink-0" @update:model-value="(value: boolean) => setSettingsInNav(value)" />
-                </div>
-              </div>
-
-              <div v-for="group in collapsibleGroups" :key="group" class="flex flex-col field-gap cui-toggle-switch">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label class="cui-label-switch">{{ $t('components.form.label.nav_group_collapsible', { group: $t(`navigation.group_${group}`) }) }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                      $t('components.form.hint.nav_group_collapsible', { group: $t(`navigation.group_${group}`) })
-                    }}</Message>
-                  </div>
-
-                  <ToggleSwitch :model-value="isCollapsible(group)" class="ml-auto shrink-0" @update:model-value="(value: boolean) => setCollapsible(group, value)" />
-                </div>
-              </div>
+              <CuiToggleRow
+                v-for="group in collapsibleGroups"
+                :key="group"
+                :label="$t('components.form.label.nav_group_collapsible', { group: $t(`navigation.group_${group}`) })"
+                :hint="$t('components.form.hint.nav_group_collapsible', { group: $t(`navigation.group_${group}`) })"
+              >
+                <ToggleSwitch :model-value="isCollapsible(group)" @update:model-value="(value: boolean) => setCollapsible(group, value)" />
+              </CuiToggleRow>
             </div>
           </template>
         </Card>
@@ -133,29 +98,13 @@
         <Card class="cui-card">
           <template #content>
             <div class="w-full flex flex-col gap-2">
-              <div class="flex flex-col field-gap cui-toggle-switch">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label class="cui-label-switch">{{ $t('components.form.label.debug_verbose') }}</label>
+              <CuiToggleRow :label="$t('components.form.label.debug_verbose')" :hint="$t('components.form.hint.debug_verbose')">
+                <ToggleSwitch :model-value="debugOn" @update:model-value="setDebug" />
+              </CuiToggleRow>
 
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.debug_verbose') }}</Message>
-                  </div>
-
-                  <ToggleSwitch :model-value="debugOn" class="ml-auto shrink-0" @update:model-value="setDebug" />
-                </div>
-              </div>
-
-              <div class="flex flex-col field-gap cui-toggle-switch">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label class="cui-label-switch">{{ $t('components.form.label.record_logs') }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.record_logs') }}</Message>
-                  </div>
-
-                  <ToggleSwitch :model-value="recording" class="ml-auto shrink-0" @update:model-value="setRecording" />
-                </div>
-              </div>
+              <CuiToggleRow :label="$t('components.form.label.record_logs')" :hint="$t('components.form.hint.record_logs')">
+                <ToggleSwitch :model-value="recording" @update:model-value="setRecording" />
+              </CuiToggleRow>
             </div>
           </template>
         </Card>

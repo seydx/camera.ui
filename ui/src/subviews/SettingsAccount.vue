@@ -218,16 +218,9 @@
           <span class="card-title">{{ $t('views.settings.biometric.title') }}</span>
           <Card class="cui-card">
             <template #content>
-              <div class="flex items-center gap-4">
-                <i-mdi:face-recognition class="shrink-0 w-6 h-6 text-color" />
-                <div class="flex flex-col field-switch-gap min-w-0">
-                  <span class="text-sm font-bold text-color">{{ $t('views.settings.biometric.label') }}</span>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                    {{ $t('views.settings.biometric.description') }}
-                  </Message>
-                </div>
-                <ToggleSwitch :model-value="biometricEnabled" :loading="biometricToggling" class="ml-auto shrink-0" @update:model-value="onToggleBiometric" />
-              </div>
+              <CuiToggleRow plain :label="$t('views.settings.biometric.label')" :hint="$t('views.settings.biometric.description')">
+                <ToggleSwitch :model-value="biometricEnabled" :loading="biometricToggling" @update:model-value="onToggleBiometric" />
+              </CuiToggleRow>
             </template>
           </Card>
         </div>

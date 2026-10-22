@@ -5,15 +5,9 @@
         <Card class="cui-card">
           <template #content>
             <div>
-              <div class="flex items-center gap-4">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="betaChannel" class="cui-label-switch">{{ $t('views.settings.beta_updates') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                    {{ $t('views.settings.beta_updates_info') }}
-                  </Message>
-                </div>
-                <ToggleSwitch input-id="betaChannel" :model-value="isBeta" class="ml-auto shrink-0" @update:model-value="onBetaToggle" />
-              </div>
+              <CuiToggleRow plain :label="$t('views.settings.beta_updates')" :hint="$t('views.settings.beta_updates_info')" label-for="betaChannel">
+                <ToggleSwitch input-id="betaChannel" :model-value="isBeta" @update:model-value="onBetaToggle" />
+              </CuiToggleRow>
             </div>
           </template>
         </Card>

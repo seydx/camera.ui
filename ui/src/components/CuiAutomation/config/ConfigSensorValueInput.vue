@@ -17,10 +17,9 @@
       @update:model-value="(v) => emitValue(String(v ?? ''))"
     />
 
-    <div v-else-if="meta.kind === 'boolean'" class="flex items-center gap-4 cui-toggle-switch">
-      <label class="cui-label-switch">{{ t('components.automation_nodes.sensor_value_state') }}</label>
-      <ToggleSwitch :model-value="booleanValue" :disabled class="ml-auto shrink-0" @update:model-value="(v) => emitValue(String(v))" />
-    </div>
+    <CuiToggleRow v-else-if="meta.kind === 'boolean'" :label="t('components.automation_nodes.sensor_value_state')">
+      <ToggleSwitch :model-value="booleanValue" :disabled @update:model-value="(v) => emitValue(String(v))" />
+    </CuiToggleRow>
 
     <Select
       v-else-if="meta.kind === 'enum'"

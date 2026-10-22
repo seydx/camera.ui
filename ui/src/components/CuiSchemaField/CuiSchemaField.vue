@@ -118,31 +118,10 @@
     </template>
 
     <template v-else-if="isBooleanType(schemaField)">
-      <Field
-        v-slot="{ field, errors }"
-        :model-value="fieldValue"
-        :value="true"
-        :unchecked-value="false"
-        type="checkbox"
-        :name="configKey"
-        as="div"
-        class="flex flex-col field-gap cui-toggle-switch"
-      >
-        <div class="flex items-center gap-4">
-          <div class="flex flex-col field-switch-gap">
-            <label :for="configKey" class="cui-label-switch">{{ schemaField.title }}</label>
-
-            <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-              {{ schemaField.description }}
-            </Message>
-
-            <Transition name="fade">
-              <ErrorMessage :name="configKey" class="cui-input-switch-error" />
-            </Transition>
-          </div>
-
-          <ToggleSwitch :model-value="fieldValue" v-bind="field" :invalid="errors.length > 0" :loading class="ml-auto shrink-0" @value-change="(e) => (fieldValue = e)" />
-        </div>
+      <Field v-slot="{ field, errors }" :model-value="fieldValue" :value="true" :unchecked-value="false" type="checkbox" :name="configKey">
+        <CuiToggleRow :label="schemaField.title" :hint="schemaField.description" :label-for="configKey" :error-name="configKey">
+          <ToggleSwitch :model-value="fieldValue" v-bind="field" :invalid="errors.length > 0" :loading @value-change="(e) => (fieldValue = e)" />
+        </CuiToggleRow>
       </Field>
     </template>
 

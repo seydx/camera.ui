@@ -24,13 +24,9 @@
       <VariableSuggestions :variables="availableVars" @select="insertVariable($event)" />
     </div>
 
-    <div class="flex items-center gap-4 cui-toggle-switch">
-      <div class="flex flex-col field-switch-gap">
-        <label class="cui-label-switch">{{ t('components.automation_nodes.mqtt_retain') }}</label>
-        <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ t('components.automation_nodes.mqtt_retain_hint') }}</Message>
-      </div>
-      <ToggleSwitch :model-value="data.retain" class="ml-auto shrink-0" @update:model-value="update('retain', $event)" />
-    </div>
+    <CuiToggleRow :label="t('components.automation_nodes.mqtt_retain')" :hint="t('components.automation_nodes.mqtt_retain_hint')">
+      <ToggleSwitch :model-value="data.retain" @update:model-value="update('retain', $event)" />
+    </CuiToggleRow>
   </div>
 </template>
 

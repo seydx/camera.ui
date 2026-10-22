@@ -17,53 +17,38 @@
                 <ProgressSpinner class="w-[30px] h-[30px] m-0" stroke-width="5" />
               </div>
 
-              <template v-else-if="draft">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label class="cui-label-switch">{{ $t('views.settings.notifications.enable') }}</label>
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                      {{ $t('views.settings.notifications.enable_info') }}
-                    </Message>
-                  </div>
-                  <ToggleSwitch :model-value="draft.enabled" :loading="enabling" class="ml-auto shrink-0" @update:model-value="onToggleEnabled" />
-                </div>
+              <div v-else-if="draft" class="flex flex-col gap-2">
+                <CuiToggleRow :label="$t('views.settings.notifications.enable')" :hint="$t('views.settings.notifications.enable_info')">
+                  <ToggleSwitch :model-value="draft.enabled" :loading="enabling" @update:model-value="onToggleEnabled" />
+                </CuiToggleRow>
 
-                <div v-if="isCapacitor && draft.enabled" class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap min-w-0">
-                    <label class="cui-label-switch">{{ $t('views.settings.notifications.this_device') }}</label>
+                <CuiToggleRow v-if="isCapacitor && draft.enabled" :label="$t('views.settings.notifications.this_device')">
+                  <template #hint>
                     <Message :severity="deviceSynced ? 'secondary' : 'warn'" variant="simple" size="small" class="cui-input-switch-hint">
                       {{ deviceSynced ? $t('views.settings.notifications.this_device_synced') : $t('views.settings.notifications.this_device_unsynced') }}
                     </Message>
-                  </div>
+                  </template>
                   <Button
                     :severity="deviceSynced ? 'secondary' : undefined"
                     :loading="syncing"
-                    class="cui-button-small ml-auto shrink-0"
+                    class="cui-button-small"
                     :label="deviceSynced ? $t('views.settings.notifications.resync') : $t('views.settings.notifications.sync')"
                     @click="onSyncDevice"
                   />
-                </div>
+                </CuiToggleRow>
 
-                <div v-else-if="isElectronApp && draft.enabled" class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap min-w-0">
-                    <label class="cui-label-switch">{{ $t('views.settings.notifications.this_device') }}</label>
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                      {{ $t('views.settings.notifications.this_device_desktop') }}
-                    </Message>
-                  </div>
-                  <ToggleSwitch :model-value="desktopEnabled" :loading="desktopLoading" class="ml-auto shrink-0" @update:model-value="onToggleDesktop" />
-                </div>
+                <CuiToggleRow
+                  v-else-if="isElectronApp && draft.enabled"
+                  :label="$t('views.settings.notifications.this_device')"
+                  :hint="$t('views.settings.notifications.this_device_desktop')"
+                >
+                  <ToggleSwitch :model-value="desktopEnabled" :loading="desktopLoading" @update:model-value="onToggleDesktop" />
+                </CuiToggleRow>
 
                 <div v-if="draft.enabled" class="flex flex-col gap-2">
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label class="cui-label-switch">{{ $t('views.settings.notifications.quiet_hours') }}</label>
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                        {{ $t('views.settings.notifications.quiet_hours_info') }}
-                      </Message>
-                    </div>
-                    <ToggleSwitch :model-value="!!draft.quietHours" class="ml-auto shrink-0" @update:model-value="toggleQuietHours" />
-                  </div>
+                  <CuiToggleRow :label="$t('views.settings.notifications.quiet_hours')" :hint="$t('views.settings.notifications.quiet_hours_info')">
+                    <ToggleSwitch :model-value="!!draft.quietHours" @update:model-value="toggleQuietHours" />
+                  </CuiToggleRow>
 
                   <div v-if="draft.quietHours" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                     <div class="flex flex-col field-gap">
@@ -96,7 +81,7 @@
                     </div>
                   </div>
                 </div>
-              </template>
+              </div>
             </div>
           </template>
         </Card>
@@ -117,23 +102,10 @@
                 {{ $t('views.settings.notifications.no_system_types') }}
               </div>
 
-              <div v-else class="flex flex-col gap-3">
-                <div v-for="(info, index) in sources.system" :key="info.type">
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label class="cui-label-switch">{{ systemLabel(info) }}</label>
-                      <Message v-if="info.description" severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">
-                        {{ info.description }}
-                      </Message>
-                    </div>
-                    <ToggleSwitch
-                      :model-value="isSystemTypeEnabled(info.type)"
-                      class="ml-auto shrink-0"
-                      @update:model-value="(v) => setSystemTypeEnabled(info.type, v as boolean)"
-                    />
-                  </div>
-                  <Divider v-if="index < sources.system.length - 1" class="my-2" />
-                </div>
+              <div v-else class="flex flex-col gap-2">
+                <CuiToggleRow v-for="info in sources.system" :key="info.type" :label="systemLabel(info)" :hint="info.description">
+                  <ToggleSwitch :model-value="isSystemTypeEnabled(info.type)" @update:model-value="(v) => setSystemTypeEnabled(info.type, v as boolean)" />
+                </CuiToggleRow>
               </div>
             </div>
           </template>
@@ -155,20 +127,10 @@
                 {{ $t('views.settings.notifications.no_plugin_sources') }}
               </div>
 
-              <div v-else class="flex flex-col gap-3">
-                <div v-for="(plugin, index) in sources.plugins" :key="plugin.id">
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label class="cui-label-switch">{{ plugin.name }}</label>
-                    </div>
-                    <ToggleSwitch
-                      :model-value="isPluginSourceEnabled(plugin.id)"
-                      class="ml-auto shrink-0"
-                      @update:model-value="(v) => setPluginSourceEnabled(plugin.id, v as boolean)"
-                    />
-                  </div>
-                  <Divider v-if="index < sources.plugins.length - 1" class="my-2" />
-                </div>
+              <div v-else class="flex flex-col gap-2">
+                <CuiToggleRow v-for="plugin in sources.plugins" :key="plugin.id" :label="plugin.name">
+                  <ToggleSwitch :model-value="isPluginSourceEnabled(plugin.id)" @update:model-value="(v) => setPluginSourceEnabled(plugin.id, v as boolean)" />
+                </CuiToggleRow>
               </div>
             </div>
           </template>

@@ -13,17 +13,9 @@
       />
     </div>
 
-    <div class="cui-toggle-switch">
-      <div class="flex items-center gap-4">
-        <div class="flex flex-col field-switch-gap">
-          <label class="cui-label-switch">{{ t('components.automation_nodes.snapshot_force_new') }}</label>
-          <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-            t('components.automation_nodes.snapshot_force_new_hint')
-          }}</Message>
-        </div>
-        <ToggleSwitch :model-value="data.forceNew" class="ml-auto shrink-0" @update:model-value="update('forceNew', $event)" />
-      </div>
-    </div>
+    <CuiToggleRow :label="t('components.automation_nodes.snapshot_force_new')" :hint="t('components.automation_nodes.snapshot_force_new_hint')">
+      <ToggleSwitch :model-value="data.forceNew" @update:model-value="update('forceNew', $event)" />
+    </CuiToggleRow>
   </div>
 </template>
 

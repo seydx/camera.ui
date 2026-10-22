@@ -25,19 +25,14 @@
         <Card class="cui-card">
           <template #content>
             <div class="flex flex-col gap-6">
-              <div class="flex items-center gap-4 cui-toggle-switch">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="enabled" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.assistant_enabled_info') }}</Message>
-                </div>
+              <CuiToggleRow :label="$t('components.form.label.enabled')" :hint="$t('views.settings.assistant_enabled_info')" label-for="enabled">
                 <ToggleSwitch
                   :model-value="info?.settings.enabled ?? false"
                   input-id="enabled"
                   :disabled="patchMutation.isPending.value"
-                  class="ml-auto shrink-0"
                   @update:model-value="(value) => patchMutation.mutate({ enabled: value })"
                 />
-              </div>
+              </CuiToggleRow>
 
               <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.assistant_models_info') }}</Message>
 
@@ -184,20 +179,14 @@
         <Card class="cui-card">
           <template #content>
             <div class="flex flex-col gap-6">
-              <div class="flex items-center gap-4 cui-toggle-switch">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="memoryEnabled" class="cui-label-switch">{{ $t('views.settings.assistant_memory') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.assistant_memory_info') }}</Message>
-                </div>
-                <ToggleSwitch v-model="form.memoryEnabled" input-id="memoryEnabled" class="ml-auto shrink-0" />
-              </div>
+              <div class="flex flex-col gap-2">
+                <CuiToggleRow :label="$t('views.settings.assistant_memory')" :hint="$t('views.settings.assistant_memory_info')" label-for="memoryEnabled">
+                  <ToggleSwitch v-model="form.memoryEnabled" input-id="memoryEnabled" />
+                </CuiToggleRow>
 
-              <div class="flex items-center gap-4 cui-toggle-switch">
-                <div class="flex flex-col field-switch-gap">
-                  <label for="terminalEnabled" class="cui-label-switch">{{ $t('views.settings.assistant_terminal') }}</label>
-                  <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('views.settings.assistant_terminal_info') }}</Message>
-                </div>
-                <ToggleSwitch v-model="form.terminalEnabled" input-id="terminalEnabled" class="ml-auto shrink-0" />
+                <CuiToggleRow :label="$t('views.settings.assistant_terminal')" :hint="$t('views.settings.assistant_terminal_info')" label-for="terminalEnabled">
+                  <ToggleSwitch v-model="form.terminalEnabled" input-id="terminalEnabled" />
+                </CuiToggleRow>
               </div>
 
               <div class="flex flex-col field-gap">
@@ -277,21 +266,13 @@
             <div class="flex flex-col gap-6">
               <Message severity="secondary" variant="simple" size="small" class="cui-input-hint">{{ $t('views.settings.assistant_mcp_info') }}</Message>
 
-              <div class="flex flex-col gap-4">
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex flex-col">
-                    <span class="text-sm font-medium text-color">{{ $t('views.settings.assistant_mcp_enabled_label') }}</span>
-                    <span class="text-xs text-muted">{{ $t('views.settings.assistant_mcp_enabled_info') }}</span>
-                  </div>
+              <div class="flex flex-col gap-2">
+                <CuiToggleRow :label="$t('views.settings.assistant_mcp_enabled_label')" :hint="$t('views.settings.assistant_mcp_enabled_info')">
                   <ToggleSwitch v-model="form.mcpEnabled" />
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex flex-col">
-                    <span class="text-sm font-medium text-color">{{ $t('views.settings.assistant_mcp_writes_label') }}</span>
-                    <span class="text-xs text-muted">{{ $t('views.settings.assistant_mcp_writes_info') }}</span>
-                  </div>
+                </CuiToggleRow>
+                <CuiToggleRow :label="$t('views.settings.assistant_mcp_writes_label')" :hint="$t('views.settings.assistant_mcp_writes_info')">
                   <ToggleSwitch v-model="form.mcpWrites" :disabled="!form.mcpEnabled" />
-                </div>
+                </CuiToggleRow>
               </div>
 
               <div v-if="form.mcpEnabled" class="flex flex-col gap-6">
@@ -369,15 +350,13 @@
                 <div class="cui-assistant-server-body grid" :class="{ 'cui-assistant-server-open': openServers.includes(server.id) }">
                   <div class="min-h-0 overflow-hidden" :inert="!openServers.includes(server.id)">
                     <div class="flex flex-col gap-4 px-4 pb-4">
-                      <div class="flex items-center gap-4 cui-toggle-switch">
-                        <div class="flex flex-col field-switch-gap">
-                          <label :for="`server-enabled-${server.id}`" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
-                          <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                            $t('views.settings.assistant_external_enabled_info')
-                          }}</Message>
-                        </div>
-                        <ToggleSwitch v-model="server.enabled" :input-id="`server-enabled-${server.id}`" class="ml-auto shrink-0" />
-                      </div>
+                      <CuiToggleRow
+                        :label="$t('components.form.label.enabled')"
+                        :hint="$t('views.settings.assistant_external_enabled_info')"
+                        :label-for="`server-enabled-${server.id}`"
+                      >
+                        <ToggleSwitch v-model="server.enabled" :input-id="`server-enabled-${server.id}`" />
+                      </CuiToggleRow>
                       <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex flex-col field-gap md:w-56">
                           <label :for="`server-name-${server.id}`" class="cui-label">{{ $t('views.settings.assistant_external_name') }}</label>
@@ -403,15 +382,13 @@
                           server.tokenSet ? $t('views.settings.assistant_external_token_set') : $t('views.settings.assistant_external_token_info')
                         }}</Message>
                       </div>
-                      <div class="flex items-center gap-4 cui-toggle-switch">
-                        <div class="flex flex-col field-switch-gap">
-                          <label :for="`server-insecure-${server.id}`" class="cui-label-switch">{{ $t('views.settings.assistant_external_insecure') }}</label>
-                          <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                            $t('views.settings.assistant_external_insecure_info')
-                          }}</Message>
-                        </div>
-                        <ToggleSwitch :input-id="`server-insecure-${server.id}`" v-model="server.insecure" class="ml-auto shrink-0" />
-                      </div>
+                      <CuiToggleRow
+                        :label="$t('views.settings.assistant_external_insecure')"
+                        :hint="$t('views.settings.assistant_external_insecure_info')"
+                        :label-for="`server-insecure-${server.id}`"
+                      >
+                        <ToggleSwitch :input-id="`server-insecure-${server.id}`" v-model="server.insecure" />
+                      </CuiToggleRow>
                       <div class="flex">
                         <Button
                           type="button"

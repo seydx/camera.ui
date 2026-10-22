@@ -41,39 +41,22 @@
           <Card class="cui-card">
             <template #content>
               <div class="flex flex-col gap-6">
-                <Field
-                  v-slot="{ field, errors }"
-                  :model-value="remoteInfoForm.enabled"
-                  :value="true"
-                  :unchecked-value="false"
-                  type="checkbox"
-                  name="enabled"
-                  as="div"
-                  class="flex flex-col field-gap cui-toggle-switch"
-                >
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label for="enabled" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
-
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                        $t('components.form.hint.cloud_access_enabled_info')
-                      }}</Message>
-
-                      <Transition name="fade">
-                        <ErrorMessage name="enabled" class="cui-input-switch-error" />
-                      </Transition>
-                    </div>
-
+                <Field v-slot="{ field, errors }" :model-value="remoteInfoForm.enabled" :value="true" :unchecked-value="false" type="checkbox" name="enabled">
+                  <CuiToggleRow
+                    :label="$t('components.form.label.enabled')"
+                    :hint="$t('components.form.hint.cloud_access_enabled_info')"
+                    label-for="enabled"
+                    error-name="enabled"
+                  >
                     <ToggleSwitch
                       :model-value="remoteInfoForm.enabled"
                       v-bind="field"
                       :invalid="errors.length > 0"
                       :loading="isLoading"
-                      class="ml-auto shrink-0"
                       @value-change="(e) => (remoteInfoForm!.enabled = e)"
                       @update:model-value="(enabled) => onToggleCloud(enabled)"
                     />
-                  </div>
+                  </CuiToggleRow>
                 </Field>
 
                 <div class="flex flex-col field-gap">
@@ -246,42 +229,30 @@
           <Card class="cui-card">
             <template #content>
               <div class="flex flex-col gap-6">
-                <Field
-                  v-slot="{ field, errors }"
-                  :model-value="remoteInfoForm.directEnabled"
-                  :value="true"
-                  :unchecked-value="false"
-                  type="checkbox"
-                  name="directEnabled"
-                  as="div"
-                  class="flex flex-col field-gap cui-toggle-switch"
-                >
-                  <div class="flex items-center gap-4">
-                    <div class="flex flex-col field-switch-gap">
-                      <label for="directEnabled" class="cui-label-switch">{{ $t('components.form.label.enabled') }}</label>
-                      <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{
-                        $t('views.settings.direct_connection_info')
-                      }}</Message>
-                      <Transition name="fade">
-                        <ErrorMessage name="directEnabled" class="cui-input-switch-error" />
-                      </Transition>
-                    </div>
+                <Field v-slot="{ field, errors }" :model-value="remoteInfoForm.directEnabled" :value="true" :unchecked-value="false" type="checkbox" name="directEnabled">
+                  <CuiToggleRow
+                    :label="$t('components.form.label.enabled')"
+                    :hint="$t('views.settings.direct_connection_info')"
+                    label-for="directEnabled"
+                    error-name="directEnabled"
+                  >
                     <ToggleSwitch
                       :model-value="directEffective"
                       v-bind="field"
                       :invalid="errors.length > 0"
                       :loading="isLoading"
                       :disabled="remoteInfoForm.enabled"
-                      class="ml-auto shrink-0"
                       @value-change="(e) => (remoteInfoForm!.directEnabled = e)"
                       @update:model-value="(enabled) => onToggleDirect(enabled)"
                     />
-                  </div>
-                  <Transition name="fade">
-                    <Message v-if="directOverride.active" variant="simple" size="small" class="cui-input-switch-hint text-primary">
-                      {{ directOverride.fallback ? $t('views.settings.direct_override_fallback') : $t('views.settings.direct_override_active') }}
-                    </Message>
-                  </Transition>
+                    <template #below>
+                      <Transition name="fade">
+                        <Message v-if="directOverride.active" variant="simple" size="small" class="cui-input-switch-hint text-primary">
+                          {{ directOverride.fallback ? $t('views.settings.direct_override_fallback') : $t('views.settings.direct_override_active') }}
+                        </Message>
+                      </Transition>
+                    </template>
+                  </CuiToggleRow>
                 </Field>
 
                 <template v-if="directEffective">

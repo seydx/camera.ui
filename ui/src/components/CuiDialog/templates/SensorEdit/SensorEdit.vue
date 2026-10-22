@@ -37,13 +37,9 @@
       </Message>
     </div>
 
-    <div v-if="!sensor.cameraBound" class="flex items-center gap-4 cui-toggle-switch">
-      <div class="flex flex-col min-w-0">
-        <label class="cui-label-switch">{{ $t('views.sensors.exposed') }}</label>
-        <span class="text-xs text-muted">{{ $t('views.sensors.exposed_hint') }}</span>
-      </div>
-      <ToggleSwitch v-model="exposed" class="ml-auto shrink-0" />
-    </div>
+    <CuiToggleRow v-if="!sensor.cameraBound" :label="$t('views.sensors.exposed')" :hint="$t('views.sensors.exposed_hint')">
+      <ToggleSwitch v-model="exposed" />
+    </CuiToggleRow>
   </div>
 </template>
 

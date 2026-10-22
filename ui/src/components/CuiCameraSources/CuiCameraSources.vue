@@ -95,30 +95,22 @@
                 :unchecked-value="false"
                 type="checkbox"
                 :name="`sources[${i}].useForSnapshot`"
-                as="div"
-                class="flex flex-col field-gap cui-toggle-switch"
               >
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label :for="`sources[${i}].useForSnapshot`" class="cui-label-switch">{{ $t('components.form.label.use_for_snapshot') }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.use_for_snapshot') }}</Message>
-
-                    <Transition name="fade">
-                      <ErrorMessage :name="`sources[${i}].useForSnapshot`" class="cui-input-switch-error" />
-                    </Transition>
-                  </div>
-
+                <CuiToggleRow
+                  :label="$t('components.form.label.use_for_snapshot')"
+                  :hint="$t('components.form.hint.use_for_snapshot')"
+                  :label-for="`sources[${i}].useForSnapshot`"
+                  :error-name="`sources[${i}].useForSnapshot`"
+                >
                   <ToggleSwitch
                     :model-value="source.useForSnapshot"
                     v-bind="field"
                     :invalid="errors.length > 0"
                     :loading="busy"
                     :disabled="sources.some((s) => (s.useForSnapshot || s.role === 'snapshot') && s._id !== source._id)"
-                    class="ml-auto shrink-0"
                     @value-change="(e) => (source.useForSnapshot = e)"
                   />
-                </div>
+                </CuiToggleRow>
               </Field>
 
               <Field
@@ -129,29 +121,15 @@
                 :unchecked-value="false"
                 type="checkbox"
                 :name="`sources[${i}].hotMode`"
-                as="div"
-                class="flex flex-col field-gap cui-toggle-switch"
               >
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label :for="`sources[${i}].hotMode`" class="cui-label-switch">{{ $t('components.form.label.hot_mode') }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.hot_mode') }}</Message>
-
-                    <Transition name="fade">
-                      <ErrorMessage :name="`sources[${i}].hotMode`" class="cui-input-switch-error" />
-                    </Transition>
-                  </div>
-
-                  <ToggleSwitch
-                    :model-value="source.hotMode"
-                    v-bind="field"
-                    :invalid="errors.length > 0"
-                    :loading="busy"
-                    class="ml-auto shrink-0"
-                    @value-change="(e) => (source.hotMode = e)"
-                  />
-                </div>
+                <CuiToggleRow
+                  :label="$t('components.form.label.hot_mode')"
+                  :hint="$t('components.form.hint.hot_mode')"
+                  :label-for="`sources[${i}].hotMode`"
+                  :error-name="`sources[${i}].hotMode`"
+                >
+                  <ToggleSwitch :model-value="source.hotMode" v-bind="field" :invalid="errors.length > 0" :loading="busy" @value-change="(e) => (source.hotMode = e)" />
+                </CuiToggleRow>
               </Field>
 
               <Field
@@ -162,29 +140,15 @@
                 :unchecked-value="false"
                 type="checkbox"
                 :name="`sources[${i}].preload`"
-                as="div"
-                class="flex flex-col field-gap cui-toggle-switch"
               >
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label :for="`sources[${i}].preload`" class="cui-label-switch">{{ $t('components.form.label.preload') }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.preload') }}</Message>
-
-                    <Transition name="fade">
-                      <ErrorMessage :name="`sources[${i}].preload`" class="cui-input-switch-error" />
-                    </Transition>
-                  </div>
-
-                  <ToggleSwitch
-                    :model-value="source.preload"
-                    v-bind="field"
-                    :invalid="errors.length > 0"
-                    :loading="busy"
-                    class="ml-auto shrink-0"
-                    @value-change="(e) => (source.preload = e)"
-                  />
-                </div>
+                <CuiToggleRow
+                  :label="$t('components.form.label.preload')"
+                  :hint="$t('components.form.hint.preload')"
+                  :label-for="`sources[${i}].preload`"
+                  :error-name="`sources[${i}].preload`"
+                >
+                  <ToggleSwitch :model-value="source.preload" v-bind="field" :invalid="errors.length > 0" :loading="busy" @value-change="(e) => (source.preload = e)" />
+                </CuiToggleRow>
               </Field>
 
               <Field
@@ -195,29 +159,15 @@
                 :unchecked-value="false"
                 type="checkbox"
                 :name="`sources[${i}].muted`"
-                as="div"
-                class="flex flex-col field-gap cui-toggle-switch"
               >
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col field-switch-gap">
-                    <label :for="`sources[${i}].muted`" class="cui-label-switch">{{ $t('components.form.label.muted') }}</label>
-
-                    <Message severity="secondary" variant="simple" size="small" class="cui-input-switch-hint">{{ $t('components.form.hint.muted') }}</Message>
-
-                    <Transition name="fade">
-                      <ErrorMessage :name="`sources[${i}].muted`" class="cui-input-switch-error" />
-                    </Transition>
-                  </div>
-
-                  <ToggleSwitch
-                    :model-value="source.muted"
-                    v-bind="field"
-                    :invalid="errors.length > 0"
-                    :loading="busy"
-                    class="ml-auto shrink-0"
-                    @value-change="(e) => (source.muted = e)"
-                  />
-                </div>
+                <CuiToggleRow
+                  :label="$t('components.form.label.muted')"
+                  :hint="$t('components.form.hint.muted')"
+                  :label-for="`sources[${i}].muted`"
+                  :error-name="`sources[${i}].muted`"
+                >
+                  <ToggleSwitch :model-value="source.muted" v-bind="field" :invalid="errors.length > 0" :loading="busy" @value-change="(e) => (source.muted = e)" />
+                </CuiToggleRow>
               </Field>
             </div>
 
