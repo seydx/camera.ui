@@ -3,7 +3,7 @@
     <div class="flex flex-col w-full gap-6">
       <div v-if="stats && stats.paused === true" class="cui-banner cui-banner-error">
         <i-mdi:alert-circle-outline class="shrink-0 w-5 h-5" />
-        <span>{{ $t('views.settings.recordings.disk_critical') }}</span>
+        <span>{{ stats.unreachable ? $t('views.settings.recordings.storage_unreachable') : $t('views.settings.recordings.disk_critical') }}</span>
       </div>
       <div v-else-if="stats && stats.diskFreePercent > 0 && stats.diskFreePercent < 8" class="cui-banner cui-banner-warn">
         <i-mdi:alert-outline class="shrink-0 w-5 h-5" />

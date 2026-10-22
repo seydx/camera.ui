@@ -2372,6 +2372,7 @@ export default {
       status_stopped: 'Stopped',
       storage_not_available: 'Not available',
       storage_overview: 'Storage Overview',
+      storage_unreachable: "Recording is paused, the storage path can't be reached. Connect its disk or choose another storage path.",
       tab_cameras: 'Cameras',
       tab_overview: 'Overview',
       tab_storage: 'Storage',
@@ -3456,6 +3457,7 @@ export default {
         nvr_not_running: 'NVR plugin is not running. Start the NVR plugin to manage recordings.',
         not_available: 'Not available',
         disk_critical: 'Critical: disk space is running out. Recording is paused to prevent data loss.',
+        storage_unreachable: "Recording is paused, the storage path can't be reached. Connect its disk or choose another storage path.",
         disk_warning:
           'Warning: Disk space is below 8%. Old recordings are deleted automatically only with retention mode "Overwrite" and no storage limit set. Otherwise recording pauses when space runs out.',
         disk_small_volume: 'Storage volume is small. Recordings will rotate frequently to keep space free.',

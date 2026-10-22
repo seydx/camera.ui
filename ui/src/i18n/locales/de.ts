@@ -2391,6 +2391,7 @@ export default {
       status_stopped: 'Gestoppt',
       storage_not_available: 'Nicht verfügbar',
       storage_overview: 'Speicherübersicht',
+      storage_unreachable: 'Die Aufnahme ist pausiert, der Speicherpfad ist nicht erreichbar. Schließe die Platte an oder wähle einen anderen Speicherpfad.',
       tab_cameras: 'Kameras',
       tab_overview: 'Übersicht',
       tab_storage: 'Speicher',
@@ -3715,6 +3716,7 @@ export default {
       recordings: {
         nvr_not_running: 'NVR-Plugin ist nicht gestartet. Starten Sie das NVR-Plugin, um Aufnahmen zu verwalten.',
         disk_critical: 'Kritisch: Speicherplatz wird knapp. Aufnahme ist pausiert, um Datenverlust zu vermeiden.',
+        storage_unreachable: 'Die Aufnahme ist pausiert, der Speicherpfad ist nicht erreichbar. Schließe die Platte an oder wähle einen anderen Speicherpfad.',
         disk_warning:
           'Warnung: Speicherplatz unter 8%. Alte Aufnahmen werden nur mit Aufbewahrungsmodus "Overwrite" und ohne Speicherlimit automatisch gelöscht. Andernfalls pausiert die Aufnahme, wenn der Platz ausgeht.',
         disk_small_volume: 'Das Speichervolumen ist klein. Aufnahmen werden häufig rotiert, um Platz freizuhalten.',
