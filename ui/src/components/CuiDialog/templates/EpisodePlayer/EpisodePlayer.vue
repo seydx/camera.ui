@@ -402,6 +402,11 @@ const longPress = createLongPress({
     freezeAt(clientX, clientY);
     find.openView();
   },
+  onTouchTap: ({ clientX, clientY }) => {
+    if (!findArmed.value || panMoved()) return false;
+    freezeAt(clientX, clientY);
+    return true;
+  },
 });
 const showControl = computed(() => isHovered.value || initialHover.value);
 const showSpinner = computed(() => {
@@ -821,9 +826,12 @@ function onStageContextMenu(event: MouseEvent): void {
   if (canFind.value && (event as PointerEvent).pointerType === 'touch') event.preventDefault();
 }
 
+function panMoved(): boolean {
+  return Math.hypot(panValue.value.x - panAtPointerDown.x, panValue.value.y - panAtPointerDown.y) > 5;
+}
+
 function onStageClick(event: MouseEvent): void {
-  if (longPress.takeClick()) return;
-  if (Math.hypot(panValue.value.x - panAtPointerDown.x, panValue.value.y - panAtPointerDown.y) > 5) return;
+  if (longPress.takeClick() || panMoved()) return;
   if (findArmed.value) freezeAt(event.clientX, event.clientY);
 }
 

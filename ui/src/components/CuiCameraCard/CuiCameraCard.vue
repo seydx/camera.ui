@@ -1162,6 +1162,11 @@ const longPress = createLongPress({
     freezeAt(clientX, clientY);
     find?.openView();
   },
+  onTouchTap: ({ clientX, clientY }) => {
+    if (!findArmed.value || panMoved()) return false;
+    freezeAt(clientX, clientY);
+    return true;
+  },
 });
 
 const {
@@ -1684,11 +1689,12 @@ function onCardContextMenu(event: MouseEvent) {
   if (canFind.value && (event as PointerEvent).pointerType === 'touch') event.preventDefault();
 }
 
+function panMoved(): boolean {
+  return Math.hypot(panValue.value.x - panAtPointerDown.x, panValue.value.y - panAtPointerDown.y) > 5;
+}
+
 function onCardClick(event: MouseEvent) {
-  if (longPress.takeClick()) return;
-  const dx = panValue.value.x - panAtPointerDown.x;
-  const dy = panValue.value.y - panAtPointerDown.y;
-  if (Math.hypot(dx, dy) > 5) return;
+  if (longPress.takeClick() || panMoved()) return;
 
   if (findArmed.value) {
     freezeAt(event.clientX, event.clientY);

@@ -5,6 +5,8 @@ export interface LongPressPoint {
 
 export interface LongPressOptions {
   onPress: (point: LongPressPoint) => void;
+  // true when the tap was handled, the click after it is then swallowed
+  onTouchTap?: (point: LongPressPoint) => boolean;
   delayMs?: number;
   tolerancePx?: number;
 }
@@ -17,11 +19,11 @@ export interface LongPress {
   takeClick: () => boolean;
 }
 
-export function createLongPress({ onPress, delayMs = 400, tolerancePx = 10 }: LongPressOptions): LongPress {
+export function createLongPress({ onPress, onTouchTap, delayMs = 400, tolerancePx = 10 }: LongPressOptions): LongPress {
   const pointers = new Set<number>();
   let start: (LongPressPoint & { id: number }) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let pressed = false;
+  let clickTaken = false;
 
   function cancel(): void {
     clearTimeout(timer);
@@ -30,7 +32,7 @@ export function createLongPress({ onPress, delayMs = 400, tolerancePx = 10 }: Lo
   }
 
   function down(event: PointerEvent): void {
-    pressed = false;
+    clickTaken = false;
     if (event.button !== 0) return;
     // a lost pointerup must not block the next press
     if (event.isPrimary) pointers.clear();
@@ -43,7 +45,7 @@ export function createLongPress({ onPress, delayMs = 400, tolerancePx = 10 }: Lo
     timer = setTimeout(() => {
       timer = undefined;
       start = undefined;
-      pressed = true;
+      clickTaken = true;
       onPress(point);
     }, delayMs);
   }
@@ -55,13 +57,17 @@ export function createLongPress({ onPress, delayMs = 400, tolerancePx = 10 }: Lo
 
   function up(event: PointerEvent): void {
     pointers.delete(event.pointerId);
-    if (start?.id === event.pointerId) cancel();
+    if (start?.id !== event.pointerId) return;
+    const point = { clientX: event.clientX, clientY: event.clientY };
+    cancel();
+    // ios drops the click when the hover of a tap changes the page, a touch tap is taken here
+    if (event.type !== 'pointercancel' && event.pointerType === 'touch' && onTouchTap?.(point)) clickTaken = true;
   }
 
-  // the click that ends a long press is not a tap
+  // the click that ends a long press or a taken touch tap is no second tap
   function takeClick(): boolean {
-    const was = pressed;
-    pressed = false;
+    const was = clickTaken;
+    clickTaken = false;
     return was;
   }
 
