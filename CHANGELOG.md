@@ -2,6 +2,450 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0]
+
+- **[Docker](https://docs.cameraui.com/install/docker#updating) and [Proxmox](https://docs.cameraui.com/install/proxmox#updating): pull the new image and add `stop_grace_period: 30s` to the camera.ui service in your compose file.** On Proxmox the compose file is in `/opt/cameraui` inside the container. Without the new image an update that does not start is not rolled back. Without the setting Docker stops camera.ui after 10 seconds, even if cameras and plugins need longer to shut down.
+
+- **Home Assistant: update the [camera.ui apps](https://docs.cameraui.com/home-assistant/app#backups-and-updates) to 0.2.0 and the [integration](https://docs.cameraui.com/home-assistant/integration#install) to 0.5.0.** With the new apps an update that does not start is rolled back, and Home Assistant waits up to 30 seconds for camera.ui to shut down. The integration brings the Home Assistant fixes below and needs Home Assistant 2026.3 or newer, so update Home Assistant first.
+
+- **camera.ui as a service on Linux or macOS: [update the launcher](https://docs.cameraui.com/install/linux#updating-the-launcher) with `sudo npm install -g camera.ui`, then run `sudo cameraui reinstall` once.** It keeps the home folder, user and worker setting of the installed service. Until then an update that does not start is not rolled back, and stopping the service can cut off cameras and plugins while they shut down.
+
+- **Apple TV: the new app needs camera.ui 2.4.0 and the NVR plugin 1.6.0.** On an older server it shows which of the two to update instead of your cameras.
+
+- **Network that filters outgoing traffic: allow TCP port 7844 for [Cloudflare tunnels](https://docs.cameraui.com/remote/cloudflare).** camera.ui now runs every tunnel variant over TCP, and a tunnel that cannot reach Cloudflare there stays offline. `cloudflaredProtocol: auto` in `camera.ui.yaml`, or `CAMERA_UI_CLOUDFLARED_PROTOCOL=auto` in Docker, brings back the old QUIC connection.
+
+### Added
+
+- **Cameras and detection plugins on different machines are easier to spot.** On the Workers page, a warning icon marks each camera whose frames go over the network to a detection plugin on another machine, its tooltip names the plugin and that machine. The Detection table in Metrics shows that traffic in a new **Network** column.
+
+- **The detection benchmark shows how many detections the plugin works on at the same time**, in the new **In the plugin at once** row. At 1 the plugin takes one detection after the other, however many the **In flight** row shows.
+
+- **The mobile apps say when the server or the NVR plugin is too old for them.** A notice names the version the app needs and the one installed, and **Got it** hides it for those versions. Switching to an older instance in the browser shows it too.
+
+- **A server update that crashes on start is rolled back.** After three crashes the previous version starts again, and its log says which update failed and why.
+
+- **Workers follow the main server to a new address without a new pairing code.** In the same network they find it by themselves within a few minutes, also after a move to another machine. Elsewhere, set the new address on the worker and restart it. The worker connects only if the same main server answers there.
+
+- **The desktop app keeps the computer awake while it runs cameras or plugins as a worker.** **Keep Computer Awake** in the tray turns it off. If the computer sleeps anyway, the worker hands its work to the main server first and takes it back after waking.
+
+- **The desktop app takes its mode from the command line, without the picker.** `--mode=runtime` runs the server, `--mode=worker` with `--master` and `--pairing-code` joins a main server, and `--mode=viewer-direct` with `--server` or `--mode=viewer-cloud` connects as a viewer. Started that way while it runs, the app switches over.
+
+- **The Workers page shows what each worker is doing and where cameras and plugins run right now.** Each worker shows its state with the reason, when the main server takes over its work and which update it installs. The camera and plugin tables show where each one runs at the moment, offer only workers that can take it and apply changes when you click **Save**. Moving a plugin asks first, because files it keeps on the old machine, like downloaded models, stay there.
+
+- **A new pairing code shows the main server's fingerprint**, which the worker logs when it pairs, and how long the code stays valid. If workers can't connect at all, for example because their port is taken, the Workers page says why.
+
+- **Cameras and plugins can stay on their worker.** Turn off **Fallback** next to an assignment, and they wait for the worker instead of running on the main server while it is away. Useful when the main server could not carry the load.
+
+- **Restoring a backup shows what it contains before anything changes.** The summary names the date, version, cameras, plugins and the accounts to sign in with afterwards, and the restore starts only after you confirm. The window then shows each plugin as it installs. Large archives upload in parts and continue after a dropped connection, and archives from the backup scheduler restore on the server without a download.
+
+- **A restore can be undone for 7 days** with **Undo restore** under Settings > Backup > **Last restore**. If the restored setup fails to start three times, camera.ui puts back the previous one on its own. Plugins the restore could not install can be retried or discarded there too.
+
+- **A restore asks whether this server replaces the old one or runs next to it.** A move keeps the identity of the backup, so apps, the Apple TV and workers keep trusting the server. A copy gets its own identity and none of the old server's sessions, workers or cloud registration. Backups from 2.3 have no certificate authority. After a move from such a backup, install the certificate from Settings > System again on devices that trusted the old server.
+
+- **After a restore, sign the server in to cameraui.com again** under Settings > Remote Access, then reconnect a licensed NVR in its settings. Remote access and the license stay with the same server, and after a move or an undo the NVR keeps recording for up to 14 days until you reconnect.
+
+- **A server moves to a new machine with a move code.** Create the code on the old server under Settings > Backup and enter it on the new one, on the welcome screen or under Settings > Backup. The new server fetches the backup over the network, and the old one keeps its cameras, plugins and workers stopped until you choose **Run here again** there or discard the move on the new server.
+
+- **`cameraui backup` and `cameraui restore` work from the command line** on the machine the server runs on. A backup signs in with an admin API token or account, a restore with an admin account, and it shows the same summary and asks before anything changes. Both come with the updated `camera.ui` launcher, on bare metal update it with `npm install -g camera.ui`.
+
+- **Scheduled backups catch up and report failures.** A run missed while the server was off follows after the next start, and a failed run sends a notification to admins that opens the backup page. In a destination of your own each server writes into its own subfolder, and a share that is not mounted stays empty instead of filling its mount point.
+
+- **Admins get a notification when a worker goes offline, remote access is down or an update fails.** A worker with cameras or plugins counts after two minutes offline, remote access after ten minutes down, and both report again when they are back. Tapping opens the Workers page, Settings > Remote Access or the Updates page, and each one has its own switch under Settings > Notifications.
+
+- **Live view plays MJPEG cameras.** The browser, the mobile apps and the Apple TV app show the picture as the camera sends it, without transcoding, and play the camera's sound alongside.
+
+- **MJPEG cameras record.** The pictures are stored as the camera sends them and play back in the browser, the mobile apps and the Apple TV app. That needs several times the storage of H.264, pictures over 2040 pixels wide or high are cropped, and exports come out as H.264.
+
+- **The browser can sign in through Authelia, Authentik, oauth2-proxy or another login proxy.** camera.ui takes the username from a header such as `Remote-User` and skips its own login form. The account has to exist in camera.ui with exactly that name. It is set up with a `proxyAuth` block in `camera.ui.yaml`, the docs page Sign-in through a proxy has the details.
+
+- **An event can be deleted from its card, with or without its video.** **Delete event** removes only the event. **Delete recording** also removes the video around it by the minute, so other events in those minutes go too. Both are for admins.
+
+- **Episodes also form without an AI provider.** They get a title with the places and the recognized names instead of a story, and need a face or plate recognized on both cameras or a walk, on the floor plan or learned, that fits the time in between.
+
+- **Combine several picks in one search.** Pick people or vehicles in several pictures, also on different tiles in Camview, and Find lists the matches of all of them, each card marked with the pick it came from. **Show all in Recordings** takes every pick along.
+
+- **Press and hold a picture to find what is in it.** With a finger or the mouse, it freezes the picture from any view and opens Find. **Continue** on the picture or Esc lets it play on, F opens and closes Find.
+
+- **Detections below the picture and on phones.** The timeline bar below the picture and in fullscreen shows Detections as a row of cards, switched at its top left. On phones, swipe sideways on the timeline or tap the dots at its bottom to change the view.
+
+- **Text alerts are listed under Settings > Assistant.** The menu of each one pauses or deletes it, or picks the model that checks its pictures. Needs the NVR plugin update.
+
+### Changed
+
+- **Find this object lives in the timeline.** Its matches show in a third timeline view, **Find**, next to Timeline and Detections, instead of below or beside the player. While Find is open, a tap on a picture freezes it and picks the person or vehicle there, outlines show what else can be picked, and every further tap adds a pick. Scrubbing moves a frozen picture to the new moment. In Camview the grid's timeline or F opens Find, and tiles of cameras without object detection say so.
+
+- **Settings with a switch look the same on every page**, in the settings, the camera drawer, plugin settings, dialogs and automations. The titles are easier to read in dark mode.
+
+- **Phones in landscape use the height better.** The camera page shows the timeline beside the camera and the recordings in the sheet, Camview puts the timeline beside the grid, and the Assistant hides its suggestions so the greeting and the input fit.
+
+- **The interface reacts faster.** Scrolling recordings and training pictures, scrubbing the timeline, opening and swiping notifications, hovering camera cards, zooming into a live picture and dragging zones take far less work in the browser, which shows most on phones and slower computers. Faces opens large groups faster, and a long assistant answer no longer slows down while it arrives.
+
+- **The timeline strip no longer covers the picture.** On mid-size screens it opens below the picture, which gets a little smaller when space runs short, and follows the light or dark theme there. In fullscreen it stays over the picture.
+
+- **The assistant costs less with Claude.** Claude now keeps the conversation and the tool results of an answer in its cache too, not only the instructions, so every further step of an answer is cheaper. The cost estimate includes what writing that cache costs.
+
+- **The assistant says in plain words why an answer failed**, for example that the provider is overloaded, the rate limit is reached or the API key was rejected, instead of showing the provider's raw error.
+
+- **The Faces view shows on a person's card when pictures need a look.** Without opening the person, a badge and a count flag unclear pictures, copies, pictures filed under two people and pictures recognition can't link to the others, in red when one of them hurts recognition. Fewer than the recommended 10 pictures turn the picture count yellow.
+
+- **A person in the Faces view opens right away.** Their pictures follow in batches instead of all at once, and pictures that are still loading show a spinner.
+
+- **Correcting a person warns about the picture.** The dialog shows how sure the detection was and says when the face is unclear, only partly visible or already filed under someone else. An unclear face only gets its name changed and no longer trains the person.
+
+- **Hover previews start sooner.** The first picture shows as soon as it arrives and the rest follows while it plays. Episode previews load all cameras at once, and on a phone the preview starts right after the long press. Cameras that record only a 4K stream show fewer pictures and load faster.
+
+- **Pictures on recordings, the home page and the timeline show sooner.** A card loads its cover first and the rest after it, and an open page no longer downloads pictures of events it does not show.
+
+- **The detection trace opens at the chosen moment right away and steps through frames without waiting.** The next frames load ahead and the frame strip fills faster. The episode trace loads its details and pictures at the same time.
+
+- **Camview and the Home Assistant view card follow each camera's activity mode.** A camera set to Standby or Activity no longer streams nonstop there. The Camview control still sets one mode for the whole view and switches back to **Per camera**, and the view card has an `activity_mode` option for the same.
+
+- **Standby cameras stay asleep when you open them.** The stream starts when you click the video and stops a few seconds after the picture appears or after your last click. Talking, PTZ, fullscreen, picture-in-picture and open player menus keep it running.
+
+- **Battery cameras added through a plugin can sleep.** They start without hot mode, take new pictures only on request, open live view on a tap and record in ad-hoc mode. Doorbells are added as doorbells. Cameras you already added keep their settings.
+
+- **The training editor can hide all boxes.** `H` or the eye button hides every box and outline so the picture underneath shows. While you draw or move a box, the other boxes and labels fade out.
+
+- **camera.ui loads faster on slow connections.** The first page downloads about a fifth of what it did, and over remote access event lists and timelines load in less than half the time. Data over a Cloudflare tunnel is now compressed as well, an unchanged camera picture is not downloaded again after a reconnect, live view starts sooner, and after an update the browser loads only the parts of the interface that changed.
+
+- **On a slow connection the app stays responsive while the home page, hover previews and the detection trace load their pictures.** Buttons and other views no longer wait for them.
+
+- **Object detection needs less CPU per camera.** Camera pages in the browser also use less CPU and data while cameras detect.
+
+- **Snapshots arrive sooner.** Cameras whose plugin takes no pictures itself, such as Tuya, ONVIF and Wyze, get theirs up to 3.5 s sooner. Viewers asking at the same time share one picture instead of waiting in line. On a camera with several sources, a slow one no longer holds up the snapshots of the others.
+
+- **Update all skips the server when a worker fails to update**, so the worker that failed stays connected, and the plugins it stopped for the server start again. Update all and updating the server on its own name the workers that would no longer connect and ask first, Home Assistant shows that reason and leaves the server as it is. The Updates page says when a server update needs a newer Node.js, and a worker on an older Node.js refuses the update and says why.
+
+- **A server update that does not fit on the disk stops before it starts.** It needs about 2 GB free, on workers too, and the message says how much is left. Plugins keep running. A disk that fills up during the install anyway is named in the error instead of only "npm install failed".
+
+- **A camera's Plugins tab shows which plugins and sensors are not running.** They are greyed out, and the tooltip says why and on which machine.
+
+- **Worker updates show how they ended.** The Updates page counts an update as done once the worker runs the new version and shows why one failed or was rolled back, also when the main server restarted in between. A worker can't be restarted while it updates.
+
+- **Workers start faster.** A worker loads only its own part of camera.ui. On Windows the first start after an install or update took close to a minute and now takes about 12 seconds.
+
+- **Updating a plugin on a worker costs one short restart.** The worker installs the new version next to the running one and switches once it is ready. Python packages that did not change stay installed.
+
+- **Home Assistant users without admin rights get their own camera.ui account in the panel.** Only Home Assistant admins are signed in as the master. Everyone else gets an account with the user role named `ha-` plus their Home Assistant username, which is signed out once Home Assistant removes or disables that user.
+
+- **Unlimited viewers on a share means up to 50 at a time.** Anyone beyond that sees **Maximum number of viewers reached** and gets in once a seat is free.
+
+- **The Apple TV app checks the server's certificate.** It accepts the certificate it saw at sign-in, certificates from the server's own certificate authority and publicly trusted ones, and refuses any other. The status then shows Certificate changed.
+
+- **The desktop app trusts your server's certificate authority instead of a single certificate**, so a renewed server certificate no longer brings the warning back. Other websites open in your browser, and on macOS closing the window only hides it, so desktop notifications keep coming until you quit.
+
+- **On phones and tablets, live streams stop as soon as the app or tab goes to the background**, picture-in-picture excepted. A desktop tab keeps them for 30 seconds.
+
+- **The mobile apps keep your sign-in only in the device's secure storage.**
+
+- **Live view stops for cameras you scroll past.** A player out of view for about 10 seconds stops, keeps its last picture and starts again when you scroll back. Picture-in-picture, talking, PTZ, fullscreen and open player menus keep it running.
+
+- **Turning off cloud access also stops share links.** The share dialog says so while cloud access is off.
+
+- **camera.ui takes a visitor's address from a reverse proxy only when the proxy runs on the same machine or is listed under [`trustedProxies`](https://docs.cameraui.com/remote/reverse-proxy#proxy-on-another-machine).** Before, any visitor could hand camera.ui a made-up address for the session lists and the share code limit. Add a proxy on another machine in `camera.ui.yaml` or as `CAMERA_UI_TRUSTED_PROXIES` in Docker, otherwise every visitor shows up with the proxy's address.
+
+- **Each signed-in browser, app or API token can keep up to 64 live streams and about 32 tabs open at once.** Past that, new connections wait and retry until others close, and connections of devices that stopped answering are closed to make room. Home Assistant dashboards share the limit of the integration's token, a viewer token gives them a second one.
+
+- **Server addresses no longer lists Podman, VirtualBox, VMware or Kubernetes networks**, and the server certificate leaves them out too. VPN addresses such as WireGuard stay.
+
+- **A new server address is in the server certificate right away.** Until a restart, devices on that address got a certificate warning. A renewed certificate also applies without a restart.
+
+- **The mobile apps open faster after the phone closed them.** They go straight to your last server instead of loading the cloud page first, and a tapped notification for that server opens right away. Replies over the internet arrive compressed.
+
+- **The actions on a camera push are reworked.** Two instead of three: mute this camera or all cameras on this phone for an hour. Needs the NVR plugin 1.6.0.
+
+- **Alerts about a cloud sign-in, a full disk or the license open the page where you fix it.** The server's cloud sign-in alert opens Settings > Remote Access, the NVR plugin's alerts open Settings > Recordings. Needs the NVR plugin 1.6.0.
+
+- **Settings > Recordings and Metrics say when recording paused because the storage path can't be reached.** Needs the NVR plugin 1.6.0.
+
+- **The server needs less CPU.** It collects system metrics only while someone has Metrics open, preloaded cameras cost less, watching a camera with two-way audio from several places no longer starts an audio converter, cameras with AAC audio no longer get it converted to AAC again, and most MJPEG cameras no longer have every picture encoded again for detection or HomeKit.
+
+- **The camera.ui panel and the dashboard cards in Home Assistant load faster on slow connections.** Home Assistant passes camera.ui's compressed replies through instead of unpacking them. The cards download about a quarter of what they did.
+
+- **Backups are encrypted** with the backup key of their server, downloaded and scheduled ones alike. The same server restores them without asking, another one asks for the key or the key file. Unencrypted `.tar.gz` archives restore as before.
+
+- **The backup download shows its progress**, and the Backup page and Settings > System say when the last backup was made.
+
+- **A restore installs each plugin in a version that runs on this camera.ui.** The summary names plugins that get another version, cannot be installed, do not run on this system or ran on a worker, and the folders the backup left out with their size.
+
+- **The Apple TV app needs much less bandwidth.** The Home preview plays the camera's low-resolution stream, and tiles without sound fetch no audio. Event pictures load only the one on screen, a muted or fast recording skips its sound, the live stream rests while you watch a recording, and today's timeline updates without reloading the whole day.
+
+- **New Proxmox containers get 32 GB of disk instead of 16 GB, and their compose file already sets `stop_grace_period`.**
+
+- **Smaller changes in the interface.** Playing through Detections switches to live after the newest detection, text alert hits come only as a push, and the download of a long event holds the 10 minutes around the selected frame. Plus many small improvements, on phones too.
+
+### Fixed
+
+- **Cameras that detect motion and objects themselves need much less CPU and GPU during events.** Without a detection plugin camera.ui no longer decodes their video for nothing, and with an object assist the video analysis stops when the event ends instead of running until the next one. The event picture comes from the smaller stream when it is wide enough, so an 8K camera no longer decodes its main stream for it.
+
+- **After camera.ui starts, every camera records its events.** A camera that came up in the same moment as the NVR plugin sent it no events, so with event or ad-hoc recording it recorded nothing and had no events in Recordings until the next restart. Zones and detection settings saved while a camera starts now apply too.
+
+- **Events no longer run for hours after the person, animal or vehicle has left.** When the analysis skipped a few seconds right as it walked out of the picture, the event stayed open and kept recording.
+
+- **The assistant shows a cost for Claude Sonnet 5.5, Claude Haiku 5.5, GPT-6.1 Sol and GPT Chat Latest**, with the higher Haiku 5.5 price for very long prompts. A Pro or Mini model without its own price no longer shows the price of the plain model.
+
+- **An assistant conversation that grew too long for the model starts over with less history** instead of ending with an error.
+
+- **The assistant no longer gets more expensive after it opens a page or you answer a confirmation.** The rest of that answer cost up to two thirds more than a normal step.
+
+- **The assistant no longer stops with an error on newer Claude models like Haiku 5.5.** When Claude wrote a short note before it used a tool, the next step was rejected and the answer broke off.
+
+- **Settings > Assistant shows the tools while shell commands are off.** The list stayed empty with "No tools registered yet."
+
+- **Pushes from a scheduled prompt or Ask the assistant fit on the lock screen.** As **Push notification** the answer comes as two short sentences without markdown. With **Push and conversation** the push carries the opening sentence and the full answer is in the conversation.
+
+- **Verifying a training frame no longer fails when a detection reaches past the picture edge.** Such boxes are now cut at the edge, and frames the cloud refused to take for it can be submitted again.
+
+- **The training editor shows the boxes of the same camera's previous image**, so switching between cameras no longer mixes them up. Where an unsure detection matched one of those boxes, both showed and **Take over all of them** added the object twice.
+
+- **The episode timeline stops while the video loads.** It ran on over a black picture while a camera was still loading, at the switch to the next moment or after a stall. A camera with no recording there or failed playback now says so instead of staying black.
+
+- **Scrubbing in an episode lands where you let go.** After a switch to the next moment it could run on past that point, and a cancelled touch jumped back to the start.
+
+- **Pausing no longer moves the time back** in episodes and the detection trace, and after skipping 30 s in a recording the timeline waits for the picture.
+
+- **HomeKit recordings from the desktop app have sound, and the HomeKit plugin no longer takes about 1.3 GB of memory per camera.** This hit cameras whose audio camera.ui converts. Live audio in Home no longer plays as noise either.
+
+- **The timeline shows every event in busy hours.** Zoomed out on a wide screen it no longer reloads all the time.
+
+- **AI search shows every match, and the filters narrow it.** Scrolling loads further matches. A segment is searched by the closest view of each person instead of the first, often distant one, and a second person is no longer left out, also when they join later or one of them stands still.
+
+- **Older episodes load while scrolling**, and episode links from pushes and the assistant open episodes of any age.
+
+- **The recordings search on a camera page waits until you stop typing.** Its date and confidence filters also find older events.
+
+- **Scrubbing on a slow connection no longer freezes.** Pictures follow the timeline while you drag and the last one shows right after you let go, in the multi-camera view too. At the deepest zoom a lighter picture stands in while you drag.
+
+- **The timeline follows a new drag right after you let go.** If you dragged again while the recording was still loading, the time stood still and jumped back to where you had let go.
+
+- **Scrubbing quickly into the past no longer shows "No recording" while the timeline is still loading.** The picture shows a spinner until the recording is there, and "No recording" only comes up where there is none.
+
+- **Enlarging a camera in Camview and going back no longer throws Detections and scrubbing off.** The strip stays on the same moment instead of jumping to another card, the timeline no longer reloads, and the other tiles keep their picture instead of going live.
+
+- **In Camview the timeline keeps running through stretches without recordings.** Before, it stopped when playback started where none of the cameras had recorded.
+
+- **Recordings play their sound on iPhone and iPad**, in Safari and in the Home Assistant app, also with the ringer switch off.
+
+- **The timeline no longer misses events while one is just starting.** Now and then, in Camview for example, it stopped loading the events around that moment.
+
+- **The timeline no longer sticks and shakes at the widest zoom.** Scrolling back into the past held at one spot and shook instead of moving on, and scrubbing there felt sluggish.
+
+- **The Home Assistant media browser lists every recording of a day**, also when the day starts during a running event.
+
+- **No more trace and search buttons that fail for users.** Accounts without admin rights no longer see the detection and episode trace, Find this object or Search by picture.
+
+- **Accounts without admin rights see detections and sensor states.** Detection boxes and icons in the live view, sensor shortcuts and the floor plan show them too. Switching sensors stays with admins, and on a phone only admins see a camera's Shares tab.
+
+- **The live view, camera pictures and sensor shortcuts no longer stay empty or stuck until a reload** when loading a camera or its sensors failed once, on a shaky connection say. They fill in on their own, cards on the home page get new pictures again, and switching cameras no longer leaves sensor updates running in the background.
+
+- **Episodes without footage no longer pile up at the end of Recordings.** With **Only with recording** on they are hidden like events without footage, and the count matches the list.
+
+- **The activity mode from a camera's settings now applies.** The camera page and the Home Assistant camera card start in it, and small previews stay on. In activity mode the first motion starts the stream.
+
+- **Cameras in activity mode start on motion again in Camview with detections turned off**, and while you rearrange the view.
+
+- **Accounts with the user role no longer receive camera logins** and can only open the live streams of your cameras. Stream addresses and internal server functions are only reachable by the parts of camera.ui that need them. Download links only serve exports, notification pictures and clips, never your recordings or camera.ui's own files.
+
+- **Paired workers get only what they need.** They can no longer use the admin terminal or reach remote access, casting and notifications, and they are kept apart from each other.
+
+- **Live view works for cameras with &, #, + or % in their name.**
+
+- **Recordings on a Standby camera are no longer covered by "Stream paused"**, and their controls and timeline show again.
+
+- **Restarting or updating a plugin no longer holds up detection for up to 30 seconds.** Detections already under way finish before it stops, and cameras and sensors respond again as soon as it is back.
+
+- **Views and commands that need a stopped plugin, or a feature the plugin lacks, show an error within seconds.** A light or switch command to a stopped plugin fails after about 3.5 s instead of up to 15 s. A command that fails on the device is no longer sent up to four times.
+
+- **The app no longer reconnects during long bursts of updates on a slow connection.** What you open or click while the connection drops for a moment goes through once it is back, instead of failing after a wait. A change you make while camera.ui has no connection to the server at all fails right away with "Not connected. Nothing was sent." instead of going out later, possibly to another server after a switch.
+
+- **The "Syncing..." banner no longer stays after you return to a tab.** It could stay for many minutes or until a reload, although the connection was fine again.
+
+- **The browser shows the update notice when camera.ui opens on a page other than the start page.** That happens from a bookmark or a notification, for example, and until now only the start page looked for a new version.
+
+- **Live view no longer restarts every few seconds on a slow remote connection.** This hit cameras with a long keyframe interval or a high bitrate, also after falling back from WebRTC. Only a live view whose connection cannot keep up at all is stopped, after about 15 seconds.
+
+- **A stalled or sleeping browser or app no longer fills up the server's memory.** One that falls too far behind is disconnected and reconnects. One that stops answering, like a phone gone to sleep with camera.ui open, is dropped after about a minute instead of six minutes.
+
+- **Workers no longer drop frames or lose their link to the main server under heavy frame traffic.** If that link crashes on the main server, workers reconnect within about a second instead of about four. Pairing or removing a worker also interrupts the others for a shorter time. Plugins on the workers then catch up on sensor and camera states that changed in between, and send the changes of their own sensors that didn't get through.
+
+- **A removed worker that keeps running no longer floods the logs.** It waits quietly for a new pairing code. One that was offline during the removal logs the rejection once and then about one line a minute.
+
+- **A worker no longer stops when it can't pair.** One that starts before the main server keeps trying until it is reachable. Without a code, or with a code the main server refused, it keeps running, stays healthy in Docker and pairs once a new code is in `camera.ui.yaml`. A code left in compose or the Home Assistant app options after pairing is never sent again.
+
+- **A repeated log line that is summed up later now says when it last came.** A connection error from before a reconnect no longer looks like a new one.
+
+- **Plugins and cameras on a worker keep running when the main server restarts, updates or crashes.** Once it is back, they carry on without a restart and detection keeps its loaded models. Older versions of Go plugins like Reolink restart once instead. If the main server stays away, the worker stops them after about 20 seconds, and the main server runs them itself only after 25 seconds, so nothing runs twice.
+
+- **Plugin settings saved on a worker while the main server is away are no longer lost.** The main server takes them once it is back, also when the plugin was stopped in between. If the plugin saved newer settings on another machine meanwhile, the older change is dropped and the log says so.
+
+- **Two machines that share one worker's identity no longer run the same plugins and cameras.** This happens with a copied worker folder or a restored backup. The main server stops the work on both and logs which worker it is. Remove that worker and pair one of them again. While one copy is online, the main server refuses to pair another, unless the pairing code names that worker under **Replaces**.
+
+- **Moving a plugin or camera to another machine no longer runs it twice for a moment.** The new machine starts it once the old one has stopped it.
+
+- **Reolink cameras and Eufy cameras over P2P show video when their plugin runs on a worker.** Until now they connected but had no live view, recording or detection. The worker sends their video to the main server, nothing has to be opened on the worker for it.
+
+- **Stopping, restarting or updating camera.ui lets cameras and plugins finish first.** They get a few seconds to save, and nothing they started keeps running after the server is gone, also after a crash. The log file now keeps its last lines before the stop.
+
+- **camera.ui installed as a Windows service starts again.** The service ran, but the server in it never came up.
+
+- **A plugin install on a worker that fails or gets cut off keeps the previous version running**, and uninstalling a plugin removes it from its worker as well.
+
+- **Python plugins on a worker no longer start over while they install their packages.** A first start with large packages was cut off after 45 seconds and began again.
+
+- **A Python plugin whose setup failed sets itself up again on the next start.** A half-built environment counted as installed, and the plugin kept failing.
+
+- **Installing plugins and updating camera.ui work again on Windows without the desktop app.** On the main server and on workers npm failed right at the start.
+
+- **Installing or restarting a worker no longer waits five minutes for a UI it doesn't have.** It finishes once the worker is connected to the main server, or says that the pairing snippet is still missing. `cameraui status` shows whether the worker runs and reaches the main server.
+
+- **Workers recover from more problems on their own.** A worker notices a dead link to the main server within about 15 seconds instead of up to 4 minutes, keeps running when its connection service crashes and no longer goes offline while it unpacks a large plugin. A plugin or camera that keeps crashing there restarts after 2, 5 and 10 seconds, up to once a minute, and the desktop app no longer gives up on a worker after five failed starts.
+
+- **Events no longer lose parts, faces or pictures when the NVR plugin is slow or restarts quickly during an event.**
+
+- **Event pictures of Tuya, ONVIF, Wyze and other cameras whose plugin takes no pictures itself show the moment of the event**, not up to 3.5 s later. After a quiet period, a new event on any camera no longer gets a picture from minutes earlier.
+
+- **A face too small to recognize no longer shows the name of someone seen earlier in the same spot.** Faces far from the camera could pick up the name of a person who had stood there minutes before, even in an earlier event.
+
+- **One person's profile picture no longer gives other people that name.** A strong profile or a view from above among someone's pictures can look more like other people's profiles than like that person, and faces of others got the name. Such a picture stays with the person, the Faces view marks it, and recognition leaves it out.
+
+- **Face names stay with the right person.** When two people are close together, a name no longer jumps from one to the other, and after people cross or the camera loses sight of someone for a moment, it no longer stays on the wrong person. Until a new picture of the face confirms the name, it is hidden.
+
+- **Restoring an ignored face brings it back.** It shows up again under Unknown Faces instead of vanishing. Needs the NVR plugin update.
+
+- **An event shows each person once.** Someone the camera keeps losing and finding again no longer fills the card with a row of unknown faces and a count like +20.
+
+- **A segment ends when the person was last seen.** After a recognized face it ran on for about five more seconds, with a classifier plugin (bird species, for example) until the motion ended. A species named earlier no longer shows up again in later segments of the same event.
+
+- **People moving around in one place stay in the event.** Someone who keeps leaving their spot and coming back counts as moving, small movements while sitting or standing do not, and the event no longer breaks into pieces. When people walk out of the picture, the event ends with them instead of running on for up to a minute.
+
+- **A parked car no longer keeps an event running for minutes.** When the camera lost it for a moment and found it again slightly off, it counted as a second car on the move. In the same way someone moving around in one place or getting up after a long sit stays the same person instead of arriving again.
+
+- **People far from the camera disappear less often.** Detection no longer checks the whole picture on a fixed rhythm, which lost small people for a moment about once a second. It checks the whole picture when movement starts, after a PTZ move, and when the camera itself reports motion or an object.
+
+- **Lines no longer report a crossing for something standing on them.** A parked car or a false detection at night could trigger a line while it stood still. A crossing now counts once the object is clearly on the other side.
+
+- **Event pictures and snapshots no longer come from a damaged frame.** After a lost packet they could show a smeared or grey picture.
+
+- **The iOS and Apple TV apps no longer drop their connection when several large replies arrive at once**, while scrubbing several cameras for example.
+
+- **Signing out a device takes effect at once.** A device signed out from the session list, by Logout all, by a password change or by deleting its account or API token loses its open connections and its live view right away. Taking admin rights away also applies at once.
+
+- **Shared camera links keep playing and stop on time.** The viewer reconnects by itself, several people on one link no longer cut each other off, and picture-in-picture keeps running when the recipient switches away. An expired or revoked share now ends at once instead of up to ten minutes later, and a wrong code, an ended share and a full share each get their own message.
+
+- **A Cloudflare tunnel with a wrong token no longer restarts forever.** Settings > Remote Access shows why the tunnel failed, and restarts after a crash slow down step by step. A cloudflared `config.yml` on the host no longer takes over Quick and token tunnels.
+
+- **Remote access starts even when the network blocks Google's push service.** Tunnels and the custom domain stayed off, and signing in to cameraui.com could hang.
+
+- **A custom domain reaches the apps as soon as its name resolves publicly.** It stayed unused until a restart when camera.ui started before the internet connection or the reverse proxy, or behind a router without hairpin NAT.
+
+- **camera.ui Cloud comes back faster after the server's internet connection drops.** The server reconnects within seconds, apps no longer wait on a tunnel that has died, and remote access starts right after a restart.
+
+- **The server keeps its certificate authority when its certificate is renewed**, so devices that installed camera.ui's certificate keep trusting it. The server certificate is renewed 30 days before it expires.
+
+- **The live view says when a stream fails instead of spinning.** The player shows the reason, a frozen picture gets a spinner and reconnects after 15 seconds, and failed streams retry with growing pauses.
+
+- **Live view over MSE no longer freezes on cameras with a long keyframe interval.** Such cameras lost up to three quarters of their frames and stood still for seconds at a time.
+
+- **Live streams restart right after the computer wakes or the network changes**, and live view in the Home Assistant panel and over slow remote connections no longer hangs on connecting.
+
+- **Talking through a camera sounds clean while others watch.** Silent viewers pulled the voice down and distorted it, and on cameras with two-way audio a new viewer no longer interrupts the picture for everyone.
+
+- **camera.ui keeps track of its connection in every case.** After the server turned down a request it stopped noticing drops, a device whose clock is off renewed its session several times a second, and a device signed out from elsewhere kept retrying instead of showing the sign-in page.
+
+- **Recordings keep playing after a pause or a connection drop.** Resuming after a long pause, a slow first start and a short network drop continue at the right spot, and a paused recording no longer starts by itself.
+
+- **Two people editing the floor plan no longer overwrite each other unnoticed.** camera.ui shows when the plan changed on another device and asks before saving over it.
+
+- **Plugin settings no longer spin for minutes when a plugin is slow.** They show the error at once and fill in when the plugin answers. The admin terminal survives a short connection drop without opening a second shell.
+
+- **camera.ui offers the reload after an update on plain http or with an untrusted certificate too**, and opening camera.ui through cloud.cameraui.com no longer leaves a blank page when the cloud is slow to answer.
+
+- **Updates no longer leave the old interface files behind**, about 7 MB per release, and a restart no longer writes them all again.
+
+- **The desktop app keeps its connection while minimized, after sleep and when the server is away.** It no longer reconnects every few minutes in the tray, reconnects at once after sleep, and shows an offline page that reloads by itself instead of a blank window.
+
+- **The mobile apps switch to the direct connection when you get home**, also after moving between Wi-Fi networks, turning on a VPN to your home network or reopening the app. Downloads and uploads in the apps arrive complete, and the iOS app connects to servers over plain http by name. A reverse proxy entered as [Local address](https://docs.cameraui.com/remote/reverse-proxy#telling-camera-ui-about-the-address) has to let `OPTIONS` requests and camera.ui's `Access-Control-*` headers through for that.
+
+- **Large exports and backups no longer close the iOS and Android apps at home.** Over the local network the apps write the file in small pieces instead of holding all of it in memory, and downloaded files no longer pile up in the phone's storage. In the browser, exports and backups start in the download bar right away. Cancelling the share sheet no longer shows an error.
+
+- **A camera page on an iPhone or iPad no longer slides down after you turn the device or switch apps.** An empty band showed at the top and the video went black, in the Home Assistant app too.
+
+- **The desktop app on Linux no longer waits without a window.** It hung on its splash screen when it ran from an unpacked AppImage or folder, and on Wayland desktops without graphics acceleration, such as GNOME in a virtual machine, the first start often never showed the picker for how to use the app.
+
+- **The desktop app no longer brings back the old mode when you switch while it is still starting.** The picker stays open, and no error about the old connection shows up half a minute later.
+
+- **The desktop app asks again when a server certificate you trusted earlier has expired**, instead of accepting it without a word.
+
+- **The Android app refuses a server certificate that was issued for another address.** At home it accepted any certificate from your server's certificate authority.
+
+- **The Top Shelf of the Apple TV app fills in when the saved server address does not answer**, and its pictures no longer pile up.
+
+- **Home Assistant no longer misses the end of a detection when the connection to camera.ui drops**, and the camera.ui cards keep working while camera.ui is offline or restarting. The panel keeps working after a password change or Logout all.
+
+- **Two camera.ui servers in one Home Assistant no longer mix up their entities.** Connection changes and new sensors of one server showed up on the other.
+
+- **Home Assistant backups no longer contain camera.ui's own backups.** The Home Assistant app leaves out scheduled camera.ui archives and unfinished restore uploads.
+
+- **The camera.ui worker app in Home Assistant no longer starts its own mDNS service.** Next to the camera.ui app on the same machine both kept renaming their host name. Turn on **Internal mDNS** in its options only if a plugin on that worker needs it.
+
+- **The Apple TV app recovers from network drops and shows Signed out when the server no longer accepts its sign-in.** Playback continues where it stopped, a connection that died silently is noticed within a minute, and at home the app keeps the local address.
+
+- **A Cloudflare tunnel no longer freezes for all remote viewers when one of them stops reading**, a locked phone with several live tiles open for example. It also carries about twice as much data at once.
+
+- **A broken named Cloudflare tunnel no longer interrupts remote access every ten minutes.** camera.ui still covers it with a Quick Tunnel and retries your tunnel after ten minutes, then less and less often, up to every four hours.
+
+- **Signing out of your camera.ui account on a device also ends its cloud connection to your server**, and so does losing access to a shared server. The mobile apps then go back to the camera.ui Cloud sign-in or server list instead of trying to reconnect.
+
+- **The desktop app stays on the page you had open when its server restarts.**
+
+- **Logged in users and Active sessions no longer list sign-ins that have run out**, and the iOS app keeps one sign-in per device. Each reinstall of the app used to leave the old sign-in in the list for 90 days.
+
+- **Clips in the Home Assistant media browser start sooner and keep playing for everyone.** Seeking in one no longer stops the export for all other viewers, an exported clip plays without asking camera.ui again, and on days with more than 600 events the older clips play too. Live video through Home Assistant needs less CPU.
+
+- **The assistant can delete things such as a worker.** The request failed with "Body cannot be empty".
+
+- **Workers connect reliably to camera.ui on a Mac.** camera.ui could pick an internal port that another app already used, and workers then could not connect until the next restart.
+
+- **`cameraui --worker install` works with only the pairing snippet in `camera.ui.yaml`.** Without a `port` line in the file, the service install stopped with an error.
+
+- **`sudo cameraui install --user <name>` works when that user does not exist yet.** The home folder ended up under `/root` and the service restarted over and over.
+
+- **A worker without a name in `camera.ui.yaml` pairs under its computer's name.** The main server refused it and the pairing code was used up.
+
+- **The desktop app can be paired as a worker when the main server's address has no port.** It tried the wrong port and the pairing failed.
+
+- **Automation webhooks and geofence calls without a body start their automation.** camera.ui answered them with 400, and so did a worker update from the assistant.
+
+- **Restoring a backup no longer deletes recordings.** Recordings in the default folder and every other folder with a `.backupignore` stay as they are.
+
+- **Restoring a backup from the setup screen restarts the server.** Nothing happened until a manual restart, so it looked like the upload had failed.
+
+- **Cameras survive a restore while their plugin is still being installed.** A restore on a fresh install deleted one camera per plugin, and a plugin that failed to install took the HomeKit and detection settings of its cameras with it. A failed plugin is now retried at every start.
+
+- **Uninstalling a plugin removes all of its cameras.** Only the first one went, the others stayed behind without a plugin. Disabling a plugin no longer deletes one of its cameras at every start.
+
+- **A backup from a newer camera.ui or with a damaged database is rejected before anything changes.** camera.ui used to restore it and then fail to start. For a newer backup the message names the version to update to first.
+
+- **A backup from the desktop app no longer moves the server to port 3543.** Ports, addresses and environment values that belong to the old machine, such as the Home Assistant ingress port, are reset, and the summary lists each one.
+
+- **Manual backups no longer contain the scheduled ones.** With the default destination, every manual backup carried all archives the scheduler kept.
+
+- **Backups need about half the free space.** camera.ui packs them in its home folder straight from its data instead of copying everything to the system's temp folder first. A backup that does not fit says how much space it needs, and a failed one leaves nothing behind.
+
+- **A backup from the Home Assistant app no longer brings the `homeassistant` account to other servers.** That account signs in only inside Home Assistant. When it was the only master, nobody could sign in on the new server. Now an `admin` account from the backup becomes the master and keeps its password, without one camera.ui creates `admin` like on a new install.
+
+- **Workers can connect again when their port failed to open once.** They could not connect until the next restart.
+
+- **Planned restarts no longer stop camera.ui.** Several restores or updates in a row made it give up when it ran without a service manager. Only crashes count now.
+
+- **`cameraui install` no longer touches `/etc/sudoers`.** The entry it added never worked and was not needed, so there is no warning on systems without sudo any more.
+
+- **The notification settings name every system notification in German too.** Cloud sign-in, incompatible plugins and app and worker updates were listed in English.
+
+- **Pages with recordings data catch up when the NVR plugin restarts.** Storage under Metrics and Faces stayed empty until you reloaded the page, new events stopped showing up live, and playback stopped with "No recording". Playback now waits and goes on where it was, and Faces says when the NVR plugin is not running.
+
+- **Many smaller fixes in the interface and on phones.** For example, a camera alone in a larger Camview grid can be enlarged, discovered cameras of a plugin stay in the list after you add or delete one, and dialogs no longer sit under the home indicator.
+
 ## [2.3.0]
 
 **Update the NVR plugin to 1.5.0 together with camera.ui.** Finding objects and the vehicle filter come with it. Until then a search from the player fails.
