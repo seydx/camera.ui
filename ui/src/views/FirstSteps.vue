@@ -46,20 +46,20 @@
 
                     <p class="max-w-[375px] text-center text-muted">{{ $t('views.firststeps.slogan') }}</p>
 
-                    <div v-if="isMaster" class="flex flex-col items-center gap-3 w-full">
+                    <div v-if="isMaster" class="flex flex-col items-center gap-6 w-full">
                       <p class="text-center text-muted max-w-[375px]">{{ $t('views.firststeps.start_message') }}</p>
 
-                      <div class="flex flex-row flex-wrap items-center justify-center gap-2">
-                        <Button class="cui-button-medium" :loading="isLoading" :label="$t('views.firststeps.new_installation')" @click="nextStep" />
+                      <div class="flex flex-col gap-2 w-full max-w-[375px]">
+                        <Button class="w-full cui-button-medium" :loading="isLoading" :label="$t('views.firststeps.new_installation')" @click="nextStep" />
                         <Button
-                          class="cui-button-medium"
+                          class="w-full cui-button-medium"
                           severity="secondary"
                           :loading="isLoading"
                           :label="$t('views.firststeps.from_backup')"
                           @click="triggerFileInput"
                         />
                         <Button
-                          class="cui-button-medium"
+                          class="w-full cui-button-medium"
                           severity="secondary"
                           :loading="isLoading"
                           :label="$t('views.firststeps.from_server')"
