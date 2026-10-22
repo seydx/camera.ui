@@ -108,8 +108,6 @@
 
       <CuiFloorplanCanvas
         :mobile="smBreakpoint"
-        :bottom-inset="smBreakpoint && selection ? Math.max(sheetHeight - sheetOffset, 0) : 0"
-        :bottom-inset-dragging="sheetDragging"
         :levels="levels"
         :rooms="rooms"
         :connections="connections"

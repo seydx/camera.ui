@@ -1,8 +1,13 @@
 <template>
   <div ref="rootRef" class="relative flex h-full min-h-0 flex-col">
-    <div ref="scrollRef" class="flex-1 min-h-0 overflow-y-auto px-4" :class="{ 'flex flex-col pb-[8vh]': welcome }" @scroll.passive="onScroll">
-      <div v-if="welcome" ref="welcomeRef" class="m-auto w-full max-w-2xl py-6">
-        <div class="mb-7 flex flex-col items-center gap-3 text-center">
+    <div
+      ref="scrollRef"
+      class="flex-1 min-h-0 overflow-y-auto px-4"
+      :class="{ 'flex flex-col': welcome, 'pb-[8vh]': welcome && !shortBreakpoint }"
+      @scroll.passive="onScroll"
+    >
+      <div v-if="welcome" ref="welcomeRef" class="m-auto w-full max-w-2xl" :class="shortBreakpoint ? 'py-2' : 'py-6'">
+        <div class="flex flex-col items-center gap-3 text-center" :class="shortBreakpoint ? 'mb-4' : 'mb-7'">
           <div class="cui-assistant-mark flex h-11 w-11 items-center justify-center rounded-xl">
             <i-mdi:robot-outline class="w-6 h-6 text-color" />
           </div>
@@ -75,7 +80,7 @@
           </template>
         </CuiAssistantComposer>
 
-        <div v-if="suggestions.length" class="mt-4 flex flex-wrap justify-center gap-2">
+        <div v-if="suggestions.length && !shortBreakpoint" class="mt-4 flex flex-wrap justify-center gap-2">
           <button
             v-for="suggestion in suggestions"
             :key="suggestion"
@@ -281,6 +286,7 @@ const { t, locale } = useI18n();
 const toast = useCuiToast();
 const coarsePointer = useMediaQuery('(pointer: coarse)');
 const { keyboardInset } = useKeyboardInset();
+const { shortBreakpoint } = useSharedCuiBreakpoint();
 
 const { data: memory } = assistantQuery.memoryQuery();
 const { data: info } = assistantQuery.getAssistantInfoQuery();

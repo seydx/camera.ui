@@ -14,15 +14,16 @@
           // 'h-[50%]': smBreakpoint,
         }"
         :style="{
-          paddingRight: !smBreakpoint && !xmdBreakpoint ? `calc(${timeline.width.value || 400}px + 0.5rem)` : '0px',
+          paddingRight: sideTimeline ? `calc(${timeline.width.value || 400}px + 0.5rem)` : '0px',
         }"
       >
         <div
           ref="cameraPaneRef"
           :class="{
             flex: !smBreakpoint,
+            'h-full': !smBreakpoint && recordingsInSheet,
           }"
-          :style="smBreakpoint ? undefined : { maxHeight: `${cameraShare * 100}%` }"
+          :style="recordingsInSheet ? undefined : { maxHeight: `${cameraShare * 100}%` }"
         >
           <CuiCameraPipCard
             ref="cameraCardRef"
@@ -33,7 +34,7 @@
             :flat-card="smBreakpoint"
             :resizable="smBreakpoint"
             :control-microphone-button="!smBreakpoint"
-            :toolbar-timeline-button="xmdBreakpoint"
+            :toolbar-timeline-button="cardTimeline"
             fullscreen-timeline
             :toolbar-description-button="Boolean(nvrPluginRef)"
             :event-description="currentDescription"
@@ -49,7 +50,7 @@
         </div>
 
         <div
-          v-if="!smBreakpoint"
+          v-if="!recordingsInSheet"
           class="group relative z-10 h-3 -my-0.5 shrink-0 flex items-center justify-center cursor-ns-resize touch-none select-none"
           @pointerdown="onSplitStart"
           @pointermove="onSplitMove"
@@ -61,7 +62,7 @@
         </div>
 
         <Card
-          v-if="!smBreakpoint"
+          v-if="!recordingsInSheet"
           class="cui-card flex-1 min-h-0"
           :pt="{
             content: { class: 'overflow-hidden h-full flex flex-col' },
@@ -96,7 +97,7 @@
       </div>
 
       <div
-        v-if="!xmdBreakpoint"
+        v-if="!cardTimeline"
         v-show="!cameraCardIsFullscreen"
         id="camera-sidebar"
         ref="timelineRef"
@@ -104,7 +105,7 @@
           'min-w-[300px]': smBreakpoint,
           'min-w-[400px]': !smBreakpoint,
           'border-t-[1px] border-color': smBreakpoint,
-          'lg:fixed lg:right-safe-offset-2 lg:bottom-[var(--cui-bottom-gap)]': !smBreakpoint && !xmdBreakpoint,
+          'fixed right-safe-offset-2 bottom-[var(--cui-bottom-gap)]': sideTimeline,
         }"
         :style="{
           height: `calc(100% - ${topbarOffset}px - var(--safe-area-inset-top) - 0.5rem - var(--cui-bottom-gap))`,
@@ -112,7 +113,7 @@
       />
     </div>
 
-    <CuiBottomSheet v-if="smBreakpoint && isContentReady" v-model="showMobileSheet" height="70vh" max-height="85vh">
+    <CuiBottomSheet v-if="recordingsInSheet && isContentReady" v-model="showMobileSheet" height="70vh" max-height="85vh">
       <Tabs :key="cameraName" v-model:value="cameraTab" lazy class="h-full flex flex-col">
         <TabList class="shrink-0 w-full mt-5">
           <Tab value="0" class="pt-0 text-sm flex-1">{{ $t('views.camera.recordings') }}</Tab>
@@ -163,7 +164,7 @@
         :export-available="true"
         :delete-available="isAdmin && !cameraCardIsFullscreen"
         :ignore-bottom-safe-area="!horizontalTimeline"
-        :md-breakpoint="mdBreakpoint"
+        :md-breakpoint="mdBreakpoint || shortBreakpoint"
         :zone-filter-active="gridSearchActive"
         :zone-has-regions="gridSearchRegions.length > 0"
         :zone-box-matcher="zoneBoxMatcher"
@@ -190,7 +191,7 @@
             </Button>
 
             <Button
-              v-if="smBreakpoint && !cameraCardIsFullscreen && !exportMode && !deleteMode"
+              v-if="recordingsInSheet && !cameraCardIsFullscreen && !exportMode && !deleteMode"
               v-tooltip.left="{ value: $t('components.player.more') }"
               rounded
               severity="secondary"
@@ -253,7 +254,7 @@
               </template>
             </Button>
 
-            <template v-if="(smBreakpoint || horizontalTimeline) && timelineSegment === 'timeline'">
+            <template v-if="(recordingsInSheet || horizontalTimeline) && timelineSegment === 'timeline'">
               <Button
                 v-tooltip.left="{ value: $t('components.form.tooltip.zoom_in') }"
                 rounded
@@ -326,7 +327,7 @@ const router = useRouter();
 const assistantActions = useAssistantActions();
 const { openEventTrace } = useEventTraceDialog();
 const { openSimilarSearch, openOnCamera, cameraSearch, forgetCameraSearch } = useSimilarSearchRoute();
-const { xmdBreakpoint, smBreakpoint, mdBreakpoint } = useSharedCuiBreakpoint();
+const { xmdBreakpoint, smBreakpoint, mdBreakpoint, shortBreakpoint } = useSharedCuiBreakpoint();
 const { topbarOffset } = useSharedCuiStates();
 const { plugin: nvrPluginRef } = usePlugin('@camera.ui/camera-ui-nvr');
 
@@ -369,7 +370,11 @@ const isAdmin = computed(() => hasPermission(undefined, 'admin'));
 const cameraId = computed(() => camera.value?._id);
 
 const cameraCardIsFullscreen = computed(() => Boolean(cameraCardRef.value?.isFullscreen));
-const horizontalTimeline = computed(() => xmdBreakpoint.value || cameraCardIsFullscreen.value);
+// a short window keeps the timeline beside the camera and the recordings in the sheet
+const cardTimeline = computed(() => xmdBreakpoint.value && !shortBreakpoint.value);
+const sideTimeline = computed(() => !smBreakpoint.value && !cardTimeline.value);
+const recordingsInSheet = computed(() => smBreakpoint.value || shortBreakpoint.value);
+const horizontalTimeline = computed(() => cardTimeline.value || cameraCardIsFullscreen.value);
 
 const find = useFindObject({
   shown: () => !horizontalTimeline.value || Boolean(cameraCardRef.value?.timelineState),
@@ -646,7 +651,7 @@ watch([timelineSegment, cameraCardRef], ([segment]) => {
 watch(
   cameraName,
   (_, oldName) => {
-    if (oldName && xmdBreakpoint.value && wasTimelineActive.value) {
+    if (oldName && cardTimeline.value && wasTimelineActive.value) {
       nextTick(() => {
         nextTick(() => {
           try {

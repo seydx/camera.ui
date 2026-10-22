@@ -248,6 +248,8 @@ export function createConnection(options: ConnectionOptions): Connection {
           if (before.up !== after.up || !after.up) {
             journal.record(transport.spec.id, `ensureAlive → ${after.up ? 'up' : 'down'}`, after.lastError ?? before.lastError);
           }
+          // a probe clears a stale heartbeat without an up event
+          signalHandle.recompute();
         })
         .catch(() => {});
     }

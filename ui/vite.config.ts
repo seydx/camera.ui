@@ -296,6 +296,8 @@ export default defineConfig(({ command }) => ({
       : [
           VitePWA({
             outDir: resolve(import.meta.dirname, '..', 'server', 'dist', 'interface'),
+            buildBase: '/',
+            scope: '/',
             injectRegister: null,
             registerType: 'prompt',
             manifestFilename: 'manifest.webmanifest',

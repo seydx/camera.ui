@@ -90,8 +90,6 @@ export interface FloorplanRemovals {
 
 export interface CuiFloorplanCanvasProps {
   mobile?: boolean;
-  bottomInset?: number;
-  bottomInsetDragging?: boolean;
   levels: FloorplanLevel[];
   rooms: FloorplanRoom[];
   connections: FloorplanConnection[];

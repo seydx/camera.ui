@@ -127,7 +127,7 @@
 
     <div
       class="w-full h-full flex relative"
-      :class="{ 'flex-row': lgBreakpoint, 'flex-col': !lgBreakpoint }"
+      :class="{ 'flex-row': sideTimeline, 'flex-col': !sideTimeline }"
       :style="{
         paddingTop: `${TOPNAVBAR_HEIGHT}px`,
       }"
@@ -135,8 +135,8 @@
       <div
         class="flex relative z-1 camview-content-transition"
         :class="{
-          'h-full items-center justify-center': lgBreakpoint || !views?.result.length,
-          'w-full items-start justify-start': !lgBreakpoint && views?.result.length,
+          'h-full items-center justify-center': sideTimeline || !views?.result.length,
+          'w-full items-start justify-start': !sideTimeline && views?.result.length,
         }"
         :style="contentContainerStyle"
       >
@@ -174,7 +174,7 @@
       </div>
 
       <Transition
-        :name="lgBreakpoint ? 'slide-left' : 'slide-up'"
+        :name="sideTimeline ? 'slide-left' : 'slide-up'"
         @before-enter="timelineSpaceOccupied = true"
         @after-enter="timelineAnimating = false"
         @before-leave="timelineSpaceOccupied = false"
@@ -192,13 +192,13 @@
           :only-events="findKeys"
           @event-select="onTimelineEventSelect"
           :loading="timelineAnimating"
-          :type="lgBreakpoint ? 'vertical' : 'horizontal'"
+          :type="sideTimeline ? 'vertical' : 'horizontal'"
           dark-mode
-          :md-breakpoint="mdBreakpoint"
+          :md-breakpoint="mdBreakpoint || shortBreakpoint"
           class="shrink-0 transition-[left] duration-200"
           :class="{
-            'h-full w-[400px] pt-2 pr-2 pb-[var(--cui-bottom-gap)]': lgBreakpoint,
-            'h-[200px] pt-2 px-2 pb-2 pb-safe-offset fixed right-safe-offset-0 z-10': !lgBreakpoint,
+            'h-full pt-2 pr-2 pb-[var(--cui-bottom-gap)]': sideTimeline,
+            'h-[200px] pt-2 px-2 pb-2 pb-safe-offset fixed right-safe-offset-0 z-10': !sideTimeline,
             'p-0! pt-2! border-color': smBreakpoint,
           }"
           :card-class="{
@@ -206,9 +206,9 @@
             '!rounded-none border-l-0! border-r-0!': smBreakpoint,
           }"
           :style="
-            !lgBreakpoint
-              ? { left: `calc(${navbarOffset}px + var(--safe-area-inset-left))`, bottom: 'calc(var(--cui-bottom-bar) + var(--cui-bottom-gap) - 0.5rem)' }
-              : undefined
+            sideTimeline
+              ? { width: `${sideTimelineWidth}px` }
+              : { left: `calc(${navbarOffset}px + var(--safe-area-inset-left))`, bottom: 'calc(var(--cui-bottom-bar) + var(--cui-bottom-gap) - 0.5rem)' }
           "
           :locale-settings="timelineLocaleSettings"
         >
@@ -229,7 +229,7 @@
       :pt="{ root: { style: 'pointer-events: none' } }"
       :style="{
         bottom: speedDialBottom,
-        right: !lgBreakpoint ? '0.5rem' : `calc(${sideWidth}px + 0.5rem)`,
+        right: !sideTimeline ? '0.5rem' : `calc(${sideWidth}px + 0.5rem)`,
         transition: 'bottom 0.25s ease-out, right 0.25s ease-out',
       }"
     >
@@ -376,7 +376,7 @@ const { t } = useI18n();
 const timelineLocaleSettings = useTimelineLocale();
 const dialog = useCuiDialog();
 const { bottombarHeight } = useSharedCuiStates();
-const { smBreakpoint, lgBreakpoint, mdBreakpoint } = useSharedCuiBreakpoint();
+const { smBreakpoint, lgBreakpoint, mdBreakpoint, shortBreakpoint } = useSharedCuiBreakpoint();
 const { openOnCamera, openSimilarSearch } = useSimilarSearchRoute();
 
 const authStore = useAuthStore();
@@ -465,13 +465,17 @@ const cameraCardProps = computed<Partial<CuiCameraCardProps>>(() => ({
 
 const gridEndGap = computed(() => (bottombarHeight.value > 0 ? '4px' : 'var(--cui-bottom-gap)'));
 
+// a timeline below the grid leaves a short window no height for the cameras
+const sideTimeline = computed(() => lgBreakpoint.value || (shortBreakpoint.value && !smBreakpoint.value));
+const sideTimelineWidth = computed(() => (lgBreakpoint.value ? 400 : 300));
+
 const speedDialBottom = computed(() => {
-  if (lgBreakpoint.value) return 'var(--cui-bottom-gap)';
+  if (sideTimeline.value) return 'var(--cui-bottom-gap)';
   if (timelineSpaceOccupied.value) return timelineClearance;
   return bottombarHeight.value > 0 ? '0.5rem' : 'var(--cui-bottom-gap)';
 });
 
-const sideWidth = computed(() => (timelineSpaceOccupied.value ? 400 : 0));
+const sideWidth = computed(() => (timelineSpaceOccupied.value ? sideTimelineWidth.value : 0));
 
 const contentContainerStyle = computed<HTMLAttributes['style']>(() => {
   if (!views.value?.result.length) {
@@ -480,7 +484,7 @@ const contentContainerStyle = computed<HTMLAttributes['style']>(() => {
       height: '100%',
       overflowY: 'scroll',
     };
-  } else if (lgBreakpoint.value) {
+  } else if (sideTimeline.value) {
     return {
       width: sideWidth.value ? `calc(100% - ${sideWidth.value}px)` : '100%',
       height: '100%',

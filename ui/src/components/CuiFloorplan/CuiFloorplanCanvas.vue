@@ -321,10 +321,7 @@
       </svg>
     </div>
 
-    <div
-      class="absolute left-3 flex flex-col gap-2 items-start"
-      :style="{ bottom: `${12 + (bottomInset ?? 0)}px`, transition: bottomInsetDragging ? 'none' : 'bottom 0.2s ease-in-out' }"
-    >
+    <div class="absolute left-3 bottom-3 flex flex-col gap-2 items-start">
       <div class="flex flex-col overflow-hidden floorplan-controls">
         <button v-tooltip.right="{ value: $t('views.floorplan.zoom_in') }" type="button" class="control-button" @pointerdown.stop @click.stop="zoomIn()">
           <i-mdi:plus class="w-4 h-4" />

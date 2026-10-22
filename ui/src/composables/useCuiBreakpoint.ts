@@ -9,6 +9,9 @@ export function useCuiBreakpoint() {
 
   const xsBreakpoint = useMediaQuery('(max-width: 450px)');
 
+  // phones in landscape
+  const shortBreakpoint = useMediaQuery('(max-height: 500px)');
+
   // < 640px
   const smBreakpoint = computed(() => !atLeastSm.value);
 
@@ -30,6 +33,7 @@ export function useCuiBreakpoint() {
   return {
     xxsBreakpoint,
     xsBreakpoint,
+    shortBreakpoint,
     smBreakpoint,
     mdBreakpoint,
     xmdBreakpoint,
