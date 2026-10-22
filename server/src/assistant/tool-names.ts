@@ -22,7 +22,7 @@ export function withToolNameRepair(adapter: AssistantAdapter, onRepair: (from: s
         continue;
       }
       onRepair(chunk.toolCallName, repaired);
-      yield { ...chunk, toolCallName: repaired, toolName: repaired };
+      yield { ...chunk, toolCallName: repaired };
     }
   }
 

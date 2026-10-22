@@ -1,5 +1,5 @@
 import { ASK_USER_INTERRUPT, ASSISTANT_CLIENT_TOOLS, ASSISTANT_PAGES } from '@shared/types';
-import { toolDefinition } from '@tanstack/ai';
+import { EventType, toolDefinition } from '@tanstack/ai';
 import { fetchServerSentEvents, useChat } from '@tanstack/ai-vue';
 
 import { cancelAssistantRun, hydrateAssistantThread } from '@/api/routes/assistant.js';
@@ -19,7 +19,7 @@ import type {
   DBAssistantAttachmentNotice,
   DBAssistantCard,
 } from '@shared/types';
-import type { JSONSchema } from '@tanstack/ai';
+import type { JSONSchema, RunErrorEvent } from '@tanstack/ai';
 import type { UIMessage } from '@tanstack/ai-vue';
 import type { Ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
@@ -52,6 +52,35 @@ export interface UseAssistantChatOptions {
   onFinish?: () => void;
   onError?: (error: Error) => void;
 }
+
+const PROVIDER_FAILURES: Record<string, string> = {
+  overloaded_error: 'overloaded',
+  529: 'overloaded',
+  503: 'overloaded',
+  insufficient_quota: 'billing',
+  billing_error: 'billing',
+  402: 'billing',
+  rate_limit_error: 'rate_limit',
+  rate_limit_exceeded: 'rate_limit',
+  429: 'rate_limit',
+  authentication_error: 'auth',
+  permission_error: 'auth',
+  invalid_api_key: 'auth',
+  401: 'auth',
+  403: 'auth',
+  not_found_error: 'model',
+  model_not_found: 'model',
+  404: 'model',
+  request_too_large: 'too_long',
+  context_overflow: 'too_long',
+  413: 'too_long',
+  api_error: 'provider',
+  server_error: 'provider',
+  timeout_error: 'provider',
+  500: 'provider',
+  502: 'provider',
+  504: 'provider',
+};
 
 function isSettingKey(value: unknown): value is AssistantSettingKey {
   return typeof value === 'string' && (ASSISTANT_SETTING_KEYS as string[]).includes(value);
@@ -154,6 +183,7 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
   const toolNotices = ref<Record<string, DBAssistantAttachmentNotice[]>>({});
   const usage = ref<Record<string, AssistantUsageEvent>>({});
   const stoppedId = ref<string | null>(null);
+  let failure: RunErrorEvent | undefined;
 
   function syncForwarded(regenerate = false): void {
     forwardedProps.regenerate = regenerate;
@@ -202,6 +232,9 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
     forwardedProps,
     onFinish: options.onFinish,
     onError: options.onError,
+    onChunk: (chunk) => {
+      if (chunk.type === EventType.RUN_ERROR) failure = chunk;
+    },
     onCustomEvent: (eventType, data, context) => {
       if (eventType === 'assistant.usage') {
         const answer = chat.messages.value.findLast((message) => message.role === 'assistant');
@@ -284,6 +317,13 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
     chat.setMessages(messages);
   }
 
+  function failureText(error: Error): string {
+    // the client error keeps only message and code, the provider's error type comes with the run error event
+    if (failure?.message !== error.message) return error.message;
+    const kind = PROVIDER_FAILURES[failure.metadata?.tanstack?.errorType ?? ''] ?? PROVIDER_FAILURES[failure.code ?? ''];
+    return kind ? t(`views.assistant.failure_${kind}`) : error.message;
+  }
+
   return {
     ...chat,
     sendMessage,
@@ -291,6 +331,7 @@ export function useAssistantChat(options: UseAssistantChatOptions) {
     stop,
     continueAnswer,
     replaceFromStore,
+    failureText,
     approvals,
     questions,
     pausedElsewhere,

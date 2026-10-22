@@ -266,12 +266,11 @@ export class PluginTextAdapter extends BaseTextAdapter<string, Record<string, ne
       type: EventType.TOOL_CALL_START,
       toolCallId: call.id,
       toolCallName: call.name,
-      toolName: call.name,
       parentMessageId: messageId,
       ...base,
     };
     yield { type: EventType.TOOL_CALL_ARGS, toolCallId: call.id, delta: args, args, ...base };
-    yield { type: EventType.TOOL_CALL_END, toolCallId: call.id, toolCallName: call.name, toolName: call.name, input: call.arguments ?? {}, ...base };
+    yield { type: EventType.TOOL_CALL_END, toolCallId: call.id, toolCallName: call.name, input: call.arguments ?? {}, ...base };
   }
 }
 

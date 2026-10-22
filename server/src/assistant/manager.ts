@@ -55,7 +55,7 @@ import { describeUploads, extractUploads, messagesForModel } from './uploads.js'
 import { AssistantUsageStore } from './usage.js';
 
 import type { AssistantAccess, AssistantAskResult, AssistantModelSpec } from '@camera.ui/sdk';
-import type { ChatMiddleware, FetchWrapper, Interrupt, ModelMessage, StreamChunk, StreamDurability, UIMessage } from '@tanstack/ai';
+import type { ChatMiddleware, FetchWrapper, Interrupt, ModelMessage, RunErrorEvent, StreamChunk, StreamDurability, UIMessage } from '@tanstack/ai';
 import type { MemoryAdapter, MemoryTurn } from '@tanstack/ai-memory';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../api/database/index.js';
@@ -449,6 +449,7 @@ export class AssistantManager {
     try {
       const base = {
         adapter: this.baseAdapter(model, entry, 'en', timeoutMs),
+        threadId: randomUUID(),
         systemPrompts: request.system ? [request.system] : [],
         messages: [{ role: 'user', content: [{ type: 'text', content: request.prompt }, ...images] }],
         ...reasoningFor(model),
@@ -465,7 +466,7 @@ export class AssistantManager {
       let text = '';
       for await (const chunk of chat({ ...base, agentLoopStrategy: maxIterations(1) } as never) as AsyncIterable<StreamChunk>) {
         if (chunk.type === EventType.TEXT_MESSAGE_CONTENT) text += chunk.delta ?? '';
-        else if (chunk.type === EventType.RUN_ERROR) throw new Error(chunk.message);
+        else if (chunk.type === EventType.RUN_ERROR) throw new Error(withProviderDetails(chunk.message, chunk));
       }
 
       return { ok: true, text: text.trim(), usage: { promptTokens: stats.promptTokens, completionTokens: stats.completionTokens } };
@@ -516,11 +517,13 @@ export class AssistantManager {
     const timer = setTimeout(() => abort.abort(), TEST_TIMEOUT_MS);
 
     const probeTools = spec?.toolCalling !== false;
+    const threadId = randomUUID();
 
     try {
       await this.drain(
         chat({
           adapter,
+          threadId,
           systemPrompts: ['You are a connectivity probe. Follow the instruction literally.'],
           messages: [
             {
@@ -545,6 +548,7 @@ export class AssistantManager {
         await this.drain(
           chat({
             adapter,
+            threadId,
             messages: [
               {
                 role: 'user',
@@ -789,6 +793,7 @@ export class AssistantManager {
     try {
       const stream = chat({
         adapter: this.chatAdapter(model, entry, ctx.language),
+        threadId: randomUUID(),
         messages: [{ id: `${Date.now()}-user`, role: 'user', parts: parts as never }],
         tools,
         context: ctx,
@@ -803,7 +808,7 @@ export class AssistantManager {
 
       for await (const chunk of stream as AsyncIterable<StreamChunk>) {
         if (chunk.type === EventType.TEXT_MESSAGE_CONTENT) text += chunk.delta ?? '';
-        else if (chunk.type === EventType.RUN_ERROR) throw new Error(chunk.message);
+        else if (chunk.type === EventType.RUN_ERROR) throw new Error(withProviderDetails(chunk.message, chunk));
         else collectAttachment(chunk, attachments);
       }
     } finally {
@@ -837,6 +842,7 @@ export class AssistantManager {
     try {
       const output = await chat({
         adapter: this.baseAdapter(model, entry, 'en'),
+        threadId: randomUUID(),
         systemPrompts: [searchPrompt(cameras, ctx.language === 'auto' ? 'en' : ctx.language, ctx.timezone)],
         messages: [{ role: 'user', content: text }],
         outputSchema: SEARCH_SCHEMA,
@@ -863,6 +869,7 @@ export class AssistantManager {
     const log = this.logger;
     const userId = runCtx.userId;
     const calls = new Set<string>();
+    let failure: RunErrorEvent | undefined;
 
     return {
       name: 'camera.ui-assistant',
@@ -923,8 +930,11 @@ export class AssistantManager {
           .saveMessages(userId, threadId, ui.length ? ui : incoming, incoming)
           .catch((error: any) => log.warn(`Assistant: could not store thread: ${error.message}`));
       },
+      onChunk: (_ctx, chunk) => {
+        if (chunk.type === EventType.RUN_ERROR) failure = chunk;
+      },
       onError: (_ctx, info) => {
-        log.warn(`Assistant run failed: ${describeError(info.error)}`);
+        log.warn(`Assistant run failed: ${withProviderDetails(describeError(info.error), failure)}`);
       },
     };
   }
@@ -941,6 +951,7 @@ export class AssistantManager {
     try {
       const stream = chat({
         adapter: this.baseAdapter(model, entry, 'en'),
+        threadId: randomUUID(),
         systemPrompts: [EXTRACT_PROMPT],
         messages: [
           {
@@ -953,7 +964,7 @@ export class AssistantManager {
       });
       for await (const chunk of stream as AsyncIterable<StreamChunk>) {
         if (chunk.type === EventType.TEXT_MESSAGE_CONTENT) text += chunk.delta ?? '';
-        else if (chunk.type === EventType.RUN_ERROR) throw new Error(chunk.message);
+        else if (chunk.type === EventType.RUN_ERROR) throw new Error(withProviderDetails(chunk.message, chunk));
       }
     } finally {
       clearTimeout(timer);
@@ -1204,7 +1215,7 @@ export class AssistantManager {
 
   private async drain(stream: AsyncIterable<StreamChunk>): Promise<void> {
     for await (const chunk of stream) {
-      if (chunk.type === EventType.RUN_ERROR) throw new Error(chunk.message);
+      if (chunk.type === EventType.RUN_ERROR) throw new Error(withProviderDetails(chunk.message, chunk));
     }
   }
 }
@@ -1424,4 +1435,12 @@ function describeError(error: unknown): string {
   }
   if (typeof error === 'string') return error;
   return 'Unknown error';
+}
+
+function withProviderDetails(message: string, failure: RunErrorEvent | undefined): string {
+  // chat() moves both into metadata, a middleware sees them still on the event
+  const errorType = failure?.metadata?.tanstack?.errorType ?? failure?.errorType;
+  const requestId = failure?.metadata?.tanstack?.requestId ?? failure?.requestId;
+  const details = [errorType, requestId && `request ${requestId}`].filter(Boolean);
+  return details.length ? `${message} (${details.join(', ')})` : message;
 }

@@ -1,4 +1,5 @@
 import { chat, renderLazyCatalogEntry } from '@tanstack/ai';
+import { randomUUID } from 'node:crypto';
 import * as zod from 'zod';
 
 import { rankTools } from './tool-rank.js';
@@ -38,7 +39,15 @@ export async function routeTools(
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), ROUTE_TIMEOUT_MS);
   const ask = <T>(systemPrompts: string[], content: string, outputSchema: zod.ZodType<T>): Promise<T> =>
-    chat({ adapter, systemPrompts, messages: [{ role: 'user', content }], outputSchema, middleware, abortController: abort } as never) as unknown as Promise<T>;
+    chat({
+      adapter,
+      threadId: randomUUID(),
+      systemPrompts,
+      messages: [{ role: 'user', content }],
+      outputSchema,
+      middleware,
+      abortController: abort,
+    } as never) as unknown as Promise<T>;
 
   try {
     const search = await ask([SEARCH_PROMPT], question, zod.object({ english: zod.string(), need: zod.string() }));

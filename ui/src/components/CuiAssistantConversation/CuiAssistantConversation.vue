@@ -151,7 +151,7 @@
         <div v-if="chat.pausedElsewhere.value" class="cui-assistant-note pl-3 text-[13.5px] text-muted">{{ $t('views.assistant.paused_elsewhere') }}</div>
 
         <div v-if="chat.error.value" class="cui-assistant-note pl-3 text-[13.5px] text-muted">
-          <strong class="font-medium text-color-faded">{{ chat.error.value.message }}</strong>
+          <strong class="font-medium text-color-faded">{{ chat.failureText(chat.error.value) }}</strong>
         </div>
       </div>
     </div>
@@ -556,7 +556,7 @@ function onChatError(error: Error): void {
     reloadThread();
     return;
   }
-  toast.add({ severity: 'error', detail: error.message, life: 5000 });
+  toast.add({ severity: 'error', detail: chat.failureText(error), life: 5000 });
 }
 
 async function reloadThread(): Promise<void> {
