@@ -1394,6 +1394,8 @@ const scrollPositions = new Map<string, number>();
 
 const MORPH_MAX_WAIT_MS = 600;
 const MORPH_QUIET_MS = 150;
+// inside an iframe on iOS (HA app) view transitions leave the camera card and the bars undrawn and swallow taps
+const VIEW_TRANSITIONS = window.parent === window || !useCuiUserAgent().isIos.value;
 
 let activeMorphs = 0;
 
@@ -1541,7 +1543,15 @@ router.beforeResolve(async (to, from) => {
   // camera pages don't scroll, so a held page stays held between them and never trades margin for scroll
   const keepHeld = toInfo?.group === 'main' && Boolean(toValue(to.meta.ui?.containerSettings?.disableScroll));
 
-  if (!fromInfo || !toInfo || fromInfo.group !== toInfo.group || fromInfo.key === toInfo.key || fromInfo.ignore === toInfo.key || toInfo.ignore === fromInfo.key) {
+  if (
+    !VIEW_TRANSITIONS ||
+    !fromInfo ||
+    !toInfo ||
+    fromInfo.group !== toInfo.group ||
+    fromInfo.key === toInfo.key ||
+    fromInfo.ignore === toInfo.key ||
+    toInfo.ignore === fromInfo.key
+  ) {
     if (!keepHeld) settlePage();
     return;
   }
