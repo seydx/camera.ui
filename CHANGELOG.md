@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1]
+
+- **Home Assistant: update the [integration](https://docs.cameraui.com/home-assistant/integration#install) to 0.5.1.** Until then a reload of the camera.ui panel still goes back to the last camera opened from a notification.
+
+### Fixed
+
+- **Reloading the camera.ui panel in Home Assistant keeps the page you were on.** A reload, pull to refresh in the Home Assistant app or the next app start went back to the last camera opened from a notification.
+
+- **The camera.ui panel in the Home Assistant app on iPhone and iPad no longer freezes when you open a camera.** The camera page showed without its header and controls, and back on the start page the top and bottom bars were gone until you pulled to refresh.
+
 ## [2.4.0]
 
 - **[Docker](https://docs.cameraui.com/install/docker#updating) and [Proxmox](https://docs.cameraui.com/install/proxmox#updating): pull the new image and add `stop_grace_period: 30s` to the camera.ui service in your compose file.** On Proxmox the compose file is in `/opt/cameraui` inside the container. Without the new image an update that does not start is not rolled back. Without the setting Docker stops camera.ui after 10 seconds, even if cameras and plugins need longer to shut down.
