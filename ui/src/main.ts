@@ -20,7 +20,7 @@ import AppRoot from '@/App.vue';
 import { isEmbedded, isProxySignIn } from '@/common/base.js';
 import { installCertTrustBridge } from '@/common/certTrustService.js';
 import { attemptChunkReload, markLoadStable } from '@/common/chunkReload.js';
-import { initHostSync } from '@/common/hostSync.js';
+import { initHostSync, reportHostRoute } from '@/common/hostSync.js';
 import { bootApp, consumeAuthParam, consumeEmbedSession, isCapacitor } from '@/connection/index.js';
 import { instanceOverride } from '@/connection/instance.js';
 import { registerEcosystemPlugins } from '@/plugins/cameraui.js';
@@ -55,6 +55,9 @@ initHostSync({
   onNavigate: (path) => Router.push(path),
   onSidebar: setHostMenuState,
   onBadge: setHostMenuBadge,
+});
+Router.afterEach((to, _from, failure) => {
+  if (!failure) reportHostRoute(to.fullPath);
 });
 
 let seeded = await consumeAuthParam(connection, {

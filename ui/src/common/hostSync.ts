@@ -1,4 +1,4 @@
-import { isHaIngress, isHomeAssistant } from '@/common/base.js';
+import { isHaIngress, isHaPanel, isHomeAssistant } from '@/common/base.js';
 
 import type { SupportedThemes } from '@shared/types';
 
@@ -52,6 +52,15 @@ export function toggleHostMenu(open?: boolean): void {
   } else if (isHomeAssistant()) {
     postToHost(typeof open === 'boolean' ? { type: 'cui:menu', open } : { type: 'cui:menu' });
   }
+}
+
+export function reportHostRoute(fullPath: string): void {
+  if (!isHaPanel()) return;
+  const url = new URL(fullPath, window.location.origin);
+  for (const key of [...url.searchParams.keys()]) {
+    if (key.startsWith('cui_')) url.searchParams.delete(key);
+  }
+  postToHost({ type: 'cui:route', path: `${url.pathname}${url.search}${url.hash}` });
 }
 
 export function initHostSync(handlers: HostSyncHandlers): void {
