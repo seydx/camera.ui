@@ -59,7 +59,7 @@
     "@capacitor/status-bar": "^8.0.4",
     "@capawesome/capacitor-badge": "^8.0.4",
     "@capgo/capacitor-updater": "^8.53.1",
-    "@iconify/json": "^2.2.546",
+    "@iconify/json": "^2.2.547",
     "@openuxkit/styled": "^1.0.0",
     "@openuxkit/utils": "^1.0.1",
     "@openvue/core": "1.0.0",
